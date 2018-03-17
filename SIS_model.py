@@ -5,21 +5,23 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
-from autologit import autologit
+from autologit import unconditional_logit, autologit
 import pdb
+from sklearn.neural_network import MLPClassifier
+from sklearn.linear_model import LogisticRegression
 
 class SIS(object):
   # Fixed generative model parameters
   ZETA = 1
   TAU = 1 
-  SIGMA = np.ones(7)
   
-  def __init__(self, adjacency_matrix, omega):
+  def __init__(self, adjacency_matrix, omega, sigma):
     '''
     :param adjacency_matrix: 2d binary array corresponding to network for gen model 
     :param omega: parameter in [0,1] for mixing two SIS models
     '''
     
+    self.SIGMA = sigma
     self.adjacency_matrix = adjacency_matrix
     self.nS = self.adjacency_matrix.shape[0]
     self.adjacency_list = [[lprime for lprime in range(self.nS) if self.adjacency_matrix[l, lprime] == 1] for l in range(self.nS)]
@@ -27,6 +29,7 @@ class SIS(object):
     self.S = np.zeros((1, self.nS)) 
     self.Y = np.array([np.random.binomial(n=1, p=0.3, size=self.nS)])
     self.A = np.zeros((0, self.nS))
+    self.true_infection_probs = np.zeros((0, self.nS))
     self.state_covariance = self.TAU**2 * np.eye(self.nS)
     self.current_state = self.S[-1,:]
     self.current_infected = self.Y[-1,:]
@@ -64,6 +67,7 @@ class SIS(object):
     
     next_infections = np.random.binomial(n=[1]*self.nS, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
+    self.true_infection_probs = np.vstack((self.true_infection_probs, next_infected_probabilities))
     self.current_infected = next_infections
   
   ##############################################################
@@ -126,13 +130,22 @@ class SIS(object):
     self.A = np.vstack((self.A, a))
     
 #Test
+#Settings
 from generate_network import lattice
-m = lattice(9)
-g = SIS(m, 0.5)
-for i in range(5):
-  a = np.random.binomial(n=1, p=0.2, size=9)
+omega = 0.5 
+L = 25
+T = 50 
+sigma = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 10, 0.1])  #Tuned to have ~0.5 infections at these settings
+m = lattice(L)
+g = SIS(m, omega, sigma)
+for i in range(T):
+  a = np.random.binomial(n=1, p=0.1, size=L)
   g.step(a)    
-autologit(g)
+_, phat_logit = unconditional_logit(g, LogisticRegression)
+_, phat_autologit_MLP = autologit(g, MLPClassifier, LogisticRegression)
+_, phat_autologit = autologit(g, LogisticRegression, LogisticRegression)
 
-
+print('unconditional accuracy: {}'.format(np.mean(np.abs(phat_logit-g.true_infection_probs))))
+print('MLP conditional accuracy: {}'.format(np.mean(np.abs(phat_autologit_MLP-g.true_infection_probs))))
+print('logit conditional accuracy: {}'.format(np.mean(np.abs(phat_autologit-g.true_infection_probs))))
 

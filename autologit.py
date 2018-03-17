@@ -3,10 +3,14 @@
 Created on Sat Mar 17 13:51:01 2018
 
 @author: Jesse
+
+Various auto-regressive classifiers for disease spread.
 """
 
 import numpy as np
-from sklearn.linear_model import LogisticRegression
+#from sklearn.linear_model import LogisticRegression
+#from sklearn.neural_network import MLPClassifier
+#import pdb
 
 def create_unconditional_dataset(model):
   '''
@@ -16,7 +20,7 @@ def create_unconditional_dataset(model):
   '''
   T = model.A.shape[0]
   for t in range(T):
-    data_block = np.hstack((model.S[t,:], model.A[t,:], model.Y[t,:], model.Y[t+1,:]))
+    data_block = np.column_stack((model.S[t,:], model.A[t,:], model.Y[t,:], model.Y[t+1,:]))
     if t == 0:
       data = data_block
     else:
@@ -38,10 +42,10 @@ def create_autologit_dataset(model, unconditional_dataset, unconditional_predict
     for l in range(model.nS):
       neighbor_predicted_probs_l = unconditional_predicted_probs_t[model.adjacency_list[l]]
       predicted_prob_sums = np.append(predicted_prob_sums, np.sum(neighbor_predicted_probs_l))
-  data = np.hstack((predicted_prob_sums, unconditional_dataset))
+  data = np.column_stack((predicted_prob_sums, unconditional_dataset))
   return data
 
-def unconditional_logit(model):
+def unconditional_logit(model, classifier):
   data = create_unconditional_dataset(model)
   
   #Create interactions 
@@ -49,22 +53,23 @@ def unconditional_logit(model):
   state_infect_ixn = np.multiply(data[:,0], data[:,2])
   action_infect_ixn = np.multiply(data[:,1], data[:, 2])
   state_action_infect_ixn = np.multiply(data[:,0], action_infect_ixn)
-  data = np.hstack((state_action_ixn, state_infect_ixn, action_infect_ixn, state_action_infect_ixn, data))
+  data = np.column_stack((state_action_ixn, state_infect_ixn, action_infect_ixn, state_action_infect_ixn, data))
   
   #Logistic regression
-  logit = LogisticRegression()
+  logit = classifier()
   logit.fit(data[:,:-1], data[:,-1])
   phat = logit.predict_proba(data[:,:-1])
+  return(data, phat[:,-1].reshape((model.A.shape[0], model.nS)))
   
-  return(data, phat)
-  
-def autologit(model):
-  unconditional_data, predicted_probs = unconditional_logit(model)
+def autologit(model, classifier, unconditional_classifier):
+  unconditional_data, predicted_probs = unconditional_logit(model, unconditional_classifier)
   data = create_autologit_dataset(model, unconditional_data, predicted_probs)
-  logit = LogisticRegression()
+  logit = classifier()
   logit.fit(data[:,:-1], data[:,-1])
+  predictions = logit.predict_proba(data[:,:-1])
+  return logit, predictions[:,-1].reshape((model.A.shape[0], model.nS))
   
-  
+
 
   
   
