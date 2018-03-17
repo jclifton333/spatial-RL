@@ -5,9 +5,11 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
+from autologit import autologit
+import pdb
 
 class SIS(object):
-  #Fixed generative model parameters
+  # Fixed generative model parameters
   ZETA = 1
   TAU = 1 
   SIGMA = np.ones(7)
@@ -20,12 +22,12 @@ class SIS(object):
     
     self.adjacency_matrix = adjacency_matrix
     self.nS = self.adjacency_matrix.shape[0]
-    self.adjaceny_list = [np.where(self.adjacency_matrix[l,:] > 0 for l in range(self.nS))]
+    self.adjacency_list = [[lprime for lprime in range(self.nS) if self.adjacency_matrix[l, lprime] == 1] for l in range(self.nS)]
     self.omega = omega
     self.S = np.zeros((1, self.nS)) 
-    self.Y = np.zeros((1, self.nS))
+    self.Y = np.array([np.random.binomial(n=1, p=0.3, size=self.nS)])
     self.A = np.zeros((0, self.nS))
-    self.state_covariance = self.TAU**2 * np.eye(nS)
+    self.state_covariance = self.TAU**2 * np.eye(self.nS)
     self.current_state = self.S[-1,:]
     self.current_infected = self.Y[-1,:]
     
@@ -50,7 +52,7 @@ class SIS(object):
     indicator = (z*self.current_state <= 0) 
     a_times_indicator = np.multiply(a, indicator)
     
-    infected_indices = np.where(self.current_infected > 0) 
+    infected_indices = np.where(self.current_infected > 0)
     not_infected_indices = np.where(self.current_infected == 0)
     
     not_infected_probabilities = self.not_infected_probabilities(a_times_indicator, not_infected_indices)
@@ -73,14 +75,14 @@ class SIS(object):
     p_0 = expit(logit_p_0)
     return p_0 
     
-  def q_l(self, a_times_indicator)
+  def q_l(self, a_times_indicator):
     logit_q = self.SIGMA[5] + self.SIGMA[6] * a_times_indicator 
     q = expit(logit_q)
     return q 
     
   def one_minus_p_llprime(self, a_times_indicator, indices): 
     product_vector = np.array([])
-    for l in indices: 
+    for l in indices[0].tolist(): 
       a_times_indicator_lprime = a_times_indicator[self.adjacency_list[l]]
       logit_p_l = self.SIGMA[2] + self.SIGMA[3]*a_times_indicator[l] + \
                   self.SIGMA[4]*a_times_indicator_lprime 
@@ -89,21 +91,22 @@ class SIS(object):
       product_vector = np.append(product_vector, product_l) 
     return product_vector 
     
-  def p_l(self, a_times_indicator): 
-    p_l0 = self.p_l0(a_times_indicator)
-    one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator)
+  def p_l(self, a_times_indicator, indices): 
+    p_l0 = self.p_l0(a_times_indicator[indices])
+    one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator, indices)
     product = np.multiply(1 - p_l0, one_minus_p_llprime) 
     return 1 - product 
     
+  #These are wrong!
   def not_infected_probabilities(self, a_times_indicator, not_infected_indices): 
-    p_l = self.p_l(a_times_indicator[not_infected_indices], not_infected_indices)
+    p_l = self.p_l(a_times_indicator, not_infected_indices)
     y_not_infected = self.current_infected[not_infected_indices]
-    prob1 = np.power(p_1, y_not_infected)
-    prob2 = np.power(1-p_1, 1-y_not_infected)
+    prob1 = np.power(p_l, y_not_infected)
+    prob2 = np.power(1-p_l, 1-y_not_infected)
     return np.multiply(prob1, prob2)
     
   def infected_probabilities(self, a_times_indicator, infected_indices):
-    q_l = self.q_l(a_times_indicator)
+    q_l = self.q_l(a_times_indicator[infected_indices])
     y_infected = self.current_infected[infected_indices]
     prob1 = np.power(q_l, y_infected)
     prob2 = np.power(1-q_l, 1-y_infected)
@@ -120,6 +123,16 @@ class SIS(object):
     '''
     next_state = self.next_state() 
     self.next_infections(a) 
-    self.A = self.vstack((self.A, a))
+    self.A = np.vstack((self.A, a))
     
-    
+#Test
+from generate_network import lattice
+m = lattice(9)
+g = SIS(m, 0.5)
+for i in range(5):
+  a = np.random.binomial(n=1, p=0.2, size=9)
+  g.step(a)    
+autologit(g)
+
+
+
