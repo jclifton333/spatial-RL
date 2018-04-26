@@ -5,10 +5,12 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
+from lookahead import lookahead, Q, Q_max
 from autologit import unconditional_logit, autologit
 import pdb
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 
 class SIS(object):
   # Fixed generative model parameters
@@ -33,6 +35,7 @@ class SIS(object):
     self.state_covariance = self.TAU**2 * np.eye(self.nS)
     self.current_state = self.S[-1,:]
     self.current_infected = self.Y[-1,:]
+    self.T = 0
     
   def next_state(self): 
     '''
@@ -128,24 +131,27 @@ class SIS(object):
     next_state = self.next_state() 
     self.next_infections(a) 
     self.A = np.vstack((self.A, a))
+    self.T += 1
+    return next_state
     
 #Test
 #Settings
 from generate_network import lattice
 omega = 0.5 
-L = 25
-T = 50 
+L = 9
+T = 10 
+K = 3
 sigma = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 10, 0.1])  #Tuned to have ~0.5 infections at these settings
 m = lattice(L)
 g = SIS(m, omega, sigma)
+a = np.random.binomial(n=1, p=1, size=L)
+evaluation_budget = 10 
+treatment_budget = 5
+gamma = 0.9
+feature_function = lambda x: x
 for i in range(T):
-  a = np.random.binomial(n=1, p=0.1, size=L)
-  g.step(a)    
-_, phat_logit = unconditional_logit(g, LogisticRegression)
-_, phat_autologit_MLP = autologit(g, MLPClassifier, LogisticRegression)
-_, phat_autologit = autologit(g, LogisticRegression, LogisticRegression)
-
-print('unconditional accuracy: {}'.format(np.mean(np.abs(phat_logit-g.true_infection_probs))))
-print('MLP conditional accuracy: {}'.format(np.mean(np.abs(phat_autologit_MLP-g.true_infection_probs))))
-print('logit conditional accuracy: {}'.format(np.mean(np.abs(phat_autologit-g.true_infection_probs))))
+  s = g.step(a)    
+  logit = lookahead(K, gamma, g, evaluation_budget, treatment_budget, RandomForestClassifier, RandomForestClassifier, feature_function)
+  Q_fn_t = lambda a: Q(a, logit, g, g.A.shape[0], feature_function)
+  _, a = Q_max(Q_fn_t, s, evaluation_budget, treatment_budget)
 
