@@ -41,7 +41,7 @@ def tune_SIS_hyperparameters(omega, L, T, prop_infected):
   for i in range(grid.shape[0]):
     val = objective(grid[i,:])
     print(val)
-    if val > 0.45 and val < 0.55:
+    if val < 0.01:
       return grid[i,:]
   return None
 

@@ -13,8 +13,10 @@ import numpy as np
 import pdb
 
 
-def data_block_at_action(model, t, action, feature_function):
+def data_block_at_action(model, t, action, feature_function, predicted_probs):
   data_block = np.column_stack((model.S[t,:], action, model.Y[t,:]))
+  if predicted_probs is not None:
+    data_block = np.column_stack((predicted_probs, data_block))
   data_block = feature_function(data_block)
   return data_block
 
@@ -45,39 +47,43 @@ def create_autologit_dataset(model, unconditional_dataset, unconditional_predict
   :param unconditional_dataset: 2d-array used to estimate unconditional probabilities of infection
   :param unconditional_predicted_probs: unconditional predicted probabilities for each location at each timestep
   :return data: 2d array, autologistic sums appended to unconditional dataset
+  :return predicted_probs_list: length-T list whose t-th entry is corresponding vector of predicted_prob_sums
   '''
   T = model.A.shape[0]
   predicted_prob_sums = np.array([])
+  predicted_probs_list = []
   for t in range(T):
     unconditional_predicted_probs_t = unconditional_predicted_probs[t,:]
     for l in range(model.nS):
       neighbor_predicted_probs_l = unconditional_predicted_probs_t[model.adjacency_list[l]]
       predicted_prob_sums = np.append(predicted_prob_sums, np.sum(neighbor_predicted_probs_l))
+    predicted_probs_list.append(predicted_prob_sums)
   data = np.column_stack((predicted_prob_sums, unconditional_dataset))
-  return data
+  return data, predicted_probs_list
 
 def unconditional_logit(model, classifier, data, target, binary):
   #Logistic regression
   logit = classifier()
-  logit.fit(data[:,:-1], target)
+  logit.fit(data, target)
   if binary:
-    phat = logit.predict_proba(data[:,:-1])[:,-1]
+    phat = logit.predict_proba(data)[:,-1]
   else:
-    phat = logit.predict(data[:,:-1])
+    phat = logit.predict(data)
+    pdb.set_trace()
   return phat.reshape((model.A.shape[0], model.nS))
   
 def autologit(model, classifier, unconditional_classifier, unconditional_data, target, binary=True):
   predicted_probs = unconditional_logit(model, unconditional_classifier, unconditional_data, target, binary = binary)
-  autologit_data = create_autologit_dataset(model, unconditional_data, predicted_probs)
+  autologit_data, predicted_probs_list = create_autologit_dataset(model, unconditional_data, predicted_probs)
   logit = classifier()
-  logit.fit(autologit_data[:,:-1], target)
+  logit.fit(autologit_data, target)
   if binary:
-    predictions = logit.predict_proba(autologit_data[:,:-1])[:,-1]
+    predictions = logit.predict_proba(autologit_data)[:,-1]
     predict = lambda data_block: logit.predict_proba(data_block)[:,-1]
   else:
-    predictions = logit.predict(autologit_data[:,:-1])
+    predictions = logit.predict(autologit_data)
     predict = lambda data_block: logit.predict(data_block)
-  return predict, predictions.reshape((model.A.shape[0], model.nS)) 
+  return predict, predictions.reshape((model.A.shape[0], model.nS)), predicted_probs_list 
   
 
 

@@ -60,14 +60,10 @@ class SIS(object):
     
     infected_indices = np.where(self.current_infected > 0)
     not_infected_indices = np.where(self.current_infected == 0)
-    
-    not_infected_probabilities = self.not_infected_probabilities(a_times_indicator, not_infected_indices)
-    infected_probabilities = self.infected_probabilities(a_times_indicator, infected_indices)
-    
+        
     next_infected_probabilities = np.zeros(self.nS)
-    next_infected_probabilities[infected_indices] = infected_probabilities
-    next_infected_probabilities[not_infected_indices] = not_infected_probabilities 
-    
+    next_infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices)
+    next_infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices]) 
     next_infections = np.random.binomial(n=[1]*self.nS, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.true_infection_probs = np.vstack((self.true_infection_probs, next_infected_probabilities))
@@ -103,22 +99,7 @@ class SIS(object):
     one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator, indices)
     product = np.multiply(1 - p_l0, one_minus_p_llprime) 
     return 1 - product 
-    
-  #These are wrong!
-  def not_infected_probabilities(self, a_times_indicator, not_infected_indices): 
-    p_l = self.p_l(a_times_indicator, not_infected_indices)
-    y_not_infected = self.current_infected[not_infected_indices]
-    prob1 = np.power(p_l, y_not_infected)
-    prob2 = np.power(1-p_l, 1-y_not_infected)
-    return np.multiply(prob1, prob2)
-    
-  def infected_probabilities(self, a_times_indicator, infected_indices):
-    q_l = self.q_l(a_times_indicator[infected_indices])
-    y_infected = self.current_infected[infected_indices]
-    prob1 = np.power(q_l, y_infected)
-    prob2 = np.power(1-q_l, 1-y_infected)
-    return np.multiply(prob1, prob2)
-    
+        
   ################################################
   ## End infection probability helper functions ##
   ################################################
@@ -138,20 +119,23 @@ class SIS(object):
 #Settings
 from generate_network import lattice
 omega = 0.5 
-L = 9
+L = 25
 T = 10 
 K = 3
-sigma = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 10, 0.1])  #Tuned to have ~0.5 infections at these settings
+sigma = np.array([-1, -3, -3, -1, -1, 1, 1]) #Tuned to have ~0.5 infections at these settings
 m = lattice(L)
-g = SIS(m, omega, sigma)
 a = np.random.binomial(n=1, p=1, size=L)
-evaluation_budget = 10 
-treatment_budget = 5
+evaluation_budget = 20
+treatment_budget = 15
 gamma = 0.9
 feature_function = lambda x: x
-for i in range(T):
-  s = g.step(a)    
-  logit = lookahead(K, gamma, g, evaluation_budget, treatment_budget, RandomForestClassifier, RandomForestClassifier, feature_function)
-  Q_fn_t = lambda a: Q(a, logit, g, g.A.shape[0], feature_function)
-  _, a = Q_max(Q_fn_t, s, evaluation_budget, treatment_budget)
-
+mean = 0
+for rep in range(20):
+  g = SIS(m, omega, sigma)
+  for i in range(T):
+    s = g.step(a)    
+    logit = lookahead(K, gamma, g, evaluation_budget, treatment_budget, RandomForestClassifier, RandomForestClassifier, feature_function)
+    Q_fn_t = lambda a: Q(a, logit, g, g.A.shape[0], feature_function)
+    _, a = Q_max(Q_fn_t, s, evaluation_budget, treatment_budget)
+  mean += (np.sum(g.Y) - mean) / (rep + 1)
+print(mean)

@@ -63,21 +63,24 @@ def Q_max(Q_fn, state_scores, evaluation_budget, treatment_budget):
       best_a = a
   return best_q, best_a
 
-def Q_max_all_states(model, evaluation_budget, treatment_budget, predictive_model, feature_function):
+def Q_max_all_states(model, evaluation_budget, treatment_budget, predictive_model, feature_function, predicted_probs_list = None):
   '''
   :return best_q_arr: array of max q values associated with each state in state_score_history
   '''
   #Q = lambda s: Q_max(Q_fn, s, evaluation_budget, treatment_budget)
   best_q_arr = np.array([])
   for t in range(model.T):
-    Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function)
+    if predicted_probs_list is None:
+      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs_list = None)
+    else:
+      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs_list[t])
     Q_max_t, _ = Q_max(Q_fn_t, model.S[t,:], evaluation_budget, treatment_budget)
     best_q_arr = np.append(best_q_arr, Q_max_t)
   return best_q_arr
 
-def Q(a, predictive_model, model, t, feature_function):
+def Q(a, predictive_model, model, t, feature_function, predicted_probs):
   # Add a to data 
-  data_block = data_block_at_action(model, t, a, feature_function)  
+  data_block = data_block_at_action(model, t, a, feature_function, predicted_probs)  
   predicted_probs = predictive_model(data_block)
   return predicted_probs
 
@@ -86,8 +89,8 @@ def lookahead(K, gamma, model, evaluation_budget, treatment_budget, autologit_cl
   unconditional_data, target = create_unconditional_dataset(model, feature_function)
   
   # Fit 1-step model
-  logit, predictions = autologit(model, autologit_classifier, unconditional_classifier, unconditional_data, target)
-  Q_max = Q_max_all_states(model, evaluation_budget, treatment_budget, logit, feature_function)
+  logit, predictions, predicted_probs_list = autologit(model, autologit_classifier, unconditional_classifier, unconditional_data, target)
+  Q_max = Q_max_all_states(model, evaluation_budget, treatment_budget, logit, feature_function, predicted_probs_list)
   
   for k in range(K-1):
     target += gamma*Q_max
