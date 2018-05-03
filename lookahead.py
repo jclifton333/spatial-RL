@@ -7,10 +7,12 @@ Created on Sat Mar 17 18:02:06 2018
 
 import numpy as np 
 import math
-from autologit import autologit, create_unconditional_dataset, data_block_at_action
+from autologit import autologit, unconditional_logit, create_unconditional_dataset, data_block_at_action
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import RidgeCV
 from itertools import combinations
 import pdb
+import copy
 
 '''
 Parameter descriptions 
@@ -38,7 +40,7 @@ def all_candidate_actions(state_scores, evaluation_budget, treatment_budget):
   :return candidate_actions: list of candidate actions according to state_scores
   '''
   num_candidates = num_candidate_states(evaluation_budget, treatment_budget)
-  sorted_indices = np.argsort(-state_scores)
+  sorted_indices = np.argsort(state_scores)
   candidate_indices = sorted_indices[:num_candidates]
   candidate_treatment_combinations = combinations(candidate_indices, treatment_budget)
   candidate_treatment_combinations = [list(combo) for combo in candidate_treatment_combinations]
@@ -49,19 +51,22 @@ def all_candidate_actions(state_scores, evaluation_budget, treatment_budget):
     candidate_actions = np.vstack((candidate_actions, np.array(a)))
   return candidate_actions
   
-def Q_max(Q_fn, state_scores, evaluation_budget, treatment_budget):
+def Q_max(Q_fn, state_scores, evaluation_budget, treatment_budget, nS):
   '''
   :return best_q: q-value associated with best candidate action
   '''
-  actions = all_candidate_actions(state_scores, evaluation_budget, treatment_budget)
-  best_q = -float('inf')  
+  Q_treat_all = Q_fn(np.ones(nS)) 
+  actions = all_candidate_actions(Q_treat_all, evaluation_budget, treatment_budget)
+  best_q = float('inf')  
+  q_vals = []
   for i in range(actions.shape[0]):
     a = actions[i,:]
     q = Q_fn(a)
-    if -np.sum(q) > np.sum(best_q):
+    if np.sum(q) < np.sum(best_q):
       best_q = q 
       best_a = a
-  return best_q, best_a
+    q_vals.append(np.sum(q))
+  return best_q, best_a, q_vals
 
 def Q_max_all_states(model, evaluation_budget, treatment_budget, predictive_model, feature_function, predicted_probs_list = None):
   '''
@@ -71,12 +76,12 @@ def Q_max_all_states(model, evaluation_budget, treatment_budget, predictive_mode
   best_q_arr = np.array([])
   for t in range(model.T):
     if predicted_probs_list is None:
-      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs_list = None)
+      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs = None)
     else:
-      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs_list[t])
-    Q_max_t, _ = Q_max(Q_fn_t, model.S[t,:], evaluation_budget, treatment_budget)
+      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs= None)
+    Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, model.S[t,:], evaluation_budget, treatment_budget, model.nS)
     best_q_arr = np.append(best_q_arr, Q_max_t)
-  return best_q_arr
+  return best_q_arr, Q_argmax_t, q_vals
 
 def Q(a, predictive_model, model, t, feature_function, predicted_probs):
   # Add a to data 
@@ -85,21 +90,25 @@ def Q(a, predictive_model, model, t, feature_function, predicted_probs):
   return predicted_probs
 
 def lookahead(K, gamma, model, evaluation_budget, treatment_budget, autologit_classifier, unconditional_classifier, feature_function):
+  al_data_dict = {}
+  
   # Get features and response
   unconditional_data, target = create_unconditional_dataset(model, feature_function)
   
   # Fit 1-step model
-  logit, predictions, predicted_probs_list = autologit(model, autologit_classifier, unconditional_classifier, unconditional_data, target)
-  Q_max = Q_max_all_states(model, evaluation_budget, treatment_budget, logit, feature_function, predicted_probs_list)
+  logit, uc_logit, predictions, predicted_probs_list, uc_logit_probs, al_data = autologit(model, autologit_classifier, unconditional_classifier, unconditional_data, target)
+  Q_max, Q_argmax, q_vals = Q_max_all_states(model, evaluation_budget, treatment_budget, logit, feature_function, predicted_probs_list)
   
+  al_data_dict[0] = copy.deepcopy((al_data, target))
   for k in range(K-1):
     target += gamma*Q_max
-    logit, predictions = autologit(model, RandomForestRegressor, RandomForestRegressor, unconditional_data, target, binary=False)
+    logit, uc_logit, predictions, predicted_probs_list, _, al_data = autologit(model, RandomForestRegressor, RandomForestRegressor, unconditional_data, target, binary=False, predicted_probs=uc_logit_probs, uc_logit=uc_logit)
+    al_data_dict[k+1] = copy.deepcopy((al_data, target))
     if k < K-2:
-      Q_max = Q_max_all_states(model, evaluation_budget, treatment_budget, logit, feature_function)
+      Q_max, Q_argmax, _ = Q_max_all_states(model, evaluation_budget, treatment_budget, logit, feature_function, predicted_probs_list)
     
-  return logit 
-  
+  return logit, predicted_probs_list[-1], al_data_dict
+
   
   
 
