@@ -5,18 +5,12 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
-from lookahead import lookahead, Q, Q_max
-from autologit import unconditional_logit, autologit, create_CRF_dataset
-import pdb
-from sklearn.neural_network import MLPClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-import matplotlib.pyplot as plt
 
 class SIS(object):
   # Fixed generative model parameters
   ZETA = 1
   TAU = 0.1
+  INITIAL_INFECT_PROB = 0.3
   
   def __init__(self, adjacency_matrix, omega, sigma):
     '''
@@ -24,19 +18,46 @@ class SIS(object):
     :param omega: parameter in [0,1] for mixing two SIS models
     '''
     
+    #Generative model parameters
+    self.nS = adjacency_matrix.shape[0]
     self.SIGMA = sigma
-    self.adjacency_matrix = adjacency_matrix
-    self.nS = self.adjacency_matrix.shape[0]
-    self.adjacency_list = [[lprime for lprime in range(self.nS) if self.adjacency_matrix[l, lprime] == 1] for l in range(self.nS)]
     self.omega = omega
     self.state_covariance = self.TAU**2 * np.eye(self.nS)
+    
+    #Adjacency info    
+    self.adjacency_matrix = adjacency_matrix
+    self.adjacency_list = [[lprime for lprime in range(self.nS) if self.adjacency_matrix[l, lprime] == 1] for l in range(self.nS)]
+    
+    #Observation history
     self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.nS), cov=self.state_covariance)])
-    self.Y = np.array([np.random.binomial(n=1, p=0.3, size=self.nS)])
+    self.Y = np.array([np.random.binomial(n=1, p=self.INITIAL_INFECT_PROB, size=self.nS)])
     self.A = np.zeros((0, self.nS))
+    self.X = [] #Will hold blocks [S_t, A_t, Y_t] each each time t
+    self.y = [] #Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = np.zeros((0, self.nS))
+    
+    #Current network status
     self.current_state = self.S[-1,:]
     self.current_infected = self.Y[-1,:]
     self.T = 0
+    
+  def reset(self):
+    '''
+    Reset state and observation histories.
+    '''
+    #Observation history
+    self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.nS), cov=self.state_covariance)])
+    self.Y = np.array([np.random.binomial(n=1, p=self.INITIAL_INFECT_PROB, size=self.nS)])
+    self.A = np.zeros((0, self.nS))
+    self.X = [] #Will hold blocks [S_t, A_t, Y_t] each each time t
+    self.y = [] #Will hold blocks [Y_tp1] for each time t
+    self.true_infection_probs = np.zeros((0, self.nS))
+    
+    #Current network status
+    self.current_state = self.S[-1,:]
+    self.current_infected = self.Y[-1,:]
+    self.T = 0
+
     
   def next_state(self): 
     '''
@@ -105,42 +126,26 @@ class SIS(object):
   ## End infection probability helper functions ##
   ################################################
     
+  def updateObsHistory(self, a):
+    '''
+    :param a: self.nS-length array of binary actions at each state
+    '''
+    data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
+    self.X.append(data_block)
+    self.y.append(self.current_infected)    
+  
   def step(self, a): 
     '''
     Move model forward according to action a. 
     :param a: self.nS-length array of binary actions at each state 
     '''
+    self.A = np.vstack((self.A, a))
     next_state = self.next_state() 
     self.next_infections(a) 
-    self.A = np.vstack((self.A, a))
+    self.updateObsHistory(a)
     self.T += 1
     return next_state
     
-#Test
-#Settings
-from generate_network import lattice
-omega = 1
-L = 25
-T = 20
-K = 4
-sigma = np.array([-1, -10, -1, -10, -10, 0, 0]) #Tuned to have ~0.5 infections at these settings
-m = lattice(L)
-evaluation_budget = 20
-treatment_budget = 15
-gamma = 0.9
-feature_function = lambda x: x
-means2 = []
-for rep in range(20):
-  g = SIS(m, omega, sigma)
-  a = np.random.binomial(n=1, p=treatment_budget/L, size=L)
-  for i in range(T):
-    print('Rep: {} Time: {}'.format(rep, i))
-    s = g.step(a)   
-    logit, uc_logit, al_data = lookahead(K, gamma, g, evaluation_budget, treatment_budget, RandomForestClassifier, RandomForestClassifier, feature_function)
-    Q_fn_t = lambda a: Q(a, logit, g, g.A.shape[0], feature_function, None)
-    _, a, _ = Q_max(Q_fn_t, s, evaluation_budget, treatment_budget, g.nS)
-    #a = np.random.binomial(1, treatment_budget/L, size=L)
-  means2.append(np.sum(g.Y))
 
     
     

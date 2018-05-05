@@ -7,12 +7,10 @@ Created on Sat Mar 17 18:02:06 2018
 
 import numpy as np 
 import math
-from autologit import autologit, unconditional_logit, create_unconditional_dataset, data_block_at_action
+from autologit import AutoRegressor, data_block_at_action
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import RidgeCV
 from itertools import combinations
 import pdb
-import copy
 
 '''
 Parameter descriptions 
@@ -78,7 +76,7 @@ def Q_max_all_states(model, evaluation_budget, treatment_budget, predictive_mode
     if predicted_probs_list is None:
       Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs = None)
     else:
-      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs= None)
+      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs = None)
     Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, model.S[t,:], evaluation_budget, treatment_budget, model.nS)
     best_q_arr = np.append(best_q_arr, Q_max_t)
   return best_q_arr, Q_argmax_t, q_vals
@@ -89,25 +87,22 @@ def Q(a, predictive_model, model, t, feature_function, predicted_probs):
   predicted_probs = predictive_model(data_block)
   return predicted_probs
 
-def lookahead(K, gamma, model, evaluation_budget, treatment_budget, autologit_classifier, unconditional_classifier, feature_function):
-  al_data_dict = {}
+def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR):
+  AR.createAutoregressionDataset(env)
+  target = np.hstack(env.y).astype(float)
   
-  # Get features and response
-  unconditional_data, target = create_unconditional_dataset(model, feature_function)
+  #Fit 1-step model
+  AR.fitClassifier(target)
+  Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor, AR.featureFunction, AR.pHat_uc)
   
-  # Fit 1-step model
-  logit, uc_logit, predictions, predicted_probs_list, uc_logit_probs, al_data = autologit(model, autologit_classifier, unconditional_classifier, unconditional_data, target)
-  Q_max, Q_argmax, q_vals = Q_max_all_states(model, evaluation_budget, treatment_budget, logit, feature_function, predicted_probs_list)
-  
-  al_data_dict[0] = copy.deepcopy((al_data, target))
+  #Look ahead 
   for k in range(K-1):
-    target += gamma*Q_max
-    logit, uc_logit, predictions, predicted_probs_list, _, al_data = autologit(model, RandomForestRegressor, RandomForestRegressor, unconditional_data, target, binary=False, predicted_probs=uc_logit_probs, uc_logit=uc_logit)
-    al_data_dict[k+1] = copy.deepcopy((al_data, target))
+    target += gamma*Qmax
+    AR.fitRegressor(target)
     if k < K-2:
-      Q_max, Q_argmax, _ = Q_max_all_states(model, evaluation_budget, treatment_budget, logit, feature_function, predicted_probs_list)
+      Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor, AR.featureFunction, AR.pHat_uc)
+  return Qargmax
     
-  return logit, predicted_probs_list[-1], al_data_dict
 
   
   
