@@ -46,37 +46,50 @@ class AutoRegressor(object):
     self.predict_uc = lambda data_block: self.uc_classifier.predict_proba(data_block)[:,-1]
     self.pHat_uc = np.array([self.predict_uc(env.X[t]) for t in range(env.T)])
 
+  @staticmethod
+  def neighborUCProbs(env, pHat_uc):
+    '''
+    Get array of unconditional neighbor estimated prob sums, given a list of 
+    unconditional probabilities ordered by state.
+    '''
+    pHat_sums = np.array([])
+    for l in range(env.nS):
+      neighbor_predicted_probs_l = pHat_uc[env.adjacency_list[l]]
+      pHat_sums = np.append(pHat_sums, np.sum(neighbor_predicted_probs_l))
+    return pHat_sums
+
   def autoRegressionFeatures(self, env):
     '''
     Create autoregression dataset by appending sums of neighbor (unconditional) predicted probabilities 
     to unconditional dataset.
     '''    
     T = env.T
-    pHat_sums = np.array([])
-    pHat_list = []
+    self.X_ac = []
     for t in range(T):
       pHat_uc_t = self.pHat_uc[t,:]
-      pHat_sums_t = np.array([])
-      for l in range(env.nS):
-        neighbor_predicted_probs_l = pHat_uc_t[env.adjacency_list[l]]
-        pHat_sums_t = np.append(pHat_sums_t, np.sum(neighbor_predicted_probs_l))
-      pHat_list.append(pHat_sums_t)
-      pHat_sums = np.append(pHat_sums, pHat_sums_t)
-    self.X_ac = np.column_stack((pHat_sums, np.vstack(env.X)))
-    self.X_ac = self.featureFunction(self.X_ac)   
+      pHat_sums_t = self.neighborUCProbs(env, pHat_uc_t)
+      X_ac_t = np.column_stack((pHat_sums_t, env.X[t]))
+      X_ac_t = self.featureFunction(X_ac_t)
+      self.X_ac.append(X_ac_t)
     
   def createAutoregressionDataset(self, env):
     self.unconditionalLogit(env)
     self.autoRegressionFeatures(env)
     self.autoRegressionReady = True
     
-  def createAutologitPredictor(self, binary):
+  def createAutologitPredictor(self, binary, env):
     '''
     Sets function that returns predictions from fitted autologit model for a given data block.
     '''
-    def autologitPredictor(dataBlock):
-      uc_predictions = self.uc_classifier.predict_proba(dataBlock)[:,1]
-      autologitDataBlock = np.column_stack((uc_predictions, dataBlock))
+    def autologitPredictor(dataBlock, fitUC=True):
+      #Fit UC predictions if not already provided
+      if fitUC:
+        uc_predictions = self.uc_classifier.predict_proba(dataBlock)[:,1]
+        uc_neighbor_sums = self.neighborUCProbs(env, uc_predictions)
+        autologitDataBlock = np.column_stack((uc_neighbor_sums, dataBlock))
+      else:
+        autologitDataBlock = dataBlock
+        
       if binary:
         predictions = self.ar_classifier.predict_proba(autologitDataBlock)[:,-1]
       else:
@@ -86,12 +99,12 @@ class AutoRegressor(object):
     
   def fitClassifier(self, target):
     assert self.autoRegressionReady
-    self.ar_classifier.fit(self.X_ac, target)
+    self.ar_classifier.fit(np.vstack(self.X_ac), target)
     self.createAutologitPredictor(binary=True)
     
   def fitRegressor(self, target):
     assert self.autoRegressionReady
-    self.regressor.fit(self.X_ac, target)
+    self.regressor.fit(np.vstack(self.X_ac), target)
     self.createAutologitPredictor(binary=False)
     
   

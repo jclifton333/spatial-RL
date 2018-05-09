@@ -32,6 +32,7 @@ class SIS(object):
     self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.nS), cov=self.state_covariance)])
     self.Y = np.array([np.random.binomial(n=1, p=self.INITIAL_INFECT_PROB, size=self.nS)])
     self.A = np.zeros((0, self.nS))
+    self.R = np.array([np.sum(self.Y[-1,:])])
     self.X = [] #Will hold blocks [S_t, A_t, Y_t] each each time t
     self.y = [] #Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = np.zeros((0, self.nS))
@@ -49,6 +50,7 @@ class SIS(object):
     self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.nS), cov=self.state_covariance)])
     self.Y = np.array([np.random.binomial(n=1, p=self.INITIAL_INFECT_PROB, size=self.nS)])
     self.A = np.zeros((0, self.nS))
+    self.R = np.array([np.sum(self.Y[-1,:])])
     self.X = [] #Will hold blocks [S_t, A_t, Y_t] each each time t
     self.y = [] #Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = np.zeros((0, self.nS))
@@ -88,6 +90,7 @@ class SIS(object):
     next_infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices]) 
     next_infections = np.random.binomial(n=[1]*self.nS, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
+    self.R = np.append(self.R, np.sum(next_infections))
     self.true_infection_probs = np.vstack((self.true_infection_probs, next_infected_probabilities))
     self.current_infected = next_infections
   

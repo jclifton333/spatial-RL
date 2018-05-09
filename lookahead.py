@@ -87,21 +87,28 @@ def Q(a, predictive_model, model, t, feature_function, predicted_probs):
   predicted_probs = predictive_model(data_block)
   return predicted_probs
 
-def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR):
+def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_feature_times):
   AR.createAutoregressionDataset(env)
   target = np.hstack(env.y).astype(float)
+  rollout_feature_list = []
+  rollout_Q_function_list = []
   
   #Fit 1-step model
   AR.fitClassifier(target)
   Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor, AR.featureFunction, AR.pHat_uc)
   
   #Look ahead 
-  for k in range(K-1):
+  for k in range(1, K):
     target += gamma*Qmax
     AR.fitRegressor(target)
-    if k < K-2:
+    if k in rollout_feature_times:
+      Q_features_at_each_block = [np.sum(AR.autologitPredictor(AR.X_ac[t])) for t in range(len(AR.X_ac))]
+      rollout_feature_list.append(Q_features_at_each_block)
+      rollout_Q_function_k = lambda data_block: np.sum(AR.autologitPredictor(data_block))
+      rollout_Q_function_list.append(rollout_Q_function_k)
+    if k < K-1:
       Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor, AR.featureFunction, AR.pHat_uc)
-  return Qargmax
+  return Qargmax, rollout_feature_list, rollout_Q_function_list
     
 
   

@@ -10,6 +10,7 @@ from SIS_model import SIS
 from autologit import AutoRegressor
 from lookahead import lookahead
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from QL_objective import Qopt
 
 def main(K, L, T, nRep, random=False):
   #Initialize generative model
@@ -18,6 +19,7 @@ def main(K, L, T, nRep, random=False):
   gamma = 0.9
   m = lattice(L)
   g = SIS(m, omega, sigma)
+  rollout_feature_times = [1,2]
 
   #Evaluation limit parameters 
   evaluation_budget = 20
@@ -28,7 +30,7 @@ def main(K, L, T, nRep, random=False):
   AR = AutoRegressor(RandomForestClassifier(n_estimators=30), RandomForestClassifier(n_estimators=30), 
                      RandomForestRegressor(n_estimators=30), feature_function)
 
-  mean = 0
+  means = []
   for rep in range(nRep):
     a = np.random.binomial(n=1, p=treatment_budget/L, size=L)
     g.reset()
@@ -38,11 +40,10 @@ def main(K, L, T, nRep, random=False):
       if random:
         a = np.random.binomial(1, treatment_budget/L, size=L)
       else:
-        a = lookahead(K, gamma, g, evaluation_budget, treatment_budget, AR)     
-      mean += (np.sum(g.Y) - mean)/(i+1)
-  print('Mean performance: {}'.format(mean))
-  return g, AR
+        Qargmax, rollout_feature_list, rollout_Q_function_list = lookahead(K, gamma, g, evaluation_budget, treatment_budget, AR, rollout_feature_times) 
+        thetaOpt = Qopt(rollout_feature_list, rollout_Q_function_list, gamma, g, evaluation_budget, 
+                        treatment_budget, feature_function)
+      means.append(np.sum(g.Y))
+  return g, AR, means
 
-main(2, 20, 20, 5)
-main(2, 20, 20, 5, random=True)
-
+_, _, m0 = main(3, 20, 20, 5)
