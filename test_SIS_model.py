@@ -7,28 +7,39 @@ Created on Fri May  4 21:49:40 2018
 import numpy as np
 from generate_network import lattice
 from SIS_model import SIS
-from autologit import AutoRegressor
-from lookahead import lookahead
+from autologit import AutoRegressor, data_block_at_action
+from lookahead import lookahead, Q_max
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from QL_objective import Qopt
+from sklearn.linear_model import Ridge, LogisticRegression
+from sklearn.preprocessing import PolynomialFeatures
+from QL_objective import Qopt, Q_from_rollout_features
 
-def main(K, L, T, nRep, random=False):
+def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
+  '''
+  :param K: lookahead depth
+  :param L: number of locations in network
+  :param T: duration of simulation rep
+  :param nRep: number of replicates
+  :param method: string in ['QL', 'rollout', 'random']
+  '''
   #Initialize generative model
   omega = 1
   sigma = np.array([-1, -10, -1, -10, -10, 0, 0]) 
   gamma = 0.9
   m = lattice(L)
   g = SIS(m, omega, sigma)
-  rollout_feature_times = [1,2]
 
   #Evaluation limit parameters 
-  evaluation_budget = 20
-  treatment_budget = 15
+  evaluation_budget = 10
+  treatment_budget = 4
 
   #Initialize AR object
-  feature_function = lambda x: x
-  AR = AutoRegressor(RandomForestClassifier(n_estimators=30), RandomForestClassifier(n_estimators=30), 
-                     RandomForestRegressor(n_estimators=30), feature_function)
+  #feature_function = lambda x: x
+  poly = PolynomialFeatures(interaction_only=True)
+  feature_function = lambda data_block: poly.fit_transform(data_block)
+  
+  AR = AutoRegressor(LogisticRegression(), LogisticRegression(), 
+                     Ridge(), feature_function)
 
   means = []
   for rep in range(nRep):
@@ -37,13 +48,23 @@ def main(K, L, T, nRep, random=False):
     print('Rep: {}'.format(rep))
     for i in range(T):
       g.step(a)   
-      if random:
+      if method == 'random':
         a = np.random.binomial(1, treatment_budget/L, size=L)
       else:
         Qargmax, rollout_feature_list, rollout_Q_function_list = lookahead(K, gamma, g, evaluation_budget, treatment_budget, AR, rollout_feature_times) 
-        thetaOpt = Qopt(rollout_feature_list, rollout_Q_function_list, gamma, g, evaluation_budget, 
-                        treatment_budget, feature_function)
-      means.append(np.sum(g.Y))
+        
+        if method == 'QL':        
+          thetaOpt = Qopt(rollout_feature_list, rollout_Q_function_list, gamma, 
+                          g, evaluation_budget, treatment_budget)
+          Q = lambda a: Q_from_rollout_features(data_block_at_action(g, i, a, None), thetaOpt, 
+                                                rollout_feature_list, rollout_Q_function_list)
+          _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, L)          
+        elif method == 'rollout':
+          a = Qargmax
+    means.append(np.sum(g.Y))
   return g, AR, means
 
-_, _, m0 = main(3, 20, 20, 5)
+_, _, f0 = main(3, 9, 20, 5, method='rollout', rollout_feature_times=[1,2])
+_, _, f1 = main(6, 9, 20, 5, method='rollout', rollout_feature_times=[1,3,5])
+_, _, f2 = main(8, 9, 20, 5, method='rollout', rollout_feature_times=[1,3,5,7])
+_, _, f3 = main(10, 9, 20, 5, method='rollout', rollout_feature_times=[1,3,5,7,9])

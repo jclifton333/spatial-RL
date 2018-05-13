@@ -11,11 +11,10 @@ import numpy as np
 import pdb
 
 
-def data_block_at_action(model, t, action, feature_function, predicted_probs):
+def data_block_at_action(model, t, action, predicted_probs):
   data_block = np.column_stack((model.S[t,:], action, model.Y[t,:]))
   if predicted_probs is not None:
     data_block = np.column_stack((predicted_probs, data_block))
-  data_block = feature_function(data_block)
   return data_block
     
 class AutoRegressor(object):
@@ -42,8 +41,8 @@ class AutoRegressor(object):
     '''
     Fit unconditional one-step presence/absence logit on current data.
     '''
-    self.uc_classifier.fit(np.vstack(env.X), np.hstack(env.y))
-    self.predict_uc = lambda data_block: self.uc_classifier.predict_proba(data_block)[:,-1]
+    self.uc_classifier.fit(self.featureFunction(np.vstack(env.X)), np.hstack(env.y))
+    self.predict_uc = lambda data_block: self.uc_classifier.predict_proba(self.featureFunction(data_block))[:,-1]
     self.pHat_uc = np.array([self.predict_uc(env.X[t]) for t in range(env.T)])
 
   @staticmethod
@@ -84,28 +83,29 @@ class AutoRegressor(object):
     def autologitPredictor(dataBlock, fitUC=True):
       #Fit UC predictions if not already provided
       if fitUC:
-        uc_predictions = self.uc_classifier.predict_proba(dataBlock)[:,1]
+        uc_predictions = self.uc_classifier.predict_proba(self.featureFunction(dataBlock))[:,1]
         uc_neighbor_sums = self.neighborUCProbs(env, uc_predictions)
         autologitDataBlock = np.column_stack((uc_neighbor_sums, dataBlock))
       else:
-        autologitDataBlock = dataBlock
-        
+        autologitDataBlock = dataBlock      
+      autologitDataBlock = self.featureFunction(autologitDataBlock)      
       if binary:
         predictions = self.ar_classifier.predict_proba(autologitDataBlock)[:,-1]
       else:
-        predictions = self.regressor.predict(autologitDataBlock)
+        predictions = self.regressor.predict(autologitDataBlock)        
       return predictions
+    
     self.autologitPredictor = autologitPredictor
     
-  def fitClassifier(self, target):
+  def fitClassifier(self, env, target):
     assert self.autoRegressionReady
     self.ar_classifier.fit(np.vstack(self.X_ac), target)
-    self.createAutologitPredictor(binary=True)
+    self.createAutologitPredictor(True, env)
     
-  def fitRegressor(self, target):
+  def fitRegressor(self, env, target):
     assert self.autoRegressionReady
     self.regressor.fit(np.vstack(self.X_ac), target)
-    self.createAutologitPredictor(binary=False)
+    self.createAutologitPredictor(False, env)
     
   
 

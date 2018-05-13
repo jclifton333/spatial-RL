@@ -49,12 +49,12 @@ def all_candidate_actions(state_scores, evaluation_budget, treatment_budget):
     candidate_actions = np.vstack((candidate_actions, np.array(a)))
   return candidate_actions
   
-def Q_max(Q_fn, state_scores, evaluation_budget, treatment_budget, nS):
+def Q_max(Q_fn, evaluation_budget, treatment_budget, nS):
   '''
   :return best_q: q-value associated with best candidate action
   '''
-  Q_treat_all = Q_fn(np.ones(nS)) 
-  actions = all_candidate_actions(Q_treat_all, evaluation_budget, treatment_budget)
+  state_scores = Q_fn(np.ones(nS)) 
+  actions = all_candidate_actions(state_scores, evaluation_budget, treatment_budget)
   best_q = float('inf')  
   q_vals = []
   for i in range(actions.shape[0]):
@@ -66,7 +66,7 @@ def Q_max(Q_fn, state_scores, evaluation_budget, treatment_budget, nS):
     q_vals.append(np.sum(q))
   return best_q, best_a, q_vals
 
-def Q_max_all_states(model, evaluation_budget, treatment_budget, predictive_model, feature_function, predicted_probs_list = None):
+def Q_max_all_states(model, evaluation_budget, treatment_budget, predictive_model, predicted_probs_list = None):
   '''
   :return best_q_arr: array of max q values associated with each state in state_score_history
   '''
@@ -74,16 +74,16 @@ def Q_max_all_states(model, evaluation_budget, treatment_budget, predictive_mode
   best_q_arr = np.array([])
   for t in range(model.T):
     if predicted_probs_list is None:
-      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs = None)
+      Q_fn_t = lambda a: Q(a, predictive_model, model, t, predicted_probs = None)
     else:
-      Q_fn_t = lambda a: Q(a, predictive_model, model, t, feature_function, predicted_probs = None)
-    Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, model.S[t,:], evaluation_budget, treatment_budget, model.nS)
+      Q_fn_t = lambda a: Q(a, predictive_model, model, t, predicted_probs = None)
+    Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, evaluation_budget, treatment_budget, model.nS)
     best_q_arr = np.append(best_q_arr, Q_max_t)
   return best_q_arr, Q_argmax_t, q_vals
 
-def Q(a, predictive_model, model, t, feature_function, predicted_probs):
+def Q(a, predictive_model, model, t, predicted_probs):
   # Add a to data 
-  data_block = data_block_at_action(model, t, a, feature_function, predicted_probs)  
+  data_block = data_block_at_action(model, t, a, predicted_probs)  
   predicted_probs = predictive_model(data_block)
   return predicted_probs
 
@@ -94,20 +94,20 @@ def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_fe
   rollout_Q_function_list = []
   
   #Fit 1-step model
-  AR.fitClassifier(target)
-  Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor, AR.featureFunction, AR.pHat_uc)
+  AR.fitClassifier(env, target)
+  Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor, AR.pHat_uc)
   
   #Look ahead 
   for k in range(1, K):
     target += gamma*Qmax
-    AR.fitRegressor(target)
+    AR.fitRegressor(env, target)
     if k in rollout_feature_times:
-      Q_features_at_each_block = [np.sum(AR.autologitPredictor(AR.X_ac[t])) for t in range(len(AR.X_ac))]
+      Q_features_at_each_block = [np.sum(AR.autologitPredictor(env.X[t], fitUC=True)) for t in range(len(env.X))]
       rollout_feature_list.append(Q_features_at_each_block)
-      rollout_Q_function_k = lambda data_block: np.sum(AR.autologitPredictor(data_block))
+      rollout_Q_function_k = lambda data_block: AR.autologitPredictor(data_block)
       rollout_Q_function_list.append(rollout_Q_function_k)
     if k < K-1:
-      Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor, AR.featureFunction, AR.pHat_uc)
+      Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor, AR.pHat_uc)
   return Qargmax, rollout_feature_list, rollout_Q_function_list
     
 
