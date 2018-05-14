@@ -35,7 +35,8 @@ class SIS(object):
     self.Y = np.array([np.random.binomial(n=1, p=self.INITIAL_INFECT_PROB, size=self.nS)])
     self.A = np.zeros((0, self.nS))
     self.R = np.array([np.sum(self.Y[-1,:])])
-    self.X = [] #Will hold blocks [S_t, A_t, Y_t] each each time t
+    self.X_raw = [] #Will hold blocks [S_t, A_t, Y_t] at each time t
+    self.X = [] #Will hold features of [S_t, A_t, Y_t] each each time t
     self.y = [] #Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = np.zeros((0, self.nS))
     
@@ -53,6 +54,7 @@ class SIS(object):
     self.Y = np.array([np.random.binomial(n=1, p=self.INITIAL_INFECT_PROB, size=self.nS)])
     self.A = np.zeros((0, self.nS))
     self.R = np.array([np.sum(self.Y[-1,:])])
+    self.X_raw = []
     self.X = [] #Will hold blocks [S_t, A_t, Y_t] each each time t
     self.y = [] #Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = np.zeros((0, self.nS))
@@ -139,18 +141,29 @@ class SIS(object):
     neighborFeatures = np.zeros((0, 5))
     for l in range(self.nS):
       S_neighbor, A_neighbor, Y_neighbor = data_block[self.adjacency_list[l],:].T
-      neighborFeatures_l = np.array([np.sum(np.clip(S_neighbor, a_min=0, a_max=None)), np.sum(np.times(S_neighbor, A_neighbor)),
-                                     np.sum(A_neighbor), np.sum(np.times(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])      
+      neighborFeatures_l = np.array([np.sum(np.clip(S_neighbor, a_min=0, a_max=None)), np.sum(np.multiply(S_neighbor, A_neighbor)),
+                                     np.sum(A_neighbor), np.sum(np.multiply(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])      
       neighborFeatures = np.vstack((neighborFeatures, neighborFeatures_l))
     return neighborFeatures      
-    
+  
+  def data_block_at_action(self, data_block, action):
+    '''
+    Replace action in raw data_block with given action.
+    '''
+    assert data_block.shape[1] == 3  
+    new_data_block = np.column_stack((data_block[:,0], action, data_block[:,2]))
+    neighborFeatures = self.neighborFeatures(new_data_block)
+    new_data_block = np.column_stack((neighborFeatures, self.featureFunction(new_data_block)))
+    return new_data_block
+        
   def updateObsHistory(self, a):
     '''
     :param a: self.nS-length array of binary actions at each state
     '''
-    data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
-    neighborFeatures = self.neighborFeatures(data_block)
-    data_block = np.column_stack((neighborFeatures, self.featureFunction(data_block)))
+    raw_data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
+    neighborFeatures = self.neighborFeatures(raw_data_block)
+    data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
+    self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)    
   
