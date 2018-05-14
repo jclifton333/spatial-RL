@@ -12,69 +12,72 @@ from scipy.optimize import minimize
 import pdb
 
 def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
-  rollout_Q_features = np.array([np.sum(q(data_block)) for q in rollout_Q_function_list]).T
+  rollout_Q_features = np.array([q(data_block) for q in rollout_Q_function_list]).T
   if intercept:
     rollout_Q_features = np.column_stack((np.ones(rollout_Q_features.shape[0]), rollout_Q_features))
   return rollout_Q_features
 
-#def Qopt(rollout_feature_list, rollout_Q_function_list, gamma, 
-#         env, evaluation_budget, treatment_budget):
-#  objective = lambda theta: QL_objective(theta, rollout_feature_list, rollout_Q_function_list, 
-#                            gamma, env, evaluation_budget, treatment_budget)
-#  soln = minimize(objective, x0=np.zeros(len(rollout_Q_function_list) + 1), method='L-BFGS-B')
-#  return soln.x
-
-'''
-Semi-gradient QL opt implementation
-'''
-def compute_QL_semi_gradient(theta, X, rollout_Q_function_list, gamma, 
-                 env, evaluation_budget, treatment_budget, intercept=True):   
-  
-  #Evaluate Q 
-  X = np.array(rollout_feature_list)
-  Q = np.dot(X, theta)
-  
-  #Get Qmax  
-  rollout_Q_features_at_block = lambda data_block: rollout_Q_features(data_block, rollout_Q_function_list, intercept)
-  Q_fn = lambda data_block: np.dot(rollout_Q_features_at_block(data_block), theta)
-  Qmax, _, _ = Q_max_all_states(env, evaluation_budget, treatment_budget, Q_fn)
-  Qmax = np.sum(Qmax, axis=0)
-  
-  #Compute TD * semi-gradient
-  TD = env.R[:-1] + gamma*Qmax - Q
-  TD_times_grad = np.multiply(TD, X)
-  return np.sum(TD_times_grad, axis=0)
-
-def QL_opt_semi_gradient(rollout_features_list, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, intercept):
-  NUM_IT = 100
-  
-  X = np.array(rollout_features_list)
-  if intercept:
-    pdb.set_trace()
-    X = np.column_stack((np.ones(X.shape[0], X)))
-  theta = np.zeros(X.shape[1])
-  for it in range(NUM_IT):
-    gradTheta = compute_QL_semi_gradient(theta, X, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, intercept=intercept)
-    theta -= (it+1)**(0.75) * gradTheta
-  return theta  
-
 '''
 GGQ implementation
 See: http://old.sztaki.hu/~szcsaba/papers/ICML10_controlGQ.pdf
-
 '''
 
-def theta_update(theta, alpha, delta, phi, gamma, phi_hat, w_dot_phi):
-  theta += alpha * (delta * phi - gamma * (w_dot_phi * phi_hat))
+def GGQ_pieces(theta, rollout_Q_function_list, gamma, 
+                 env, evaluation_budget, treatment_budget, intercept=True):   
+  
+  rollout_Q_features_at_block = lambda data_block: rollout_Q_features(data_block, rollout_Q_function_list, intercept)
+  
+  #Evaluate Q 
+  X = np.array([rollout_Q_features_at_block(data_block) for data_block in env.X])
+  Q = np.dot(X, theta)
+  
+  #Get Qmax  
+  Q_fn = lambda data_block: np.dot(rollout_Q_features_at_block(data_block), theta)
+  Qmax, Qargmax, _ = Q_max_all_states(env, evaluation_budget, treatment_budget, Q_fn)
+  Qmax = np.sum(Qmax, axis=0)
+  X_hat = np.array([rollout_Q_features_at_block(x) for x in Qargmax])
+  
+  #Compute TD * semi-gradient
+  TD = env.R[:-1] + gamma*Qmax - Q
+  TD = TD.reshape(len(TD),1)
+  TD_times_X = np.multiply(TD, X)
+  
+  return TD_times_X, X, X_hat
+
+def update_theta(theta, alpha, gamma, N, TD_times_X, Xw, X_hat):
+  Xw_times_Xhat = np.multiply(Xw.reshape(len(Xw), 1), X_hat)
+  gradient_block = TD_times_X - gamma*Xw_times_Xhat
+  theta += alpha * (1 / N) * np.sum(gradient_block, axis=0)
   return theta
 
-def w_update(beta, delta, phi, w, w_dot_phi):
-  w += beta * (delta - w_dot_phi) * phi
+def update_w(w, beta, N, TD_times_X, X, Xw):
+  Xw_times_X = np.multiply(Xw.reshape(len(Xw), 1), X)
+  gradient_block = TD_times_X - Xw_times_X
+  w += beta * (1 / N) * np.sum(gradient_block, axis=0)
+  return w
+  
+def update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_X, X, X_hat):
+  N = TD_times_X.shape[0]
+  Xw = np.dot(X, w)
+  theta = update_theta(theta, alpha, gamma, N, TD_times_X, Xw, X_hat)
+  w = update_w(w, beta, N, TD_times_X, X, Xw)
+  return theta, w
 
-def GGQ_update(theta, w, alpha, delta, phi, gamma, phi_hat):
-  w_dot_phi = np.dot(w, phi)
-  theta = theta_update(theta, alpha, delta, phi, gamma, phi_hat, w_dot_phi)
-  w = w_update(beta, delta, phi, w, w_dot_phi)
+def GGQ_step(theta, w, alpha, beta, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, intercept):
+  TD_times_X, X, X_hat = GGQ_pieces(theta, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, intercept)
+  theta, w = update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_X, X, X_hat)
+  return theta, w
+
+def GGQ(rollout_feature_list, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, intercept=True):
+  N_IT = 100
+  
+  nFeature = len(rollout_Q_function_list) + intercept
+  theta, w = np.zeros(nFeature), np.zeros(nFeature)
+  for it in range(N_IT):
+    alpha = (it + 1)**(-1)
+    beta  = (it + 1)**(-2/3)
+    theta, w = GGQ_step(theta, w, alpha, beta, rollout_Q_function_list, gamma, env, evaluation_budget, intercept=intercept)
+  return theta, w
   
   
   

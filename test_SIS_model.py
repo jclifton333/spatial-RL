@@ -53,7 +53,8 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
         if method == 'QL':        
           thetaOpt = QL_opt_semi_gradient(rollout_feature_list, rollout_Q_function_list, gamma, 
                           g, evaluation_budget, treatment_budget, True)
-          Q = lambda a: np.dot(thetaOpt, rollout_Q_features(g.data_block_at_action(g.X_raw[i], a), rollout_Q_function_list, intercept=True))
+          Q = lambda a: np.dot(rollout_Q_features(g.data_block_at_action(g.X_raw[i], a), rollout_Q_function_list, intercept=True),
+                               thetaOpt)
           _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, L)          
         elif method == 'rollout':
           a = Qargmax

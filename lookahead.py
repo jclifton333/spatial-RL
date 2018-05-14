@@ -60,6 +60,7 @@ def Q_max(Q_fn, evaluation_budget, treatment_budget, nS):
   for i in range(actions.shape[0]):
     a = actions[i,:]
     q = Q_fn(a)
+    print(q)
     if np.sum(q) < np.sum(best_q):
       best_q = q 
       best_a = a
@@ -72,11 +73,14 @@ def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model)
   '''
   #Q = lambda s: Q_max(Q_fn, s, evaluation_budget, treatment_budget)
   best_q_arr = np.array([])
+  argmax_data_blocks = []
   for t in range(env.T):
     Q_fn_t = lambda a: Q(a, env.X_raw[t], env, predictive_model)
     Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, evaluation_budget, treatment_budget, env.nS)
     best_q_arr = np.append(best_q_arr, Q_max_t)
-  return best_q_arr, Q_argmax_t, q_vals
+    best_data_block = env.data_block_at_action(env.X_raw[t], Q_argmax_t)
+    argmax_data_blocks = argmax_data_blocks.append(best_data_block)
+  return best_q_arr, argmax_data_blocks, q_vals
 
 def Q(a, raw_data_block, env, predictive_model):
   data_block = env.data_block_at_action(raw_data_block, a)
