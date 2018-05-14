@@ -12,11 +12,13 @@ class SIS(object):
   TAU = 0.1
   INITIAL_INFECT_PROB = 0.3
   
-  def __init__(self, adjacency_matrix, omega, sigma):
+  def __init__(self, adjacency_matrix, omega, sigma, featureFunction):
     '''
     :param adjacency_matrix: 2d binary array corresponding to network for gen model 
     :param omega: parameter in [0,1] for mixing two SIS models
     '''
+    
+    self.featureFunction = featureFunction
     
     #Generative model parameters
     self.nS = adjacency_matrix.shape[0]
@@ -128,12 +130,27 @@ class SIS(object):
   ################################################
   ## End infection probability helper functions ##
   ################################################
+  
+  def neighborFeatures(self, data_block):
+    '''
+    For each location in data_block, compute neighbor feature vector
+      [sum of positive(s), sum of s*a, sum of a, sum of y, sum of a * y]
+    '''
+    neighborFeatures = np.zeros((0, 5))
+    for l in range(self.nS):
+      S_neighbor, A_neighbor, Y_neighbor = data_block[self.adjacency_list[l],:].T
+      neighborFeatures_l = np.array([np.sum(np.clip(S_neighbor, a_min=0, a_max=None)), np.sum(np.times(S_neighbor, A_neighbor)),
+                                     np.sum(A_neighbor), np.sum(np.times(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])      
+      neighborFeatures = np.vstack((neighborFeatures, neighborFeatures_l))
+    return neighborFeatures      
     
   def updateObsHistory(self, a):
     '''
     :param a: self.nS-length array of binary actions at each state
     '''
     data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
+    neighborFeatures = self.neighborFeatures(data_block)
+    data_block = np.column_stack((neighborFeatures, self.featureFunction(data_block)))
     self.X.append(data_block)
     self.y.append(self.current_infected)    
   

@@ -64,7 +64,4 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
     means.append(np.sum(g.Y))
   return g, AR, means
 
-_, _, f0 = main(3, 9, 20, 5, method='rollout', rollout_feature_times=[1,2])
-_, _, f1 = main(6, 9, 20, 5, method='rollout', rollout_feature_times=[1,3,5])
-_, _, f2 = main(8, 9, 20, 5, method='rollout', rollout_feature_times=[1,3,5,7])
-_, _, f3 = main(10, 9, 20, 5, method='rollout', rollout_feature_times=[1,3,5,7,9])
+_, _, q0 = main(3, 9, 20, 1, method='QL', rollout_feature_times=[1,2])
