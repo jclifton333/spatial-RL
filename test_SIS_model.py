@@ -12,7 +12,7 @@ from lookahead import lookahead, Q_max
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import Ridge, LogisticRegression
 from features import polynomialFeatures
-from QL_objective import Qopt, Q_from_rollout_features
+from QL_objective import QL_opt_semi_gradient, rollout_Q_features
 
 def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   '''
@@ -31,7 +31,7 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   g = SIS(m, omega, sigma, featureFunction)
 
   #Evaluation limit parameters 
-  evaluation_budget = 10
+  evaluation_budget = 1
   treatment_budget = 4
 
   #Initialize AR object
@@ -51,14 +51,13 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
         Qargmax, rollout_feature_list, rollout_Q_function_list = lookahead(K, gamma, g, evaluation_budget, 
                                                                            treatment_budget, AR, rollout_feature_times)         
         if method == 'QL':        
-          thetaOpt = Qopt(rollout_feature_list, rollout_Q_function_list, gamma, 
-                          g, evaluation_budget, treatment_budget)
-          Q = lambda a: Q_from_rollout_features(g.data_block_at_action(g.X_raw[i], a), thetaOpt, 
-                                                rollout_feature_list, rollout_Q_function_list)
+          thetaOpt = QL_opt_semi_gradient(rollout_feature_list, rollout_Q_function_list, gamma, 
+                          g, evaluation_budget, treatment_budget, True)
+          Q = lambda a: np.dot(thetaOpt, rollout_Q_features(g.data_block_at_action(g.X_raw[i], a), rollout_Q_function_list, intercept=True))
           _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, L)          
         elif method == 'rollout':
           a = Qargmax
     means.append(np.sum(g.Y))
   return g, AR, means
 
-_, _, q0 = main(3, 9, 20, 1, method='QL', rollout_feature_times=[1,2])
+_, _, f0 = main(3, 9, 20, 1, method='QL', rollout_feature_times=[1,2])
