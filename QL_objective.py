@@ -30,16 +30,16 @@ def GGQ_pieces(theta, rollout_Q_function_list, gamma,
   rollout_Q_features_at_block = lambda data_block: rollout_Q_features(data_block, rollout_Q_function_list, intercept)
 
   #Evaluate Q 
-  X = np.array([np.sum(rollout_Q_features_at_block(data_block), axis=0) for data_block in env.X[:-1]])
+  X = np.vstack([rollout_Q_features_at_block(data_block) for data_block in env.X[:-1]])
   Q = np.dot(X, theta)
   #Get Qmax  
   Q_fn = lambda data_block: np.dot(rollout_Q_features_at_block(data_block), theta)
-  Qmax, Qargmax, _ = Q_max_all_states(env, evaluation_budget, treatment_budget, Q_fn)
-  Qmax = np.sum(Qmax[1:,], axis=1)
-  X_hat = np.array([np.sum(rollout_Q_features_at_block(x), axis=0) for x in Qargmax[1:]])
+  Qmax, Qargmax, _, _ = Q_max_all_states(env, evaluation_budget, treatment_budget, Q_fn)
+  Qmax = Qmax[1:,]
+  X_hat = np.vstack([rollout_Q_features_at_block(x) for x in Qargmax[1:]])
   
   #Compute TD * semi-gradient
-  TD = env.R[:-2] + gamma*Qmax - Q
+  TD = np.hstack(env.y[:-1]).astype(float) + gamma*Qmax.flatten() - Q
   TD = TD.reshape(TD.shape[0],1)
   TD_times_X = np.multiply(TD, X)
   

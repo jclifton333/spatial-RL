@@ -33,8 +33,8 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   g = SIS(m, omega, sigma, featureFunction)
 
   #Evaluation limit parameters 
-  evaluation_budget = 1
   treatment_budget = 4
+  evaluation_budget = 1
 
   #Initialize AR object
   #feature_function = lambda x: x
@@ -42,7 +42,7 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
 
   means = []
   for rep in range(nRep):
-    print('Rep: {}'.format(rep))
+    #print('Rep: {}'.format(rep))
     g.reset()
     a = np.random.binomial(n=1, p=treatment_budget/L, size=L)
     g.step(a)
@@ -53,7 +53,7 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
       if method == 'random':
         a = np.random.binomial(1, treatment_budget/L, size=L)
       else:
-        Qargmax, rollout_feature_list, rollout_Q_function_list = lookahead(K, gamma, g, evaluation_budget, 
+        argmax_actions, rollout_feature_list, rollout_Q_function_list = lookahead(K, gamma, g, evaluation_budget, 
                                                                            treatment_budget, AR, rollout_feature_times)     
         if method == 'QL':        
           thetaOpt = GGQ(rollout_feature_list, rollout_Q_function_list, gamma, 
@@ -62,9 +62,10 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
                                thetaOpt)
           _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, L)          
         elif method == 'rollout':
-          pdb.set_trace()
-          a = Qargmax[-1]
+          a = argmax_actions[-1]
     means.append(np.sum(g.Y))
   return g, AR, means
 
-_, _, f1 = main(1, 9, 20, 20, method='QL', rollout_feature_times=[1])
+for k in range(10):
+  _, _, f = main(k, 9, 20, 20, method='rollout', rollout_feature_times=[])
+  print('K={}: {}'.format(k, np.mean(f)))

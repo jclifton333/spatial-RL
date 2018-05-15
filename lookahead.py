@@ -75,13 +75,15 @@ def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model)
   #Q = lambda s: Q_max(Q_fn, s, evaluation_budget, treatment_budget)
   best_q_arr = []
   argmax_data_blocks = []
+  argmax_actions = []
   for t in range(env.T):
     Q_fn_t = lambda a: Q(a, env.X_raw[t], env, predictive_model)
     Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, evaluation_budget, treatment_budget, env.nS)
     best_q_arr.append(Q_max_t)
     best_data_block = env.data_block_at_action(env.X_raw[t], Q_argmax_t)
     argmax_data_blocks.append(best_data_block)
-  return np.array(best_q_arr), argmax_data_blocks, q_vals
+    argmax_actions.append(Q_argmax_t)
+  return np.array(best_q_arr), argmax_data_blocks, argmax_actions, q_vals
 
 def Q(a, raw_data_block, env, predictive_model):
   data_block = env.data_block_at_action(raw_data_block, a)
@@ -96,7 +98,7 @@ def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_fe
   
   #Fit 1-step model
   AR.fitClassifier(env, target, True)
-  Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
+  Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
   
   #Look ahead 
   for k in range(1, K):
@@ -106,8 +108,8 @@ def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_fe
     if rollout_feature_time:
       Q_features_at_each_block = [np.sum(AR.autologitPredictor(env.X[t])) for t in range(len(env.X))]
       rollout_feature_list.append(Q_features_at_each_block)
-    Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
-  return Qargmax, rollout_feature_list, AR.predictors
+    Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
+  return argmax_actions, rollout_feature_list, AR.predictors
     
 
   
