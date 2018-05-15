@@ -10,6 +10,7 @@ import math
 from autologit import AutoRegressor
 from sklearn.ensemble import RandomForestRegressor
 from itertools import combinations
+from copy import deepcopy
 import pdb
 
 '''
@@ -60,7 +61,7 @@ def Q_max(Q_fn, evaluation_budget, treatment_budget, nS):
   for i in range(actions.shape[0]):
     a = actions[i,:]
     q = Q_fn(a)
-    print(q)
+    #print('q: {}'.format(q))
     if np.sum(q) < np.sum(best_q):
       best_q = q 
       best_a = a
@@ -72,15 +73,15 @@ def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model)
   :return best_q_arr: array of max q values associated with each state in state_score_history
   '''
   #Q = lambda s: Q_max(Q_fn, s, evaluation_budget, treatment_budget)
-  best_q_arr = np.array([])
+  best_q_arr = []
   argmax_data_blocks = []
   for t in range(env.T):
     Q_fn_t = lambda a: Q(a, env.X_raw[t], env, predictive_model)
     Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, evaluation_budget, treatment_budget, env.nS)
-    best_q_arr = np.append(best_q_arr, Q_max_t)
+    best_q_arr.append(Q_max_t)
     best_data_block = env.data_block_at_action(env.X_raw[t], Q_argmax_t)
-    argmax_data_blocks = argmax_data_blocks.append(best_data_block)
-  return best_q_arr, argmax_data_blocks, q_vals
+    argmax_data_blocks.append(best_data_block)
+  return np.array(best_q_arr), argmax_data_blocks, q_vals
 
 def Q(a, raw_data_block, env, predictive_model):
   data_block = env.data_block_at_action(raw_data_block, a)
@@ -88,26 +89,25 @@ def Q(a, raw_data_block, env, predictive_model):
   return Qhat
 
 def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_feature_times):
+  AR.resetPredictors()
+  
   target = np.hstack(env.y).astype(float)
   rollout_feature_list = []
-  rollout_Q_function_list = []
   
   #Fit 1-step model
-  AR.fitClassifier(env, target)
+  AR.fitClassifier(env, target, True)
   Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
   
   #Look ahead 
   for k in range(1, K):
-    target += gamma*Qmax
-    AR.fitRegressor(env, target)
-    if k in rollout_feature_times:
+    target += gamma*Qmax.flatten()
+    rollout_feature_time = k in rollout_feature_times
+    AR.fitRegressor(env, target, rollout_feature_time)
+    if rollout_feature_time:
       Q_features_at_each_block = [np.sum(AR.autologitPredictor(env.X[t])) for t in range(len(env.X))]
       rollout_feature_list.append(Q_features_at_each_block)
-      rollout_Q_function_k = lambda data_block: AR.autologitPredictor(data_block)
-      rollout_Q_function_list.append(rollout_Q_function_k)
-    if k < K-1:
-      Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
-  return Qargmax, rollout_feature_list, rollout_Q_function_list
+    Qmax, Qargmax, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
+  return Qargmax, rollout_feature_list, AR.predictors
     
 
   

@@ -24,27 +24,34 @@ class AutoRegressor(object):
     
     self.ar_classifier = ar_classifier
     self.regressor  = regressor
+    self.predictors = []
         
-  def createAutologitPredictor(self, binary, env):
+  def resetPredictors(self):
+    self.predictors = []
+    
+  def createAutologitPredictor(self, predictor, addToList, binary):
     '''
     Sets function that returns predictions from fitted autologit model for a given data block.
     '''
     def autologitPredictor(dataBlock):
       #Fit UC predictions if not already provided
       if binary:
-        predictions = self.ar_classifier.predict_proba(dataBlock)[:,-1]
+        predictions = predictor.predict_proba(dataBlock)[:,-1]
       else:
-        predictions = self.regressor.predict(dataBlock)        
+        predictions = predictor.predict(dataBlock)        
       return predictions    
+    if addToList: self.predictors.append(autologitPredictor)
     self.autologitPredictor = autologitPredictor
     
-  def fitClassifier(self, env, target):
-    self.ar_classifier.fit(np.vstack(env.X), target)
-    self.createAutologitPredictor(True, env)
+  def fitClassifier(self, env, target, addToList):
+    classifier = self.ar_classifier()
+    classifier.fit(np.vstack(env.X), target)    
+    self.createAutologitPredictor(classifier, addToList, binary=True)
     
-  def fitRegressor(self, env, target):
-    self.regressor.fit(np.vstack(env.X), target)
-    self.createAutologitPredictor(False, env)
+  def fitRegressor(self, env, target, addToList):
+    regressor = self.regressor()
+    regressor.fit(np.vstack(env.X), target)
+    self.createAutologitPredictor(regressor, addToList, binary=False)
     
   
 

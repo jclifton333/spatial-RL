@@ -12,7 +12,9 @@ from lookahead import lookahead, Q_max
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import Ridge, LogisticRegression
 from features import polynomialFeatures
-from QL_objective import QL_opt_semi_gradient, rollout_Q_features
+from QL_objective import GGQ, rollout_Q_features
+import pdb
+
 
 def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   '''
@@ -36,29 +38,33 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
 
   #Initialize AR object
   #feature_function = lambda x: x
-  AR = AutoRegressor(LogisticRegression(), Ridge())
+  AR = AutoRegressor(LogisticRegression, Ridge)
 
   means = []
   for rep in range(nRep):
-    a = np.random.binomial(n=1, p=treatment_budget/L, size=L)
-    g.reset()
     print('Rep: {}'.format(rep))
+    g.reset()
+    a = np.random.binomial(n=1, p=treatment_budget/L, size=L)
+    g.step(a)
+    a = np.random.binomial(n=1, p=treatment_budget/L, size=L)
     for i in range(T):
+      #print('i: {}'.format(i))
       g.step(a)   
       if method == 'random':
         a = np.random.binomial(1, treatment_budget/L, size=L)
       else:
         Qargmax, rollout_feature_list, rollout_Q_function_list = lookahead(K, gamma, g, evaluation_budget, 
-                                                                           treatment_budget, AR, rollout_feature_times)         
+                                                                           treatment_budget, AR, rollout_feature_times)     
         if method == 'QL':        
-          thetaOpt = QL_opt_semi_gradient(rollout_feature_list, rollout_Q_function_list, gamma, 
+          thetaOpt = GGQ(rollout_feature_list, rollout_Q_function_list, gamma, 
                           g, evaluation_budget, treatment_budget, True)
           Q = lambda a: np.dot(rollout_Q_features(g.data_block_at_action(g.X_raw[i], a), rollout_Q_function_list, intercept=True),
                                thetaOpt)
           _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, L)          
         elif method == 'rollout':
-          a = Qargmax
+          pdb.set_trace()
+          a = Qargmax[-1]
     means.append(np.sum(g.Y))
   return g, AR, means
 
-_, _, f0 = main(3, 9, 20, 1, method='QL', rollout_feature_times=[1,2])
+_, _, f1 = main(1, 9, 20, 20, method='QL', rollout_feature_times=[1])
