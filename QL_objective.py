@@ -24,14 +24,14 @@ See: http://old.sztaki.hu/~szcsaba/papers/ICML10_controlGQ.pdf
 '''
 
 def GGQ_pieces(theta, rollout_Q_function_list, gamma, 
-                 env, evaluation_budget, treatment_budget, intercept=True):   
+                 env, evaluation_budget, treatment_budget, X, intercept=True):   
   assert env.T > 1
   
   rollout_Q_features_at_block = lambda data_block: rollout_Q_features(data_block, rollout_Q_function_list, intercept)
 
   #Evaluate Q 
-  X = np.vstack([rollout_Q_features_at_block(data_block) for data_block in env.X[:-1]])
   Q = np.dot(X, theta)
+  
   #Get Qmax  
   Q_fn = lambda data_block: np.dot(rollout_Q_features_at_block(data_block), theta)
   Qmax, Qargmax, _, _ = Q_max_all_states(env, evaluation_budget, treatment_budget, Q_fn)
@@ -43,7 +43,7 @@ def GGQ_pieces(theta, rollout_Q_function_list, gamma,
   TD = TD.reshape(TD.shape[0],1)
   TD_times_X = np.multiply(TD, X)
   
-  return TD_times_X, X, X_hat
+  return TD_times_X, X_hat
 
 def update_theta(theta, alpha, gamma, TD_times_X, Xw, X_hat):
   Xw_times_Xhat = np.multiply(Xw.reshape(len(Xw), 1), X_hat)
@@ -63,8 +63,8 @@ def update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_X, X, X_hat):
   w = update_w(w, beta, TD_times_X, X, Xw)
   return theta, w
 
-def GGQ_step(theta, w, alpha, beta, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, intercept):
-  TD_times_X, X, X_hat = GGQ_pieces(theta, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, intercept)
+def GGQ_step(theta, w, alpha, beta, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, X, intercept):
+  TD_times_X, X_hat = GGQ_pieces(theta, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, X, intercept)
   theta, w = update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_X, X, X_hat)
   return theta, w
 
@@ -74,10 +74,12 @@ def GGQ(rollout_feature_list, rollout_Q_function_list, gamma, env, evaluation_bu
   
   nFeature = len(rollout_Q_function_list) + intercept
   theta, w = np.zeros(nFeature), np.zeros(nFeature)
+  X = np.vstack([rollout_Q_features(data_block, rollout_Q_function_list, intercept) for data_block in env.X[:-1]])
+
   for it in range(N_IT):
     alpha = NU / ((it + 1) * np.log(it + 2))
     beta  = NU / (it + 1)
-    theta, w = GGQ_step(theta, w, alpha, beta, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, intercept=intercept)
+    theta, w = GGQ_step(theta, w, alpha, beta, rollout_Q_function_list, gamma, env, evaluation_budget, treatment_budget, X, intercept=intercept)
     #print('theta: {}'.format(theta))
   return theta
   

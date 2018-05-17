@@ -10,6 +10,7 @@ from SIS_model import SIS
 from autologit import AutoRegressor
 from lookahead import lookahead, Q_max
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, LogisticRegression
 from features import polynomialFeatures
 from QL_objective import GGQ, rollout_Q_features
@@ -30,10 +31,11 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   gamma = 0.9
   m = lattice(L)
   featureFunction = polynomialFeatures(3, interaction_only=True)  
+  #featureFunction = lambda d: d
   g = SIS(m, omega, sigma, featureFunction)
 
   #Evaluation limit parameters 
-  treatment_budget = 4
+  treatment_budget = 20
   evaluation_budget = 1
 
   #Initialize AR object
@@ -41,19 +43,21 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   AR = AutoRegressor(LogisticRegression, Ridge)
 
   means = []
+  a_dummy = np.append(np.ones(treatment_budget), np.zeros(L - treatment_budget))
   for rep in range(nRep):
     #print('Rep: {}'.format(rep))
     g.reset()
-    a = np.random.binomial(n=1, p=treatment_budget/L, size=L)
+    a = np.random.permutation(a_dummy)
     g.step(a)
-    a = np.random.binomial(n=1, p=treatment_budget/L, size=L)
+    a = np.random.permutation(a_dummy)
     for i in range(T):
       #print('i: {}'.format(i))
       g.step(a)   
       if method == 'random':
-        a = np.random.binomial(1, treatment_budget/L, size=L)
+        a = np.random.permutation(a_dummy)
+        target = None
       else:
-        argmax_actions, rollout_feature_list, rollout_Q_function_list = lookahead(K, gamma, g, evaluation_budget, 
+        argmax_actions, rollout_feature_list, rollout_Q_function_list, target = lookahead(K, gamma, g, evaluation_budget, 
                                                                            treatment_budget, AR, rollout_feature_times)     
         if method == 'QL':        
           thetaOpt = GGQ(rollout_feature_list, rollout_Q_function_list, gamma, 
@@ -63,9 +67,13 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
           _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, L)          
         elif method == 'rollout':
           a = argmax_actions[-1]
-    means.append(np.sum(g.Y))
-  return g, AR, means
+    means.append(np.mean(g.Y))
+  return g, AR, means, target
 
-for k in range(10):
-  _, _, f = main(k, 9, 20, 20, method='rollout', rollout_feature_times=[])
-  print('K={}: {}'.format(k, np.mean(f)))
+if __name__ == '__main__':
+  import time
+  for k in range(0,10):
+    t0 = time.time()
+    _, _, scores, _ = main(k, 100, 25, 10, method='random', rollout_feature_times=[])
+    t1 = time.time()
+    print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(100), t1 - t0))

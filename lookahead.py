@@ -109,7 +109,7 @@ def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_fe
       Q_features_at_each_block = [np.sum(AR.autologitPredictor(env.X[t])) for t in range(len(env.X))]
       rollout_feature_list.append(Q_features_at_each_block)
     Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
-  return argmax_actions, rollout_feature_list, AR.predictors
+  return argmax_actions, rollout_feature_list, AR.predictors, target
     
 
   

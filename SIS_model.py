@@ -5,6 +5,7 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
+import pdb
 
 class SIS(object):
   # Fixed generative model parameters
@@ -132,7 +133,7 @@ class SIS(object):
   ################################################
   ## End infection probability helper functions ##
   ################################################
-  
+    
   def neighborFeatures(self, data_block):
     '''
     For each location in data_block, compute neighbor feature vector
@@ -144,7 +145,7 @@ class SIS(object):
       neighborFeatures_l = np.array([np.sum(np.clip(S_neighbor, a_min=0, a_max=None)), np.sum(np.multiply(S_neighbor, A_neighbor)),
                                      np.sum(A_neighbor), np.sum(np.multiply(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])      
       neighborFeatures = np.vstack((neighborFeatures, neighborFeatures_l))
-    return neighborFeatures      
+    return neighborFeatures    
   
   def data_block_at_action(self, data_block, action):
     '''
@@ -152,8 +153,8 @@ class SIS(object):
     '''
     assert data_block.shape[1] == 3  
     new_data_block = np.column_stack((data_block[:,0], action, data_block[:,2]))
-    neighborFeatures = self.neighborFeatures(new_data_block)
-    new_data_block = np.column_stack((neighborFeatures, self.featureFunction(new_data_block)))
+    features = self.neighborFeatures(new_data_block)
+    new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
     return new_data_block
         
   def updateObsHistory(self, a):
@@ -178,8 +179,7 @@ class SIS(object):
     self.updateObsHistory(a)
     self.T += 1
     return next_state
-    
-
+  
     
     
     
