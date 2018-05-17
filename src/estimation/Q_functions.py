@@ -7,10 +7,7 @@ Created on Sat Mar 17 18:02:06 2018
 
 import numpy as np 
 import math
-from autologit import AutoRegressor
-from sklearn.ensemble import RandomForestRegressor
 from itertools import combinations
-from copy import deepcopy
 import pdb
 
 '''
@@ -90,26 +87,6 @@ def Q(a, raw_data_block, env, predictive_model):
   Qhat = predictive_model(data_block)
   return Qhat
 
-def lookahead(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_feature_times):
-  AR.resetPredictors()
-  
-  target = np.hstack(env.y).astype(float)
-  rollout_feature_list = []
-  
-  #Fit 1-step model
-  AR.fitClassifier(env, target, True)
-  Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
-  
-  #Look ahead 
-  for k in range(1, K):
-    target += gamma*Qmax.flatten()
-    rollout_feature_time = k in rollout_feature_times
-    AR.fitRegressor(env, target, rollout_feature_time)
-    if rollout_feature_time:
-      Q_features_at_each_block = [np.sum(AR.autologitPredictor(env.X[t])) for t in range(len(env.X))]
-      rollout_feature_list.append(Q_features_at_each_block)
-    Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
-  return argmax_actions, rollout_feature_list, AR.predictors, target
     
 
   

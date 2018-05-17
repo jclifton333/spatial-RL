@@ -8,14 +8,9 @@ Created on Sat May  5 21:53:17 2018
 
 import numpy as np
 from lookahead import Q_max_all_states
-from scipy.optimize import minimize
+from rollout import rollout_Q_features
 import pdb
 
-def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
-  rollout_Q_features = np.array([q(data_block) for q in rollout_Q_function_list]).T
-  if intercept:
-    rollout_Q_features = np.column_stack((np.ones(rollout_Q_features.shape[0]), rollout_Q_features))
-  return rollout_Q_features
 
 '''
 GGQ implementation
