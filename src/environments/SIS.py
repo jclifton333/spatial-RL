@@ -5,6 +5,7 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
+from SpatialDisease import SpatialDisease
 import pdb
 
 class SIS(object):
@@ -13,63 +14,36 @@ class SIS(object):
   TAU = 0.1
   INITIAL_INFECT_PROB = 0.3
   
-  def __init__(self, adjacency_matrix, omega, sigma, featureFunction):
+  def __init__(self, L, omega, sigma, featureFunction, generateNetwork):
     '''
-    :param adjacency_matrix: 2d binary array corresponding to network for gen model 
     :param omega: parameter in [0,1] for mixing two SIS models
+    :param sigma: length-7 array of transition probability model parameters
+    :param generateNetwork: function that accepts network size L and returns adjacency matrix
     '''
+    adjacency_matrix = generateNetwork(L)
     
-    self.featureFunction = featureFunction
+    SpatialDisease.__init__(self, adjacency_matrix, featureFunction)
     
-    #Generative model parameters
-    self.nS = adjacency_matrix.shape[0]
     self.SIGMA = sigma
     self.omega = omega
-    self.state_covariance = self.TAU**2 * np.eye(self.nS)
+    self.state_covariance = self.TAU**2 * np.eye(self.L)
     
-    #Adjacency info    
-    self.adjacency_matrix = adjacency_matrix
-    self.adjacency_list = [[lprime for lprime in range(self.nS) if self.adjacency_matrix[l, lprime] == 1] for l in range(self.nS)]
-    
-    #Observation history
-    self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.nS), cov=self.state_covariance)])
-    self.Y = np.array([np.random.binomial(n=1, p=self.INITIAL_INFECT_PROB, size=self.nS)])
-    self.A = np.zeros((0, self.nS))
-    self.R = np.array([np.sum(self.Y[-1,:])])
-    self.X_raw = [] #Will hold blocks [S_t, A_t, Y_t] at each time t
-    self.X = [] #Will hold features of [S_t, A_t, Y_t] each each time t
-    self.y = [] #Will hold blocks [Y_tp1] for each time t
-    self.true_infection_probs = np.zeros((0, self.nS))
-    
-    #Current network status
+    self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.L), cov=self.state_covariance)])
     self.current_state = self.S[-1,:]
-    self.current_infected = self.Y[-1,:]
-    self.T = 0
     
   def reset(self):
     '''
     Reset state and observation histories.
     '''
-    #Observation history
-    self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.nS), cov=self.state_covariance)])
-    self.Y = np.array([np.random.binomial(n=1, p=self.INITIAL_INFECT_PROB, size=self.nS)])
-    self.A = np.zeros((0, self.nS))
-    self.R = np.array([np.sum(self.Y[-1,:])])
-    self.X_raw = []
-    self.X = [] #Will hold blocks [S_t, A_t, Y_t] each each time t
-    self.y = [] #Will hold blocks [Y_tp1] for each time t
-    self.true_infection_probs = np.zeros((0, self.nS))
-    
-    #Current network status
+    self._reset_super()    
+    self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.L), cov=self.state_covariance)])
     self.current_state = self.S[-1,:]
-    self.current_infected = self.Y[-1,:]
-    self.T = 0
 
     
   def next_state(self): 
     '''
     Update state array acc to AR(1) 
-    :return next_state: self.nS-length array of new states 
+    :return next_state: self.L-length array of new states 
     '''
     next_state = np.random.multivariate_normal(mean=self.ZETA*self.current_state, cov=self.state_covariance)
     self.S = np.vstack((self.S, next_state))
@@ -81,7 +55,7 @@ class SIS(object):
     Updates the vector indicating infections (self.current_infected).
     Computes probability of infection at each state, then generates corresponding 
     Bernoullis.    
-    :param a: self.nS-length binary array of actions at each state     
+    :param a: self.L-length binary array of actions at each state     
     '''
     z = np.random.binomial(1, self.omega) 
     indicator = (z*self.current_state <= 0) 
@@ -90,10 +64,10 @@ class SIS(object):
     infected_indices = np.where(self.current_infected > 0)
     not_infected_indices = np.where(self.current_infected == 0)
 
-    next_infected_probabilities = np.zeros(self.nS)
+    next_infected_probabilities = np.zeros(self.L)
     next_infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices)
     next_infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices]) 
-    next_infections = np.random.binomial(n=[1]*self.nS, p=next_infected_probabilities)
+    next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.R = np.append(self.R, np.sum(next_infections))
     self.true_infection_probs = np.vstack((self.true_infection_probs, next_infected_probabilities))
@@ -140,7 +114,7 @@ class SIS(object):
       [sum of positive(s), sum of s*a, sum of a, sum of y, sum of a * y]
     '''
     neighborFeatures = np.zeros((0, 5))
-    for l in range(self.nS):
+    for l in range(self.L):
       S_neighbor, A_neighbor, Y_neighbor = data_block[self.adjacency_list[l],:].T
       neighborFeatures_l = np.array([np.sum(np.clip(S_neighbor, a_min=0, a_max=None)), np.sum(np.multiply(S_neighbor, A_neighbor)),
                                      np.sum(A_neighbor), np.sum(np.multiply(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])      
@@ -159,7 +133,7 @@ class SIS(object):
         
   def updateObsHistory(self, a):
     '''
-    :param a: self.nS-length array of binary actions at each state
+    :param a: self.L-length array of binary actions at each state
     '''
     raw_data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
     neighborFeatures = self.neighborFeatures(raw_data_block)
@@ -168,17 +142,6 @@ class SIS(object):
     self.X.append(data_block)
     self.y.append(self.current_infected)    
   
-  def step(self, a): 
-    '''
-    Move model forward according to action a. 
-    :param a: self.nS-length array of binary actions at each state 
-    '''
-    self.A = np.vstack((self.A, a))
-    next_state = self.next_state() 
-    self.next_infections(a) 
-    self.updateObsHistory(a)
-    self.T += 1
-    return next_state
   
     
     

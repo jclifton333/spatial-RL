@@ -7,8 +7,9 @@ Created on Wed May 16 23:18:41 2018
 
 import numpy as np
 from scipy.special import expit
+from SpatialDisease import SpatialDisease
 
-class Ebola(object):
+class Ebola(SpatialDisease):
   #Placeholder params until actual model is implemented
   L = 9
   
@@ -35,10 +36,15 @@ class Ebola(object):
       TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
       TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
       TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)  
+      
+  INITIAL_INFECT_PROB = np.ones(L) / L
   
-  def __init__(self):
-    self.currentInfected = np.zeros(L)
-  
+  def __init__(self, featureFunction):
+    SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, featureFunction)
+    
+  def reset(self):
+    self._reset_super()
+      
   def transmissionProb(self, a, l, l_prime):
     '''
     :param a: L-length binary array of treatment decisions
@@ -51,14 +57,24 @@ class Ebola(object):
       return 0
     
   def infectionProb(self, a, l):
-    not_infected_prob = np.product([1-self.transmissionProb(a, l, l_prime) for l_prime in Ebola.ADJACENCY_LIST[l]])
-    return 1 - not_infected_prob
+    not_infected_prob = np.product([1-self.transmissionProb(a, l_prime, l) for l_prime in Ebola.ADJACENCY_LIST[l]])
+    return 1 - not_infected_prob  
   
-  def step(self, a):
-    infectionProbs = np.array([self.infectionProb(a, l) for l in range(Ebola.L)])
-    nextInfected = np.random.binomial(n=[1]*Ebola.L, p=infectionProbs)
+  def updateObsHistory(self, a):
+    raw_data_block = np.column_stack((Ebola.SUSCEPTIBILITY, a, self.Y[-2,:]))
+    data_block = self.featureFunction(raw_data_block)
+    self.X_raw.append(raw_data_block)
+    self.X.append(data_block)
+    self.y.append(self.current_infected)    
     
-    
+  def next_infections(self, a):
+    next_infected_probabilities = np.array([self.infectionProb(a, l) for l in range(self.L)])
+    next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)    
+    self.Y = np.vstack((self.Y, next_infections))
+    self.R = np.append(self.R, np.sum(next_infections))
+    self.true_infection_probs = np.vstack((self.true_infection_probs, next_infected_probabilities))
+    self.current_infected = next_infections
+
     
     
     
