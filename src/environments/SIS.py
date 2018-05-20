@@ -10,8 +10,8 @@ import pdb
 
 class SIS(SpatialDisease):
   # Fixed generative model parameters
-  ZETA = 1
-  TAU = 0.1
+  BETA_0 = 0.9
+  BETA_1 = 1.0
   INITIAL_INFECT_PROB = 0.3
   
   def __init__(self, L, omega, sigma, featureFunction, generateNetwork):
@@ -26,7 +26,7 @@ class SIS(SpatialDisease):
     
     self.SIGMA = sigma
     self.omega = omega
-    self.state_covariance = self.TAU**2 * np.eye(self.L)
+    self.state_covariance = self.BETA_1**2 * np.eye(self.L)
     
     self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.L), cov=self.state_covariance)])
     self.current_state = self.S[-1,:]
@@ -45,7 +45,7 @@ class SIS(SpatialDisease):
     Update state array acc to AR(1) 
     :return next_state: self.L-length array of new states 
     '''
-    next_state = np.random.multivariate_normal(mean=self.ZETA*self.current_state, cov=self.state_covariance)
+    next_state = np.random.multivariate_normal(mean=self.BETA_0*self.current_state, cov=self.state_covariance)
     self.S = np.vstack((self.S, next_state))
     self.current_state = next_state 
     return next_state  

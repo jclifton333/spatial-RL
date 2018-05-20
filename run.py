@@ -35,7 +35,7 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   :param method: string in ['QL', 'rollout', 'random']
   '''
   #Initialize generative model
-  omega = 1
+  omega = 0
   sigma = np.array([-1, -10, -1, -10, -10, 0, 0]) 
   gamma = 0.9
   featureFunction = polynomialFeatures(3, interaction_only=True)  
@@ -43,8 +43,8 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   g = SIS(L, omega, sigma, featureFunction, lattice)
 
   #Evaluation limit parameters 
-  treatment_budget = 2
-  evaluation_budget = 1
+  treatment_budget = 5
+  evaluation_budget = 5
 
   #Initialize AR object
   #feature_function = lambda x: x
@@ -80,8 +80,8 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
 
 if __name__ == '__main__':
   import time
-  for k in range(0,10):
+  for k in range(5,6):
     t0 = time.time()
-    _, _, scores, _ = main(k, 100, 25, 5, method='rollout', rollout_feature_times=[])
+    _, _, scores, _ = main(k, 100, 25, 5, method='QL', rollout_feature_times=[0,3,5])
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(100), t1 - t0))

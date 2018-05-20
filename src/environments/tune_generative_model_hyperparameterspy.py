@@ -11,6 +11,49 @@ from generate_network import lattice
 from scipy.optimize import minimize
 import pdb
 
+'''
+Tune SIS model acc to new manuscript,
+pdf pg. 15
+'''
+
+def tune_SIS():
+  #Fixed S, Y, and A values
+  S_any = S_pos = np.ones(4)
+  Y_p10 = np.zeros(4)
+  Y_p1  = np.array([0, 1, 1, 1])
+  Y_q1  = np.ones(4)
+  A_p10  = A_p1_1 = np.zeros(4)
+  A_p1_1 = np.array([1, 0, 0, 0])
+  A_p1_2 = 1 - A_p1_1
+  A_q1_1 = np.zeros(4)
+  A_q1_2 = np.ones(4)
+  
+  '''
+  Equations
+  (EITHER I'M DUMB OR EQUATIONS IN PAPER DON'T MAKE SENSE)
+  \eta_0 = logit(0.01)
+  \eta_2 = logit[1 - ((1 - 0.5) / 0.99)**(1/3)]
+  \eta_2 + \eta_3 = logit[1 - ((1 - 0.5*0.75) / (1 - 0.01*expit(\eta_1)))**(1/3)]
+  \eta_2 + \eta_4 = logit[1 - ((1 - 0.5*25) / 0.99)**(1/3)]
+  \eta_5 = 0.25
+  \eta_6 = 0.25 * 0.5
+  '''
+  return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def prop_infected_error(sigma, omega, L, T, prop_infected):
   '''
   Measure how close an SIS model with given settings comes to 
