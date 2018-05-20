@@ -4,18 +4,27 @@ Created on Fri May  4 21:49:40 2018
 
 @author: Jesse
 """
+import sys
+sys.path.append('src/environments')
+sys.path.append('src/estimation')
+sys.path.append('src/utils')
+
 import numpy as np
+import pdb
+
 from generate_network import lattice
-from SIS_model import SIS
-from autologit import AutoRegressor
-from lookahead import lookahead, Q_max
+from SIS import SIS
+
+from AutoRegressor import AutoRegressor
+from Fitted_Q import rollout, rollout_Q_features
+from Q_functions import Q_max
+from Greedy_GQ import GGQ
+
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, LogisticRegression
-from features import polynomialFeatures
-from QL_objective import GGQ, rollout_Q_features
-import pdb
 
+from features import polynomialFeatures
 
 def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   '''
@@ -29,13 +38,12 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
   omega = 1
   sigma = np.array([-1, -10, -1, -10, -10, 0, 0]) 
   gamma = 0.9
-  m = lattice(L)
   featureFunction = polynomialFeatures(3, interaction_only=True)  
   #featureFunction = lambda d: d
-  g = SIS(m, omega, sigma, featureFunction)
+  g = SIS(L, omega, sigma, featureFunction, lattice)
 
   #Evaluation limit parameters 
-  treatment_budget = 20
+  treatment_budget = 2
   evaluation_budget = 1
 
   #Initialize AR object
@@ -57,7 +65,7 @@ def main(K, L, T, nRep, method='QL', rollout_feature_times=[1]):
         a = np.random.permutation(a_dummy)
         target = None
       else:
-        argmax_actions, rollout_feature_list, rollout_Q_function_list, target = lookahead(K, gamma, g, evaluation_budget, 
+        argmax_actions, rollout_feature_list, rollout_Q_function_list, target = rollout(K, gamma, g, evaluation_budget, 
                                                                            treatment_budget, AR, rollout_feature_times)     
         if method == 'QL':        
           thetaOpt = GGQ(rollout_feature_list, rollout_Q_function_list, gamma, 
@@ -74,6 +82,6 @@ if __name__ == '__main__':
   import time
   for k in range(0,10):
     t0 = time.time()
-    _, _, scores, _ = main(k, 100, 25, 10, method='random', rollout_feature_times=[])
+    _, _, scores, _ = main(k, 100, 25, 5, method='rollout', rollout_feature_times=[])
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(100), t1 - t0))

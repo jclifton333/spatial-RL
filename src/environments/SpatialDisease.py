@@ -35,7 +35,6 @@ class SpatialDisease(object):
     self.true_infection_probs = np.zeros((0, self.L))
     
     #Current network status
-    self.current_state = self.S[-1,:]
     self.current_infected = self.Y[-1,:]
     self.T = 0
     
@@ -57,7 +56,6 @@ class SpatialDisease(object):
     self.true_infection_probs = np.zeros((0, self.L))
     
     #Current network status
-    self.current_state = self.S[-1,:]
     self.current_infected = self.Y[-1,:]
     self.T = 0    
   

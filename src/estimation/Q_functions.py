@@ -47,11 +47,11 @@ def all_candidate_actions(state_scores, evaluation_budget, treatment_budget):
     candidate_actions = np.vstack((candidate_actions, np.array(a)))
   return candidate_actions
   
-def Q_max(Q_fn, evaluation_budget, treatment_budget, nS):
+def Q_max(Q_fn, evaluation_budget, treatment_budget, L):
   '''
   :return best_q: q-value associated with best candidate action
   '''
-  state_scores = Q_fn(np.ones(nS)) 
+  state_scores = Q_fn(np.ones(L)) 
   actions = all_candidate_actions(state_scores, evaluation_budget, treatment_budget)
   best_q = float('inf')  
   q_vals = []
@@ -75,7 +75,7 @@ def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model)
   argmax_actions = []
   for t in range(env.T):
     Q_fn_t = lambda a: Q(a, env.X_raw[t], env, predictive_model)
-    Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, evaluation_budget, treatment_budget, env.nS)
+    Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, evaluation_budget, treatment_budget, env.L)
     best_q_arr.append(Q_max_t)
     best_data_block = env.data_block_at_action(env.X_raw[t], Q_argmax_t)
     argmax_data_blocks.append(best_data_block)

@@ -8,7 +8,7 @@ from scipy.special import expit
 from SpatialDisease import SpatialDisease
 import pdb
 
-class SIS(object):
+class SIS(SpatialDisease):
   # Fixed generative model parameters
   ZETA = 1
   TAU = 0.1
