@@ -8,22 +8,25 @@ Created on Wed May 16 23:18:41 2018
 import numpy as np
 from scipy.special import expit
 from SpatialDisease import SpatialDisease
+import pickle as pkl
+
 
 class Ebola(SpatialDisease):
-  #Placeholder params until actual model is implemented
-  L = 9
-  
+  #Load network information
+  network_info = pkl.load(open('ebola-network-data/ebola_network_data.p', 'rb'))
+  ADJACENCY_MATRIX = network_info['adjacency_matrix']
+  DISTANCE_MATRIX  = network_info['distance_matrix']
+  SUSCEPTIBILITY  = network_info['pop_array']
+  L = len(SUSCEPTIBILITY)
+
+  #Placeholder params until actual model is implemented  
   ETA_0 = 1
   ETA_1 = 1
   ETA_2 = 1
   ETA_3 = 1
   ETA_4 = 1
   
-  ADJACENCY_MATRIX = np.random.binomial(1, 0.3, size=(L, L))
-  ADJACENCY_LIST = [[lprime for lprime in range(L) if ADJACENCY_MATRIX[l, lprime] == 1] for l in range(L)]
-  DISTANCE_MATRIX  = np.random.uniform(high=1000, size=(L,L))
-  SUSCEPTIBILITY = np.random.normal(size=L)
-  
+  #Compute transmission probs  
   TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
   for l in range(L):
     s_l = SUSCEPTIBILITY[l]

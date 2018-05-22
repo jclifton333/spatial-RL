@@ -7,5 +7,66 @@ Created on Sun May 20 18:25:23 2018
 
 import numpy as np
 import pandas as pd
+import pickle as pkl
+from math import radians, cos, sin, asin, sqrt
 
-edges = pd.read_table('ebola_edges.txt')
+
+
+L = 290 #290 locations in Ebola sim
+
+def haversine(lon1, lat1, lon2, lat2):
+  lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+  dlon = lon2 - lon1
+  dlat = lat2 - lat1
+  a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
+  c = 2*asin(sqrt(a))
+  r = 6371
+  return c * r
+
+def main():
+  
+  ##Create adjacency matrix
+  edges = pd.read_table('ebola_edges.txt', header=None)
+  adjacency_matrix = np.zeros((L, L))
+  edges_list = edges[0]
+  
+  #Loop through each edge pair, parse, add to adj matrix
+  for edge_pair_str in edges_list:
+    edge_pair = list(map(int, edge_pair_str.split(' ')))
+    edge_0 = edge_pair[0]
+    edge_1 = edge_pair[1]
+    adjacency_matrix[edge_0, edge_1] = 1
+
+  ##Create distance matrix
+  distance_matrix = np.empty((L, L))
+  distance_matrix[:] = np.nan
+
+  def str_to_float(coords_text_file):
+    f = open(coords_text_file, 'r')
+    f_str = f.read().split('\n')
+    coords = list(map(float, f_str[:-1]))
+    return coords
+
+  x_coords = str_to_float('ebola_x.txt')
+  y_coords = str_to_float('ebola_y.txt')
+  
+  #Get pairwise distances for every adjacent pair
+  for i in range(L):
+    for j in range(L):
+      if i != j and adjacency_matrix[i, j] == 1:
+        lon1, lat1 = x_coords[i], y_coords[i]
+        lon2, lat2 = x_coords[j], y_coords[j]
+        distance_matrix[i, j] = haversine(lon1, lat1, lon2, lat2)
+  
+  ##Get populations
+  pop_list = str_to_float('ebola_population.txt')
+  pop_array = np.array(pop_list)
+
+  #Save data
+  ebola_network_data = {'adjacency_matrix':adjacency_matrix, 'distance_matrix':distance_matrix, 'pop_array':pop_array}
+  pkl.dump(ebola_network_data, open('ebola_network_data.p', 'wb'))
+
+  return
+ 
+if __name__ == '__main__':
+  main()
