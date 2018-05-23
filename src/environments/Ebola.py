@@ -7,13 +7,15 @@ Created on Wed May 16 23:18:41 2018
 
 import numpy as np
 from scipy.special import expit
-from SpatialDisease import SpatialDisease
+from .SpatialDisease import SpatialDisease
 import pickle as pkl
-
+import os
 
 class Ebola(SpatialDisease):
   #Load network information
-  network_info = pkl.load(open('ebola-network-data/ebola_network_data.p', 'rb'))
+  this_file_pathname = os.path.dirname(os.path.abspath(__file__))
+  ebola_network_data_fpath = os.path.join(this_file_pathname, 'ebola-network-data', 'ebola_network_data.p')
+  network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
   ADJACENCY_MATRIX = network_info['adjacency_matrix']
   DISTANCE_MATRIX  = network_info['distance_matrix']
   SUSCEPTIBILITY  = network_info['pop_array']
@@ -55,7 +57,7 @@ class Ebola(SpatialDisease):
     :param l_prime: index of transmitted-to location
     """
     if self.current_infected[l]:
-      return Ebola.TRANSMISSION_PROBS[l, l_prime, a[l], a[l_prime]]
+      return Ebola.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
     else:
       return 0
     
@@ -87,5 +89,5 @@ class Ebola(SpatialDisease):
     new_data_block = self.featureFunction(new_data_block)
     return new_data_block
     
-    
+
 

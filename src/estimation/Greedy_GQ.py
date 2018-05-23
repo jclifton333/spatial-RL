@@ -7,8 +7,8 @@ Created on Sat May  5 21:53:17 2018
 """
 
 import numpy as np
-from Q_functions import Q_max_all_states
-from Fitted_Q import rollout_Q_features
+from .Q_functions import Q_max_all_states
+from .Fitted_Q import rollout_Q_features
 import pdb
 
 '''

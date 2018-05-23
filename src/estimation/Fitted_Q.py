@@ -5,7 +5,7 @@ Created on Thu May 17 00:08:33 2018
 @author: Jesse
 """
 import numpy as np
-from Q_functions import Q_max_all_states
+from .Q_functions import Q_max_all_states
 
 def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
   rollout_Q_features = np.array([q(data_block) for q in rollout_Q_function_list]).T

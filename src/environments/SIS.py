@@ -5,7 +5,7 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
-from SpatialDisease import SpatialDisease
+from .SpatialDisease import SpatialDisease
 import pdb
 
 class SIS(SpatialDisease):
