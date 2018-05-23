@@ -64,8 +64,9 @@ class Ebola(SpatialDisease):
   def infectionProb(self, a, l):
     not_infected_prob = np.product([1-self.transmissionProb(a, l_prime, l) for l_prime in self.adjacency_list[l]])
     return 1 - not_infected_prob  
-  
+
   def updateObsHistory(self, a):
+    super.updateObsHistory()
     raw_data_block = np.column_stack((Ebola.SUSCEPTIBILITY, a, self.Y[-2,:]))
     data_block = self.featureFunction(raw_data_block)
     self.X_raw.append(raw_data_block)

@@ -94,6 +94,6 @@ if __name__ == '__main__':
 
   for k in range(5, 6):
     t0 = time.time()
-    _, _, scores, _ = main(k, 100, 25, 5, 'Ebola', method='QL', rollout_feature_times=[0, 3, 5])
+    _, _, scores, _ = main(k, 100, 25, 5, 'SIS', method='QL', rollout_feature_times=[0, 3, 5])
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(100), t1 - t0))
