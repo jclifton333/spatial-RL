@@ -9,8 +9,11 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 from math import radians, cos, sin, asin, sqrt
+import sys
+import os
 
-
+this_fpath = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(this_fpath)
 
 L = 290 #290 locations in Ebola sim
 
@@ -64,7 +67,7 @@ def main():
 
   #Save data
   ebola_network_data = {'adjacency_matrix':adjacency_matrix, 'distance_matrix':distance_matrix, 'pop_array':pop_array}
-  pkl.dump(ebola_network_data, open('ebola_network_data.p', 'wb'))
+  pkl.dump(ebola_network_data, open('ebola_network_data.p', 'wb'), protocol=2)  #Need protocol < 3 for P2.7 compatibility
 
   return
  

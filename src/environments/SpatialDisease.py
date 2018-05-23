@@ -4,10 +4,13 @@ Created on Thu May 17 20:58:36 2018
 
 @author: Jesse
 """
-from abc import abstractmethod 
+from abc import ABCMeta, abstractmethod
 import numpy as np
 
-class SpatialDisease(object):
+#Create ABC base class compatible with Python 2.7 and 3.x
+ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
+
+class SpatialDisease(ABC):
   INITIAL_INFECT_PROB = 0.2
   
   def __init__(self, adjacency_matrix, featureFunction):
@@ -40,9 +43,6 @@ class SpatialDisease(object):
     
   @abstractmethod
   def reset(self):
-    pass
-
-  def _reset_super(self):
     '''
     Reset state and observation histories.
     '''

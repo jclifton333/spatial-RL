@@ -10,6 +10,7 @@ from scipy.special import expit
 from .SpatialDisease import SpatialDisease
 import pickle as pkl
 import os
+import pdb
 
 class Ebola(SpatialDisease):
   #Load network information
@@ -48,7 +49,7 @@ class Ebola(SpatialDisease):
     SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, featureFunction)
     
   def reset(self):
-    self._reset_super()
+    super.reset()
       
   def transmissionProb(self, a, l, l_prime):
     """
@@ -71,9 +72,10 @@ class Ebola(SpatialDisease):
     data_block = self.featureFunction(raw_data_block)
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
-    self.y.append(self.current_infected)    
+    self.y.append(self.current_infected)
     
   def next_infections(self, a):
+    super.next_infections(a)
     next_infected_probabilities = np.array([self.infectionProb(a, l) for l in range(self.L)])
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)    
     self.Y = np.vstack((self.Y, next_infections))
@@ -85,6 +87,7 @@ class Ebola(SpatialDisease):
     """
     Replace action in raw data_block with given action.
     """
+    super.data_block_at_action(data_block, action)
     assert data_block.shape[1] == 3
     new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
     new_data_block = self.featureFunction(new_data_block)
