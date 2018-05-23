@@ -81,3 +81,7 @@ class SpatialDisease(object):
     self.next_infections(a) 
     self.updateObsHistory(a)
     self.T += 1
+
+  @abstractmethod
+  def get_data_block_at_action(self, data_block, action):
+    pass

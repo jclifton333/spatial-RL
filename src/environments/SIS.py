@@ -1,7 +1,7 @@
-'''
+"""
 Implementing susceptible-infected-susceptible (SIS) models described in 
 spatial QL paper.
-'''
+"""
 
 import numpy as np
 from scipy.special import expit
@@ -15,11 +15,11 @@ class SIS(SpatialDisease):
   INITIAL_INFECT_PROB = 0.3
   
   def __init__(self, L, omega, sigma, featureFunction, generateNetwork):
-    '''
+    """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param sigma: length-7 array of transition probability model parameters
     :param generateNetwork: function that accepts network size L and returns adjacency matrix
-    '''
+    """
     adjacency_matrix = generateNetwork(L)
     
     SpatialDisease.__init__(self, adjacency_matrix, featureFunction)
@@ -32,31 +32,31 @@ class SIS(SpatialDisease):
     self.current_state = self.S[-1,:]
     
   def reset(self):
-    '''
+    """
     Reset state and observation histories.
-    '''
+    """
     self._reset_super()    
     self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.L), cov=self.state_covariance)])
     self.current_state = self.S[-1,:]
 
     
   def next_state(self): 
-    '''
+    """
     Update state array acc to AR(1) 
     :return next_state: self.L-length array of new states 
-    '''
+    """
     next_state = np.random.multivariate_normal(mean=self.BETA_0*self.current_state, cov=self.state_covariance)
     self.S = np.vstack((self.S, next_state))
     self.current_state = next_state 
     return next_state  
     
   def next_infections(self, a): 
-    '''
+    """
     Updates the vector indicating infections (self.current_infected).
     Computes probability of infection at each state, then generates corresponding 
     Bernoullis.    
     :param a: self.L-length binary array of actions at each state     
-    '''
+    """
     z = np.random.binomial(1, self.omega) 
     indicator = (z*self.current_state <= 0) 
     a_times_indicator = np.multiply(a, indicator)
@@ -109,10 +109,10 @@ class SIS(SpatialDisease):
   ################################################
     
   def neighborFeatures(self, data_block):
-    '''
+    """
     For each location in data_block, compute neighbor feature vector
       [sum of positive(s), sum of s*a, sum of a, sum of y, sum of a * y]
-    '''
+    """
     neighborFeatures = np.zeros((0, 5))
     for l in range(self.L):
       S_neighbor, A_neighbor, Y_neighbor = data_block[self.adjacency_list[l],:].T
@@ -122,9 +122,9 @@ class SIS(SpatialDisease):
     return neighborFeatures    
   
   def data_block_at_action(self, data_block, action):
-    '''
+    """
     Replace action in raw data_block with given action.
-    '''
+    """
     assert data_block.shape[1] == 3  
     new_data_block = np.column_stack((data_block[:,0], action, data_block[:,2]))
     features = self.neighborFeatures(new_data_block)
@@ -132,17 +132,22 @@ class SIS(SpatialDisease):
     return new_data_block
         
   def updateObsHistory(self, a):
-    '''
+    """
     :param a: self.L-length array of binary actions at each state
-    '''
+    """
     raw_data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
     neighborFeatures = self.neighborFeatures(raw_data_block)
     data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
-    self.y.append(self.current_infected)    
-  
-  
-    
-    
-    
+    self.y.append(self.current_infected)
+
+  def data_block_at_action(self, data_block, action):
+    """
+    Replace action in raw data_block with given action.
+    """
+    assert data_block.shape[1] == 3
+    new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
+    features = self.neighborFeatures(new_data_block)
+    new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
+    return new_data_block

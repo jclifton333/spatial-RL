@@ -49,18 +49,18 @@ class Ebola(SpatialDisease):
     self._reset_super()
       
   def transmissionProb(self, a, l, l_prime):
-    '''
+    """
     :param a: L-length binary array of treatment decisions
     :param l: index of transmitting location
     :param l_prime: index of transmitted-to location
-    '''
-    if self.currentInfected[l]:
+    """
+    if self.current_infected[l]:
       return Ebola.TRANSMISSION_PROBS[l, l_prime, a[l], a[l_prime]]
     else:
       return 0
     
   def infectionProb(self, a, l):
-    not_infected_prob = np.product([1-self.transmissionProb(a, l_prime, l) for l_prime in Ebola.ADJACENCY_LIST[l]])
+    not_infected_prob = np.product([1-self.transmissionProb(a, l_prime, l) for l_prime in self.adjacency_list[l]])
     return 1 - not_infected_prob  
   
   def updateObsHistory(self, a):
@@ -78,8 +78,14 @@ class Ebola(SpatialDisease):
     self.true_infection_probs = np.vstack((self.true_infection_probs, next_infected_probabilities))
     self.current_infected = next_infections
 
+  def data_block_at_action(self, data_block, action):
+    """
+    Replace action in raw data_block with given action.
+    """
+    assert data_block.shape[1] == 3
+    new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
+    new_data_block = self.featureFunction(new_data_block)
+    return new_data_block
     
     
-    
-  
-  
+
