@@ -24,26 +24,27 @@ class Ebola(SpatialDisease):
   L = len(SUSCEPTIBILITY)
 
   # Placeholder params until actual model is implemented
-  ETA_0 = 1
-  ETA_1 = 1
-  ETA_2 = 1
-  ETA_3 = 1
-  ETA_4 = 1
+  ETA_0 = -1.0347e+01
+  ETA_1 = 4.5867e-02
+  ETA_2 = -1.4912e-06
+  ETA_3 = -1.3513e+00
+  ETA_4 = -.13513e+00
   
   # Compute transmission probs
   TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
   for l in range(L):
     s_l = SUSCEPTIBILITY[l]
     for l_prime in range(L):
-      d_l_lprime = DISTANCE_MATRIX[l, l_prime]
-      s_l_prime = SUSCEPTIBILITY[l_prime]
-      baseline_logit = ETA_0 - np.exp(ETA_1) * \
-                       (d_l_lprime) / ((s_l * s_l_prime))**ETA_2
-      TRANSMISSION_PROBS[l, l_prime, 0, 0] = expit(baseline_logit)
-      TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
-      TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
-      TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)  
-      
+      if ADJACENCY_MATRIX[l, l_prime] == 1:
+        d_l_lprime = DISTANCE_MATRIX[l, l_prime]
+        s_l_prime = SUSCEPTIBILITY[l_prime]
+        baseline_logit = ETA_0 - np.exp(ETA_1) * \
+                         (d_l_lprime) / ((s_l * s_l_prime))**ETA_2
+        TRANSMISSION_PROBS[l, l_prime, 0, 0] = expit(baseline_logit)
+        TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
+        TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
+        TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)
+
   INITIAL_INFECT_PROB = np.ones(L) / L
   
   def __init__(self, featureFunction):

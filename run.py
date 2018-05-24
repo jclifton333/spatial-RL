@@ -66,6 +66,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
     a = np.random.permutation(a_dummy)
     g.step(a)
     a = np.random.permutation(a_dummy)
+    pdb.set_trace()
     for i in range(T):
       # print('i: {}'.format(i))
       g.step(a)
@@ -77,6 +78,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
                                                                                         treatment_budget, AR,
                                                                                         rollout_feature_times)
         if method == 'QL':
+          pdb.set_trace()
           thetaOpt = GGQ(rollout_feature_list, rollout_Q_function_list, gamma,
                          g, evaluation_budget, treatment_budget, True)
           Q = lambda a: np.dot(
