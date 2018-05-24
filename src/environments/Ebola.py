@@ -12,8 +12,9 @@ import pickle as pkl
 import os
 import pdb
 
+
 class Ebola(SpatialDisease):
-  #Load network information
+  # Load network information
   this_file_pathname = os.path.dirname(os.path.abspath(__file__))
   ebola_network_data_fpath = os.path.join(this_file_pathname, 'ebola-network-data', 'ebola_network_data.p')
   network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
@@ -22,14 +23,14 @@ class Ebola(SpatialDisease):
   SUSCEPTIBILITY  = network_info['pop_array']
   L = len(SUSCEPTIBILITY)
 
-  #Placeholder params until actual model is implemented  
+  # Placeholder params until actual model is implemented
   ETA_0 = 1
   ETA_1 = 1
   ETA_2 = 1
   ETA_3 = 1
   ETA_4 = 1
   
-  #Compute transmission probs  
+  # Compute transmission probs
   TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
   for l in range(L):
     s_l = SUSCEPTIBILITY[l]
@@ -49,7 +50,7 @@ class Ebola(SpatialDisease):
     SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, featureFunction)
     
   def reset(self):
-    super.reset()
+    super(Ebola, self).reset()
       
   def transmissionProb(self, a, l, l_prime):
     """
@@ -67,15 +68,18 @@ class Ebola(SpatialDisease):
     return 1 - not_infected_prob  
 
   def updateObsHistory(self, a):
-    super.updateObsHistory()
+    super(Ebola, self).updateObsHistory(a)
     raw_data_block = np.column_stack((Ebola.SUSCEPTIBILITY, a, self.Y[-2,:]))
     data_block = self.featureFunction(raw_data_block)
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)
-    
+
+  def next_state(self):
+    super(Ebola, self).next_state()
+
   def next_infections(self, a):
-    super.next_infections(a)
+    super(Ebola, self).next_infections(a)
     next_infected_probabilities = np.array([self.infectionProb(a, l) for l in range(self.L)])
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)    
     self.Y = np.vstack((self.Y, next_infections))
@@ -87,7 +91,7 @@ class Ebola(SpatialDisease):
     """
     Replace action in raw data_block with given action.
     """
-    super.data_block_at_action(data_block, action)
+    super(Ebola, self).data_block_at_action(data_block, action)
     assert data_block.shape[1] == 3
     new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
     new_data_block = self.featureFunction(new_data_block)
