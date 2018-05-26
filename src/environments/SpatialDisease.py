@@ -14,14 +14,15 @@ ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
 class SpatialDisease(ABC):
   INITIAL_INFECT_PROB = 0.2
   
-  def __init__(self, adjacency_matrix, featureFunction):
+  def __init__(self, adjacency_matrix, featureFunction, initialInfections=None):
     """
     :param adjacency_matrix: 2d binary array corresponding to network for gen model 
     :param featureFunction:
+    :param initialInfections: L-length binary array of initial infections, or None
     """
     
     self.featureFunction = featureFunction
-    
+    self.initialInfections = initialInfections
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
     
@@ -30,7 +31,10 @@ class SpatialDisease(ABC):
     self.adjacency_list = [[l_prime for l_prime in range(self.L) if self.adjacency_matrix[l, l_prime] == 1] for l in range(self.L)]
     
     # Observation history
-    self.Y = np.array([np.random.binomial(n=1, p=SpatialDisease.INITIAL_INFECT_PROB, size=self.L)])
+    if self.initialInfections is None:
+      self.Y = np.array([np.random.binomial(n=1, p=SpatialDisease.INITIAL_INFECT_PROB, size=self.L)])
+    else:
+      self.Y = np.array([self.initialInfections])
     self.A = np.zeros((0, self.L))
     self.R = np.array([np.sum(self.Y[-1,:])])
     self.X_raw = [] # Will hold blocks [S_t, A_t, Y_t] at each time t
@@ -47,7 +51,10 @@ class SpatialDisease(ABC):
     Reset state and observation histories.
     """
     # Observation history
-    self.Y = np.array([np.random.binomial(n=1, p=SpatialDisease.INITIAL_INFECT_PROB, size=self.L)])
+    if self.initialInfections is None:
+      self.Y = np.array([np.random.binomial(n=1, p=SpatialDisease.INITIAL_INFECT_PROB, size=self.L)])
+    else:
+      self.Y = np.array([self.initialInfections])
     self.A = np.zeros((0, self.L))
     self.R = np.array([np.sum(self.Y[-1,:])])
     self.X_raw = []

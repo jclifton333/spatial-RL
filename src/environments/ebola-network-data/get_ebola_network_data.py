@@ -11,6 +11,7 @@ import pickle as pkl
 from math import radians, cos, sin, asin, sqrt
 import sys
 import os
+import pdb
 
 this_fpath = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(this_fpath)
@@ -41,8 +42,11 @@ def main():
     adjacency_matrix[edge_0, edge_1] = 1
 
   ##Create distance matrix
-  distance_matrix = np.empty((L, L))
-  distance_matrix[:] = np.nan
+  haversine_distance_matrix = np.empty((L, L))
+  haversine_distance_matrix[:] = np.nan
+
+  euclidean_distance_matrix = np.empty((L, L))
+  euclidean_distance_matrix[:] = np.nan
 
   def str_to_float(coords_text_file):
     f = open(coords_text_file, 'r')
@@ -59,14 +63,18 @@ def main():
       if i != j and adjacency_matrix[i, j] == 1:
         lon1, lat1 = x_coords[i], y_coords[i]
         lon2, lat2 = x_coords[j], y_coords[j]
-        distance_matrix[i, j] = haversine(lon1, lat1, lon2, lat2)
-  
+        haversine_distance_matrix[i, j] = haversine(lon1, lat1, lon2, lat2)
+        euclidean_distance_matrix[i, j] = np.linalg.norm(np.array([lon1 - lon2, lat1 - lat2]))
   ##Get populations
   pop_list = str_to_float('ebola_population.txt')
   pop_array = np.array(pop_list)
 
-  #Save data
-  ebola_network_data = {'adjacency_matrix':adjacency_matrix, 'distance_matrix':distance_matrix, 'pop_array':pop_array}
+  outbreak_time_list = str_to_float('ebola_outbreaks.txt')
+  outbreak_time_array = np.array(outbreak_time_list).astype(int)  
+
+  ebola_network_data = {'adjacency_matrix':adjacency_matrix, 'haversine_distance_matrix':haversine_distance_matrix, 
+                        'euclidean_distance_matrix':euclidean_distance_matrix, 'pop_array':pop_array,
+                        'outbreak_time_array':outbreak_time_array}
   pkl.dump(ebola_network_data, open('ebola_network_data.p', 'wb'), protocol=2)  #Need protocol < 3 for P2.7 compatibility
 
   return

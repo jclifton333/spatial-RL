@@ -66,7 +66,6 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
     a = np.random.permutation(a_dummy)
     g.step(a)
     a = np.random.permutation(a_dummy)
-    pdb.set_trace()
     for i in range(T):
       # print('i: {}'.format(i))
       g.step(a)
