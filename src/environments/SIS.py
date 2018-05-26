@@ -14,7 +14,22 @@ class SIS(SpatialDisease):
   BETA_0 = 0.9
   BETA_1 = 1.0
   INITIAL_INFECT_PROB = 0.3
-  
+
+  PROB_INF_LATENT = 0.01
+  PROB_INF = 0.5
+  PROB_NUM_NEIGH = 3
+  PROB_REC =0.25
+
+  ETA_0 = np.log(1 / (1 - PROB_INF_LATENT) - 1)
+  ETA_2 = np.log(((1 - PROB_INF) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
+          - 1)
+  ETA_3 = np.log(((1 - PROB_INF * 0.25) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
+          - 1)
+  ETA_4 = np.log(((1 - PROB_INF * 0.75) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
+          - 1)
+  ETA_5 = np.log(1 / (1 - PROB_REC) - 1)
+  ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
+
   def __init__(self, L, omega, sigma, feature_function, generate_network):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
