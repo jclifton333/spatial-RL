@@ -39,13 +39,12 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   """
   # Initialize generative model
   omega = 0
-  sigma = np.array([-1, -10, -1, -10, -10, 0, 0])
   gamma = 0.9
   featureFunction = polynomialFeatures(3, interaction_only=True)
   # featureFunction = lambda d: d
 
   if envName == 'SIS':
-    g = SIS(L, omega, sigma, featureFunction, lattice)
+    g = SIS(L, omega, featureFunction, lattice)
   elif envName == 'Ebola':
     g = Ebola(featureFunction)
   else:
@@ -77,7 +76,6 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
                                                                                         treatment_budget, AR,
                                                                                         rollout_feature_times)
         if method == 'QL':
-          pdb.set_trace()
           thetaOpt = GGQ(rollout_feature_list, rollout_Q_function_list, gamma,
                          g, evaluation_budget, treatment_budget, True)
           Q = lambda a: np.dot(
@@ -95,6 +93,6 @@ if __name__ == '__main__':
 
   for k in range(5, 6):
     t0 = time.time()
-    _, _, scores, _ = main(k, 100, 25, 5, 'Ebola', method='QL', rollout_feature_times=[0, 3, 5])
+    _, _, scores, _ = main(k, 100, 25, 5, 'SIS', method='QL', rollout_feature_times=[0, 3, 5])
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(100), t1 - t0))

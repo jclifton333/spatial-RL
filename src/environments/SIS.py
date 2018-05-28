@@ -15,6 +15,19 @@ class SIS(SpatialDisease):
   BETA_1 = 1.0
   INITIAL_INFECT_PROB = 0.3
 
+  """
+  Parameters for infection probabilities.  See
+    bin/run_infShieldState.cpp
+    main/infShieldStatePosImNoSoModel.cpp
+  
+  Correspondence between draft and stmMF_cpp parameter names
+    intcp_inf_latent_ : ETA_0
+    trt_pre_inf_      : ETA_1, ETA_3
+    intcp_inf_        : ETA_2
+    trt_act_inf_      : ETA_4
+    intcp_rec_        : ETA_5
+    trt_act_rec_      : ETA_6
+  """
   PROB_INF_LATENT = 0.01
   PROB_INF = 0.5
   PROB_NUM_NEIGH = 3
@@ -23,24 +36,23 @@ class SIS(SpatialDisease):
   ETA_0 = np.log(1 / (1 - PROB_INF_LATENT) - 1)
   ETA_2 = np.log(((1 - PROB_INF) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
           - 1)
-  ETA_3 = np.log(((1 - PROB_INF * 0.25) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
+  ETA_4 = np.log(((1 - PROB_INF * 0.25) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
           - 1)
-  ETA_4 = np.log(((1 - PROB_INF * 0.75) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
+  ETA_3 = np.log(((1 - PROB_INF * 0.75) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
           - 1)
   ETA_5 = np.log(1 / (1 - PROB_REC) - 1)
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
+  SIGMA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
-  def __init__(self, L, omega, sigma, feature_function, generate_network):
+  def __init__(self, L, omega, feature_function, generate_network):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
-    :param sigma: length-7 array of transition probability model parameters
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
     adjacency_matrix = generate_network(L)
     
     SpatialDisease.__init__(self, adjacency_matrix, feature_function)
-    
-    self.SIGMA = sigma
+
     self.omega = omega
     self.state_covariance = self.BETA_1**2 * np.eye(self.L)
     
