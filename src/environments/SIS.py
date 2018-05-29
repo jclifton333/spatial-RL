@@ -13,7 +13,7 @@ class SIS(SpatialDisease):
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
-  INITIAL_INFECT_PROB = 0.3
+  INITIAL_INFECT_PROB = 0.1
 
   """
   Parameters for infection probabilities.  See
@@ -42,21 +42,20 @@ class SIS(SpatialDisease):
           - 1)
   ETA_5 = np.log(1 / (1 - PROB_REC) - 1)
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
-  SIGMA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
-
+  ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
+  # pdb.set_trace()
   def __init__(self, L, omega, feature_function, generate_network):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
     adjacency_matrix = generate_network(L)
-    
-    SpatialDisease.__init__(self, adjacency_matrix, feature_function)
 
+    SpatialDisease.__init__(self, adjacency_matrix, feature_function)
     self.omega = omega
     self.state_covariance = self.BETA_1**2 * np.eye(self.L)
     
-    self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.L), cov=self.state_covariance)])
+    self.S = np.zeros((1, self.L))
     self.current_state = self.S[-1,:]
     
   def reset(self):
@@ -65,7 +64,7 @@ class SIS(SpatialDisease):
     """
     # super.reset()
     super(SIS, self).reset()
-    self.S = np.array([np.random.multivariate_normal(mean=np.zeros(self.L), cov=self.state_covariance)])
+    self.S = np.zeros((1, self.L))
     self.current_state = self.S[-1,:]
 
     
@@ -109,21 +108,23 @@ class SIS(SpatialDisease):
   ##############################################################
   
   def p_l0(self, a_times_indicator):
-    logit_p_0 = self.SIGMA[0] + self.SIGMA[1] * a_times_indicator
+    logit_p_0 = self.ETA[0] + self.ETA[1] * a_times_indicator
     p_0 = expit(logit_p_0)
     return p_0 
     
   def q_l(self, a_times_indicator):
-    logit_q = self.SIGMA[5] + self.SIGMA[6] * a_times_indicator 
+    logit_q = self.ETA[5] + self.ETA[6] * a_times_indicator
     q = expit(logit_q)
     return q 
     
   def one_minus_p_llprime(self, a_times_indicator, indices): 
     product_vector = np.array([])
-    for l in indices[0].tolist(): 
-      a_times_indicator_lprime = a_times_indicator[self.adjacency_list[l]]
-      logit_p_l = self.SIGMA[2] + self.SIGMA[3]*a_times_indicator[l] + \
-                  self.SIGMA[4]*a_times_indicator_lprime 
+    for l in indices[0].tolist():
+      # Get infected neighbors
+      infected_neighbor_indices = np.intersect1d(self.adjacency_list[l], indices)
+      a_times_indicator_lprime = a_times_indicator[infected_neighbor_indices]
+      logit_p_l = self.ETA[2] + self.ETA[3]*a_times_indicator[l] + \
+                  self.ETA[4]*a_times_indicator_lprime
       p_l = expit(logit_p_l)
       product_l = np.product(1 - p_l)
       product_vector = np.append(product_vector, product_l) 

@@ -12,7 +12,7 @@ ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
 
 
 class SpatialDisease(ABC):
-  INITIAL_INFECT_PROB = 0.2
+  INITIAL_INFECT_PROP = 0.1
   
   def __init__(self, adjacency_matrix, featureFunction, initialInfections=None):
     """
@@ -32,7 +32,10 @@ class SpatialDisease(ABC):
     
     # Observation history
     if self.initialInfections is None:
-      self.Y = np.array([np.random.binomial(n=1, p=SpatialDisease.INITIAL_INFECT_PROB, size=self.L)])
+      number_initial_infections = int(self.INITIAL_INFECT_PROP * self.L)
+      initial_infect_indices = np.random.choice(self.L, number_initial_infections, replace=False)
+      self.Y = np.zeros((1, self.L))
+      self.Y[0,initial_infect_indices] = 1
     else:
       self.Y = np.array([self.initialInfections])
     self.A = np.zeros((0, self.L))
@@ -52,7 +55,10 @@ class SpatialDisease(ABC):
     """
     # Observation history
     if self.initialInfections is None:
-      self.Y = np.array([np.random.binomial(n=1, p=SpatialDisease.INITIAL_INFECT_PROB, size=self.L)])
+      number_initial_infections = int(self.INITIAL_INFECT_PROP * self.L)
+      initial_infect_indices = np.random.choice(self.L, number_initial_infections, replace=False)
+      self.Y = np.zeros((1, self.L))
+      self.Y[0,initial_infect_indices] = 1
     else:
       self.Y = np.array([self.initialInfections])
     self.A = np.zeros((0, self.L))

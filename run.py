@@ -35,7 +35,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   :param envName: 'SIS' or 'Ebola'
   :param T: duration of simulation rep
   :param nRep: number of replicates
-  :param method: string in ['QL', 'rollout', 'random']
+  :param method: string in ['QL', 'rollout', 'random', 'none']
   """
   # Initialize generative model
   omega = 0
@@ -71,6 +71,9 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
       if method == 'random':
         a = np.random.permutation(a_dummy)
         target = None
+      elif method == 'none':
+        a = np.zeros(g.L)
+        target = None
       else:
         argmax_actions, rollout_feature_list, rollout_Q_function_list, target = rollout(K, gamma, g, evaluation_budget,
                                                                                         treatment_budget, AR,
@@ -91,8 +94,8 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
 if __name__ == '__main__':
   import time
 
-  for k in range(5, 6):
+  for k in range(1, 2):
     t0 = time.time()
-    _, _, scores, _ = main(k, 100, 25, 5, 'SIS', method='QL', rollout_feature_times=[0, 3, 5])
+    _, _, scores, _ = main(k, 100, 25, 5, 'SIS', method='rollout', rollout_feature_times=[0, 1])
     t1 = time.time()
-    print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(100), t1 - t0))
+    print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(50), t1 - t0))
