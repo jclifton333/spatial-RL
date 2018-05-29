@@ -6,23 +6,44 @@ Functions for generating adjacency matrices for networks to be used in SpatialDi
 sims.
 '''
 
+
+def pseudo_square_root(integer):
+  """
+  Stupid search for pseudo square root (largest factor that doesn't exceed sqrt(integer).)
+  """
+  assert(integer < 1e6, "Number too big, choose something less than 1e6.")
+  sqrt = np.sqrt(integer)
+  psr = 1
+  psr_complement = integer
+  i = 2
+  while i < sqrt:
+    if integer % i == 0:
+      psr = i
+      psr_complement = integer / i
+    i += 1
+  return psr, psr_complement
+
+
 def lattice(size):
-  '''
+  """
   Return adjacency matrix for sqrt(size) x sqrt(size) lattice.
-  '''
-  dim = int(np.floor(np.sqrt(size)))
+  :param size:
+  :return:
+  """
+  nrow, ncol = pseudo_square_root(size)
   adjacency_matrix = np.zeros((size, size))
   for i in range(size): 
     for j in range(size): 
-      if (j == i + 1) and ((i + 1) % dim != 0): 
+      if (j == i + 1) and ((i + 1) % ncol != 0):
         adjacency_matrix[i, j] = 1 
-      elif (j == i - 1) and (i % dim != 0):
+      elif (j == i - 1) and (i % ncol != 0):
         adjacency_matrix[i, j] = 1 
-      elif (j == i + dim) and (i + 1 + dim <= size):
+      elif (j == i + ncol) and (i + 1 + nrow <= size):
         adjacency_matrix[i, j] = 1 
-      elif (j == i - dim) and (i + 1 - dim > 0):
+      elif (j == i - ncol) and (i + 1 - nrow > 0):
         adjacency_matrix[i, j] = 1
   return adjacency_matrix 
+
 
 def Barabasi_Albert(size):
   """

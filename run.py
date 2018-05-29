@@ -38,7 +38,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   :param method: string in ['QL', 'rollout', 'random', 'none']
   """
   # Initialize generative model
-  omega = 0
+  omega = 1
   gamma = 0.9
   featureFunction = polynomialFeatures(3, interaction_only=True)
   # featureFunction = lambda d: d
@@ -49,7 +49,6 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
     g = Ebola(featureFunction)
   else:
     raise ValueError("Env name not in ['SIS', 'Ebola']")
-  pdb.set_trace()
   # Evaluation limit parameters
   treatment_budget = 5
   evaluation_budget = 5
@@ -65,7 +64,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
     a = np.random.permutation(a_dummy)
     g.step(a)
     a = np.random.permutation(a_dummy)
-    for i in range(T):
+    for i in range(T-2):
       # print('i: {}'.format(i))
       g.step(a)
       if method == 'random':
@@ -87,15 +86,15 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
           _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, g.L)
         elif method == 'rollout':
           a = argmax_actions[-1]
-    means.append(np.mean(g.Y))
+    means.append(np.mean(g.Y[-1,:]))
   return g, AR, means, target
 
 
 if __name__ == '__main__':
   import time
-
+  n_rep = 10
   for k in range(1, 2):
     t0 = time.time()
-    _, _, scores, _ = main(k, 100, 25, 5, 'SIS', method='none', rollout_feature_times=[0, 1])
+    _, _, scores, _ = main(k, 1000, 25, n_rep, 'Ebola', method='none', rollout_feature_times=[0, 1])
     t1 = time.time()
-    print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(50), t1 - t0))
+    print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

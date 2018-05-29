@@ -96,6 +96,7 @@ class SIS(SpatialDisease):
     not_infected_indices = np.where(self.current_infected == 0)
 
     next_infected_probabilities = np.zeros(self.L)
+    # pdb.set_trace()
     next_infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices)
     next_infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices]) 
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
