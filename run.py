@@ -49,7 +49,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
     g = Ebola(featureFunction)
   else:
     raise ValueError("Env name not in ['SIS', 'Ebola']")
-
+  pdb.set_trace()
   # Evaluation limit parameters
   treatment_budget = 5
   evaluation_budget = 5
@@ -96,6 +96,6 @@ if __name__ == '__main__':
 
   for k in range(1, 2):
     t0 = time.time()
-    _, _, scores, _ = main(k, 100, 25, 5, 'SIS', method='rollout', rollout_feature_times=[0, 1])
+    _, _, scores, _ = main(k, 100, 25, 5, 'SIS', method='none', rollout_feature_times=[0, 1])
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(50), t1 - t0))

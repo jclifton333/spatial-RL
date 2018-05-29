@@ -31,7 +31,7 @@ class SIS(SpatialDisease):
   PROB_INF_LATENT = 0.01
   PROB_INF = 0.5
   PROB_NUM_NEIGH = 3
-  PROB_REC =0.25
+  PROB_REC = 0.25
 
   ETA_0 = np.log(1 / (1 - PROB_INF_LATENT) - 1)
   ETA_2 = np.log(((1 - PROB_INF) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
@@ -44,6 +44,7 @@ class SIS(SpatialDisease):
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
   # pdb.set_trace()
+
   def __init__(self, L, omega, feature_function, generate_network):
     """
     :param omega: parameter in [0,1] for mixing two SIS models

@@ -25,25 +25,25 @@ def lattice(size):
   return adjacency_matrix 
 
 def Barabasi_Albert(size):
-  '''
+  """
   Random preferential attachment model
   See https://en.wikipedia.org/wiki/Barab%C3%A1si%E2%80%93Albert_model#Algorithm
-  '''
-  PROP_INIT = 0.2 #Initial graph size will be PROP_INIT * size
-  P = 0.5 #Probability of uniform random connection (otherwise, preferentially attach)
+  """
+  PROP_INIT = 0.2 # Initial graph size will be PROP_INIT * size
+  P = 0.5 # Probability of uniform random connection (otherwise, preferentially attach)
   
-  #Initialize graph
+  # Initialize graph
   initial_graph_size = int(np.floor(PROP_INIT * size))
   assert initial_graph_size > 0
   
-  #Start with fully connected adjacency matrix  
+  # Start with fully connected adjacency matrix
   adjacency_matrix = np.zeros((size, size))
   for l in range(initial_graph_size):
     for l_prime in range(initial_graph_size):
       adjacency_matrix[l, l_prime] = 1
       
   for l in range(initial_graph_size, size):
-    #Randomly attach
+    # Randomly attach
     if np.random.random() < P:
       l_prime = np.random.choice(l)
     else:
