@@ -18,12 +18,13 @@ class Ebola(SpatialDisease):
   this_file_pathname = os.path.dirname(os.path.abspath(__file__))
   ebola_network_data_fpath = os.path.join(this_file_pathname, 'ebola-network-data', 'ebola_network_data.p')
   network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
-  ADJACENCY_MATRIX = network_info['adjacency_matrix']
+  # ADJACENCY_MATRIX = network_info['adjacency_matrix']
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
   DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
   SUSCEPTIBILITY  = network_info['pop_array']
   L = len(SUSCEPTIBILITY)
   OUTBREAK_TIMES = network_info['outbreak_time_array']
+  ADJACENCY_MATRIX = 1 - np.eye(L)
 
   # Get initial outbreaks
   OUTBREAK_TIMES[np.where(OUTBREAK_TIMES == 1)] = np.max(OUTBREAK_TIMES) + 1 # Make it easier to sort
@@ -32,12 +33,12 @@ class Ebola(SpatialDisease):
   INITIAL_INFECTIONS = np.zeros(L)
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
 
-  # Placeholder params until actual model is implemented
-  ETA_0 = -2.999
-  ETA_1 = 1.399
-  ETA_2 = np.exp(0.051)
-  ETA_3 = -1.015*2
-  ETA_4 = -1.015*2
+  # Params for logit of transmission probability
+  ETA_0 = -7.4429e+00
+  ETA_1 = -2.8362e-01
+  ETA_2 = np.exp(-1.4912e-06)
+  ETA_3 = -1.0153e+00
+  ETA_4 = -1.0153+00
 
   # Compute transmission probs
   TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
@@ -49,11 +50,12 @@ class Ebola(SpatialDisease):
         s_l_prime = SUSCEPTIBILITY[l_prime]
         log_population_product = np.log(s_l) + np.log(s_l_prime)
         baseline_logit = ETA_0 - np.exp(ETA_1) * \
-                         (d_l_lprime) / ((np.exp(log_population_product))**ETA_2)
+                         (d_l_lprime) / ((log_population_product)**ETA_2)
         TRANSMISSION_PROBS[l, l_prime, 0, 0] = expit(baseline_logit)
         TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
         TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
         TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)
+  #  pdb.set_trace()
 
   def __init__(self, featureFunction):
     SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, featureFunction, initialInfections=Ebola.INITIAL_INFECTIONS)
@@ -61,20 +63,22 @@ class Ebola(SpatialDisease):
   def reset(self):
     super(Ebola, self).reset()
 
-  def transmissionProb(self, a, l, l_prime):
+  def transmission_prob(self, a, l, l_prime):
     """
     :param a: L-length binary array of treatment decisions
     :param l: index of transmitting location
     :param l_prime: index of transmitted-to location
     """
     if self.current_infected[l]:
-      return Ebola.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
+      transmission_prob = Ebola.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
+      return transmission_prob
     else:
       return 0
 
-  def infectionProb(self, a, l):
-    not_infected_prob = np.product([1-self.transmissionProb(a, l_prime, l) for l_prime in self.adjacency_list[l]])
+  def infection_prob(self, a, l):
+    not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l) for l_prime in self.adjacency_list[l]])
     return 1 - not_infected_prob
+
 
   def updateObsHistory(self, a):
     super(Ebola, self).updateObsHistory(a)
@@ -89,7 +93,7 @@ class Ebola(SpatialDisease):
 
   def next_infections(self, a):
     super(Ebola, self).next_infections(a)
-    next_infected_probabilities = np.array([self.infectionProb(a, l) for l in range(self.L)])
+    next_infected_probabilities = np.array([self.infection_prob(a, l) for l in range(self.L)])
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.R = np.append(self.R, np.sum(next_infections))

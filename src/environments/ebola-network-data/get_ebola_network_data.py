@@ -42,11 +42,8 @@ def main():
     adjacency_matrix[edge_0, edge_1] = 1
 
   ##Create distance matrix
-  haversine_distance_matrix = np.empty((L, L))
-  haversine_distance_matrix[:] = np.nan
-
-  euclidean_distance_matrix = np.empty((L, L))
-  euclidean_distance_matrix[:] = np.nan
+  haversine_distance_matrix = np.zeros((L, L))
+  euclidean_distance_matrix = np.zeros((L, L))
 
   def str_to_float(coords_text_file):
     f = open(coords_text_file, 'r')
@@ -60,11 +57,10 @@ def main():
   #Get pairwise distances for every adjacent pair
   for i in range(L):
     for j in range(L):
-      if i != j and adjacency_matrix[i, j] == 1:
-        lon1, lat1 = x_coords[i], y_coords[i]
-        lon2, lat2 = x_coords[j], y_coords[j]
-        haversine_distance_matrix[i, j] = haversine(lon1, lat1, lon2, lat2)
-        euclidean_distance_matrix[i, j] = np.linalg.norm(np.array([lon1 - lon2, lat1 - lat2]))
+      lon1, lat1 = x_coords[i], y_coords[i]
+      lon2, lat2 = x_coords[j], y_coords[j]
+      haversine_distance_matrix[i, j] = haversine(lon1, lat1, lon2, lat2)
+      euclidean_distance_matrix[i, j] = np.linalg.norm(np.array([lon1 - lon2, lat1 - lat2]))
   ##Get populations
   pop_list = str_to_float('ebola_population.txt')
   pop_array = np.array(pop_list)
