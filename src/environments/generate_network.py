@@ -16,7 +16,7 @@ def pseudo_square_root(integer):
   psr = 1
   psr_complement = integer
   i = 2
-  while i < sqrt:
+  while i <= sqrt:
     if integer % i == 0:
       psr = i
       psr_complement = integer / i

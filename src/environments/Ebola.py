@@ -18,13 +18,12 @@ class Ebola(SpatialDisease):
   this_file_pathname = os.path.dirname(os.path.abspath(__file__))
   ebola_network_data_fpath = os.path.join(this_file_pathname, 'ebola-network-data', 'ebola_network_data.p')
   network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
-  # ADJACENCY_MATRIX = network_info['adjacency_matrix']
+  ADJACENCY_MATRIX = network_info['adjacency_matrix']
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
   DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
   SUSCEPTIBILITY  = network_info['pop_array']
   L = len(SUSCEPTIBILITY)
   OUTBREAK_TIMES = network_info['outbreak_time_array']
-  ADJACENCY_MATRIX = 1 - np.eye(L)
 
   # Get initial outbreaks
   OUTBREAK_TIMES[np.where(OUTBREAK_TIMES == 1)] = np.max(OUTBREAK_TIMES) + 1 # Make it easier to sort

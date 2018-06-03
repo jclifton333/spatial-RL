@@ -54,7 +54,7 @@ class SIS(SpatialDisease):
 
     SpatialDisease.__init__(self, adjacency_matrix, feature_function)
     self.omega = omega
-    self.state_covariance = self.BETA_1**2 * np.eye(self.L)
+    self.state_covariance = self.BETA_1 * np.eye(self.L)
     
     self.S = np.zeros((1, self.L))
     self.current_state = self.S[-1,:]
@@ -78,9 +78,23 @@ class SIS(SpatialDisease):
     next_state = np.random.multivariate_normal(mean=self.BETA_0*self.current_state, cov=self.state_covariance)
     self.S = np.vstack((self.S, next_state))
     self.current_state = next_state 
-    return next_state  
+    return next_state
 
-  def next_infections(self, a): 
+  def next_infected_probabilities(self, a):
+    z = np.random.binomial(1, self.omega)
+    indicator = (z*self.current_state <= 0)
+    a_times_indicator = np.multiply(a, indicator)
+
+    infected_indices = np.where(self.current_infected > 0)
+    not_infected_indices = np.where(self.current_infected == 0)
+
+    next_infected_probabilities = np.zeros(self.L)
+    next_infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices)
+    next_infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices])
+
+    return next_infected_probabilities
+
+  def next_infections(self, a):
     """
     Updates the vector indicating infections (self.current_infected).
     Computes probability of infection at each state, then generates corresponding 
@@ -88,21 +102,19 @@ class SIS(SpatialDisease):
     :param a: self.L-length binary array of actions at each state     
     """
     super(SIS, self).next_infections(a)
-    z = np.random.binomial(1, self.omega) 
-    indicator = (z*self.current_state <= 0) 
-    a_times_indicator = np.multiply(a, indicator)
-    
-    infected_indices = np.where(self.current_infected > 0)
-    not_infected_indices = np.where(self.current_infected == 0)
+    next_infected_probabilities = self.next_infected_probabilities(a)
 
-    next_infected_probabilities = np.zeros(self.L)
+    # For debugging, get infection probs in the case that all locations are treated
+    # all_treated_probs = np.zeros(self.L)
+    # all_treated_probs[not_infected_indices] = self.p_l(np.zeros(self.L), not_infected_indices)
+    # all_treated_probs[infected_indices] = 1 - self.q_l(np.zeros(self.L)[infected_indices])
+    # print(all_treated_probs - next_infected_probabilities)
     # pdb.set_trace()
-    next_infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices)
-    next_infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices]) 
+
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.R = np.append(self.R, np.sum(next_infections))
-    self.true_infection_probs = np.vstack((self.true_infection_probs, next_infected_probabilities))
+    self.true_infection_probs.append(next_infected_probabilities)
     self.current_infected = next_infections
   
   ##############################################################

@@ -43,7 +43,7 @@ class SpatialDisease(ABC):
     self.X_raw = [] # Will hold blocks [S_t, A_t, Y_t] at each time t
     self.X = []  # Will hold features of [S_t, A_t, Y_t] each each time t
     self.y = []  # Will hold blocks [Y_tp1] for each time t
-    self.true_infection_probs = np.zeros((0, self.L))
+    self.true_infection_probs = []
     
     # Current network status
     self.current_infected = self.Y[-1,:]
@@ -66,7 +66,7 @@ class SpatialDisease(ABC):
     self.X_raw = []
     self.X = [] # Will hold blocks [S_t, A_t, Y_t] each each time t
     self.y = [] # Will hold blocks [Y_tp1] for each time t
-    self.true_infection_probs = np.zeros((0, self.L))
+    self.true_infection_probs = []
     
     # Current network status
     self.current_infected = self.Y[-1,:]

@@ -28,6 +28,37 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, LogisticRegression
 
 
+# def divide_random_between_infection_status(treatment_budget, current_infected):
+#   """
+#   Return an action with _treatment_budget_ treatments divided evenly between
+#   infected and not-infected states.
+#
+#   :param treatment_budget:
+#   :param current_infected:
+#   :return:
+#   """
+#   infected_ixs = np.where(current_infected == 1)
+#   not_infected_ixs = np.where(current_infected == 0)
+#   # pdb.set_trace()
+#   try:
+#     if np.random.random() < 0.5:
+#       infected_treatment_budget = np.min([np.int(np.floor(treatment_budget / 2)),
+#                                          len(infected_ixs[0])])
+#     else:
+#       infected_treatment_budget = np.min([np.int(np.ceil(treatment_budget / 2)),
+#                                          len(not_infected_ixs[0])])
+#     not_infected_treatment_budget = np.min([treatment_budget - infected_treatment_budget,
+#                                            len(not_infected_ixs[0])])
+#   except:
+#     pdb.set_trace()
+#   infected_trts = np.random.choice(infected_ixs[0], infected_treatment_budget)
+#   not_infected_trts = np.random.choice(not_infected_ixs[0], not_infected_treatment_budget)
+#   a = np.zeros_like(current_infected)
+#   a[infected_trts] = 1
+#   a[not_infected_trts] = 1
+#   return a
+
+
 def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   """
   :param K: lookahead depth
@@ -38,8 +69,8 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   :param method: string in ['QL', 'rollout', 'random', 'none']
   """
   # Initialize generative model
-  omega = 1
-  gamma = 0.9
+  omega = 0
+  gamma = 0.7
   featureFunction = polynomialFeatures(3, interaction_only=True)
   # featureFunction = lambda d: d
 
@@ -50,8 +81,8 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   else:
     raise ValueError("Env name not in ['SIS', 'Ebola']")
   # Evaluation limit parameters
-  treatment_budget = 5
-  evaluation_budget = 5
+  treatment_budget = np.int(np.floor((3/16) * L))
+  evaluation_budget = 20
 
   # Initialize AR object
   AR = AutoRegressor(LogisticRegression, Ridge)
@@ -59,7 +90,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   means = []
   a_dummy = np.append(np.ones(treatment_budget), np.zeros(g.L - treatment_budget))
   for rep in range(nRep):
-    # print('Rep: {}'.format(rep))
+    print('Rep: {}'.format(rep))
     g.reset()
     a = np.random.permutation(a_dummy)
     g.step(a)
@@ -69,14 +100,19 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
       g.step(a)
       if method == 'random':
         a = np.random.permutation(a_dummy)
+        # a = divide_random_between_infection_status(treatment_budget, g.current_infected)
         target = None
       elif method == 'none':
         a = np.zeros(g.L)
         target = None
+      elif method == 'true-probs':
+        _, a, _ = Q_max(g.next_infected_probabilities, evaluation_budget, treatment_budget, g.L)
+        target = None
       else:
-        argmax_actions, rollout_feature_list, rollout_Q_function_list, target = rollout(K, gamma, g, evaluation_budget,
+        argmax_actions, rollout_feature_list, rollout_Q_function_list, target, r2 = rollout(K, gamma, g, evaluation_budget,
                                                                                         treatment_budget, AR,
                                                                                         rollout_feature_times)
+        print(r2)
         if method == 'QL':
           thetaOpt = GGQ(rollout_feature_list, rollout_Q_function_list, gamma,
                          g, evaluation_budget, treatment_budget, True)
@@ -86,15 +122,19 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
           _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, g.L)
         elif method == 'rollout':
           a = argmax_actions[-1]
-    means.append(np.mean(g.Y[-1,:]))
+          # Compare with true-probs action
+          _, a_true, _ = Q_max(g.next_infected_probabilities, evaluation_budget, treatment_budget, g.L)
+          print('a est score: {} a true score: {}'.format(np.mean(g.next_infected_probabilities(a)),
+                                                          np.mean(g.next_infected_probabilities(a_true))))
+    means.append(np.mean(g.Y))
   return g, AR, means, target
 
 
 if __name__ == '__main__':
   import time
-  n_rep = 10
-  for k in range(1, 2):
+  n_rep = 5
+  for k in range(0, 1):
     t0 = time.time()
-    _, _, scores, _ = main(k, 1000, 25, n_rep, 'Ebola', method='none', rollout_feature_times=[0, 1])
+    _, _, scores, _ = main(k, 16, 25, n_rep, 'SIS', method='rollout', rollout_feature_times=[0, 1])
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

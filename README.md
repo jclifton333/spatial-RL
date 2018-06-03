@@ -16,3 +16,6 @@ ToDo:
 - Figure out why Ebola tranmission probs are so low
     * What units does Nick use for pop?
     * Which parameters were used for the Ebola model? (lots are commented out)
+ - How is optimization done? 
+ - Is "myopic" done with estimated probs, or true probs from the 
+   assumed model?
