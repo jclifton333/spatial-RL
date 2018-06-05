@@ -10,6 +10,7 @@ import pdb
 
 
 class SIS(SpatialDisease):
+  PATH_LENGTH = 2 # For path-based features
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -51,14 +52,17 @@ class SIS(SpatialDisease):
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
     adjacency_matrix = generate_network(L)
+    self.list_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH)
 
     SpatialDisease.__init__(self, adjacency_matrix, feature_function)
     self.omega = omega
     self.state_covariance = self.BETA_1 * np.eye(self.L)
     
     self.S = np.zeros((1, self.L))
+    self.S_indicator = self.S > 0
     self.current_state = self.S[-1,:]
-    
+
+
   def reset(self):
     """
     Reset state and observation histories.
@@ -66,7 +70,30 @@ class SIS(SpatialDisease):
     # super.reset()
     super(SIS, self).reset()
     self.S = np.zeros((1, self.L))
+    self.S_indicator = self.S > 0
     self.current_state = self.S[-1,:]
+
+  ##############################################################
+  ## Path-based feature function computation (see draft p7)   ##
+  ##############################################################
+
+  def m_r(self, b):
+    """
+    Compute m_r for given path as defined in paper.
+    :param b: k x q array of bits to compute m_r(b)
+    :return:
+    """
+    k, q = b.shape
+    powers_of_2_matrix = np.array([[np.power(2, q*i-j) for j in range(q)]
+                                   for i in range(k)])
+    return 1 + np.sum( np.multiply(b, powers_of_2_matrix) )
+
+
+
+
+
+
+
 
     
   def next_state(self): 
@@ -77,6 +104,7 @@ class SIS(SpatialDisease):
     super(SIS, self).next_state()
     next_state = np.random.multivariate_normal(mean=self.BETA_0*self.current_state, cov=self.state_covariance)
     self.S = np.vstack((self.S, next_state))
+    self.S_indicator = np.vstack((self.S_indicator, next_state > 0))
     self.current_state = next_state 
     return next_state
 

@@ -71,8 +71,8 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   # Initialize generative model
   omega = 0
   gamma = 0.7
-  featureFunction = polynomialFeatures(3, interaction_only=True)
-  # featureFunction = lambda d: d
+  # featureFunction = polynomialFeatures(3, interaction_only=True)
+  featureFunction = lambda d: d
 
   if envName == 'SIS':
     g = SIS(L, omega, featureFunction, lattice)
@@ -85,7 +85,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
   evaluation_budget = 20
 
   # Initialize AR object
-  AR = AutoRegressor(LogisticRegression, Ridge)
+  AR = AutoRegressor(RandomForestClassifier, RandomForestRegressor)
 
   means = []
   a_dummy = np.append(np.ones(treatment_budget), np.zeros(g.L - treatment_budget))
@@ -95,6 +95,7 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
     a = np.random.permutation(a_dummy)
     g.step(a)
     a = np.random.permutation(a_dummy)
+    mean_disagreement = 0
     for i in range(T-2):
       # print('i: {}'.format(i))
       g.step(a)
@@ -124,8 +125,10 @@ def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
           a = argmax_actions[-1]
           # Compare with true-probs action
           _, a_true, _ = Q_max(g.next_infected_probabilities, evaluation_budget, treatment_budget, g.L)
-          print('a est score: {} a true score: {}'.format(np.mean(g.next_infected_probabilities(a)),
-                                                          np.mean(g.next_infected_probabilities(a_true))))
+          print('a random score: {} a est score: {} a true score: {}'.format(np.mean(g.next_infected_probabilities(np.random.permutation(a_dummy))),
+                                                                             np.mean(g.next_infected_probabilities(a)),
+                                                                              np.mean(g.next_infected_probabilities(a_true))))
+    print('mean disagrement: {}'.format(mean_disagreement))
     means.append(np.mean(g.Y))
   return g, AR, means, target
 
