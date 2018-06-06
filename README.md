@@ -19,3 +19,4 @@ ToDo:
  - How is optimization done? 
  - Is "myopic" done with estimated probs, or true probs from the 
    assumed model?
+ - What does q index in the definition of m_r ? 
