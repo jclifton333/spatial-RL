@@ -6,6 +6,7 @@ spatial QL paper.
 import numpy as np
 from scipy.special import expit
 from .SpatialDisease import SpatialDisease
+from src.utils.features import get_all_paths
 import pdb
 
 
@@ -52,7 +53,7 @@ class SIS(SpatialDisease):
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
     adjacency_matrix = generate_network(L)
-    self.list_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH)
+    self.list_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
 
     SpatialDisease.__init__(self, adjacency_matrix, feature_function)
     self.omega = omega
@@ -77,56 +78,51 @@ class SIS(SpatialDisease):
   ## Path-based feature function computation (see draft p7)   ##
   ##############################################################
 
-  def get_b(self):
+  def get_b(self, r):
     """
-    Get b vector associated with current s, y, a.
+    Get b vector associated with current s, y, a
+    on path r.
+    :param r: list of indices of states on path
     :return:
     """
-    pass
+    b = np.column_stack((self.S_indicator[-1,r],
+                         self.Y[-1,r],
+                         self.A[-1,r]))
+    return b
 
 
-  def m_r(self, b, r):
+  def m_r(self, r):
     """
     Compute m_r for given path as defined in paper.
-    :param b: k x q array of bits to compute m_r(b)
     :param r: list of indices on defining path
     :return:
     """
+    b = self.get_b(r)
     k, q = b.shape
     powers_of_2_matrix = np.array([[np.power(2, q*i-j) for j in range(q)]
                                    for i in range(k)])
     return 1 + np.sum( np.multiply(b, powers_of_2_matrix) )
 
 
-  def phi_k_m(self, b, m):
+  def phi_k_m(self, k, m):
     """
-    :param b:
+    :param k:
     :param m:
     :return:
     """
-    f = np.vectorize(lambda r: self.m_r(b, r) == m)
-    return np.sum(f(self.list_of_path_lists))
+    return np.sum([self.m_r(r) == m for r in self.list_of_path_lists
+                   if len(r) == k])
 
 
-  @staticmethod
-  def M(k):
+  def phi_k(self, k):
     """
-    Get M associated with path length k.
     :param k: path length
     :return:
     """
-    pass
-
-  def phi_k(self, b, k):
-    """
-    :param b: covariate array to evaluate
-    :param k: path length
-    :return:
-    """
-    M = self.M(k) # Not sure what this is suppose to be
+    M = 3**k
     phi_k = np.zeros(M)
     for m in range(M):
-      phi_k[m] = self.phi_k_m(b, m)
+      phi_k[m] = self.phi_k_m(k, m)
     return phi_k
 
 
@@ -134,10 +130,9 @@ class SIS(SpatialDisease):
     """
     :return:
     """
-    b = self.get_b()
     phi = np.zeros(0)
-    for k in range(SIS.PATH_LENGTH):
-      phi_k = self.phi_k(b, k)
+    for k in range(1, SIS.PATH_LENGTH + 1):
+      phi_k = self.phi_k(k)
       phi = np.hstack((phi, phi_k))
     return phi
 
@@ -260,8 +255,9 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).updateObsHistory(a)
     raw_data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
-    neighborFeatures = self.neighborFeatures(raw_data_block)
-    data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
+    # neighborFeatures = self.neighborFeatures(raw_data_block)
+    # data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
+    data_block = self.phi()
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)

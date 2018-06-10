@@ -138,6 +138,6 @@ if __name__ == '__main__':
   n_rep = 5
   for k in range(0, 1):
     t0 = time.time()
-    _, _, scores, _ = main(k, 16, 25, n_rep, 'SIS', method='rollout', rollout_feature_times=[0, 1])
+    _, _, scores, _ = main(k, 16, 25, n_rep, 'SIS', method='random', rollout_feature_times=[0, 1])
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))
