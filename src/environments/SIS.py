@@ -110,7 +110,7 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    return np.sum([self.m_r(r, data_block) == m for r in self.list_of_path_lists
+    return np.sum([self.m_r(r, data_block) == 1 + m for r in self.list_of_path_lists
                    if len(r) == k])
 
   def phi_k(self, k, data_block):
@@ -255,13 +255,17 @@ class SIS(SpatialDisease):
     :param a: self.L-length array of binary actions at each state
     """
     super(SIS, self).updateObsHistory(a)
+    # Get location-level features
     raw_data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
     neighborFeatures = self.neighborFeatures(raw_data_block)
     data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
-    self.Phi.append(self.phi(raw_data_block))
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)
+
+    # Get network-level features
+    raw_data_block[:, 0] = self.S_indicator[-2, :]
+    self.Phi.append(self.phi(raw_data_block))
 
   def data_block_at_action(self, data_block, action):
     """

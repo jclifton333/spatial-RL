@@ -10,7 +10,7 @@ from src.environments.generate_network import lattice
 from src.environments.Ebola import Ebola
 from src.environments.SIS import SIS
 
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, LogisticRegression
 
@@ -38,7 +38,7 @@ def main(L, T, nRep, envName, method='random'):
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor((3/16) * L))
 
-  reg = RandomForestRegressor()
+  reg = AdaBoostRegressor(n_estimators=200)
 
   a_dummy = np.append(np.ones(treatment_budget), np.zeros(env.L - treatment_budget))
   for rep in range(nRep):
@@ -59,7 +59,7 @@ def main(L, T, nRep, envName, method='random'):
       true_expected_counts = np.sum(env.true_infection_probs, axis=1)
       reg.fit(np.array(env.Phi), target)
       phat = reg.predict(np.array(env.Phi))
-      r2 = 1 - np.mean((phat - true_expected_counts)**2) / (len(true_expected_counts) * np.var(true_expected_counts))
+      r2 = 1 - np.mean((phat - true_expected_counts)**2)
       print('R2: {}'.format(r2))
 
   return
@@ -67,7 +67,7 @@ def main(L, T, nRep, envName, method='random'):
 
 if __name__ == '__main__':
   L = 16
-  T = 50
+  T = 100000
   nRep = 5
   envName = 'SIS'
   main(L, T, nRep, envName, method='random')
