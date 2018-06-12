@@ -27,7 +27,7 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_feat
   AR.fitClassifier(env, target, True)
   one_step_predictions = expit(AR.autologitPredictor(env.X[-1]))
   true_probs = env.true_infection_probs[-1]
-  r2 = np.mean(-true_probs * np.log(one_step_predictions) - (1 - true_probs) * np.log(1 - one_step_predictions))
+  r2 = 1 - np.sum((true_probs - one_step_predictions)**2)
   Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget,  AR.autologitPredictor)
   #Look ahead
   for k in range(1, K):

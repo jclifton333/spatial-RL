@@ -11,7 +11,7 @@ import pdb
 
 
 class SIS(SpatialDisease):
-  PATH_LENGTH = 2 # For path-based features
+  PATH_LENGTH = 3 # For path-based features
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -61,8 +61,8 @@ class SIS(SpatialDisease):
     
     self.S = np.zeros((1, self.L))
     self.S_indicator = self.S > 0
+    self.Phi = [] # Network-level features
     self.current_state = self.S[-1,:]
-
 
   def reset(self):
     """
@@ -72,68 +72,68 @@ class SIS(SpatialDisease):
     super(SIS, self).reset()
     self.S = np.zeros((1, self.L))
     self.S_indicator = self.S > 0
+    self.Phi = []
     self.current_state = self.S[-1,:]
 
   ##############################################################
   ## Path-based feature function computation (see draft p7)   ##
   ##############################################################
 
-  def get_b(self, r):
+  def get_b(self, r, data_block):
     """
     Get b vector associated with current s, y, a
     on path r.
     :param r: list of indices of states on path
+    :param data_block:
     :return:
     """
-    b = np.column_stack((self.S_indicator[-1,r],
-                         self.Y[-1,r],
-                         self.A[-1,r]))
+    b = data_block[r,:]
     return b
 
-
-  def m_r(self, r):
+  def m_r(self, r, data_block):
     """
     Compute m_r for given path as defined in paper.
     :param r: list of indices on defining path
+    :param data_block:
     :return:
     """
-    b = self.get_b(r)
+    b = self.get_b(r, data_block)
     k, q = b.shape
-    powers_of_2_matrix = np.array([[np.power(2, q*i-j) for j in range(q)]
+    powers_of_2_matrix = np.array([[np.power(2.0, q*i-j) for j in range(q)]
                                    for i in range(k)])
     return 1 + np.sum( np.multiply(b, powers_of_2_matrix) )
 
-
-  def phi_k_m(self, k, m):
+  def phi_k_m(self, k, m, data_block):
     """
     :param k:
     :param m:
+    :param data_block:
     :return:
     """
-    return np.sum([self.m_r(r) == m for r in self.list_of_path_lists
+    return np.sum([self.m_r(r, data_block) == m for r in self.list_of_path_lists
                    if len(r) == k])
 
-
-  def phi_k(self, k):
+  def phi_k(self, k, data_block):
     """
     :param k: path length
+    :param data_block:
     :return:
     """
     M = 3**k
     phi_k = np.zeros(M)
     for m in range(M):
-      phi_k[m] = self.phi_k_m(k, m)
+      phi_k[m] = self.phi_k_m(k, m, data_block)
     return phi_k
 
-
-  def phi(self):
+  def phi(self, data_block):
     """
+    :param data_block:
     :return:
     """
     phi = np.zeros(0)
     for k in range(1, SIS.PATH_LENGTH + 1):
-      phi_k = self.phi_k(k)
-      phi = np.hstack((phi, phi_k))
+      phi_k = self.phi_k(k, data_block)
+      phi = np.append(phi, phi_k)
     return phi
 
   ##############################################################
@@ -235,8 +235,9 @@ class SIS(SpatialDisease):
     for l in range(self.L):
       S_neighbor, A_neighbor, Y_neighbor = data_block[self.adjacency_list[l],:].T
       neighborFeatures_l = np.array([np.sum(np.clip(S_neighbor, a_min=0, a_max=None)), np.sum(np.multiply(S_neighbor, A_neighbor)),
-                                     np.sum(A_neighbor), np.sum(np.multiply(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])      
+                                     np.sum(A_neighbor), np.sum(np.multiply(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])
       neighborFeatures = np.vstack((neighborFeatures, neighborFeatures_l))
+
     return neighborFeatures    
   
   def data_block_at_action(self, data_block, action):
@@ -255,9 +256,9 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).updateObsHistory(a)
     raw_data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
-    # neighborFeatures = self.neighborFeatures(raw_data_block)
-    # data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
-    data_block = self.phi()
+    neighborFeatures = self.neighborFeatures(raw_data_block)
+    data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
+    self.Phi.append(self.phi(raw_data_block))
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)

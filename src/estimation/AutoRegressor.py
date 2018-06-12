@@ -45,7 +45,7 @@ class AutoRegressor(object):
     
   def fitClassifier(self, env, target, addToList):
     classifier = self.ar_classifier()
-    classifier.fit(np.vstack(env.X), target)   
+    classifier.fit(np.vstack(env.X), target)
     self.createAutologitPredictor(classifier, addToList, binary=True)
     
   def fitRegressor(self, env, target, addToList):
