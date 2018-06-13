@@ -11,6 +11,7 @@ from src.environments.Ebola import Ebola
 from src.environments.SIS import SIS
 
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, LogisticRegression
 
@@ -38,7 +39,7 @@ def main(L, T, nRep, envName, method='random'):
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor((3/16) * L))
 
-  reg = AdaBoostRegressor(n_estimators=200)
+  reg = AdaBoostRegressor(n_estimators=1000)
 
   a_dummy = np.append(np.ones(treatment_budget), np.zeros(env.L - treatment_budget))
   for rep in range(nRep):
@@ -59,8 +60,10 @@ def main(L, T, nRep, envName, method='random'):
       true_expected_counts = np.sum(env.true_infection_probs, axis=1)
       reg.fit(np.array(env.Phi), target)
       phat = reg.predict(np.array(env.Phi))
-      r2 = 1 - np.mean((phat - true_expected_counts)**2)
+      r2 = 1 - ( np.mean((phat - true_expected_counts)**2) / np.sum( (true_expected_counts - np.mean(true_expected_counts))**2) )
       print('R2: {}'.format(r2))
+      # if r2 > 0.6:
+      #   pdb.set_trace()
 
   return
 

@@ -113,8 +113,11 @@ def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model)
   return np.array(best_q_arr), argmax_data_blocks, argmax_actions, q_vals
 
 
-def Q(a, raw_data_block, env, predictive_model):
-  data_block = env.data_block_at_action(raw_data_block, a)
+def Q(a, raw_data_block, env, predictive_model, network_features=False):
+  if network_features:
+    data_block = env.network_features_at_action(raw_data_block, a)
+  else:
+    data_block = env.data_block_at_action(raw_data_block, a)
   Qhat = predictive_model(data_block)
   return Qhat
 

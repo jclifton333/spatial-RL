@@ -9,6 +9,7 @@ from .Q_functions import Q_max, Q_max_all_states
 from scipy.special import expit, logit
 import pdb
 
+
 def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
   rollout_Q_features = np.array([q(data_block) for q in rollout_Q_function_list]).T
   if intercept:
