@@ -1,10 +1,12 @@
 from src.estimation.Fitted_Q import rollout, network_features_rollout
+from src.estimation.AutoRegressor import AutoRegressor
 
 
 def rollout_policy(**kwargs):
-  auto_regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget = \
-    kwargs['AR'], kwargs['env'], kwargs['evaluation_budget'], kwargs['gamma'], \
-    kwargs['rollout_depth'], kwargs['treatment_budget']
+  classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
+    kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget']
+  auto_regressor = AutoRegressor(classifier, regressor)
 
   argmax_actions, _, _, _, _ = rollout(auto_regressor, gamma, env, evaluation_budget, treatment_budget, auto_regressor)
   a = argmax_actions[-1]

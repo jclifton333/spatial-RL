@@ -47,7 +47,7 @@ class SIS(SpatialDisease):
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
   # pdb.set_trace()
 
-  def __init__(self, L, omega, feature_function, generate_network):
+  def __init__(self, feature_function, L, omega, generate_network):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix

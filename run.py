@@ -13,8 +13,9 @@ import numpy as np
 import pdb
 
 from src.environments.generate_network import lattice
-from src.environments.Ebola import Ebola
-from src.environments.SIS import SIS
+from src.environments.environment_factory import environment_factory
+
+from src.policies.Policy import policy_factory
 
 from src.estimation.AutoRegressor import AutoRegressor
 from src.estimation.Fitted_Q import rollout, rollout_Q_features
@@ -59,85 +60,48 @@ from sklearn.linear_model import Ridge, LogisticRegression
 #   return a
 
 
-def main(K, L, T, nRep, envName, method='QL', rollout_feature_times=[1]):
+def main(lookahead_depth, T, nRep, env_name, policy_name='rollout', **kwargs):
   """
-  :param K: lookahead depth
-  :param L: number of locations in network
-  :param envName: 'SIS' or 'Ebola'
+  :param lookahead_depth:
+  :param env_name: 'SIS' or 'Ebola'
   :param T: duration of simulation rep
   :param nRep: number of replicates
-  :param method: string in ['QL', 'rollout', 'random', 'none']
+  :param policy_name: string in ['random', 'no_action', 'true_probs', 'rollout', 'network rollout'].
+  :param kwargs: environment-specific keyword arguments
   """
   # Initialize generative model
-  omega = 0
   gamma = 0.7
-  # featureFunction = polynomialFeatures(3, interaction_only=True)
-  featureFunction = lambda d: d
+  # feature_function = polynomialFeatures(3, interaction_only=True)
 
-  if envName == 'SIS':
-    g = SIS(L, omega, featureFunction, lattice)
-  elif envName == 'Ebola':
-    g = Ebola(featureFunction)
-  else:
-    raise ValueError("Env name not in ['SIS', 'Ebola']")
+  def feature_function(x):
+    return x
+
+  env = environment_factory(env_name, feature_function, **kwargs)
+
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor((3/16) * L))
   evaluation_budget = 20
 
-  # Initialize AR object
-  AR = AutoRegressor(RandomForestClassifier, RandomForestRegressor)
-
-  means = []
-  a_dummy = np.append(np.ones(treatment_budget), np.zeros(g.L - treatment_budget))
+  policy = policy_factory(policy_name)
+  env.reset()
+  policy_arguments = {'classifier':RandomForestClassifier, 'regressor':RandomForestRegressor, 'env':env,
+                      'evaluation_budget':evaluation_budget, 'gamma':gamma, 'rollout_depth':lookahead_depth,
+                      'treatment_budget':treatment_budget}
+  score_list = []
   for rep in range(nRep):
-    print('Rep: {}'.format(rep))
-    g.reset()
-    a = np.random.permutation(a_dummy)
-    g.step(a)
-    a = np.random.permutation(a_dummy)
-    mean_disagreement = 0
-    for i in range(T-2):
-      # print('i: {}'.format(i))
-      g.step(a)
-      if method == 'random':
-        a = np.random.permutation(a_dummy)
-        # a = divide_random_between_infection_status(treatment_budget, g.current_infected)
-        target = None
-      elif method == 'none':
-        a = np.zeros(g.L)
-        target = None
-      elif method == 'true-probs':
-        _, a, _ = Q_max(g.next_infected_probabilities, evaluation_budget, treatment_budget, g.L)
-        target = None
-      else:
-        argmax_actions, rollout_feature_list, rollout_Q_function_list, target, r2 = rollout(K, gamma, g, evaluation_budget,
-                                                                                        treatment_budget, AR,
-                                                                                        rollout_feature_times)
-        print(r2)
-        if method == 'QL':
-          thetaOpt = GGQ(rollout_feature_list, rollout_Q_function_list, gamma,
-                         g, evaluation_budget, treatment_budget, True)
-          Q = lambda a: np.dot(
-            rollout_Q_features(g.data_block_at_action(g.X_raw[i], a), rollout_Q_function_list, intercept=True),
-            thetaOpt)
-          _, a, _ = Q_max(Q, evaluation_budget, treatment_budget, g.L)
-        elif method == 'rollout':
-          a = argmax_actions[-1]
-          # Compare with true-probs action
-          _, a_true, _ = Q_max(g.next_infected_probabilities, evaluation_budget, treatment_budget, g.L)
-          print('a random score: {} a est score: {} a true score: {}'.format(np.mean(g.next_infected_probabilities(np.random.permutation(a_dummy))),
-                                                                             np.mean(g.next_infected_probabilities(a)),
-                                                                              np.mean(g.next_infected_probabilities(a_true))))
-    print('mean disagrement: {}'.format(mean_disagreement))
-    means.append(np.mean(g.Y))
-  return g, AR, means, target
+    for t in range(T):
+      a = policy(policy_arguments)
+      env.step(a)
+    score_list.append(np.mean(env.Y))
+  return score_list
 
 
 if __name__ == '__main__':
   import time
   n_rep = 5
+  SIS_args = {'L': 16, 'omega': 0, 'generate_network': lattice}
   for k in range(0, 1):
     t0 = time.time()
-    _, _, scores, _ = main(k, 16, 100, n_rep, 'SIS', method='rollout', rollout_feature_times=[0, 1])
+    scores = main(k, 100, n_rep, 'SIS', method='rollout', SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

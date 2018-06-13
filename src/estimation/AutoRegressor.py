@@ -9,7 +9,8 @@ Various auto-regressive classifiers for disease spread.
 
 import numpy as np
 import pdb
-    
+
+
 class AutoRegressor(object):
   '''
   Predict 1-step infection probabilities or k-step Q-values using neighbors' 1-step infection probabilities as features
