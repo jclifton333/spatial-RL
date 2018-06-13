@@ -40,3 +40,10 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_feat
       rollout_feature_list.append(Q_features_at_each_block)
     Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, AR.autologitPredictor)
   return argmax_actions, rollout_feature_list, AR.predictors, target, r2
+
+
+def network_features_rollout(env, evaluation_budget, treatment_budget, regressor):
+  target = np.sum(env.y, axis=1).astype(float)
+  regressor.fit(np.array(env.Phi), target)
+  Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, regressor, network_features=True)
+  return argmax_actions, target

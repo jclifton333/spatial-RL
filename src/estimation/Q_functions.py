@@ -95,7 +95,7 @@ def Q_max(Q_fn, evaluation_budget, treatment_budget, L):
   return best_q, best_a, q_vals
 
 
-def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model):
+def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model, network_features=False):
   """
   :return best_q_arr: array of max q values associated with each state in state_score_history
   """
@@ -104,7 +104,7 @@ def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model)
   argmax_data_blocks = []
   argmax_actions = []
   for t in range(env.T):
-    Q_fn_t = lambda a: Q(a, env.X_raw[t], env, predictive_model)
+    Q_fn_t = lambda a: Q(a, env.X_raw[t], env, predictive_model, network_features=network_features)
     Q_max_t, Q_argmax_t, q_vals = Q_max(Q_fn_t, evaluation_budget, treatment_budget, env.L)
     best_q_arr.append(Q_max_t)
     best_data_block = env.data_block_at_action(env.X_raw[t], Q_argmax_t)
