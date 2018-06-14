@@ -58,9 +58,15 @@ class Ebola(SpatialDisease):
 
   def __init__(self, featureFunction):
     SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, featureFunction, initialInfections=Ebola.INITIAL_INFECTIONS)
+    # Initial steps
+    self.step(np.zeros(self.L))
+    self.step(np.zeros(self.L))
 
   def reset(self):
     super(Ebola, self).reset()
+    # Initial steps
+    self.step(np.zeros(self.L))
+    self.step(np.zeros(self.L))
 
   def transmission_prob(self, a, l, l_prime):
     """

@@ -60,7 +60,7 @@ from sklearn.linear_model import Ridge, LogisticRegression
 #   return a
 
 
-def main(lookahead_depth, T, nRep, env_name, policy_name='rollout', **kwargs):
+def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
   """
   :param lookahead_depth:
   :param env_name: 'SIS' or 'Ebola'
@@ -79,18 +79,19 @@ def main(lookahead_depth, T, nRep, env_name, policy_name='rollout', **kwargs):
   env = environment_factory(env_name, feature_function, **kwargs)
 
   # Evaluation limit parameters
-  treatment_budget = np.int(np.floor((3/16) * L))
+  treatment_budget = np.int(np.floor((3/16) * kwargs['L']))
   evaluation_budget = 20
 
   policy = policy_factory(policy_name)
-  env.reset()
   policy_arguments = {'classifier':RandomForestClassifier, 'regressor':RandomForestRegressor, 'env':env,
                       'evaluation_budget':evaluation_budget, 'gamma':gamma, 'rollout_depth':lookahead_depth,
                       'treatment_budget':treatment_budget}
   score_list = []
   for rep in range(nRep):
+    env.reset()
     for t in range(T):
-      a = policy(policy_arguments)
+      print('rep: {} t: {}'.format(rep, t))
+      a = policy(**policy_arguments)
       env.step(a)
     score_list.append(np.mean(env.Y))
   return score_list
@@ -99,9 +100,9 @@ def main(lookahead_depth, T, nRep, env_name, policy_name='rollout', **kwargs):
 if __name__ == '__main__':
   import time
   n_rep = 5
-  SIS_args = {'L': 16, 'omega': 0, 'generate_network': lattice}
+  SIS_kwargs = {'L': 16, 'omega': 0, 'generate_network': lattice}
   for k in range(0, 1):
     t0 = time.time()
-    scores = main(k, 100, n_rep, 'SIS', method='rollout', SIS_kwargs)
+    scores = main(k, 100, n_rep, 'SIS', 'network rollout', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

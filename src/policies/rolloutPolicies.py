@@ -8,7 +8,8 @@ def rollout_policy(**kwargs):
     kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget']
   auto_regressor = AutoRegressor(classifier, regressor)
 
-  argmax_actions, _, _, _, _ = rollout(auto_regressor, gamma, env, evaluation_budget, treatment_budget, auto_regressor)
+  argmax_actions, _, _, _, _ = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget,
+                                       auto_regressor, [])
   a = argmax_actions[-1]
   return a
 
@@ -16,6 +17,6 @@ def rollout_policy(**kwargs):
 def network_features_rollout_policy(**kwargs):
   env, evaluation_budget, treatment_budget, regressor = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['regressor']
-  argmax_actions, _ = network_features_rollout(env, evaluation_budget, treatment_budget, regressor)
+  argmax_actions, _ = network_features_rollout(env, evaluation_budget, treatment_budget, regressor())
   a = argmax_actions[-1]
   return a

@@ -7,34 +7,29 @@ import numpy as np
 import pdb
 
 from src.environments.generate_network import lattice
-from src.environments.Ebola import Ebola
-from src.environments.SIS import SIS
+from src.environments.environment_factory import environment_factory
 
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, LogisticRegression
 
-def main(L, T, nRep, envName, method='random'):
+
+def main(T, nRep, env_name, method, **kwargs):
   """
-  :param L: number of locations in network
-  :param envName: 'SIS' or 'Ebola'
+  :param env_name: 'SIS' or 'Ebola'
   :param T: duration of simulation rep
   :param nRep: number of replicates
   :param method: string in ['random', 'none']
   """
   # Initialize generative model
-  omega = 0
   gamma = 0.7
-  # featureFunction = polynomialFeatures(3, interaction_only=True)
-  featureFunction = lambda d: d
+  # feature_function = polynomialFeatures(3, interaction_only=True)
 
-  if envName == 'SIS':
-    env = SIS(L, omega, featureFunction, lattice)
-  elif envName == 'Ebola':
-    env = Ebola(featureFunction)
-  else:
-    raise ValueError("Env name not in ['SIS', 'Ebola']")
+  def feature_function(x):
+    return x
+
+  env = environment_factory(env_name, feature_function, **kwargs)
 
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor((3/16) * L))
@@ -60,7 +55,7 @@ def main(L, T, nRep, envName, method='random'):
       true_expected_counts = np.sum(env.true_infection_probs, axis=1)
       reg.fit(np.array(env.Phi), target)
       phat = reg.predict(np.array(env.Phi))
-      r2 = 1 - ( np.mean((phat - true_expected_counts)**2) / np.sum( (true_expected_counts - np.mean(true_expected_counts))**2) )
+      r2 = 1 - ( np.sum((phat - true_expected_counts)**2) / np.sum( (true_expected_counts - np.mean(true_expected_counts))**2) )
       print('R2: {}'.format(r2))
       # if r2 > 0.6:
       #   pdb.set_trace()
@@ -72,5 +67,6 @@ if __name__ == '__main__':
   L = 16
   T = 100000
   nRep = 5
-  envName = 'SIS'
-  main(L, T, nRep, envName, method='random')
+  env_name = 'SIS'
+  SIS_kwargs = {'L': 16, 'omega': 0, 'generate_network': lattice}
+  main(T, nRep, env_name, 'rollout', **SIS_kwargs)

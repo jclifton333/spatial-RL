@@ -21,7 +21,6 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_feat
   AR.resetPredictors()
   
   target = np.hstack(env.y).astype(float)
-  # target = np.hstack(env.true_infection_probs).astype(float)
   rollout_feature_list = []
   
   #Fit 1-step model
@@ -43,7 +42,8 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, AR, rollout_feat
 
 
 def network_features_rollout(env, evaluation_budget, treatment_budget, regressor):
-  target = np.sum(env.y, axis=1).astype(float)
+  # target = np.sum(env.y, axis=1).astype(float)
+  target = np.sum(env.true_infection_probs, axis=1).astype(float)
   regressor.fit(np.array(env.Phi), target)
-  Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, regressor, network_features=True)
+  Qmax, Qargmax, argmax_actions, qvals = Q_max_all_states(env, evaluation_budget, treatment_budget, regressor.predict, network_features=True)
   return argmax_actions, target

@@ -11,7 +11,7 @@ import pdb
 
 
 class SIS(SpatialDisease):
-  PATH_LENGTH = 2 # For path-based features
+  PATH_LENGTH = 3 # For path-based features
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -64,6 +64,10 @@ class SIS(SpatialDisease):
     self.Phi = [] # Network-level features
     self.current_state = self.S[-1,:]
 
+    # Initial steps
+    self.step(np.zeros(self.L))
+    self.step(np.zeros(self.L))
+
   def reset(self):
     """
     Reset state and observation histories.
@@ -74,6 +78,10 @@ class SIS(SpatialDisease):
     self.S_indicator = self.S > 0
     self.Phi = []
     self.current_state = self.S[-1,:]
+
+    # Initial steps
+    self.step(np.zeros(self.L))
+    self.step(np.zeros(self.L))
 
   ##############################################################
   ## Path-based feature function computation (see draft p7)   ##
@@ -286,4 +294,4 @@ class SIS(SpatialDisease):
     """
     new_data_block = np.column_stack((data_block[:, 0] > 0, action, data_block[:, 2]))
     new_data_block = self.phi(new_data_block)
-    return new_data_block
+    return new_data_block.reshape(1,-1)
