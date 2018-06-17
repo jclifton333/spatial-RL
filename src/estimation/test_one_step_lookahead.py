@@ -34,21 +34,17 @@ def main(T, nRep, env_name, method, **kwargs):
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor((3/16) * L))
 
-  reg = AdaBoostRegressor(n_estimators=1000)
+  reg = AdaBoostRegressor(n_estimators=200)
 
   a_dummy = np.append(np.ones(treatment_budget), np.zeros(env.L - treatment_budget))
   for rep in range(nRep):
     print('Rep: {}'.format(rep))
-    env.reset()
-    a = np.random.permutation(a_dummy)
-    env.step(a)
-    a = np.random.permutation(a_dummy)
     for i in range(T-2):
-      env.step(a)
       if method == 'random':
         a = np.random.permutation(a_dummy)
       elif method == 'none':
         a = np.zeros(g.L)
+      env.step(a)
 
       # One-step regression
       target = np.sum(env.y, axis=1).astype(float)
@@ -69,4 +65,4 @@ if __name__ == '__main__':
   nRep = 5
   env_name = 'SIS'
   SIS_kwargs = {'L': 16, 'omega': 0, 'generate_network': lattice}
-  main(T, nRep, env_name, 'rollout', **SIS_kwargs)
+  main(T, nRep, env_name, 'random', **SIS_kwargs)

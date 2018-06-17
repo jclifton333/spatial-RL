@@ -29,8 +29,9 @@ def get_all_paths_from_node(graph, node_ix, path_length):
 
 def get_all_paths(adjacency_matrix, path_length):
   g = nx.from_numpy_matrix(adjacency_matrix)
-  list_of_path_lists = [l for n in range(adjacency_matrix.shape[0])
-                        for l in get_all_paths_from_node(g, n, path_length)]
+  L = adjacency_matrix.shape[0]
+  list_of_path_lists = [l for n in range(L) for l in get_all_paths_from_node(g, n, path_length)]
+  list_of_path_lists += [[l] for l in range(L)]
   return list_of_path_lists
 
 

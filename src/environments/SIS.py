@@ -45,7 +45,6 @@ class SIS(SpatialDisease):
   ETA_5 = np.log(1 / (1 - PROB_REC) - 1)
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
-  # pdb.set_trace()
 
   def __init__(self, feature_function, L, omega, generate_network):
     """
@@ -98,18 +97,18 @@ class SIS(SpatialDisease):
     b = data_block[r,:]
     return b
 
-  def m_r(self, r, data_block):
+  def m_r(self, r, data_row):
     """
     Compute m_r for given path as defined in paper.
     :param r: list of indices on defining path
-    :param data_block:
+    :param data_row:
     :return:
     """
-    b = self.get_b(r, data_block)
-    k, q = b.shape
-    powers_of_2_matrix = np.array([[np.power(2.0, q*i-j) for j in range(q)]
-                                   for i in range(k)])
-    return 1 + np.sum( np.multiply(b, powers_of_2_matrix) )
+    # b = self.get_b(r, data_block)
+    # k, q = b.shape
+    q = len(data_row)
+    powers_of_2_matrix = np.array([np.power(2.0, q-j) for j in range(1, q+1)])
+    return 1 + np.sum( np.multiply(data_row, powers_of_2_matrix) )
 
   def phi_k_m(self, k, m, data_block):
     """
@@ -118,8 +117,8 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    return np.sum([self.m_r(r, data_block) == 1 + m for r in self.list_of_path_lists
-                   if len(r) == k])
+    return np.array([np.sum([self.m_r(r, data_row) == 1 + m for r in self.list_of_path_lists
+                   if len(r) == k and l in r]) for l in range(data_block.shape[0])])
 
   def phi_k(self, k, data_block):
     """
@@ -127,10 +126,10 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    M = 3**k
-    phi_k = np.zeros(M)
+    M = 9**k
+    phi_k = np.zeros((data_block.shape[0], M))
     for m in range(M):
-      phi_k[m] = self.phi_k_m(k, m, data_block)
+      phi_k[:, m] = self.phi_k_m(k, m, data_block)
     return phi_k
 
   def phi(self, data_block):
@@ -138,10 +137,10 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    phi = np.zeros(0)
+    phi = np.zeros((data_block.shape[0], 0))
     for k in range(1, SIS.PATH_LENGTH + 1):
       phi_k = self.phi_k(k, data_block)
-      phi = np.append(phi, phi_k)
+      phi = np.column_stack((phi, phi_k))
     return phi
 
   ##############################################################
@@ -189,7 +188,6 @@ class SIS(SpatialDisease):
     # all_treated_probs[not_infected_indices] = self.p_l(np.zeros(self.L), not_infected_indices)
     # all_treated_probs[infected_indices] = 1 - self.q_l(np.zeros(self.L)[infected_indices])
     # print(all_treated_probs - next_infected_probabilities)
-    # pdb.set_trace()
 
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
@@ -270,7 +268,6 @@ class SIS(SpatialDisease):
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)
-
     # Get network-level features
     raw_data_block[:, 0] = self.S_indicator[-2, :]
     self.Phi.append(self.phi(raw_data_block))
