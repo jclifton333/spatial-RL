@@ -11,7 +11,7 @@ import pdb
 
 
 class SIS(SpatialDisease):
-  PATH_LENGTH = 3 # For path-based features
+  PATH_LENGTH = 2 # For path-based features
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -97,18 +97,17 @@ class SIS(SpatialDisease):
     b = data_block[r,:]
     return b
 
-  def m_r(self, r, data_row):
+  def m_r(self, r, data_block):
     """
     Compute m_r for given path as defined in paper.
     :param r: list of indices on defining path
-    :param data_row:
+    :param data_block:
     :return:
     """
-    # b = self.get_b(r, data_block)
-    # k, q = b.shape
-    q = len(data_row)
-    powers_of_2_matrix = np.array([np.power(2.0, q-j) for j in range(1, q+1)])
-    return 1 + np.sum( np.multiply(data_row, powers_of_2_matrix) )
+    b = self.get_b(r, data_block)
+    k, q = b.shape
+    powers_of_2_matrix = np.array([[np.power(2.0, q*i-j) for j in range(1, q+1)] for i in range(1, k + 1)])
+    return 1 + np.sum( np.multiply(b, powers_of_2_matrix) )
 
   def phi_k_m(self, k, m, data_block):
     """
@@ -117,8 +116,8 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    return np.array([np.sum([self.m_r(r, data_row) == 1 + m for r in self.list_of_path_lists
-                   if len(r) == k and l in r]) for l in range(data_block.shape[0])])
+    return np.array([np.sum([self.m_r(r, data_block) == 1 + m for r in self.list_of_path_lists
+                     if len(r) == k and l in r]) for l in range(data_block.shape[0])])
 
   def phi_k(self, k, data_block):
     """
