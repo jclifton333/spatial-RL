@@ -31,6 +31,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 from src.utils.misc import RidgeProb
 
+
 # def divide_random_between_infection_status(treatment_budget, current_infected):
 #   """
 #   Return an action with _treatment_budget_ treatments divided evenly between
@@ -94,6 +95,7 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
   for rep in range(nRep):
     env.reset()
     for t in range(T):
+      t0 = time.time()
       print('rep: {} t: {}'.format(rep, t))
       a = policy(**policy_arguments)
       env.step(a)
@@ -101,6 +103,8 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
         np.mean(env.next_infected_probabilities(random_policy(**policy_arguments))),
         np.mean(env.next_infected_probabilities(a)),
         np.mean(env.next_infected_probabilities(true_probs_policy(**policy_arguments)))))
+      t1 = time.time()
+      print('Time: {}'.format(t1 - t0))
     score_list.append(np.mean(env.Y))
     print('Episode score: {}'.format(np.mean(env.Y)))
   return score_list
@@ -108,10 +112,10 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
 
 if __name__ == '__main__':
   import time
-  n_rep = 5
+  n_rep = 1
   SIS_kwargs = {'L': 16, 'omega': 0, 'generate_network': lattice}
   for k in range(0, 1):
     t0 = time.time()
-    scores = main(k, 25, n_rep, 'SIS', 'rollout', **SIS_kwargs)
+    scores = main(k, 1, n_rep, 'SIS', 'rollout', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

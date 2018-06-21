@@ -90,19 +90,23 @@ def Q_max(Q_fn, evaluation_budget, treatment_budget, L):
   # all_action_indices = combinations(range(16), 3)
   best_q = float('inf')
   q_vals = []
-  for i in range(actions.shape[0]):
-  # for ixs in all_action_indices:
-    a = actions[i,:]
-    # a = np.zeros(L)
-    # a[list(ixs)] = 1
-    q = Q_fn(a)
-    # print('q: {}'.format(q))
-    if np.sum(q) < np.sum(best_q):
-      best_q = q 
-      best_a = a
-    q_vals.append(np.sum(q))
 
-  return best_q, best_a, q_vals
+  def Qsum(a): return np.sum(Q_fn(a))
+
+  q_vals = np.array([Qsum(a) for a in actions])
+  # for i in range(actions.shape[0]):
+  # # for ixs in all_action_indices:
+  #   a = actions[i,:]
+  #   # a = np.zeros(L)
+  #   # a[list(ixs)] = 1
+  #   q = Q_fn(a)
+  #   # print('q: {}'.format(q))
+  #   if np.sum(q) < np.sum(best_q):
+  #     best_q = q
+  #     best_a = a
+  #   q_vals.append(np.sum(q))
+
+  return np.max(q_vals), actions[np.argmax(q_vals),:], q_vals
 
 
 def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model, network_features=False):

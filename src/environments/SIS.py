@@ -12,6 +12,10 @@ import pdb
 
 class SIS(SpatialDisease):
   PATH_LENGTH = 2 # For path-based features
+  POWERS_OF_TWO_MATRICES ={
+    k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
+  }
+
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -106,7 +110,7 @@ class SIS(SpatialDisease):
     """
     b = self.get_b(r, data_block)
     k, q = b.shape
-    powers_of_2_matrix = np.array([[np.power(2.0, q*i-j) for j in range(1, q+1)] for i in range(1, k + 1)])
+    powers_of_2_matrix = SIS.POWERS_OF_TWO_MATRICES[k]
     return 1 + np.sum( np.multiply(b, powers_of_2_matrix) )
 
   def phi_k_m(self, k, m, data_block):
