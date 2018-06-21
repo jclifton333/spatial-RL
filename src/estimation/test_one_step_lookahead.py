@@ -37,7 +37,7 @@ def main(T, nRep, env_name, method, **kwargs):
   # treatment_budget = np.int(np.floor((3/16) * L))
   treatment_budget = np.int(np.floor(0.05 * L))
 
-  reg = MLPClassifier(hidden_layer_sizes=(300, 200))
+  reg = Ridge()
 
   a_dummy = np.append(np.ones(treatment_budget), np.zeros(env.L - treatment_budget))
   for rep in range(nRep):
@@ -50,11 +50,12 @@ def main(T, nRep, env_name, method, **kwargs):
       env.step(a)
 
       # One-step regression
-      if i % 100 == 0:
+      if i % 10 == 0:
         target = np.hstack(env.y).astype(float)
         true_expected_counts = np.hstack(env.true_infection_probs)
-        reg.fit(np.vstack(env.Phi), target)
-        phat = reg.predict_proba(np.vstack(env.Phi))[:,-1]
+        reg.fit(np.vstack(env.X), target)
+        # phat = reg.predict_proba(np.vstack(env.X))[:,-1]
+        phat = reg.predict(np.vstack(env.X))
         r2 = 1 - ( np.sum((phat - true_expected_counts)**2) / np.sum( (true_expected_counts - np.mean(true_expected_counts))**2) )
         print('R2: {}'.format(r2))
         # if r2 > 0.6:
@@ -68,5 +69,5 @@ if __name__ == '__main__':
   T = 100000
   nRep = 5
   env_name = 'SIS'
-  SIS_kwargs = {'L': L, 'omega': 0, 'generate_network': lattice}
+  SIS_kwargs = {'L': L, 'omega': 1, 'generate_network': lattice}
   main(T, nRep, env_name, 'random', **SIS_kwargs)

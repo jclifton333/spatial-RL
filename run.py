@@ -27,7 +27,9 @@ from src.utils.features import polynomialFeatures
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, LogisticRegression
-
+from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import GaussianNB
+from src.utils.misc import RidgeProb
 
 # def divide_random_between_infection_status(treatment_budget, current_infected):
 #   """
@@ -83,7 +85,9 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
   evaluation_budget = 20
 
   policy = policy_factory(policy_name)
-  policy_arguments = {'classifier':RandomForestClassifier, 'regressor':RandomForestRegressor, 'env':env,
+  true_probs_policy = policy_factory('true_probs')
+  random_policy = policy_factory('random')
+  policy_arguments = {'classifier': RidgeProb, 'regressor':RandomForestRegressor, 'env':env,
                       'evaluation_budget':evaluation_budget, 'gamma':gamma, 'rollout_depth':lookahead_depth,
                       'treatment_budget':treatment_budget}
   score_list = []
@@ -93,7 +97,12 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
       print('rep: {} t: {}'.format(rep, t))
       a = policy(**policy_arguments)
       env.step(a)
+      print('a random score: {} a est score: {} a true score: {}'.format(
+        np.mean(env.next_infected_probabilities(random_policy(**policy_arguments))),
+        np.mean(env.next_infected_probabilities(a)),
+        np.mean(env.next_infected_probabilities(true_probs_policy(**policy_arguments)))))
     score_list.append(np.mean(env.Y))
+    print('Episode score: {}'.format(np.mean(env.Y)))
   return score_list
 
 
@@ -103,6 +112,6 @@ if __name__ == '__main__':
   SIS_kwargs = {'L': 16, 'omega': 0, 'generate_network': lattice}
   for k in range(0, 1):
     t0 = time.time()
-    scores = main(k, 100, n_rep, 'SIS', 'network rollout', **SIS_kwargs)
+    scores = main(k, 25, n_rep, 'SIS', 'rollout', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))
