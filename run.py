@@ -116,6 +116,6 @@ if __name__ == '__main__':
   SIS_kwargs = {'L': 16, 'omega': 0, 'generate_network': lattice}
   for k in range(0, 1):
     t0 = time.time()
-    scores = main(k, 1, n_rep, 'SIS', 'rollout', **SIS_kwargs)
+    scores = main(k, 5, n_rep, 'SIS', 'rollout', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

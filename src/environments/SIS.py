@@ -15,7 +15,7 @@ class SIS(SpatialDisease):
   POWERS_OF_TWO_MATRICES ={
     k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
   }
-
+  pdb.set_trace()
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
