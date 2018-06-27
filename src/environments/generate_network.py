@@ -117,6 +117,3 @@ def random_nearest_neighbor(size):
     B = nx.connected_components(omega_tilde_nx)
   return nx.adjacency_matrix(omega_tilde_nx)
 
-
-a = random_nearest_neighbor(20)
-print(np.asmatrix(a))

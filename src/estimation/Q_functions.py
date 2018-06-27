@@ -10,6 +10,7 @@ from itertools import combinations
 import math
 from src.utils.misc import onehot
 import pdb
+import time
 
 """
 Parameter descriptions 
@@ -84,7 +85,9 @@ def Q_max(Q_fn, evaluation_budget, treatment_budget, L):
   """
   :return best_q: q-value associated with best candidate action
   """
+  t0 = time.time()
   state_scores = np.array([np.sum(Q_fn(onehot(L, l))) for l in range(L)])
+  print('State score time: {}'.format(time.time() - t0))
   actions = all_candidate_actions(state_scores, evaluation_budget, treatment_budget)
 
   # all_action_indices = combinations(range(16), 3)
@@ -92,8 +95,9 @@ def Q_max(Q_fn, evaluation_budget, treatment_budget, L):
   q_vals = []
 
   def Qsum(a): return np.sum(Q_fn(a))
-
+  t0 = time.time()
   q_vals = np.array([Qsum(a) for a in actions])
+  print('Evaluate actions time: {}'.format(time.time() - t0))
   # for i in range(actions.shape[0]):
   # # for ixs in all_action_indices:
   #   a = actions[i,:]

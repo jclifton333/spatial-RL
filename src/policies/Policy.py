@@ -1,10 +1,11 @@
 from .referencePolicies import random, no_action, true_probs
-from .rolloutPolicies import rollout_policy, network_features_rollout_policy
+from .rolloutPolicies import rollout_policy, network_features_rollout_policy, one_step_policy
 
 
 def policy_factory(policy_type):
   """
-  :param policy_type: String in ['random', 'no_action', 'true_probs', 'rollout', 'network rollout'].
+  :param policy_type: String in ['random', 'no_action', 'true_probs', 'rollout', 'network rollout',
+  'one_step'].
   :return: Corresponding policy function.
   """
   if policy_type == 'random':
@@ -17,5 +18,7 @@ def policy_factory(policy_type):
     return rollout_policy
   elif policy_type == 'network rollout':
     return network_features_rollout_policy
+  elif policy_type == 'one_step':
+    return one_step_policy
   else:
     raise ValueError('Argument does not match any policy.')

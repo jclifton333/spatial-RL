@@ -69,7 +69,8 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
   :param env_name: 'SIS' or 'Ebola'
   :param T: duration of simulation rep
   :param nRep: number of replicates
-  :param policy_name: string in ['random', 'no_action', 'true_probs', 'rollout', 'network rollout'].
+  :param policy_name: string in ['random', 'no_action', 'true_probs', 'rollout', 'network rollout',
+  'one_step'].
   :param kwargs: environment-specific keyword arguments
   """
   # Initialize generative model
@@ -82,7 +83,7 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
   env = environment_factory(env_name, feature_function, **kwargs)
 
   # Evaluation limit parameters
-  treatment_budget = np.int(np.floor((3/16) * kwargs['L']))
+  treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
   evaluation_budget = 20
 
   policy = policy_factory(policy_name)
@@ -113,9 +114,9 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
 if __name__ == '__main__':
   import time
   n_rep = 1
-  SIS_kwargs = {'L': 16, 'omega': 0, 'generate_network': lattice}
+  SIS_kwargs = {'L': 100, 'omega': 0, 'generate_network': lattice}
   for k in range(0, 1):
     t0 = time.time()
-    scores = main(k, 5, n_rep, 'SIS', 'rollout', **SIS_kwargs)
+    scores = main(k, 25, n_rep, 'SIS', 'one_step', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))
