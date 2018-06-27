@@ -15,7 +15,6 @@ class SIS(SpatialDisease):
   POWERS_OF_TWO_MATRICES ={
     k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
   }
-  pdb.set_trace()
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -56,7 +55,7 @@ class SIS(SpatialDisease):
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
     adjacency_matrix = generate_network(L)
-    self.list_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
+    self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
 
     SpatialDisease.__init__(self, adjacency_matrix, feature_function)
     self.omega = omega
@@ -120,8 +119,14 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    return np.array([np.sum([self.m_r(r, data_block) == 1 + m for r in self.list_of_path_lists
-                     if len(r) == k and l in r]) for l in range(data_block.shape[0])])
+    sums = np.zeros(self.L)
+    for r in self.dict_of_path_lists[k]:
+      if len(r) == k:
+        m_r = self.m_r(r, data_block)
+        self.map_to_path_signature[r] = m_r
+        for l in r:
+          sums[l] += (m_r == m + 1)
+    return sums
 
   def phi_k(self, k, data_block):
     """
@@ -140,11 +145,43 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
+    self.map_to_path_signature = {} # This is for efficiently getting features at different actions
     phi = np.zeros((data_block.shape[0], 0))
     for k in range(1, SIS.PATH_LENGTH + 1):
       phi_k = self.phi_k(k, data_block)
       phi = np.column_stack((phi, phi_k))
     return phi
+
+  # Functions for efficiently computing features-at-new-action
+  @staticmethod
+  def map_m_to_index(m, k):
+    start = np.sum([9**i for i in range(1, k)])
+    return int(start + m - 2)
+
+  def modify_m_r(self, data_block, old_action, new_action, r, k):
+    old_m_r = self.map_to_path_signature[r]
+    action_weights = SIS.POWERS_OF_TWO_MATRICES[k][:,1]
+    m_r_diff = np.dot(action_weights, new_action[r] - old_action[r])
+    new_m_r = old_m_r + m_r_diff
+    old_ix = self.map_m_to_index(old_m_r, k)
+    new_ix = self.map_m_to_index(new_m_r, k)
+    try:
+      data_block[r, old_ix] -= 1
+    except:
+      pdb.set_trace()
+    data_block[r, new_ix] += 1
+    return data_block
+
+  @staticmethod
+  def action_has_changed(old_action, new_action, ixs):
+    return not np.array_equal(old_action[ixs], new_action[ixs])
+
+  def phi_at_action(self, data_block, old_action, action):
+    for k, length_k_paths in self.dict_of_path_lists.items():
+      for r in length_k_paths:
+        if self.action_has_changed(old_action, action):
+          data_block = self.modify_m_r(data_block, old_action, action, r, k)
+    return data_block
 
   ##############################################################
   ##            End path-based feature function stuff         ##
@@ -283,10 +320,14 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).data_block_at_action(data_block, action)
     assert data_block.shape[1] == 3
-    new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
+    # new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
     # features = self.neighborFeatures(new_data_block)
     # new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
-    new_data_block = self.phi(new_data_block)
+    # new_data_block = self.phi(new_data_block)
+    if self.Phi:
+      new_data_block = self.phi_at_action(self.Phi[-1], self.A[-1,:], action)
+    else:
+      new_data_block = self.phi(np.column_stack((data_block[:, 0], action, data_block[:, 2])))
     return new_data_block
 
   def network_features_at_action(self, data_block, action):
