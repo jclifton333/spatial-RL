@@ -56,7 +56,7 @@ class SIS(SpatialDisease):
     """
     adjacency_matrix = generate_network(L)
     self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
-
+    pdb.set_trace()
     SpatialDisease.__init__(self, adjacency_matrix, feature_function)
     self.omega = omega
     self.state_covariance = self.BETA_1 * np.eye(self.L)
@@ -320,14 +320,14 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).data_block_at_action(data_block, action)
     assert data_block.shape[1] == 3
-    # new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
+    new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
     # features = self.neighborFeatures(new_data_block)
     # new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
-    # new_data_block = self.phi(new_data_block)
-    if self.Phi:
-      new_data_block = self.phi_at_action(self.Phi[-1], self.A[-1,:], action)
-    else:
-      new_data_block = self.phi(np.column_stack((data_block[:, 0], action, data_block[:, 2])))
+    new_data_block = self.phi(new_data_block)
+    # if self.Phi:
+    #   new_data_block = self.phi_at_action(self.Phi[-1], self.A[-1,:], action)
+    # else:
+    #   new_data_block = self.phi(np.column_stack((data_block[:, 0], action, data_block[:, 2])))
     return new_data_block
 
   def network_features_at_action(self, data_block, action):

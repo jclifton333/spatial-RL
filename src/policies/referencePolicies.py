@@ -25,3 +25,12 @@ def true_probs(**kwargs):
   _, a, _ = Q_max(env.next_infected_probabilities, evaluation_budget, treatment_budget, env.L)
   return a
 
+
+def true_probs_myopic(**kwargs):
+  env, treatment_budget = kwargs['env'], kwargs['treatment_budget']
+  a = np.zeros(env.L)
+  probs = env.next_infected_probabilities(a)
+  treat_ixs = np.argsort(-probs)[:treatment_budget]
+  a[treat_ixs] = 1
+  return a
+

@@ -11,6 +11,7 @@ import math
 from src.utils.misc import onehot
 import pdb
 import time
+import copy
 
 """
 Parameter descriptions 
@@ -81,36 +82,49 @@ def perturb_action(action, number_to_perturb):
   action[zero_ixs[perturb_ixs]] = 1
   return action
 
+
+def swap_action(Q_fn, action):
+  """
+  Move lowest Q_fn treatment to highest non-treated area.
+  :param Q_fn:
+  :param action:
+  :return:
+  """
+  q = Q_fn(action)
+  highest_untreated = np.intersect1d(np.argsort(q), np.where(action == 0)[0])[-1]
+  lowest_treated = np.intersect1d(np.argsort(q), np.where(action == 1)[0])[0]
+  if q[lowest_treated] < q[highest_untreated]:
+    new_action = copy.copy(action)
+    new_action[lowest_treated] = 0
+    new_action[highest_untreated] = 1
+    return new_action
+  else:
+    return None
+
 def Q_max(Q_fn, evaluation_budget, treatment_budget, L):
-  """
-  :return best_q: q-value associated with best candidate action
-  """
-  t0 = time.time()
-  state_scores = np.array([np.sum(Q_fn(onehot(L, l))) for l in range(L)])
-  print('State score time: {}'.format(time.time() - t0))
-  actions = all_candidate_actions(state_scores, evaluation_budget, treatment_budget)
-
-  # all_action_indices = combinations(range(16), 3)
-  best_q = float('inf')
-  q_vals = []
-
-  def Qsum(a): return np.sum(Q_fn(a))
-  t0 = time.time()
-  q_vals = np.array([Qsum(a) for a in actions])
-  print('Evaluate actions time: {}'.format(time.time() - t0))
-  # for i in range(actions.shape[0]):
-  # # for ixs in all_action_indices:
-  #   a = actions[i,:]
-  #   # a = np.zeros(L)
-  #   # a[list(ixs)] = 1
-  #   q = Q_fn(a)
-  #   # print('q: {}'.format(q))
-  #   if np.sum(q) < np.sum(best_q):
-  #     best_q = q
-  #     best_a = a
-  #   q_vals.append(np.sum(q))
-
-  return np.max(q_vals), actions[np.argmax(q_vals),:], q_vals
+  a = np.zeros(L)
+  while np.sum(a) < treatment_budget:
+    q = -Q_fn(a)
+    a_new = np.intersect1d(np.argsort(q), np.where(a == 0)[0])[0]
+    a[a_new] = 1
+  best_q = np.sum(Q_fn(a))
+  evaluation_counter = treatment_budget
+  while evaluation_counter < evaluation_budget:
+    a_new = swap_action(Q_fn, a)
+    evaluation_counter += 1
+    if a_new is not None:
+      q_new = np.sum(Q_fn(a_new))
+      if q_new < best_q:
+        a = a_new
+        best_q = q_new
+    else:
+      a_new = perturb_action(a, 1)
+      q_new = np.sum(Q_fn(a_new))
+      evaluation_counter += 1
+      if np.sum(Q_fn(a_new)) < best_q:
+        best_q = q_new
+        a = a_new
+  return best_q, a, None
 
 
 def Q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model, network_features=False):

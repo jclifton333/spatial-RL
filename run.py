@@ -12,7 +12,7 @@ import sys
 import numpy as np
 import pdb
 
-from src.environments.generate_network import lattice
+from src.environments import generate_network
 from src.environments.environment_factory import environment_factory
 
 from src.policies.Policy import policy_factory
@@ -84,7 +84,7 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
 
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
-  evaluation_budget = 20
+  evaluation_budget = 10000
 
   policy = policy_factory(policy_name)
   true_probs_policy = policy_factory('true_probs')
@@ -100,10 +100,10 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
       print('rep: {} t: {}'.format(rep, t))
       a = policy(**policy_arguments)
       env.step(a)
-      print('a random score: {} a est score: {} a true score: {}'.format(
-        np.mean(env.next_infected_probabilities(random_policy(**policy_arguments))),
-        np.mean(env.next_infected_probabilities(a)),
-        np.mean(env.next_infected_probabilities(true_probs_policy(**policy_arguments)))))
+      # print('a random score: {} a est score: {} a true score: {}'.format(
+      #   np.mean(env.next_infected_probabilities(random_policy(**policy_arguments))),
+      #   np.mean(env.next_infected_probabilities(a)),
+      #   np.mean(env.next_infected_probabilities(true_probs_policy(**policy_arguments)))))
       t1 = time.time()
       print('Time: {}'.format(t1 - t0))
     score_list.append(np.mean(env.Y))
@@ -113,10 +113,10 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
 
 if __name__ == '__main__':
   import time
-  n_rep = 1
-  SIS_kwargs = {'L': 100, 'omega': 0, 'generate_network': lattice}
+  n_rep = 10
+  SIS_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice}
   for k in range(0, 1):
     t0 = time.time()
-    scores = main(k, 25, n_rep, 'SIS', 'one_step', **SIS_kwargs)
+    scores = main(k, 25, n_rep, 'SIS', 'true_probs_myopic', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

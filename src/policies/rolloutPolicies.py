@@ -2,15 +2,22 @@ from src.estimation.Fitted_Q import rollout, network_features_rollout
 from src.estimation.AutoRegressor import AutoRegressor
 from src.estimation.Q_functions import Q_max
 import numpy as np
+import pdb
 
 
 def one_step_policy(**kwargs):
   classifier, env, evaluation_budget, treatment_budget = \
     kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget']
   clf = classifier()
-  clf.fit(np.vstack(env.X).reshape(1,-1), np.hstack(env.y).astype(float))
-  Qfn = lambda X: clf.predict_proba(X)[:,-1]
-  _, a, _ = Q_max(Qfn, evaluation_budget, treatment_budget, env.L)
+  clf.fit(np.vstack(env.X), np.hstack(env.y).astype(float))
+  target = np.hstack(env.y).astype(float)
+  true_expected_counts = np.hstack(env.true_infection_probs)
+  phat = clf.predict_proba(np.vstack(env.X))[:,-1]
+  r2 = 1 - (
+      np.sum((phat - true_expected_counts) ** 2) / np.sum((true_expected_counts - np.mean(true_expected_counts)) ** 2))
+  print('R2: {}'.format(r2))
+  qfn = lambda a: clf.predict_proba(env.data_block_at_action(env.X_raw[-1], a))[:,-1]
+  _, a, _ = Q_max(qfn, evaluation_budget, treatment_budget, env.L)
   return a
 
 

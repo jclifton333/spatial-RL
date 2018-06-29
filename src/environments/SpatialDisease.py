@@ -90,8 +90,8 @@ class SpatialDisease(ABC):
     :param a: self.L-length array of binary actions at each state 
     """
     self.A = np.vstack((self.A, a))
-    self.next_state() 
-    self.next_infections(a) 
+    self.next_infections(a)
+    self.next_state()
     self.updateObsHistory(a)
     self.T += 1
 

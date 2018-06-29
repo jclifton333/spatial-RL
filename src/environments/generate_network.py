@@ -103,7 +103,7 @@ def random_nearest_neighbor(size):
     best_pair = None
     best_dist = float('inf')
     for i in range(len(list(B))):
-      for j in range(i + 1, len(B)):
+      for j in range(i + 1, len(list(B))):
         B_i = B[i]
         B_j = B[j]
         distances = np.array([[E[l, lprime] for l in B_i]
@@ -113,7 +113,11 @@ def random_nearest_neighbor(size):
           best_pair_ixs = argmin_2d(distances)
           best_pair = B_i[best_pair_ixs[1]], B_j[best_pair_ixs[0]]
           best_dist = min_dist
-    omega_tilde_nx.add_edge(best_pair[0], best_pair[1])
+    try:
+      omega_tilde_nx.add_edge(best_pair[0], best_pair[1])
+    except:
+      pdb.set_trace()
+
     B = nx.connected_components(omega_tilde_nx)
-  return nx.adjacency_matrix(omega_tilde_nx)
+  return nx.adjacency_matrix(omega_tilde_nx).todense()
 
