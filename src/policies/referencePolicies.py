@@ -8,6 +8,11 @@ import numpy as np
 from src.estimation.Q_functions import Q_max
 
 
+def treat_all(**kwargs):
+  L = kwargs['env'].L
+  return np.ones(L)
+
+
 def no_action(**kwargs):
   L = kwargs['env'].L
   return np.zeros(L)

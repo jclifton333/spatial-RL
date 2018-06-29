@@ -84,7 +84,7 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
 
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
-  evaluation_budget = 10000
+  evaluation_budget = 100000
 
   policy = policy_factory(policy_name)
   true_probs_policy = policy_factory('true_probs')
@@ -97,7 +97,7 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
     env.reset()
     for t in range(T):
       t0 = time.time()
-      print('rep: {} t: {}'.format(rep, t))
+      # print('rep: {} t: {}'.format(rep, t))
       a = policy(**policy_arguments)
       env.step(a)
       # print('a random score: {} a est score: {} a true score: {}'.format(
@@ -105,16 +105,16 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
       #   np.mean(env.next_infected_probabilities(a)),
       #   np.mean(env.next_infected_probabilities(true_probs_policy(**policy_arguments)))))
       t1 = time.time()
-      print('Time: {}'.format(t1 - t0))
+      # print('Time: {}'.format(t1 - t0))
     score_list.append(np.mean(env.Y))
-    print('Episode score: {}'.format(np.mean(env.Y)))
+    print('Episode score: {}'.format(np.mean(env.Y[2:,])))
   return score_list
 
 
 if __name__ == '__main__':
   import time
   n_rep = 10
-  SIS_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice}
+  SIS_kwargs = {'L': 100, 'omega': 0, 'generate_network': generate_network.lattice}
   for k in range(0, 1):
     t0 = time.time()
     scores = main(k, 25, n_rep, 'SIS', 'true_probs_myopic', **SIS_kwargs)

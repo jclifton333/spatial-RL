@@ -56,7 +56,6 @@ class SIS(SpatialDisease):
     """
     adjacency_matrix = generate_network(L)
     self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
-    pdb.set_trace()
     SpatialDisease.__init__(self, adjacency_matrix, feature_function)
     self.omega = omega
     self.state_covariance = self.BETA_1 * np.eye(self.L)
