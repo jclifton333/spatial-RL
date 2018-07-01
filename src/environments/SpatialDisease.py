@@ -28,8 +28,11 @@ class SpatialDisease(ABC):
     
     # Adjacency info
     self.adjacency_matrix = adjacency_matrix
-    self.adjacency_list = [[l_prime for l_prime in range(self.L) if self.adjacency_matrix[l, l_prime] == 1] for l in range(self.L)]
-    
+    self.adjacency_list = [[l_prime for l_prime in range(self.L) if self.adjacency_matrix[l, l_prime] == 1]
+                           for l in range(self.L)]
+    self.neighbor_interaction_lists = [np.array([[i,j] for i in self.adjacency_list[l] for j in self.adjacency_list[l]])
+                                       for l in range(self.L)]
+
     # Observation history
     if self.initialInfections is None:
       number_initial_infections = int(self.INITIAL_INFECT_PROP * self.L)
