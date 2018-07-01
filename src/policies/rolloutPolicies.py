@@ -1,6 +1,6 @@
-from src.estimation.Fitted_Q import rollout, network_features_rollout
+from src.estimation.rollout import rollout, network_features_rollout
 from src.estimation.AutoRegressor import AutoRegressor
-from src.estimation.Q_functions import Q_max
+from src.estimation.q_functions import Q_max
 import numpy as np
 import pdb
 

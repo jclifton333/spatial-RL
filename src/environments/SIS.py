@@ -42,9 +42,9 @@ class SIS(SpatialDisease):
   ETA_2 = np.log(((1 - PROB_INF) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
           - 1)
   ETA_4 = np.log(((1 - PROB_INF * 0.25) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
-          - 1)
+          - 1) - ETA_2
   ETA_3 = np.log(((1 - PROB_INF * 0.75) / (1 - PROB_INF_LATENT))**(-1 / PROB_NUM_NEIGH) \
-          - 1)
+          - 1) - ETA_2
   ETA_5 = np.log(1 / (1 - PROB_REC) - 1)
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
@@ -65,10 +65,6 @@ class SIS(SpatialDisease):
     self.Phi = [] # Network-level features
     self.current_state = self.S[-1,:]
 
-    # Initial steps
-    self.step(np.zeros(self.L))
-    self.step(np.zeros(self.L))
-
   def reset(self):
     """
     Reset state and observation histories.
@@ -79,10 +75,6 @@ class SIS(SpatialDisease):
     self.S_indicator = self.S > 0
     self.Phi = []
     self.current_state = self.S[-1,:]
-
-    # Initial steps
-    self.step(np.zeros(self.L))
-    self.step(np.zeros(self.L))
 
   ##############################################################
   ## Path-based feature function computation (see draft p7)   ##
@@ -230,7 +222,6 @@ class SIS(SpatialDisease):
 
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
-    self.R = np.append(self.R, np.sum(next_infections))
     self.true_infection_probs.append(next_infected_probabilities)
     self.current_infected = next_infections
   

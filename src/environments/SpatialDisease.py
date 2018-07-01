@@ -39,7 +39,6 @@ class SpatialDisease(ABC):
     else:
       self.Y = np.array([self.initialInfections])
     self.A = np.zeros((0, self.L))
-    self.R = np.array([np.sum(self.Y[-1,:])])
     self.X_raw = [] # Will hold blocks [S_t, A_t, Y_t] at each time t
     self.X = []  # Will hold features of [S_t, A_t, Y_t] each each time t
     self.y = []  # Will hold blocks [Y_tp1] for each time t
@@ -62,7 +61,6 @@ class SpatialDisease(ABC):
     else:
       self.Y = np.array([self.initialInfections])
     self.A = np.zeros((0, self.L))
-    self.R = np.array([np.sum(self.Y[-1,:])])
     self.X_raw = []
     self.X = [] # Will hold blocks [S_t, A_t, Y_t] each each time t
     self.y = [] # Will hold blocks [Y_tp1] for each time t

@@ -8,6 +8,15 @@ def onehot(length, ix):
   return arr
 
 
+def random_argsort(arr, num_to_take):
+  """
+  Ad-hoc way of getting randomized argsort.
+  """
+  top_entries = np.sort(-arr)[:(num_to_take*2)]
+  b = np.random.random(top_entries.size)
+  return np.argsort(np.lexsort((b, top_entries)))[:num_to_take]
+
+
 class RidgeProb(object):
   def __init__(self):
     self.reg = Ridge()
