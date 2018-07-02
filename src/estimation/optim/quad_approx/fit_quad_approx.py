@@ -52,8 +52,7 @@ def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, L):
 
 def get_quadratic_program_from_q(q, treatment_budget, evaluation_budget, env):
   sample_qs, sample_acts = sample_from_q(q, treatment_budget, evaluation_budget, env.L)
-  quadratic_parameters, intercept = fit_quad_approx(sample_qs, sample_acts, env.adjacency_lists,
-                                                                       env.neighbor_interaction_lists, env.L)
+  quadratic_parameters, intercept = fit_quad_approx(sample_qs, sample_acts, env.neighbor_interaction_lists, env.L)
   return quadratic_parameters, intercept
 
 

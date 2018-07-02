@@ -2,9 +2,9 @@
 We'll test quad_approx for a 2x2 lattice with the following q function:
 
 q_0(a) = a_0 + a_0*a_1
-q_1(a) = a_1 + a_1*a_2
+q_1(a) = a_1 + a_1*a_3
 q_2(a) = a_2 + a2*a_3
-q_3(a) = 2*a_3 + a_3*a_0
+q_3(a) = 2*a_3 + a_3*a_1
 
 and a treatment budget of 1.
 """
