@@ -10,42 +10,50 @@ and a treatment budget of 1.
 """
 import numpy as np
 from src.estimation.optim.quad_approx.fit_quad_approx import fit_quad_approx
+from copy import copy
+from itertools import combinations
+
+TRUE_MS = [np.array([[1, 1, 0, 0],
+                     [0, 0, 0, 0],
+                     [0, 0, 0, 0],
+                     [0, 0, 0, 0]]),
+           np.array([[0, 0, 0, 0],
+                     [0, 1, 0, 1],
+                     [0, 0, 0, 0],
+                     [0, 0, 0, 0]]),
+           np.array([[0, 0, 0, 0],
+                     [0, 0, 0, 0],
+                     [0, 0, 1, 1],
+                     [0, 0, 0, 0]]),
+           np.array([[0, 0, 0, 0],
+                     [0, 0, 0, 1],
+                     [0, 0, 0, 0],
+                     [0, 0, 0, 2]])]
 
 
 def get_sample_q_and_act():
   sample_acts = []
-  for i in range(4):
+  sample_qs = []
+  ixs = [c for i in range(4) for c in combinations(range(4), i)] + [(0, 1, 2, 3)]
+  for ix in ixs:
     dummy_act = np.zeros(4)
-    dummy_act[i] = 1
-    sample_acts.append(dummy_act)
-  sample_q = np.array([[1,0,0,0],
-                      [0,1,0,0],
-                      [0,0,1,0],
-                      [0,0,0,2]])
-  return sample_q, sample_acts
+    dummy_act[list(ix)] = 1
+    a = copy(dummy_act)
+    sample_acts.append(a)
+    sample_qs.append([np.dot(a, np.dot(M, a)) for M in TRUE_MS])
+  return np.array(sample_qs), sample_acts
 
 
 def get_adjacency_and_neighbor_interaction_lists():
-  adjacency_list = [[1,2], [0,3], [1,3], [1,2]]
-  neighbor_interaction_lists = [np.array([[i,j] for i in adjacency_list[l] for j in adjacency_list[l]])
+  adjacency_list = [[1,2], [0,3], [0,3], [1,2]]
+  neighbor_interaction_lists = [np.array([[i,j] for i in [l] + adjacency_list[l] for j in [l] + adjacency_list[l] if j >= i])
                                 for l in range(4)]
   return adjacency_list, neighbor_interaction_lists
-
-
-def get_correct_parameters():
-  linear_parameter = np.array([1,1,1,2])
-  quadratic_parameter = np.array([[0, 1, 0, 0],
-                                  [0, 0, 1, 0],
-                                  [0, 0, 0, 1],
-                                  [1, 0, 0, 0]])
-  intercept = 0
-  return linear_parameter, quadratic_parameter, intercept
 
 
 def test_answer():
   sample_qs, sample_acts = get_sample_q_and_act()
   adjacency_list, neighbor_interaction_lists = get_adjacency_and_neighbor_interaction_lists()
-  linear_parameter, quadratic_parameter, intercept = get_correct_parameters()
-  q, l, i = fit_quad_approx(sample_qs, sample_acts, adjacency_list, neighbor_interaction_lists, 4)
-  assert np.array_equal(q, quadratic_parameter)
+  q, i = fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, 4)
+  assert np.allclose(q, np.sum(TRUE_MS, axis=0))
 
