@@ -41,17 +41,20 @@ def qp_max(M, b, r, budget):
 
   # Define constraint
   constr_expr = LinExpr()
-  constr_expr.addTerms(1.0, vars)
+  constr_expr.addTerms([1.0]*L, vars)
   model.addConstr(constr_expr == budget)
 
   # Optimize
   model.optimize()
+
+  print([v.X for v in vars])
 
   return
 
 
 if __name__ == '__main__':
   M = np.eye(2)
+  M[1,1] -= 1
   b = np.ones(2)
   r = 0
   budget = 1
