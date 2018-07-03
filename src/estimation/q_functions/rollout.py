@@ -5,7 +5,7 @@ Created on Thu May 17 00:08:33 2018
 @author: Jesse
 """
 import numpy as np
-from src.estimation.q_functions import Q_max, Q_max_all_states
+from src.estimation.optim.q_functions import q_max
 from scipy.special import expit, logit
 import pdb
 import time
