@@ -37,7 +37,7 @@ def swap_action(q_fn, action):
     return None
 
 
-def sweep(q_fn, evaluation_budget, treatment_budget, L):
+def argmaxer_sweep(q_fn, evaluation_budget, treatment_budget, L):
   a = np.zeros(L)
   while np.sum(a) < treatment_budget:
     q = -q_fn(a)

@@ -1,7 +1,3 @@
-from src.estimation.optim.qp.qp_max import qp_max
-import numpy as np
-
-
 # TRUE_MS = [np.array([[1, 1, 0, 0],
 #                      [0, 0, 0, 0],
 #                      [0, 0, 0, 0],

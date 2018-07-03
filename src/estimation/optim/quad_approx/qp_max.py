@@ -9,20 +9,19 @@ import numpy as np
 from gurobipy import *
 
 
-def qp_max(M, b, r, budget):
+def qp_max(M, r, budget):
   """
-  max x'Mx + x'b + r
+  max x'Mx + r
   s.t. 1'x = budget
 
   :param M:
-  :param b:
   :param r:
   :param budget:
   :return:
   """
 
   model = Model('qip')
-  L = len(b)
+  L = M.shape[0]
 
   # Define decision variables
   vars = []
@@ -34,8 +33,6 @@ def qp_max(M, b, r, budget):
   for i in range(L):
     for j in range(L):
       obj += M[i,j]*vars[i]*vars[j]
-  for i in range(L):
-    obj += b[i]*vars[i]
   obj += r
   model.setObjective(obj)
 
@@ -47,15 +44,5 @@ def qp_max(M, b, r, budget):
   # Optimize
   model.optimize()
 
-  print([v.X for v in vars])
+  return np.array([v.X for v in vars])
 
-  return
-
-
-if __name__ == '__main__':
-  M = np.eye(2)
-  M[1,1] -= 1
-  b = np.ones(2)
-  r = 0
-  budget = 1
-  qp_max(M, b, r, budget)

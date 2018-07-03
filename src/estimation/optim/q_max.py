@@ -1,9 +1,9 @@
 import numpy as np
 from src.estimation.q_functions import q
-from src.estimation.optim.sweep import sweep
+from src.estimation.optim.sweep import argmaxer_sweep
 
 
-def q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model, q_max=sweep.sweep,
+def q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model, q_max=argmaxer_sweep.sweep,
                      network_features=False):
   """
   Take q_max for all data blocks in env history (need this for Q-learning/rollout).

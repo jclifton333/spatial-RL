@@ -4,7 +4,6 @@ program).
 """
 import numpy as np
 from sklearn.linear_model import LinearRegression
-import pdb
 
 
 def get_neighbor_ixn_features(a, neighbor_interactions):
