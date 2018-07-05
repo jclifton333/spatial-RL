@@ -6,7 +6,6 @@ Reference policies for comparison:
 """
 import numpy as np
 import pdb
-from src.estimation.q_functions import Q_max
 from src.utils.misc import random_argsort
 
 
@@ -21,8 +20,9 @@ def no_action(**kwargs):
 
 
 def true_probs(**kwargs):
-  env, treatment_budget, evaluation_budget = kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget']
-  _, a, _ = Q_max(env.next_infected_probabilities, evaluation_budget, treatment_budget, env.L)
+  env, treatment_budget, evaluation_budget, argmaxer = \
+    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer']
+  _, a, _ = argmaxer(env.next_infected_probabilities, evaluation_budget, treatment_budget, env.L)
   return a
 
 

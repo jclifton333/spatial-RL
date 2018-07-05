@@ -1,5 +1,5 @@
-from .reference_policies import random, no_action, true_probs, true_probs_myopic, treat_all
-from .rollout_policies import rollout_policy, network_features_rollout_policy, one_step_policy
+import src.policies.reference_policies as ref
+import src.policies.rollout_policies as roll
 
 
 def policy_factory(policy_type):
@@ -9,20 +9,20 @@ def policy_factory(policy_type):
   :return: Corresponding policy function.
   """
   if policy_type == 'random':
-    return random
+    return ref.random
   elif policy_type == 'no_action':
-    return no_action
+    return ref.no_action
   elif policy_type == 'true_probs':
-    return true_probs
+    return ref.true_probs
   elif policy_type == 'true_probs_myopic':
-    return true_probs_myopic
+    return ref.true_probs_myopic
   elif policy_type == 'rollout':
-    return rollout_policy
+    return roll.rollout_policy
   elif policy_type == 'network rollout':
-    return network_features_rollout_policy
+    return roll.network_features_rollout_policy
   elif policy_type == 'one_step':
-    return one_step_policy
+    return roll.one_step_policy
   elif policy_type == 'treat_all':
-    return treat_all
+    return ref.treat_all
   else:
     raise ValueError('Argument does not match any policy.')

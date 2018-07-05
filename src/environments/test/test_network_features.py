@@ -22,8 +22,7 @@ def test_phi_at_action():
       env.map_to_path_signature[r] = env.m_r(r, old_data_block)
   new_data_block = np.zeros((4, 3))
   new_data_block[0, 1] = 1
-  correct_ans = env.phi_k(1, new_data_block)
+  correct_ans = env.phi_k(2, new_data_block)
   ans = env.phi_at_action(env.phi(old_data_block), np.array([0, 0, 0, 0]), np.array([1, 0, 0, 0]))
-  ans = ans[:, :9]
-  pdb.set_trace()
+  ans = ans[:, 9:]
   assert np.array_equal(ans, correct_ans)

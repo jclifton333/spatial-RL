@@ -4,65 +4,37 @@ Created on Fri May  4 21:49:40 2018
 
 @author: Jesse
 """
-# sys.path.append('src/environments')
-# sys.path.append('src/estimation')
-# sys.path.append('src/utils')
-
 import numpy as np
+
+# Hack bc python imports are stupid
+import sys
+import os
+this_dir = os.path.dirname(os.path.abspath(__file__))
+pkg_dir = os.path.join(this_dir, '..', '..')
+sys.path.append(pkg_dir)
 
 from src.environments import generate_network
 from src.environments.environment_factory import environment_factory
-
+from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 
 from sklearn.ensemble import RandomForestRegressor
 from src.utils.misc import RidgeProb
 
 
-# def divide_random_between_infection_status(treatment_budget, current_infected):
-#   """
-#   Return an action with _treatment_budget_ treatments divided evenly between
-#   infected and not-infected states.
-#
-#   :param treatment_budget:
-#   :param current_infected:
-#   :return:
-#   """
-#   infected_ixs = np.where(current_infected == 1)
-#   not_infected_ixs = np.where(current_infected == 0)
-#   # pdb.set_trace()
-#   try:
-#     if np.random.random() < 0.5:
-#       infected_treatment_budget = np.min([np.int(np.floor(treatment_budget / 2)),
-#                                          len(infected_ixs[0])])
-#     else:
-#       infected_treatment_budget = np.min([np.int(np.ceil(treatment_budget / 2)),
-#                                          len(not_infected_ixs[0])])
-#     not_infected_treatment_budget = np.min([treatment_budget - infected_treatment_budget,
-#                                            len(not_infected_ixs[0])])
-#   except:
-#     pdb.set_trace()
-#   infected_trts = np.random.choice(infected_ixs[0], infected_treatment_budget)
-#   not_infected_trts = np.random.choice(not_infected_ixs[0], not_infected_treatment_budget)
-#   a = np.zeros_like(current_infected)
-#   a[infected_trts] = 1
-#   a[not_infected_trts] = 1
-#   return a
-
-
-def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
+def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwargs):
   """
   :param lookahead_depth:
   :param env_name: 'SIS' or 'Ebola'
   :param T: duration of simulation rep
-  :param nRep: number of replicates
+  :param n_rep: number of replicates
   :param policy_name: string in ['random', 'no_action', 'true_probs', 'rollout', 'network rollout',
   'one_step'].
+  :param argmaxer_name: string in ['sweep', 'quad_approx'] for method of taking q function argmax
   :param kwargs: environment-specific keyword arguments
   """
   # Initialize generative model
   gamma = 0.7
-  # feature_function = polynomialFeatures(3, interaction_only=True)
 
   def feature_function(x):
     return x
@@ -76,11 +48,12 @@ def main(lookahead_depth, T, nRep, env_name, policy_name, **kwargs):
   policy = policy_factory(policy_name)
   true_probs_policy = policy_factory('true_probs')
   random_policy = policy_factory('random')
+  argmaxer = argmaxer_factory(argmaxer_name)
   policy_arguments = {'classifier': RidgeProb, 'regressor':RandomForestRegressor, 'env':env,
                       'evaluation_budget':evaluation_budget, 'gamma':gamma, 'rollout_depth':lookahead_depth,
-                      'treatment_budget':treatment_budget, 'divide_evenly': False}
+                      'treatment_budget':treatment_budget, 'divide_evenly': False, 'argmaxer': argmaxer}
   score_list = []
-  for rep in range(nRep):
+  for rep in range(n_rep):
     env.reset()
     env.step(random_policy(**policy_arguments))
     env.step(random_policy(**policy_arguments))
@@ -106,6 +79,6 @@ if __name__ == '__main__':
   SIS_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice}
   for k in range(0, 1):
     t0 = time.time()
-    scores = main(k, 25, n_rep, 'SIS', 'true_probs_myopic', **SIS_kwargs)
+    scores = main(k, 25, n_rep, 'SIS', 'true_probs_myopic', 'sweep', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

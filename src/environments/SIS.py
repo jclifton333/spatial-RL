@@ -5,8 +5,8 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
-from src.environments.SpatialDisease import SpatialDisease
-from src.utils.features import get_all_paths
+from .SpatialDisease import SpatialDisease
+from ..utils.features import get_all_paths
 import pdb
 
 

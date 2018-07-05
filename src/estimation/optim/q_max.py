@@ -1,5 +1,5 @@
 import numpy as np
-from src.estimation.q_functions import q
+from src.estimation.q_functions.q_functions import q
 
 
 def q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model, argmaxer,
