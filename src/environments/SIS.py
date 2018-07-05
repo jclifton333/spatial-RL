@@ -5,7 +5,7 @@ spatial QL paper.
 
 import numpy as np
 from scipy.special import expit
-from .SpatialDisease import SpatialDisease
+from src.environments.SpatialDisease import SpatialDisease
 from src.utils.features import get_all_paths
 import pdb
 
@@ -56,6 +56,8 @@ class SIS(SpatialDisease):
     """
     adjacency_matrix = generate_network(L)
     self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
+    # This is for efficiently getting features at different actions
+    self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
     SpatialDisease.__init__(self, adjacency_matrix, feature_function)
     self.omega = omega
     self.state_covariance = self.BETA_1 * np.eye(self.L)
@@ -71,6 +73,8 @@ class SIS(SpatialDisease):
     """
     # super.reset()
     super(SIS, self).reset()
+    # This is for efficiently getting features at different actions
+    self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
     self.S = np.zeros((1, self.L))
     self.S_indicator = self.S > 0
     self.Phi = []
@@ -136,7 +140,7 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    self.map_to_path_signature = {} # This is for efficiently getting features at different actions
+
     phi = np.zeros((data_block.shape[0], 0))
     for k in range(1, SIS.PATH_LENGTH + 1):
       phi_k = self.phi_k(k, data_block)
@@ -147,30 +151,27 @@ class SIS(SpatialDisease):
   @staticmethod
   def map_m_to_index(m, k):
     start = np.sum([9**i for i in range(1, k)])
-    return int(start + m - 2)
+    return int(start + m - 1)
 
   def modify_m_r(self, data_block, old_action, new_action, r, k):
     old_m_r = self.map_to_path_signature[r]
     action_weights = SIS.POWERS_OF_TWO_MATRICES[k][:,1]
-    m_r_diff = np.dot(action_weights, new_action[r] - old_action[r])
+    m_r_diff = np.dot(action_weights, new_action[list(r)] - old_action[list(r)])
     new_m_r = old_m_r + m_r_diff
     old_ix = self.map_m_to_index(old_m_r, k)
     new_ix = self.map_m_to_index(new_m_r, k)
-    try:
-      data_block[r, old_ix] -= 1
-    except:
-      pdb.set_trace()
+    data_block[r, old_ix] -= 1
     data_block[r, new_ix] += 1
     return data_block
 
   @staticmethod
   def action_has_changed(old_action, new_action, ixs):
-    return not np.array_equal(old_action[ixs], new_action[ixs])
+    return not np.array_equal(old_action[list(ixs)], new_action[list(ixs)])
 
   def phi_at_action(self, data_block, old_action, action):
     for k, length_k_paths in self.dict_of_path_lists.items():
       for r in length_k_paths:
-        if self.action_has_changed(old_action, action):
+        if self.action_has_changed(old_action, action, r):
           data_block = self.modify_m_r(data_block, old_action, action, r, k)
     return data_block
 
