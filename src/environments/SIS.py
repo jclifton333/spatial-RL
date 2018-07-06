@@ -8,6 +8,19 @@ from scipy.special import expit
 from .SpatialDisease import SpatialDisease
 from ..utils.features import get_all_paths
 import pdb
+import numba as nb
+
+
+def sum_prod(A, B):
+  m, n = A.shape
+  s = 1
+  for i in range(m):
+    for j in range(n):
+      s += A[i,j]*B[i,j]
+  return s
+
+
+numba_sum_prod = nb.jit(nb.float64(nb.float64[:,:], nb.float64[:,:]), nopython=True)(sum_prod)
 
 
 class SIS(SpatialDisease):
@@ -105,23 +118,7 @@ class SIS(SpatialDisease):
     b = self.get_b(r, data_block)
     k, q = b.shape
     powers_of_2_matrix = SIS.POWERS_OF_TWO_MATRICES[k]
-    return 1 + np.sum( np.multiply(b, powers_of_2_matrix) )
-
-  def phi_k_m(self, k, m, data_block):
-    """
-    :param k:
-    :param m:
-    :param data_block:
-    :return:
-    """
-    sums = np.zeros(self.L)
-    for r in self.dict_of_path_lists[k]:
-      if len(r) == k:
-        m_r = self.m_r(r, data_block)
-        self.map_to_path_signature[r] = m_r
-        for l in r:
-          sums[l] += (m_r == m + 1)
-    return sums
+    return numba_sum_prod(b, powers_of_2_matrix)
 
   def phi_k(self, k, data_block):
     """
@@ -131,8 +128,10 @@ class SIS(SpatialDisease):
     """
     M = 9**k
     phi_k = np.zeros((data_block.shape[0], M))
-    for m in range(M):
-      phi_k[:, m] = self.phi_k_m(k, m, data_block)
+    for r in self.dict_of_path_lists[k]:
+      m_r = int(self.m_r(r, data_block))
+      self.map_to_path_signature[r] = m_r
+      phi_k[r, [m_r - 1]*k] += 1
     return phi_k
 
   def phi(self, data_block):
@@ -178,16 +177,16 @@ class SIS(SpatialDisease):
   ##            End path-based feature function stuff         ##
   ##############################################################
 
-  def next_state(self): 
+  def next_state(self):
     """
-    Update state array acc to AR(1) 
-    :return next_state: self.L-length array of new states 
+    Update state array acc to AR(1)
+    :return next_state: self.L-length array of new states
     """
     super(SIS, self).next_state()
     next_state = np.random.multivariate_normal(mean=self.BETA_0*self.current_state, cov=self.state_covariance)
     self.S = np.vstack((self.S, next_state))
     self.S_indicator = np.vstack((self.S_indicator, next_state > 0))
-    self.current_state = next_state 
+    self.current_state = next_state
     return next_state
 
   def next_infected_probabilities(self, a):
@@ -208,9 +207,9 @@ class SIS(SpatialDisease):
   def next_infections(self, a):
     """
     Updates the vector indicating infections (self.current_infected).
-    Computes probability of infection at each state, then generates corresponding 
-    Bernoullis.    
-    :param a: self.L-length binary array of actions at each state     
+    Computes probability of infection at each state, then generates corresponding
+    Bernoullis.
+    :param a: self.L-length binary array of actions at each state
     """
     super(SIS, self).next_infections(a)
     next_infected_probabilities = self.next_infected_probabilities(a)

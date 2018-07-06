@@ -70,8 +70,8 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
 
 if __name__ == '__main__':
   import time
-  n_rep = 10
+  n_rep = 1
   SIS_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice}
   for k in range(1, 2):
-    scores = main(k, 25, n_rep, 'SIS', 'rollout', 'quad_approx', **SIS_kwargs)
+    scores = main(k, 10, n_rep, 'SIS', 'rollout', 'quad_approx', **SIS_kwargs)
     print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))
