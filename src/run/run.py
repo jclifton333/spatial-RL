@@ -19,6 +19,7 @@ from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LogisticRegression
 from src.utils.misc import RidgeProb
 
 
@@ -34,7 +35,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
   :param kwargs: environment-specific keyword arguments
   """
   # Initialize generative model
-  gamma = 0.7
+  gamma = 0.9
 
   def feature_function(x):
     return x
@@ -49,7 +50,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
   true_probs_policy = policy_factory('true_probs')
   random_policy = policy_factory('random')
   argmaxer = argmaxer_factory(argmaxer_name)
-  policy_arguments = {'classifier': RidgeProb, 'regressor':RandomForestRegressor, 'env':env,
+  policy_arguments = {'classifier': LogisticRegression, 'regressor':RandomForestRegressor, 'env':env,
                       'evaluation_budget':evaluation_budget, 'gamma':gamma, 'rollout_depth':lookahead_depth,
                       'treatment_budget':treatment_budget, 'divide_evenly': False, 'argmaxer': argmaxer}
   score_list = []
@@ -76,9 +77,9 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
 if __name__ == '__main__':
   import time
   n_rep = 10
-  SIS_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice}
-  for k in range(0, 1):
+  SIS_kwargs = {'L': 25, 'omega': 1, 'generate_network': generate_network.lattice}
+  for k in range(1, 2):
     t0 = time.time()
-    scores = main(k, 25, n_rep, 'SIS', 'true_probs_myopic', 'quad_approx', **SIS_kwargs)
+    scores = main(k, 25, n_rep, 'SIS', 'rollout', 'quad_approx', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

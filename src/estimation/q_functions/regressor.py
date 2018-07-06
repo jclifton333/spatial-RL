@@ -19,7 +19,8 @@ class AutoRegressor(object):
   
   def __init__(self, ar_classifier, regressor):
     '''
-    :param ar_classifier: Model family to be used for autoregressive 1-step infected/not infected classification (e.g. RandomForestClassifier).
+    :param ar_classifier: Model family to be used for autoregressive 1-step infected/not infected classification
+                         (e.g. RandomForestClassifier).
     :param regressor:  Model family to be used for Q-fn regressions (e.g. RandomForestRegressor).
     '''
     

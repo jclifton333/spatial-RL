@@ -18,29 +18,20 @@ def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
   return rollout_Q_features
 
 
-def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, rollout_feature_times):
+def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer):
   regressor.resetPredictors()
   target = np.hstack(env.y).astype(float)
-  rollout_feature_list = []
-  
+
   # Fit 1-step model
-  t0 = time.time()
   regressor.fitClassifier(env, target, True)
-  print('Fit time: {}'.format(time.time() - t0))
-  t0 = time.time()
-  Qmax, Qargmax, argmax_actions, qvals = q_max_all_states(env, evaluation_budget, treatment_budget,  regressor.autologitPredictor)
-  # print('Max time: {}'.format(time.time() - t0))
+  q_max, a = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer)
 
   # Look ahead
   for k in range(1, K):
-    target += gamma*Qmax.flatten()
-    rollout_feature_time = k in rollout_feature_times
-    regressor.fitRegressor(env, target, rollout_feature_time)
-    if rollout_feature_time:
-      q_features_at_each_block = [np.sum(regressor.autologitPredictor(env.X[t])) for t in range(len(env.X))]
-      rollout_feature_list.append(q_features_at_each_block)
-    Qmax, Qargmax, argmax_actions, qvals = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor)
-  return argmax_actions, rollout_feature_list, regressor.predictors, target, None
+    target += gamma*q_max.flatten()
+    regressor.fitRegressor(env, target, False)
+    q_max, a = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer)
+  return a
 
 
 # def network_features_rollout(env, evaluation_budget, treatment_budget, regressor):

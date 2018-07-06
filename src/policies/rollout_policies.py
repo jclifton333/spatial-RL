@@ -26,14 +26,12 @@ def rollout_policy(**kwargs):
   if kwargs['rollout_depth'] == 0:
     a = one_step_policy(**kwargs)
   else:
-    classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget = \
+    classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget, argmaxer = \
       kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
-      kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget']
+      kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer']
     auto_regressor = AutoRegressor(classifier, regressor)
 
-    argmax_actions, _, _, _, _ = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget,
-                                         auto_regressor, [])
-    a = argmax_actions[-1]
+    a = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
   return a
 
 
