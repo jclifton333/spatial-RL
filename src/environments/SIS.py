@@ -140,7 +140,6 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-
     phi = np.zeros((data_block.shape[0], 0))
     for k in range(1, SIS.PATH_LENGTH + 1):
       phi_k = self.phi_k(k, data_block)
@@ -295,7 +294,7 @@ class SIS(SpatialDisease):
     super(SIS, self).updateObsHistory(a)
     # Get location-level features
     # raw_data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
-    #neighborFeatures = self.neighborFeatures(raw_data_block)
+    # neighborFeatures = self.neighborFeatures(raw_data_block)
     # data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
     raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
     data_block = self.phi(raw_data_block)
@@ -304,7 +303,6 @@ class SIS(SpatialDisease):
     self.y.append(self.current_infected)
     # Get network-level features
     # raw_data_block[:, 0] = self.S_indicator[-2, :]
-    # self.Phi.append(self.phi(raw_data_block))
 
   def data_block_at_action(self, data_block, action):
     """
@@ -312,14 +310,11 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).data_block_at_action(data_block, action)
     assert data_block.shape[1] == 3
-    new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
+    # new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
     # features = self.neighborFeatures(new_data_block)
     # new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
     # new_data_block = self.phi(new_data_block)
-    if self.Phi:
-      new_data_block = self.phi_at_action(self.Phi[-1], self.A[-1,:], action)
-    else:
-      new_data_block = self.phi(np.column_stack((data_block[:, 0], action, data_block[:, 2])))
+    new_data_block = self.phi_at_action(self.X[-1], self.A[-1,:], action)
     return new_data_block
 
   def network_features_at_action(self, data_block, action):

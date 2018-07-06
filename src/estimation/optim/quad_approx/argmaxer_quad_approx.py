@@ -1,5 +1,6 @@
 from .fit_quad_approx import get_quadratic_program_from_q
 from .qp_max import qp_max
+import time
 
 
 def argmaxer_quad_approx(q, evaluation_budget, treatment_budget, env):

@@ -2,6 +2,7 @@
 Fit quadratic approximation to Q function fixed at observed states (for converting argmax Q to binary quadratic
 program).
 """
+import time
 import pdb
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -34,10 +35,7 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L):
 def fit_quad_approx_at_location(sample_qs, sample_acts, l, neighbor_interaction_lists):
   reg = LinearRegression()
   X = np.array([get_neighbor_ixn_features(a, neighbor_interaction_lists[l]) for a in sample_acts])
-  try:
-    y = sample_qs[:, l]
-  except:
-    pdb.set_trace()
+  y = sample_qs[:, l]
   reg.fit(X, y)
   return reg.intercept_, reg.coef_
 
