@@ -1,5 +1,8 @@
 import numpy as np
 from sklearn.linear_model import Ridge
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.regularizers import L1L2
 
 
 def onehot(length, ix):
@@ -27,3 +30,24 @@ class RidgeProb(object):
   def predict_proba(self, X):
     phat = self.reg.predict(X)
     return np.column_stack((1-phat, phat))
+
+
+class KerasLogit(object):
+  def __init__(self):
+    self.reg = Sequential()
+
+  def fit(self, X, y):
+    input_shape = X.shape[1]
+    self.reg.add(Dense(1,
+                       activation='softmax',
+                       kernel_regularizer=L1L2(l1=0.0, l2=0.1),
+                       input_dim=input_shape))
+    self.reg.compile(optimizer='sgd',
+                     loss='binary_crossentropy')
+    self.reg.fit(X, y)
+
+  def predict_proba(self, X):
+    phat = self.reg.predict(X)
+    return np.column_stack((1-phat, phat))
+
+

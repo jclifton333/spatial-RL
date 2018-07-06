@@ -20,7 +20,7 @@ from src.policies.policy_factory import policy_factory
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
-from src.utils.misc import RidgeProb
+from src.utils.misc import RidgeProb, KerasLogit
 
 
 def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwargs):
@@ -49,7 +49,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
   policy = policy_factory(policy_name)
   random_policy = policy_factory('random') # For initial actions
   argmaxer = argmaxer_factory(argmaxer_name)
-  policy_arguments = {'classifier': LogisticRegression, 'regressor':RandomForestRegressor, 'env':env,
+  policy_arguments = {'classifier': KerasLogit, 'regressor':RandomForestRegressor, 'env':env,
                       'evaluation_budget':evaluation_budget, 'gamma':gamma, 'rollout_depth':lookahead_depth,
                       'treatment_budget':treatment_budget, 'divide_evenly': False, 'argmaxer': argmaxer}
   score_list = []
@@ -73,5 +73,5 @@ if __name__ == '__main__':
   n_rep = 1
   SIS_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice}
   for k in range(1, 2):
-    scores = main(k, 10, n_rep, 'SIS', 'rollout', 'quad_approx', **SIS_kwargs)
+    scores = main(k, 3, n_rep, 'SIS', 'rollout', 'quad_approx', **SIS_kwargs)
     print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))

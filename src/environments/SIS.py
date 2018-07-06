@@ -71,6 +71,7 @@ class SIS(SpatialDisease):
     self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
     # This is for efficiently getting features at different actions
     self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
+    self.map_m_to_index_dict = {k: np.sum([9**i for i in range(1, k)]) for k in self.dict_of_path_lists.keys()}
     SpatialDisease.__init__(self, adjacency_matrix, feature_function, initial_infections)
     self.omega = omega
     self.state_covariance = self.BETA_1 * np.eye(self.L)
@@ -146,9 +147,8 @@ class SIS(SpatialDisease):
     return phi
 
   # Functions for efficiently computing features-at-new-action
-  @staticmethod
-  def map_m_to_index(m, k):
-    start = np.sum([9**i for i in range(1, k)])
+  def map_m_to_index(self, m, k):
+    start = self.map_m_to_index_dict[k]
     return int(start + m - 1)
 
   def modify_m_r(self, data_block, old_action, new_action, r, k):
@@ -163,13 +163,17 @@ class SIS(SpatialDisease):
     return data_block
 
   @staticmethod
-  def action_has_changed(old_action, new_action, ixs):
-    return not np.array_equal(old_action[list(ixs)], new_action[list(ixs)])
+  def is_any_element_in_set(list_, set_):
+    for l in list_:
+      if l in set_:
+        return True
+    return False
 
   def phi_at_action(self, data_block, old_action, action):
+    locations_with_changed_actions = set(np.where(old_action == action)[0])
     for k, length_k_paths in self.dict_of_path_lists.items():
       for r in length_k_paths:
-        if self.action_has_changed(old_action, action, r):
+        if self.is_any_element_in_set(r, locations_with_changed_actions):
           data_block = self.modify_m_r(data_block, old_action, action, r, k)
     return data_block
 
