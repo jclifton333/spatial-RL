@@ -16,7 +16,7 @@ def one_step_policy(**kwargs):
   print('R2: {}'.format(r2))
 
   def qfn(a):
-    return clf.predict_proba(env.data_block_at_action(env.X_raw[-1], a))[:,-1]
+    return clf.predict_proba(env.data_block_at_action(-1, a))[:,-1]
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a

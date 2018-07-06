@@ -1,5 +1,5 @@
 """
-Fit quadratic approximation to Q function fixed at observed states (for converting argmax Q to binary quadratic
+Fit quadratic approximation to Q function fixed at observed states (for approximating argmax Q as binary quadratic
 program).
 """
 import time

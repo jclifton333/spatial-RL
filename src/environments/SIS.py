@@ -225,21 +225,21 @@ class SIS(SpatialDisease):
     self.Y = np.vstack((self.Y, next_infections))
     self.true_infection_probs.append(next_infected_probabilities)
     self.current_infected = next_infections
-  
+
   ##############################################################
   ## Infection probability helper functions (see draft p. 13) ##
   ##############################################################
-  
+
   def p_l0(self, a_times_indicator):
     logit_p_0 = self.ETA[0] + self.ETA[1] * a_times_indicator
     p_0 = expit(logit_p_0)
-    return p_0 
-    
+    return p_0
+
   def q_l(self, a_times_indicator):
     logit_q = self.ETA[5] + self.ETA[6] * a_times_indicator
     q = expit(logit_q)
     return q
-    
+
   def one_minus_p_llprime(self, a_times_indicator, not_infected_indices, infected_indices):
     product_vector = np.array([])
     for l in not_infected_indices[0].tolist():
@@ -252,17 +252,17 @@ class SIS(SpatialDisease):
       product_l = np.product(1 - p_l)
       product_vector = np.append(product_vector, product_l)
     return product_vector
-    
+
   def p_l(self, a_times_indicator, not_infected_indices, infected_indices):
     p_l0 = self.p_l0(a_times_indicator[not_infected_indices])
     one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices)
-    product = np.multiply(1 - p_l0, one_minus_p_llprime) 
-    return 1 - product 
-        
+    product = np.multiply(1 - p_l0, one_minus_p_llprime)
+    return 1 - product
+
   ################################################
   ## End infection probability helper functions ##
   ################################################
-    
+
   def neighborFeatures(self, data_block):
     """
     For each location in data_block, compute neighbor feature vector
@@ -275,13 +275,13 @@ class SIS(SpatialDisease):
                                      np.sum(A_neighbor), np.sum(np.multiply(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])
       neighborFeatures = np.vstack((neighborFeatures, neighborFeatures_l))
 
-    return neighborFeatures    
-  
+    return neighborFeatures
+
   def data_block_at_action(self, data_block, action):
     """
     Replace action in raw data_block with given action.
     """
-    assert data_block.shape[1] == 3  
+    assert data_block.shape[1] == 3
     new_data_block = np.column_stack((data_block[:,0], action, data_block[:,2]))
     features = self.neighborFeatures(new_data_block)
     new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
@@ -304,17 +304,12 @@ class SIS(SpatialDisease):
     # Get network-level features
     # raw_data_block[:, 0] = self.S_indicator[-2, :]
 
-  def data_block_at_action(self, data_block, action):
+  def data_block_at_action(self, data_block_ix, action):
     """
     Replace action in raw data_block with given action.
     """
-    super(SIS, self).data_block_at_action(data_block, action)
-    assert data_block.shape[1] == 3
-    # new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
-    # features = self.neighborFeatures(new_data_block)
-    # new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
-    # new_data_block = self.phi(new_data_block)
-    new_data_block = self.phi_at_action(self.X[-1], self.A[-1,:], action)
+    super(SIS, self).data_block_at_action(data_block_ix, action)
+    new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1,:], action)
     return new_data_block
 
   def network_features_at_action(self, data_block, action):
