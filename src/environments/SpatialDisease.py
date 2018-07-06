@@ -6,6 +6,7 @@ Created on Thu May 17 20:58:36 2018
 """
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import pdb
 
 # Create ABC base class compatible with Python 2.7 and 3.x
 ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
@@ -90,7 +91,10 @@ class SpatialDisease(ABC):
     Move model forward according to action a. 
     :param a: self.L-length array of binary actions at each state 
     """
-    self.A = np.vstack((self.A, a))
+    try:
+      self.A = np.vstack((self.A, a))
+    except:
+      pdb.set_trace()
     self.next_infections(a)
     self.next_state()
     self.updateObsHistory(a)

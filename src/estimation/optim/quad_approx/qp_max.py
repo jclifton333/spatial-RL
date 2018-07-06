@@ -21,6 +21,7 @@ def qp_max(M, r, budget):
   """
 
   model = Model('qip')
+  model.setParam('OutputFlag', False)
   L = M.shape[0]
 
   # Define decision variables

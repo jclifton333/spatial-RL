@@ -49,7 +49,7 @@ class SIS(SpatialDisease):
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
-  def __init__(self, feature_function, L, omega, generate_network):
+  def __init__(self, feature_function, L, omega, generate_network, initial_infections=None):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
@@ -58,7 +58,7 @@ class SIS(SpatialDisease):
     self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
     # This is for efficiently getting features at different actions
     self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
-    SpatialDisease.__init__(self, adjacency_matrix, feature_function)
+    SpatialDisease.__init__(self, adjacency_matrix, feature_function, initial_infections)
     self.omega = omega
     self.state_covariance = self.BETA_1 * np.eye(self.L)
     
@@ -200,7 +200,8 @@ class SIS(SpatialDisease):
     not_infected_indices = np.where(self.current_infected == 0)
 
     next_infected_probabilities = np.zeros(self.L)
-    next_infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices)
+    next_infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices,
+                                                                 infected_indices)
     next_infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices])
 
     return next_infected_probabilities
@@ -238,24 +239,24 @@ class SIS(SpatialDisease):
   def q_l(self, a_times_indicator):
     logit_q = self.ETA[5] + self.ETA[6] * a_times_indicator
     q = expit(logit_q)
-    return q 
+    return q
     
-  def one_minus_p_llprime(self, a_times_indicator, indices): 
+  def one_minus_p_llprime(self, a_times_indicator, not_infected_indices, infected_indices):
     product_vector = np.array([])
-    for l in indices[0].tolist():
+    for l in not_infected_indices[0].tolist():
       # Get infected neighbors
-      infected_neighbor_indices = np.intersect1d(self.adjacency_list[l], indices)
+      infected_neighbor_indices = np.intersect1d(self.adjacency_list[l], infected_indices)
       a_times_indicator_lprime = a_times_indicator[infected_neighbor_indices]
       logit_p_l = self.ETA[2] + self.ETA[3]*a_times_indicator[l] + \
                   self.ETA[4]*a_times_indicator_lprime
       p_l = expit(logit_p_l)
       product_l = np.product(1 - p_l)
-      product_vector = np.append(product_vector, product_l) 
-    return product_vector 
+      product_vector = np.append(product_vector, product_l)
+    return product_vector
     
-  def p_l(self, a_times_indicator, indices): 
-    p_l0 = self.p_l0(a_times_indicator[indices])
-    one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator, indices)
+  def p_l(self, a_times_indicator, not_infected_indices, infected_indices):
+    p_l0 = self.p_l0(a_times_indicator[not_infected_indices])
+    one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices)
     product = np.multiply(1 - p_l0, one_minus_p_llprime) 
     return 1 - product 
         
@@ -314,11 +315,11 @@ class SIS(SpatialDisease):
     new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
     # features = self.neighborFeatures(new_data_block)
     # new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
-    new_data_block = self.phi(new_data_block)
-    # if self.Phi:
-    #   new_data_block = self.phi_at_action(self.Phi[-1], self.A[-1,:], action)
-    # else:
-    #   new_data_block = self.phi(np.column_stack((data_block[:, 0], action, data_block[:, 2])))
+    # new_data_block = self.phi(new_data_block)
+    if self.Phi:
+      new_data_block = self.phi_at_action(self.Phi[-1], self.A[-1,:], action)
+    else:
+      new_data_block = self.phi(np.column_stack((data_block[:, 0], action, data_block[:, 2])))
     return new_data_block
 
   def network_features_at_action(self, data_block, action):

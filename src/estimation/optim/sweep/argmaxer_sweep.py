@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 import copy
 
@@ -37,7 +38,8 @@ def swap_action(q_fn, action):
     return None
 
 
-def argmaxer_sweep(q_fn, evaluation_budget, treatment_budget, L):
+def argmaxer_sweep(q_fn, evaluation_budget, treatment_budget, env):
+  L = env.L
   a = np.zeros(L)
   while np.sum(a) < treatment_budget:
     q = -q_fn(a)
@@ -60,4 +62,4 @@ def argmaxer_sweep(q_fn, evaluation_budget, treatment_budget, L):
       if np.sum(q_fn(a_new)) < best_q:
         best_q = q_new
         a = a_new
-  return best_q, a, None
+  return a

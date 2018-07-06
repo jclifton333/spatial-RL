@@ -43,7 +43,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
 
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
-  evaluation_budget = 100000
+  evaluation_budget = 10
 
   policy = policy_factory(policy_name)
   true_probs_policy = policy_factory('true_probs')
@@ -79,6 +79,6 @@ if __name__ == '__main__':
   SIS_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice}
   for k in range(0, 1):
     t0 = time.time()
-    scores = main(k, 25, n_rep, 'SIS', 'true_probs_myopic', 'sweep', **SIS_kwargs)
+    scores = main(k, 25, n_rep, 'SIS', 'true_probs_myopic', 'quad_approx', **SIS_kwargs)
     t1 = time.time()
     print('k={}: score={} se={} time={}'.format(k, np.mean(scores), np.std(scores) / np.sqrt(n_rep), t1 - t0))

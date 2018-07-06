@@ -1,4 +1,4 @@
-# from .quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
+from .quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
 from .sweep.argmaxer_sweep import argmaxer_sweep
 
 

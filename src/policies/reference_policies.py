@@ -22,7 +22,7 @@ def no_action(**kwargs):
 def true_probs(**kwargs):
   env, treatment_budget, evaluation_budget, argmaxer = \
     kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer']
-  _, a, _ = argmaxer(env.next_infected_probabilities, evaluation_budget, treatment_budget, env.L)
+  a = argmaxer(env.next_infected_probabilities, evaluation_budget, treatment_budget, env)
   return a
 
 
