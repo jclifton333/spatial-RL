@@ -6,15 +6,16 @@ import time
 import pdb
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from numba import jit
 
 
+@jit(nopython=True)
 def get_neighbor_ixn_features(a, neighbor_interactions):
   """
   Return treatments at l's neighbors and all neighbor treatment interactions, i.e.
   [a_j a_j*a_k] for j,k in neighbors(a_l) including a_l
   """
-  neighbor_ixn_features = [a[ixn[0]]*a[ixn[1]] for ixn in neighbor_interactions]
-  return neighbor_ixn_features
+  return [a[ixn[0]]*a[ixn[1]] for ixn in neighbor_interactions]
 
 
 def sample_from_q(q, treatment_budget, evaluation_budget, L):
