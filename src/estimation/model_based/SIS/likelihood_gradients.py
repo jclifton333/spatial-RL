@@ -9,7 +9,7 @@ eta_q:  eta_5, eta_6
 """
 import numpy as np
 from scipy.special import expit
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from functools import partial
 
 
@@ -19,25 +19,47 @@ def fit_infection_prob_model(env):
   infected_ixs = np.where(X[:,2] == 1)
   not_infected_ixs = np.where(X[:,2] == 0)
 
-  X_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
-  X_not_infected, y_not_infected = X[not_infected_ixs, 1], y[not_infected_ixs]
+  A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
+  A_not_infected, y_not_infected = X[not_infected_ixs, 1], y[not_infected_ixs]
 
-  eta_q = fit_q(X_infected, y_infected)
-  eta_p0 = fit_p0(X_not_infected, y_not_infected)
+  eta_q = fit_q(A_infected, y_infected)
+  eta_p0 = fit_p0(A_not_infected, y_not_infected)
   eta_p = fit_p(env)
   return np.concatenate((eta_p0, eta_p, eta_q))
 
 
-def fit_q(X_infected, y_infected):
+def fit_transition_model(env):
+  eta = fit_infection_prob_model(env)
+  beta = fit_state_transition_model(env)
+
+
+def fit_q(A_infected, y_infected):
   clf = LogisticRegression()
-  clf.fit(X_infected, y_infected)
+  clf.fit(A_infected, y_infected)
   return np.append(clf.intercept_, clf.coef_)
 
 
-def fit_p0(X_not_infected, y_not_infected):
+def fit_p0(A_not_infected, y_not_infected):
   clf = LogisticRegression()
-  clf.fit(X_not_infected, y_not_infected)
+  clf.fit(A_not_infected, y_not_infected)
   return np.append(clf.intercept_, clf.coef_)
+
+
+def estimate_variance(X, y, fitted_regression_model):
+  y_hat = fitted_regression_model.predict(X)
+  n, p = X.shape
+  return np.sum((y - y_hat)**2) / (n - p)
+
+
+def fit_state_transition_model(env):
+  X = env.X_raw[:-1]
+  X_plus = env.X_raw[1:]
+  S, S_plus = X[:,0], X_plus[:,0]
+  reg = LinearRegression(fit_intercept=False)
+  reg.fit(S, S_plus)
+  beta_0_hat = reg.coef_[0]
+  beta_1_hat = estimate_variance(S, S_plus, reg)
+  return beta_0_hat, beta_1_hat
 
 
 def log_p_gradient(eta_p, env):
