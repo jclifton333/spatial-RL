@@ -15,15 +15,15 @@ ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
 class SpatialDisease(ABC):
   INITIAL_INFECT_PROP = 0.1
   
-  def __init__(self, adjacency_matrix, featureFunction, initialInfections=None):
+  def __init__(self, adjacency_matrix, feature_function, initial_infections=None):
     """
     :param adjacency_matrix: 2d binary array corresponding to network for gen model 
-    :param featureFunction:
-    :param initialInfections: L-length binary array of initial infections, or None
+    :param feature_function:
+    :param initial_infections: L-length binary array of initial infections, or None
     """
     
-    self.featureFunction = featureFunction
-    self.initialInfections = initialInfections
+    self.featureFunction = feature_function
+    self.initialInfections = initial_infections
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
     

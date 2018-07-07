@@ -31,6 +31,7 @@ class SIS(SpatialDisease):
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
+  BETA = np.array([BETA_0, BETA_1])
   INITIAL_INFECT_PROB = 0.1
 
   """
@@ -62,23 +63,43 @@ class SIS(SpatialDisease):
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
-  def __init__(self, feature_function, L, omega, generate_network, initial_infections=None):
+  def __init__(self, feature_function, L, omega, generate_network, adjacency_matrix=None, dict_of_path_lists=None,
+               initial_infections=None, initial_state=None, eta=None, beta=None):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
-    adjacency_matrix = generate_network(L)
-    self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
-    SpatialDisease.__init__(self, adjacency_matrix, feature_function, initial_infections)
+    if eta is None:
+      self.eta = SIS.ETA
+    else:
+      self.eta = eta
+
+    if beta is None:
+      self.beta = SIS.BETA
+    else:
+      self.beta = beta
+
+    if initial_state is None:
+      self.initial_state = np.zeros(self.L)
+    else:
+      self.initial_state = initial_state
+
+    if adjacency_matrix is None:
+      self.adjacency_matrix = generate_network(L)
+      self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
+    else:
+      self.adjacency_matrix = adjacency_matrix
+      self.dict_of_path_lists = dict_of_path_lists
+    SpatialDisease.__init__(self, self.adjacency_matrix, feature_function, initial_infections)
 
     # These are for efficiently getting features at different actions
     self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
     self.map_m_to_index_dict = {k: np.sum([9**i for i in range(1, k)]) for k in self.dict_of_path_lists.keys()}
 
     self.omega = omega
-    self.state_covariance = self.BETA_1 * np.eye(self.L)
+    self.state_covariance = self.beta[1] * np.eye(self.L)
     
-    self.S = np.zeros((1, self.L))
+    self.S = np.array([initial_state])
     self.S_indicator = self.S > 0
     self.Phi = [] # Network-level features
     self.current_state = self.S[-1,:]
@@ -93,7 +114,7 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).reset()
     self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
-    self.S = np.zeros((1, self.L))
+    self.S = np.array([self.initial_state])
     self.S_indicator = self.S > 0
     self.Phi = []
     self.current_state = self.S[-1,:]
@@ -187,16 +208,19 @@ class SIS(SpatialDisease):
   ##            End path-based feature function stuff         ##
   ##############################################################
 
+  def add_state(self, s):
+    self.S = np.vstack((self.S, s))
+    self.S_indicator = np.vstack((self.S_indicator, s > 0))
+    self.current_state = s
+
   def next_state(self):
     """
     Update state array acc to AR(1)
     :return next_state: self.L-length array of new states
     """
     super(SIS, self).next_state()
-    next_state = np.random.multivariate_normal(mean=self.BETA_0*self.current_state, cov=self.state_covariance)
-    self.S = np.vstack((self.S, next_state))
-    self.S_indicator = np.vstack((self.S_indicator, next_state > 0))
-    self.current_state = next_state
+    next_state = np.random.multivariate_normal(mean=self.beta[0]*self.current_state, cov=self.state_covariance)
+    self.add_state(next_state)
     return next_state
 
   def next_infected_probabilities(self, a):
@@ -214,6 +238,10 @@ class SIS(SpatialDisease):
 
     return next_infected_probabilities
 
+  def add_infections(self, y):
+    self.Y = np.vstack((self.Y, y))
+    self.current_infected = y
+
   def next_infections(self, a):
     """
     Updates the vector indicating infections (self.current_infected).
@@ -224,21 +252,20 @@ class SIS(SpatialDisease):
     super(SIS, self).next_infections(a)
     next_infected_probabilities = self.next_infected_probabilities(a)
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
-    self.Y = np.vstack((self.Y, next_infections))
     self.true_infection_probs.append(next_infected_probabilities)
-    self.current_infected = next_infections
+    self.add_infections(next_infections)
 
   ##############################################################
   ## Infection probability helper functions (see draft p. 13) ##
   ##############################################################
 
   def p_l0(self, a_times_indicator):
-    logit_p_0 = self.ETA[0] + self.ETA[1] * a_times_indicator
+    logit_p_0 = self.eta[0] + self.eta[1] * a_times_indicator
     p_0 = expit(logit_p_0)
     return p_0
 
   def q_l(self, a_times_indicator):
-    logit_q = self.ETA[5] + self.ETA[6] * a_times_indicator
+    logit_q = self.eta[5] + self.eta[6] * a_times_indicator
     q = expit(logit_q)
     return q
 
@@ -248,8 +275,8 @@ class SIS(SpatialDisease):
       # Get infected neighbors
       infected_neighbor_indices = np.intersect1d(self.adjacency_list[l], infected_indices)
       a_times_indicator_lprime = a_times_indicator[infected_neighbor_indices]
-      logit_p_l = self.ETA[2] + self.ETA[3]*a_times_indicator[l] + \
-                  self.ETA[4]*a_times_indicator_lprime
+      logit_p_l = self.eta[2] + self.eta[3]*a_times_indicator[l] + \
+                  self.eta[4]*a_times_indicator_lprime
       p_l = expit(logit_p_l)
       product_l = np.product(1 - p_l)
       product_vector = np.append(product_vector, product_l)

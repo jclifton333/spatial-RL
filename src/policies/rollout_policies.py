@@ -1,5 +1,7 @@
 from src.estimation.q_functions.rollout import rollout
 from src.estimation.q_functions.regressor import AutoRegressor
+from src.estimation.model_based.SIS.fit import fit_transition_model
+from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 import numpy as np
 
 
@@ -35,9 +37,19 @@ def rollout_policy(**kwargs):
   return a
 
 
-def network_features_rollout_policy(**kwargs):
-  env, evaluation_budget, treatment_budget, regressor = \
-    kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['regressor']
-  argmax_actions, _ = network_features_rollout(env, evaluation_budget, treatment_budget, regressor())
-  a = argmax_actions[-1]
+def SIS_model_based_policy(**kwargs):
+  env, treatment_budget, evaluation_budget, argmaxer = \
+    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer']
+  eta, beta = fit_transition_model(env)
+  simulation_env = simulate_from_SIS(env, eta, beta, planning_depth, q_model, argmaxer, evaluation_budget,
+                                     treatment_budget)
+  kwargs['env'] = simulation_env
+  a = rollout_policy(**kwargs)
   return a
+
+# def network_features_rollout_policy(**kwargs):
+#   env, evaluation_budget, treatment_budget, regressor = \
+#     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['regressor']
+#   argmax_actions, _ = network_features_rollout(env, evaluation_budget, treatment_budget, regressor())
+#   a = argmax_actions[-1]
+#   return a

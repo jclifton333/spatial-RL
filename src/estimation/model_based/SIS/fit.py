@@ -31,6 +31,7 @@ def fit_infection_prob_model(env):
 def fit_transition_model(env):
   eta = fit_infection_prob_model(env)
   beta = fit_state_transition_model(env)
+  return eta, beta
 
 
 def fit_q(A_infected, y_infected):
@@ -52,6 +53,7 @@ def estimate_variance(X, y, fitted_regression_model):
 
 
 def fit_state_transition_model(env):
+  # This can be computed on line!
   X = env.X_raw[:-1]
   X_plus = env.X_raw[1:]
   S, S_plus = X[:,0], X_plus[:,0]
