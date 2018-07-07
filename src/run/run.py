@@ -49,9 +49,9 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
   policy = policy_factory(policy_name)
   random_policy = policy_factory('random') # For initial actions
   argmaxer = argmaxer_factory(argmaxer_name)
-  policy_arguments = {'classifier': KerasLogit, 'regressor':RandomForestRegressor, 'env':env,
-                      'evaluation_budget':evaluation_budget, 'gamma':gamma, 'rollout_depth':lookahead_depth,
-                      'treatment_budget':treatment_budget, 'divide_evenly': False, 'argmaxer': argmaxer}
+  policy_arguments = {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': env,
+                      'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
+                      'treatment_budget': treatment_budget, 'divide_evenly': False, 'argmaxer': argmaxer}
   score_list = []
   for rep in range(n_rep):
     env.reset()
@@ -59,6 +59,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
     env.step(random_policy(**policy_arguments))
     for t in range(T-2):
       t0 = time.time()
+      policy_arguments['planning_depth'] = T - t
       a = policy(**policy_arguments)
       env.step(a)
       t1 = time.time()

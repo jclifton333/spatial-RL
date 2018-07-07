@@ -6,6 +6,8 @@ Created on Thu May 17 00:08:33 2018
 """
 import numpy as np
 from src.estimation.optim.q_max import q_max_all_states
+from src.estimation.q_functions.q_functions import q
+from functools import partial
 from scipy.special import expit, logit
 import pdb
 import time
@@ -30,7 +32,11 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
   for k in range(1, K):
     target += gamma*q_max.flatten()
     regressor.fitRegressor(env, target, False)
-    q_max, a = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer)
+    if k < K-1:
+      q_max, a = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer)
+    else:
+      q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=regressor.autologitPredictor)
+      a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
   return a
 
 

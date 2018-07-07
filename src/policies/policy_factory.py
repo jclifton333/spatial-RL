@@ -5,7 +5,7 @@ import src.policies.rollout_policies as roll
 def policy_factory(policy_type):
   """
   :param policy_type: String in ['random', 'no_action', 'true_probs', 'rollout', 'network rollout',
-  'one_step'].
+  'one_step, 'true_probs_myopic', 'SIS_model_based'].
   :return: Corresponding policy function.
   """
   if policy_type == 'random':
@@ -24,5 +24,7 @@ def policy_factory(policy_type):
     return roll.one_step_policy
   elif policy_type == 'treat_all':
     return ref.treat_all
+  elif policy_type == 'SIS_model_based':
+    return roll.SIS_model_based_policy
   else:
     raise ValueError('Argument does not match any policy.')

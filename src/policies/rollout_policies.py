@@ -38,8 +38,8 @@ def rollout_policy(**kwargs):
 
 
 def SIS_model_based_policy(**kwargs):
-  env, treatment_budget, evaluation_budget, argmaxer = \
-    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer']
+  env, treatment_budget, evaluation_budget, argmaxer, planning_depth = \
+    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], kwargs['planning_depth']
   eta, beta = fit_transition_model(env)
   simulation_env = simulate_from_SIS(env, eta, beta, planning_depth, q_model, argmaxer, evaluation_budget,
                                      treatment_budget)
