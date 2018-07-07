@@ -26,18 +26,15 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
 
   # Fit 1-step model
   regressor.fitClassifier(env, target, True)
-  q_max, a = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer)
+  q_max = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer)
 
   # Look ahead
   for k in range(1, K):
     target += gamma*q_max.flatten()
     regressor.fitRegressor(env, target, False)
     if k < K-1:
-      q_max, a = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer)
-    else:
-      q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=regressor.autologitPredictor)
-      a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
-  return a
+      q_max = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer)
+  return regressor.autologitPredictor
 
 
 # def network_features_rollout(env, evaluation_budget, treatment_budget, regressor):

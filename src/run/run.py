@@ -49,18 +49,21 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
   policy = policy_factory(policy_name)
   random_policy = policy_factory('random') # For initial actions
   argmaxer = argmaxer_factory(argmaxer_name)
-  policy_arguments = {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': env,
+  policy_arguments = {'classifier': RidgeProb, 'regressor': RandomForestRegressor, 'env': env,
                       'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
-                      'treatment_budget': treatment_budget, 'divide_evenly': False, 'argmaxer': argmaxer}
+                      'planning_depth': T, 'treatment_budget': treatment_budget, 'divide_evenly': False,
+                      'argmaxer': argmaxer, 'q_model': None}
   score_list = []
   for rep in range(n_rep):
     env.reset()
-    env.step(random_policy(**policy_arguments))
-    env.step(random_policy(**policy_arguments))
+    env.step(random_policy(**policy_arguments)[0])
+    env.step(random_policy(**policy_arguments)[0])
     for t in range(T-2):
       t0 = time.time()
+      a, q_model = policy(**policy_arguments)
+      # ToDo: update policy_arguments within policy
       policy_arguments['planning_depth'] = T - t
-      a = policy(**policy_arguments)
+      policy_arguments['q_model'] = q_model
       env.step(a)
       t1 = time.time()
       print('rep: {} t: {} total time: {}'.format(rep, t, t1-t0))
@@ -72,7 +75,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
 if __name__ == '__main__':
   import time
   n_rep = 1
-  SIS_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice}
+  SIS_kwargs = {'L': 25, 'omega': 1, 'generate_network': generate_network.lattice}
   for k in range(1, 2):
-    scores = main(k, 3, n_rep, 'SIS', 'rollout', 'quad_approx', **SIS_kwargs)
+    scores = main(k, 25, n_rep, 'SIS', 'SIS_model_based', 'quad_approx', **SIS_kwargs)
     print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))

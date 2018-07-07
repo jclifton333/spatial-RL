@@ -4,7 +4,7 @@ from src.estimation.q_functions.q_functions import q
 from functools import partial
 
 
-def simulate_from_SIS(env, eta, beta, planning_depth, q_model, argmaxer, evaluation_budget, treatment_budget,
+def simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget, treatment_budget,
                       n_rep=10):
   """
   For model-based RL in the SIS generative model.
@@ -25,7 +25,7 @@ def simulate_from_SIS(env, eta, beta, planning_depth, q_model, argmaxer, evaluat
                        dict_of_path_lists=env.dict_of_path_lists,
                        initial_infections=env.current_infected,
                        initial_state=env.current_state,
-                       eta=eta, beta=beta)
+                       eta=eta)
 
   q_hat = partial(q, data_block_ix=-1, env=simulation_env, predictive_model=q_model)
   for rep in range(n_rep):

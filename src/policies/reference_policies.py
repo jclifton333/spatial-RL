@@ -11,19 +11,19 @@ from src.utils.misc import random_argsort
 
 def treat_all(**kwargs):
   L = kwargs['env'].L
-  return np.ones(L)
+  return np.ones(L), None
 
 
 def no_action(**kwargs):
   L = kwargs['env'].L
-  return np.zeros(L)
+  return np.zeros(L), None
 
 
 def true_probs(**kwargs):
   env, treatment_budget, evaluation_budget, argmaxer = \
     kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer']
   a = argmaxer(env.next_infected_probabilities, evaluation_budget, treatment_budget, env)
-  return a
+  return a, None
 
 
 def true_probs_myopic(**kwargs):
@@ -43,7 +43,7 @@ def true_probs_myopic(**kwargs):
   else:
     treat_ixs = random_argsort(-probs, treatment_budget)
     a[treat_ixs] = 1
-  return a
+  return a, None
 
 
 def random(**kwargs):
@@ -74,4 +74,4 @@ def random(**kwargs):
     assert treatment_budget < L
     dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
     a = np.random.permutation(dummy_act)
-  return a
+  return a, None

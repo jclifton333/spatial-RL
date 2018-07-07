@@ -1,8 +1,11 @@
 from src.estimation.q_functions.rollout import rollout
 from src.estimation.q_functions.regressor import AutoRegressor
+from src.estimation.q_functions.q_functions import q
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 import numpy as np
+import pdb
+from functools import partial
 
 
 def one_step_policy(**kwargs):
@@ -21,7 +24,7 @@ def one_step_policy(**kwargs):
     return clf.predict_proba(env.data_block_at_action(-1, a))[:,-1]
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  return a
+  return a, None
 
 
 def rollout_policy(**kwargs):
@@ -33,19 +36,30 @@ def rollout_policy(**kwargs):
       kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer']
     auto_regressor = AutoRegressor(classifier, regressor)
 
-    a = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
-  return a
+    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
+    q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
+    a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
+  return a, q_model
 
 
 def SIS_model_based_policy(**kwargs):
-  env, treatment_budget, evaluation_budget, argmaxer, planning_depth = \
-    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], kwargs['planning_depth']
-  eta, beta = fit_transition_model(env)
-  simulation_env = simulate_from_SIS(env, eta, beta, planning_depth, q_model, argmaxer, evaluation_budget,
+  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, q_model = \
+    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
+    kwargs['planning_depth'], kwargs['q_model']
+
+  # Need to fit q_model if it hasn't been already
+  if q_model is None:
+    rollout_depth, gamma, classifier, regressor = \
+      kwargs['rollout_depth'], kwargs['gamma'], kwargs['classifier'], kwargs['regressor']
+    auto_regressor = AutoRegressor(classifier, regressor)
+    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
+
+  eta = fit_transition_model(env)
+  simulation_env = simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget,
                                      treatment_budget)
   kwargs['env'] = simulation_env
-  a = rollout_policy(**kwargs)
-  return a
+  a, new_q_model = rollout_policy(**kwargs)
+  return a, new_q_model
 
 # def network_features_rollout_policy(**kwargs):
 #   env, evaluation_budget, treatment_budget, regressor = \

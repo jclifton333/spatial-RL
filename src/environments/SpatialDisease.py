@@ -22,8 +22,8 @@ class SpatialDisease(ABC):
     :param initial_infections: L-length binary array of initial infections, or None
     """
     
-    self.featureFunction = feature_function
-    self.initialInfections = initial_infections
+    self.feature_function = feature_function
+    self.initial_infections = initial_infections
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
     
@@ -35,13 +35,13 @@ class SpatialDisease(ABC):
                                        for l in range(self.L)]
 
     # Observation history
-    if self.initialInfections is None:
+    if self.initial_infections is None:
       number_initial_infections = int(self.INITIAL_INFECT_PROP * self.L)
       initial_infect_indices = np.random.choice(self.L, number_initial_infections, replace=False)
       self.Y = np.zeros((1, self.L))
       self.Y[0,initial_infect_indices] = 1
     else:
-      self.Y = np.array([self.initialInfections])
+      self.Y = np.array([self.initial_infections])
     self.A = np.zeros((0, self.L))
     self.X_raw = [] # Will hold blocks [S_t, A_t, Y_t] at each time t
     self.X = []  # Will hold features of [S_t, A_t, Y_t] each each time t
@@ -57,13 +57,13 @@ class SpatialDisease(ABC):
     Reset state and observation histories.
     """
     # Observation history
-    if self.initialInfections is None:
+    if self.initial_infections is None:
       number_initial_infections = int(self.INITIAL_INFECT_PROP * self.L)
       initial_infect_indices = np.random.choice(self.L, number_initial_infections, replace=False)
       self.Y = np.zeros((1, self.L))
       self.Y[0,initial_infect_indices] = 1
     else:
-      self.Y = np.array([self.initialInfections])
+      self.Y = np.array([self.initial_infections])
     self.A = np.zeros((0, self.L))
     self.X_raw = []
     self.X = [] # Will hold blocks [S_t, A_t, Y_t] each each time t

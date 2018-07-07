@@ -79,18 +79,18 @@ class SIS(SpatialDisease):
     else:
       self.beta = beta
 
-    if initial_state is None:
-      self.initial_state = np.zeros(self.L)
-    else:
-      self.initial_state = initial_state
-
     if adjacency_matrix is None:
       self.adjacency_matrix = generate_network(L)
-      self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
+      self.dict_of_path_lists = get_all_paths(self.adjacency_matrix, SIS.PATH_LENGTH - 1)
     else:
       self.adjacency_matrix = adjacency_matrix
       self.dict_of_path_lists = dict_of_path_lists
     SpatialDisease.__init__(self, self.adjacency_matrix, feature_function, initial_infections)
+
+    if initial_state is None:
+      self.initial_state = np.zeros(self.L)
+    else:
+      self.initial_state = initial_state
 
     # These are for efficiently getting features at different actions
     self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
@@ -99,7 +99,7 @@ class SIS(SpatialDisease):
     self.omega = omega
     self.state_covariance = self.beta[1] * np.eye(self.L)
     
-    self.S = np.array([initial_state])
+    self.S = np.array([self.initial_state])
     self.S_indicator = self.S > 0
     self.Phi = [] # Network-level features
     self.current_state = self.S[-1,:]
@@ -294,22 +294,24 @@ class SIS(SpatialDisease):
 
   def update_gradient_information(self, action, next_infections):
     for l in range(self.L):
-      a_l = action[l]
-      y_l = next_infections[l]
-      neighbor_ixs = self.adjacency_list[l]
-      num_neighbors = len(neighbor_ixs)
-      num_treated_neighbors = np.sum(action[neighbor_ixs])
-      num_untreated_neighbors = num_neighbors - num_treated_neighbors
-      if a_l:
-        self.treat_pair_vec[0] += num_treated_neighbors
-        self.treat_pair_vec[1] += num_untreated_neighbors
-        self.sum_Xy += y*num_treated_neighbors*np.array([1, 1, 1])
-        self.sum_Xy += y*num_untreated_neighbors*np.array([1, 1, 0])
-      else:
-        self.treat_pair_vec[3] += num_treated_neighbors
-        self.treat_pair_vec[2] += num_untreated_neighbors
-        self.sum_Xy += y*num_treated_neighbors*np.array([1, 0, 1])
-        self.sum_Xy += y*num_untreated_neighbors*np.array([1, 0, 0])
+      is_infected = self.Y[-1,l]
+      if is_infected:
+        a_l = action[l]
+        y_l = next_infections[l]
+        neighbor_ixs = self.adjacency_list[l]
+        num_neighbors = len(neighbor_ixs)
+        num_treated_neighbors = np.sum(action[neighbor_ixs])
+        num_untreated_neighbors = num_neighbors - num_treated_neighbors
+        if a_l:
+          self.treat_pair_vec[0] += num_treated_neighbors
+          self.treat_pair_vec[1] += num_untreated_neighbors
+          self.sum_Xy += y_l*num_treated_neighbors*np.array([1, 1, 1])
+          self.sum_Xy += y_l*num_untreated_neighbors*np.array([1, 1, 0])
+        else:
+          self.treat_pair_vec[3] += num_treated_neighbors
+          self.treat_pair_vec[2] += num_untreated_neighbors
+          self.sum_Xy += y_l*num_treated_neighbors*np.array([1, 0, 1])
+          self.sum_Xy += y_l*num_untreated_neighbors*np.array([1, 0, 0])
 
   def data_block_at_action(self, data_block, action):
     """
@@ -338,7 +340,10 @@ class SIS(SpatialDisease):
     Replace action in raw data_block with given action.
     """
     super(SIS, self).data_block_at_action(data_block_ix, action)
-    new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1,:], action)
+    if self.A.shape[0] == 0:
+      new_data_block = self.phi(np.column_stack((self.S_indicator[-1,:], action, self.Y[-1,:])))
+    else:
+      new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1,:], action)
     return new_data_block
 
   def network_features_at_action(self, data_block, action):
