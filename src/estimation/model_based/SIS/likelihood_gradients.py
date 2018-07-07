@@ -9,24 +9,43 @@ eta_q:  eta_5, eta_6
 """
 import numpy as np
 from scipy.special import expit
+from sklearn.linear_model import LogisticRegression
+from functools import partial
 
 
-# Not implementing this for now since q_l can be solved with vanilla logit regression.
-# def exp_logit_q_l(a, eta_q):
-#   logit_q_l = eta_q[0] + eta_q[1]*a
-#
-#
-# def q_l_grad(a, exp_logit_q_l_):
-#   multiplier = 1 - exp_logit_q_l_ / (1 + exp_logit_q_l_)
-#   return np.multiply(multiplier, a)
+def fit_infection_prob_model(env):
+  X = np.stack(env.X_raw)
+  y = np.hstack(env.y)
+  infected_ixs = np.where(X[:,2] == 1)
+  not_infected_ixs = np.where(X[:,2] == 0)
+
+  X_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
+  X_not_infected, y_not_infected = X[not_infected_ixs, 1], y[not_infected_ixs]
+
+  eta_q = fit_q(X_infected, y_infected)
+  eta_p0 = fit_p0(X_not_infected, y_not_infected)
+  eta_p = fit_p(env)
+  return np.concatenate((eta_p0, eta_p, eta_q))
 
 
-def logit_gradient(X, y, beta):
-  error = y - expit(np.dot(X, beta))
-  return np.dot(X.T, error)
+def fit_q(X_infected, y_infected):
+  clf = LogisticRegression()
+  clf.fit(X_infected, y_infected)
+  return np.append(clf.intercept_, clf.coef_)
+
+
+def fit_p0(X_not_infected, y_not_infected):
+  clf = LogisticRegression()
+  clf.fit(X_not_infected, y_not_infected)
+  return np.append(clf.intercept_, clf.coef_)
 
 
 def log_p_gradient(eta_p, env):
+  """
+  The gradient with respect to eta_2, eta_3, eta_4 can be found by adding up the number of location-neighbor
+  pairs with the pattern (trt, trt), (trt, ~trt), (~trt, ~trt), (~trt, trt), respectively.  We keep track
+  of the relevant information in env for efficiency and combine it here to get the gradient.
+  """
   X_expit_trt_trt = np.array([1, 1, 1]) * expit(np.sum(eta_p))
   X_expit_trt_notrt = np.array([1, 1, 0]) * expit(np.sum(eta_p[:2]))
   X_expit_notrt_notrt = np.array([1, 0, 0]) * expit(eta_p[0])
@@ -38,32 +57,22 @@ def log_p_gradient(eta_p, env):
   return sum_Xy - np.dot(grad_mat, trt_pair_vec)
 
 
-"""
-The gradient with respect to eta_2, eta_3, eta_4 can be found by adding up the number of location-neighbor
-pairs with the pattern (trt, trt), (trt, ~trt), (~trt, ~trt), (~trt, trt), respectively.  
-"""
+def fit_p(env, warm_start = None, tol=1e-4, max_iter=1000):
+  grad_func = partial(log_p_gradient, env=env)
+  if warm_start is None:
+    eta_p = np.zeros(3)
+  else:
+    eta_p = warm_start
+  step_size = 1/len(env.X_raw)
+  iter = 0
+  while iter < max_iter:
+    new_eta_p = eta_p + step_size*grad_func(eta_p)
+    diff = np.linalg.norm(new_eta_p - eta_p) / (np.linalg.norm(eta_p) + 1)
+    if diff < tol:
+      break
+  return eta_p
 
 
-def get_treatment_pair_counts(a, env):
-  """
-  This should be calculated online in SIS.
-  """
-  trt_trt = 0
-  trt_notrt = 0
-  notrt_notrt = 0
-  notrt_trt = 0
 
-  for l in range(env.L):
-    a_l = a[l]
-    neighbor_ixs = env.adjacency_list[l]
-    num_neighbors = len(neighbor_ixs)
-    num_treated_neighbors = np.sum(a[neighbor_ixs])
-    if a_l:
-      trt_trt += num_treated_neighbors
-      trt_notrt += num_neighbors - num_treated_neighbors
-    else:
-      notrt_trt += num_treated_neighbors
-      notrt_notrt += num_neighbors - num_treated_neighbors
-  return np.array([trt_trt, trt_notrt, notrt_notrt, notrt_trt])
 
 

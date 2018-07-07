@@ -75,7 +75,7 @@ class SpatialDisease(ABC):
     self.T = 0    
   
   @abstractmethod
-  def updateObsHistory(self, a):
+  def update_obs_history(self, a):
     pass
   
   @abstractmethod
@@ -97,7 +97,7 @@ class SpatialDisease(ABC):
       pdb.set_trace()
     self.next_infections(a)
     self.next_state()
-    self.updateObsHistory(a)
+    self.update_obs_history(a)
     self.T += 1
 
   @abstractmethod

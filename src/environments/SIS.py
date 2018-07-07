@@ -69,10 +69,12 @@ class SIS(SpatialDisease):
     """
     adjacency_matrix = generate_network(L)
     self.dict_of_path_lists = get_all_paths(adjacency_matrix, SIS.PATH_LENGTH - 1)
-    # This is for efficiently getting features at different actions
+    SpatialDisease.__init__(self, adjacency_matrix, feature_function, initial_infections)
+
+    # These are for efficiently getting features at different actions
     self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
     self.map_m_to_index_dict = {k: np.sum([9**i for i in range(1, k)]) for k in self.dict_of_path_lists.keys()}
-    SpatialDisease.__init__(self, adjacency_matrix, feature_function, initial_infections)
+
     self.omega = omega
     self.state_covariance = self.BETA_1 * np.eye(self.L)
     
@@ -81,18 +83,22 @@ class SIS(SpatialDisease):
     self.Phi = [] # Network-level features
     self.current_state = self.S[-1,:]
 
+    # These are for efficiently computing gradients for estimating generative model
+    self.sum_Xy = np.zeros(3)
+    self.treat_pair_vec = np.zeros(4)
+
   def reset(self):
     """
     Reset state and observation histories.
     """
-    # super.reset()
     super(SIS, self).reset()
-    # This is for efficiently getting features at different actions
     self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
     self.S = np.zeros((1, self.L))
     self.S_indicator = self.S > 0
     self.Phi = []
     self.current_state = self.S[-1,:]
+    self.sum_Xy = np.zeros(3)
+    self.treat_pair_vec = np.zeros(4)
 
   ##############################################################
   ## Path-based feature function computation (see draft p7)   ##
@@ -217,13 +223,6 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).next_infections(a)
     next_infected_probabilities = self.next_infected_probabilities(a)
-
-    # For debugging, get infection probs in the case that all locations are treated
-    # all_treated_probs = np.zeros(self.L)
-    # all_treated_probs[not_infected_indices] = self.p_l(np.zeros(self.L), not_infected_indices)
-    # all_treated_probs[infected_indices] = 1 - self.q_l(np.zeros(self.L)[infected_indices])
-    # print(all_treated_probs - next_infected_probabilities)
-
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.true_infection_probs.append(next_infected_probabilities)
@@ -266,19 +265,24 @@ class SIS(SpatialDisease):
   ## End infection probability helper functions ##
   ################################################
 
-  def neighborFeatures(self, data_block):
-    """
-    For each location in data_block, compute neighbor feature vector
-      [sum of positive(s), sum of s*a, sum of a, sum of y, sum of a * y]
-    """
-    neighborFeatures = np.zeros((0, 5))
+  def update_gradient_information(self, action, next_infections):
     for l in range(self.L):
-      S_neighbor, A_neighbor, Y_neighbor = data_block[self.adjacency_list[l],:].T
-      neighborFeatures_l = np.array([np.sum(np.clip(S_neighbor, a_min=0, a_max=None)), np.sum(np.multiply(S_neighbor, A_neighbor)),
-                                     np.sum(A_neighbor), np.sum(np.multiply(A_neighbor, Y_neighbor)), np.sum(Y_neighbor)])
-      neighborFeatures = np.vstack((neighborFeatures, neighborFeatures_l))
-
-    return neighborFeatures
+      a_l = action[l]
+      y_l = next_infections[l]
+      neighbor_ixs = self.adjacency_list[l]
+      num_neighbors = len(neighbor_ixs)
+      num_treated_neighbors = np.sum(action[neighbor_ixs])
+      num_untreated_neighbors = num_neighbors - num_treated_neighbors
+      if a_l:
+        self.treat_pair_vec[0] += num_treated_neighbors
+        self.treat_pair_vec[1] += num_untreated_neighbors
+        self.sum_Xy += y*num_treated_neighbors*np.array([1, 1, 1])
+        self.sum_Xy += y*num_untreated_neighbors*np.array([1, 1, 0])
+      else:
+        self.treat_pair_vec[3] += num_treated_neighbors
+        self.treat_pair_vec[2] += num_untreated_neighbors
+        self.sum_Xy += y*num_treated_neighbors*np.array([1, 0, 1])
+        self.sum_Xy += y*num_untreated_neighbors*np.array([1, 0, 0])
 
   def data_block_at_action(self, data_block, action):
     """
@@ -290,22 +294,17 @@ class SIS(SpatialDisease):
     new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
     return new_data_block
 
-  def updateObsHistory(self, a):
+  def update_obs_history(self, a):
     """
     :param a: self.L-length array of binary actions at each state
     """
-    super(SIS, self).updateObsHistory(a)
-    # Get location-level features
-    # raw_data_block = np.column_stack((self.S[-2,:], a, self.Y[-2,:]))
-    # neighborFeatures = self.neighborFeatures(raw_data_block)
-    # data_block = np.column_stack((neighborFeatures, self.featureFunction(raw_data_block)))
+    super(SIS, self).update_obs_history(a)
     raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
     data_block = self.phi(raw_data_block)
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)
-    # Get network-level features
-    # raw_data_block[:, 0] = self.S_indicator[-2, :]
+    self.update_gradient_information(a, self.current_infected)
 
   def data_block_at_action(self, data_block_ix, action):
     """
