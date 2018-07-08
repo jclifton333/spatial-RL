@@ -346,6 +346,16 @@ class SIS(SpatialDisease):
       new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1,:], action)
     return new_data_block
 
+  def train_test_split(self):
+    super(SIS, self).train_test_split()
+    n_obs = len(self.X_raw)*self.L
+    n_test = int(np.floor(0.2*n_obs))
+    test_ixs = np.random.choice(n_obs, size=n_test, replace=False)
+    train_ixs = [ix for ix in range(n_obs) if ix not in test_ixs]
+
+
+
+
   def network_features_at_action(self, data_block, action):
     """
     :param data_block:
