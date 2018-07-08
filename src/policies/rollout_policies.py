@@ -31,21 +31,23 @@ def rollout_policy(**kwargs):
   if kwargs['rollout_depth'] == 0:
     a = one_step_policy(**kwargs)
   else:
-    classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget, argmaxer = \
+    classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget, argmaxer, train_ixs = \
       kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
-      kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer']
+      kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['train_ixs']
+
     auto_regressor = AutoRegressor(classifier, regressor)
 
-    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
+    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,
+                      ixs=train_ixs)
     q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
     a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
   return a, q_model
 
 
 def SIS_model_based_policy(**kwargs):
-  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, q_model = \
+  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, q_model, train_ixs = \
     kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
-    kwargs['planning_depth'], kwargs['q_model']
+    kwargs['planning_depth'], kwargs['q_model'], kwargs['train_ixs']
 
   # Need to fit q_model if it hasn't been already
   if q_model is None:
@@ -54,12 +56,18 @@ def SIS_model_based_policy(**kwargs):
     auto_regressor = AutoRegressor(classifier, regressor)
     q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
 
-  eta = fit_transition_model(env)
+  eta = fit_transition_model(env, train_ixs)
   simulation_env = simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget,
-                                     treatment_budget)
+                                     treatment_budget, train_ixs)
   kwargs['env'] = simulation_env
   a, new_q_model = rollout_policy(**kwargs)
   return a, new_q_model
+
+
+def SIS_stacked_q_policy(**kwargs):
+  q_mf = rollout_policy(**kwargs)
+  q_mb = SIS_model_based_policy(**kwargs)
+
 
 # def network_features_rollout_policy(**kwargs):
 #   env, evaluation_budget, treatment_budget, regressor = \

@@ -196,8 +196,11 @@ class SIS(SpatialDisease):
         return True
     return False
 
-  def phi_at_action(self, data_block, old_action, action):
+  def phi_at_action(self, data_block, old_action, action, ixs=None):
     locations_with_changed_actions = set(np.where(old_action == action)[0])
+    if ixs is not None:
+      locations_with_changed_actions = locations_with_changed_actions.intersection(ixs)
+
     for k, length_k_paths in self.dict_of_path_lists.items():
       for r in length_k_paths:
         if self.is_any_element_in_set(r, locations_with_changed_actions):
@@ -335,7 +338,7 @@ class SIS(SpatialDisease):
     self.y.append(self.current_infected)
     self.update_gradient_information(a, self.current_infected)
 
-  def data_block_at_action(self, data_block_ix, action):
+  def data_block_at_action(self, data_block_ix, action, ixs=None):
     """
     Replace action in raw data_block with given action.
     """
@@ -350,11 +353,13 @@ class SIS(SpatialDisease):
     super(SIS, self).train_test_split()
     n_obs = len(self.X_raw)*self.L
     n_test = int(np.floor(0.2*n_obs))
-    test_ixs = np.random.choice(n_obs, size=n_test, replace=False)
-    train_ixs = [ix for ix in range(n_obs) if ix not in test_ixs]
+    self.test_ixs = np.random.choice(n_obs, size=n_test, replace=False)
+    self.train_ixs = [ix for ix in range(n_obs) if ix not in self.test_ixs]
 
-
-
+    self.X_train = np.vstack(self.X)[self.train_ixs,:]
+    self.y_train = np.hstack(self.y)[self.train_ixs]
+    self.X_test = np.vstack(self.X)[self.test_ixs,:]
+    self.y_test = np.hstack(self.y)[self.test_ixs]
 
   def network_features_at_action(self, data_block, action):
     """

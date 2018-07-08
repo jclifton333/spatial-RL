@@ -33,9 +33,17 @@ def logit_with_label_check(X, y):
     return np.zeros(X.shape[1] + 1)
 
 
-def fit_infection_prob_model(env):
-  X = np.vstack(env.X_raw)
-  y = np.hstack(env.y)
+def fit_infection_prob_model(env, ixs):
+  """
+  ToDO: Adapt log p gradient computation, since what is computed online in SIS does not correspond to gradient
+        for subsetted data (in CV case).
+  """
+  if ixs is None:
+    X = np.vstack(env.X_raw)
+    y = np.hstack(env.y)
+  else
+    X = np.vstack([env.X_raw[t][ixs[t],:] for t in range(len(env.X_raw))])
+    y = np.hstack([env.y[t][ixs[t]] for t in range(len(env.y))])
   infected_ixs = np.where(X[:,2] == 1)
   not_infected_ixs = np.where(X[:,2] == 0)
 
