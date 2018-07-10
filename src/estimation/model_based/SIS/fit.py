@@ -30,7 +30,7 @@ def logit_with_label_check(X, y):
   if y0 == 0:
     return np.zeros(X.shape[1] + 1)
   elif y0 == 1:
-    return np.zeros(X.shape[1] + 1)
+    return np.ones(X.shape[1] + 1)
 
 
 def fit_infection_prob_model(env):
@@ -41,11 +41,14 @@ def fit_infection_prob_model(env):
 
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
   A_not_infected, y_not_infected = X[not_infected_ixs, 1], y[not_infected_ixs]
+  infected_neighbor_counts = np.hstack(env.num_infected_neighbors)[not_infected_ixs]
+  infected_and_treated_neighbor_counts = np.hstack(env.num_infected_and_treated_neighbors)[not_infected_ixs]
 
   eta_q = fit_q(A_infected.T, y_infected)
-  eta_p0 = fit_p0(A_not_infected.T, y_not_infected)
-  eta_p = fit_p(env)
-  return np.concatenate((eta_p0, eta_p, eta_q))
+  # eta_p0 = fit_p0(A_not_infected.T, y_not_infected)
+  eta_p = fit_p(A_not_infected.T, infected_neighbor_counts, infected_and_treated_neighbor_counts,
+                y_not_infected)
+  return np.concatenate((eta_p, eta_q))
 
 
 def fit_transition_model(env):
@@ -55,13 +58,22 @@ def fit_transition_model(env):
 
 
 def fit_q(A_infected, y_infected):
-  eta_q = logit_with_label_check(A_infected, y_infected)
+  eta_q = logit_with_label_check(A_infected, 1 - y_infected)
   return eta_q
 
 
-def fit_p0(A_not_infected, y_not_infected):
-  eta_q = logit_with_label_check(A_not_infected, y_not_infected)
-  return eta_q
+def fit_p(A_not_infected, infected_neighbor_counts, infected_and_treated_neighbor_counts, y_not_infected):
+  # A_times_infected_neighbor_counts = np.multiply(A_not_infected.T, infected_neighbor_counts).T
+  # features = np.column_stack((A_not_infected, infected_neighbor_counts, A_times_infected_neighbor_counts,
+  #                             infected_and_treated_neighbor_counts))
+  features = A_not_infected
+  eta_p = logit_with_label_check(features, y_not_infected)
+  return eta_p
+
+
+# def fit_p0(A_not_infected, y_not_infected):
+#   eta_p0 = logit_with_label_check(A_not_infected, y_not_infected)
+#   return eta_p0
 
 
 def estimate_variance(X, y, fitted_regression_model):
@@ -90,8 +102,6 @@ def log_p_gradient(eta_p, env):
   The gradient with respect to eta_2, eta_3, eta_4 can be found by adding up the number of location-neighbor
   pairs with the pattern (trt, trt), (trt, ~trt), (~trt, ~trt), (~trt, trt), respectively.  We keep track
   of the relevant information in env for efficiency and combine it here to get the gradient.
-
-  ToDo: Limit to uninfected sites!
   """
   X_expit_trt_trt = np.array([1, 1, 1]) * expit(np.sum(eta_p))
   X_expit_trt_notrt = np.array([1, 1, 0]) * expit(np.sum(eta_p[:2]))
@@ -104,22 +114,26 @@ def log_p_gradient(eta_p, env):
   return sum_Xy - np.dot(grad_mat, trt_pair_vec)
 
 
-def fit_p(env, warm_start = None, tol=1e-4, max_iter=100):
-  grad_func = partial(log_p_gradient, env=env)
-  if warm_start is None:
-    eta_p = np.zeros(3)
-  else:
-    eta_p = warm_start
-  step_size = 1/len(env.X_raw)
-  iter = 0
-  while iter < max_iter:
-    new_eta_p = eta_p + step_size*grad_func(eta_p)
-    diff = np.linalg.norm(new_eta_p - eta_p) / (np.linalg.norm(eta_p) + 1)
-    if diff < tol:
-      break
-    eta_p = new_eta_p
-    iter += 1
-  return eta_p
+# def fit_p(env, warm_start = None, tol=1e-4, max_iter=100):
+#   grad_func = partial(log_p_gradient, env=env)
+#   if warm_start is None:
+#     eta_p = np.zeros(3)
+#   else:
+#     eta_p = warm_start
+#   step_size = 1/len(env.X_raw)
+#   iter = 0
+#   while iter < max_iter:
+#     new_eta_p = eta_p + step_size*grad_func(eta_p)
+#     diff = np.linalg.norm(new_eta_p - eta_p) / (np.linalg.norm(eta_p) + 1)
+#     if diff < tol:
+#       break
+#     eta_p = new_eta_p
+#     iter += 1
+#   return eta_p
+
+
+def grad_log_p_l(eta):
+  success_component =
 
 
 

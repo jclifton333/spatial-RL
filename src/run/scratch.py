@@ -1,32 +1,44 @@
+# -*- coding: utf-8 -*-
 """
-This is for testing the one-step lookahead regression.
+Created on Fri May  4 21:49:40 2018
+
+@author: Jesse
 """
-
-
 import numpy as np
+import copy
 import pdb
 
-from src.environments.generate_network import lattice
+# Hack bc python imports are stupid
+import sys
+import os
+this_dir = os.path.dirname(os.path.abspath(__file__))
+pkg_dir = os.path.join(this_dir, '..', '..')
+sys.path.append(pkg_dir)
+
+from src.environments import generate_network
 from src.environments.environment_factory import environment_factory
+from src.estimation.optim.argmaxer_factory import argmaxer_factory
+from src.policies.policy_factory import policy_factory
+from src.estimation.model_based.SIS.fit import fit_transition_model
 
-from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, \
-                             AdaBoostClassifier, RandomForestClassifier
-from sklearn.neural_network import MLPRegressor, MLPClassifier
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.kernel_ridge import KernelRidge
-from sklearn.linear_model import Ridge, LogisticRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LogisticRegression
+from src.utils.misc import RidgeProb, KerasLogit
 
 
-def main(T, nRep, env_name, method, **kwargs):
+def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwargs):
   """
+  :param lookahead_depth:
   :param env_name: 'SIS' or 'Ebola'
   :param T: duration of simulation rep
-  :param nRep: number of replicates
-  :param method: string in ['random', 'none']
+  :param n_rep: number of replicates
+  :param policy_name: string in ['random', 'no_action', 'true_probs', 'rollout', 'network rollout',
+  'one_step'].
+  :param argmaxer_name: string in ['sweep', 'quad_approx'] for method of taking q function argmax
+  :param kwargs: environment-specific keyword arguments
   """
   # Initialize generative model
-  gamma = 0.7
-  # feature_function = polynomialFeatures(3, interaction_only=True)
+  gamma = 0.9
 
   def feature_function(x):
     return x
@@ -34,40 +46,47 @@ def main(T, nRep, env_name, method, **kwargs):
   env = environment_factory(env_name, feature_function, **kwargs)
 
   # Evaluation limit parameters
-  # treatment_budget = np.int(np.floor((3/16) * L))
-  treatment_budget = np.int(np.floor(0.05 * L))
+  treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
+  evaluation_budget = 10
 
-  reg = Ridge()
-
-  a_dummy = np.append(np.ones(treatment_budget), np.zeros(env.L - treatment_budget))
-  for rep in range(nRep):
-    print('Rep: {}'.format(rep))
-    for i in range(T-2):
-      if method == 'random':
-        a = np.random.permutation(a_dummy)
-      elif method == 'none':
-        a = np.zeros(g.L)
+  policy = policy_factory(policy_name)
+  random_policy = policy_factory('random') # For initial actions
+  argmaxer = argmaxer_factory(argmaxer_name)
+  policy_arguments = {'classifier': RidgeProb, 'regressor': RandomForestRegressor, 'env': env,
+                      'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
+                      'planning_depth': T, 'treatment_budget': treatment_budget, 'divide_evenly': False,
+                      'argmaxer': argmaxer, 'q_model': None}
+  score_list = []
+  true_eta = copy.copy(env.ETA)
+  for rep in range(n_rep):
+    env.reset()
+    env.step(random_policy(**policy_arguments)[0])
+    env.step(random_policy(**policy_arguments)[0])
+    for t in range(T-2):
+      t0 = time.time()
+      a, q_model = policy(**policy_arguments)
+      # ToDo: update policy_arguments within policy
+      policy_arguments['planning_depth'] = T - t
+      policy_arguments['q_model'] = q_model
       env.step(a)
-
-      # One-step regression
-      if i % 10 == 0:
-        target = np.hstack(env.y).astype(float)
-        true_expected_counts = np.hstack(env.true_infection_probs)
-        reg.fit(np.vstack(env.X), target)
-        # phat = reg.predict_proba(np.vstack(env.X))[:,-1]
-        phat = reg.predict(np.vstack(env.X))
-        r2 = 1 - ( np.sum((phat - true_expected_counts)**2) / np.sum( (true_expected_counts - np.mean(true_expected_counts))**2) )
-        print('R2: {}'.format(r2))
-        # if r2 > 0.6:
-        #   pdb.set_trace()
-
-  return
+      eta_hat = fit_transition_model(env)
+      print('True eta: {}\nEst eta: {}'.format(env.ETA, eta_hat))
+      # true_probs = env.next_infected_probabilities(a)
+      # env.eta = eta_hat
+      # est_probs = env.next_infected_probabilities(a)
+      # env.eta = true_eta
+      # print(np.multiply(env.A[-1,:], true_probs - est_probs))
+      t1 = time.time()
+      print('rep: {} t: {} total time: {}'.format(rep, t, t1-t0))
+    score_list.append(np.mean(env.Y))
+    print('Episode score: {}'.format(np.mean(env.Y)))
+  return score_list
 
 
 if __name__ == '__main__':
-  L = 500
-  T = 100000
-  nRep = 5
-  env_name = 'SIS'
-  SIS_kwargs = {'L': L, 'omega': 1, 'generate_network': lattice}
-  main(T, nRep, env_name, 'random', **SIS_kwargs)
+  import time
+  n_rep = 1
+  SIS_kwargs = {'L': 100, 'omega': 0, 'generate_network': generate_network.lattice}
+  for k in range(1, 2):
+    scores = main(k, 100, n_rep, 'SIS', 'random', 'quad_approx', **SIS_kwargs)
+    print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))

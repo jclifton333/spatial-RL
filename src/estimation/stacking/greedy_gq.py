@@ -77,7 +77,7 @@ def ggq_step(theta, w, alpha, beta, q_list, gamma, env, evaluation_budget, treat
   return theta, w
 
 
-def ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, intercept=True, project=False):
+def ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs, intercept=True, project=False):
   """
   :param project: Boolean for projecting theta onto positive R^n (for stacking, since weights should be positive.)
   """

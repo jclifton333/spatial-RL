@@ -2,6 +2,10 @@
 analysis/
 profile_output
 
+# Scratchwork
+bin/scratch.sh
+src/run/scratch.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
