@@ -303,23 +303,17 @@ class SIS(SpatialDisease):
       if not is_infected:
         a_l = action[l]
         y_l = next_infections[l]
-        next_infection_name = ['next_not_infected', 'next_infected'][y_l]
         neighbor_ixs = self.adjacency_list[l]
         num_infected_neighbors = np.sum(last_infections[neighbor_ixs])
         num_treated_and_infected_neighbors = np.sum(np.multiply(action[neighbor_ixs], last_infections[neighbor_ixs]))
         num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
-        counts_for_likelihood = np.array([a_l, ])
+        counts_for_likelihood = np.zeros((2, 2))
+        counts_for_likelihood[int(a_l),:] = np.array([num_untreated_and_infected_neighbors,
+                                                 num_treated_and_infected_neighbors])
         if y_l:
-          self.counts_for_likelihood_next_infected.append()
-        if a_l:
-          self.counts_for_likelihood_dict[next_infection_name]['N_1'] += 1
-          self.counts_for_likelihood_dict[next_infection_name]['N_11'] += num_treated_and_infected_neighbors
-          self.counts_for_likelihood_dict[next_infection_name]['N_10'] += num_untreated_and_infected_neighbors
+          self.counts_for_likelihood_next_infected.append((counts_for_likelihood, a_l))
         else:
-          self.counts_for_likelihood_dict[next_infection_name]['N_01'] += num_treated_and_infected_neighbors
-          self.counts_for_likelihood_dict[next_infection_name]['N_00'] += num_untreated_and_infected_neighbors
-        self.counts_for_likelihood_dict[next_infection_name]['N_inf_neighbor'] += num_infected_neighbors
-        self.counts_for_likelihood_dict[next_infection_name]['N'] += 1
+          self.counts_for_likelihood_next_not_infected.append((counts_for_likelihood, a_l))
 
   def data_block_at_action(self, data_block, action):
     """

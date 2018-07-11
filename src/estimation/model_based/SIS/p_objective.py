@@ -11,8 +11,11 @@ untreated-treated location-neighbor pairs, etc.  And sum_ij N_ij = N_inf_neighbo
 Finally, _i stands for "infected", while _n stands for "not infected", at next step.
 """
 import numpy as np
+from numba import njit
+import math
 
 
+@njit
 def exp_prod(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, a, N_00, N_01, N_11, N_10):
   """
   Helper for computing likelihood.
@@ -22,61 +25,52 @@ def exp_prod(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, a, N_00, N_01, N_11, N_
   exp_01 = 1 + np.exp(eta2p4)
   exp_10 = 1 + np.exp(eta2p3)
   exp_11 = 1 + np.exp(eta2p3p4)
-  powers = np.power(np.array([exp_0, exp_00, exp_01, exp_10, exp_11], np.array([-1, -N_00, -N_01, -N_10, -N_11])))
-  prod = np.prod(powers)
+  exp_list = [exp_0, exp_00, exp_01, exp_10, exp_11]
+  powers = [-1, -N_00, -N_01, -N_10, -N_11]
+  prod = 1
+  for i in range(5):
+    prod = prod * exp_list[i]**powers[i]
   return prod
 
 
-def success_component_single(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, N_00, N_01, N_11, N_10):
+def success_component_single(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, a, N_00, N_01, N_11, N_10):
   """
   Negative log lik for a single success observation.
   """
   prod = exp_prod(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, a, N_00, N_01, N_11, N_10)
-  return -np.log(1 - prod)
+  return -math.log(1 - prod)
 
 
-def failure_component_single(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, N_00, N_01, N_11, N_10):
+def failure_component_single(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, a, N_00, N_01, N_11, N_10):
   prod = exp_prod(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, a, N_00, N_01, N_11, N_10)
-  return np.log(prod)
+  return math.log(prod)
 
 
-def success_component(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, success_likelihood_counts_list):
+@njit
+def component(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, success_likelihood_counts_list):
   """
   Component of log likelihood corresponding to infected-at-next-step.
   All of the counts (N*) are only over locations that are i) not infected and ii) infected at next step!
   """
-  return np.sum([success_component_single(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, counts[0,0], counts[0,1],
-                                          counts[1,1], counts[1,0]) for counts in success_likelihood_counts_list])
-
-
-def failure_component(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, failure_likelihood_counts_list):
-  """
-  Component of log likelihood corresponding to not-infected-at-next-step.
-  All of the counts (N*) are only over locations that are i) not infected and ii) not infected at next step!
-  """
-  return np.sum([failure_component_single(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, counts[0,0], counts[0,1],
-                                          counts[1,1], counts[1,0]) for counts in failure_likelihood_counts_list])
+  lik = 0
+  for counts in success_likelihood_counts_list:
+    a = counts[1]
+    N = counts[0]
+    N_00, N_01, N_10, N_11 = N[0,0], N[0,1], N[1,0], N[1,1]
+    lik = lik + success_component_single(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, a, N_00, N_01, N_11, N_10)
+  return lik
 
 
 def negative_log_likelihood(eta, env):
   eta0 = eta[0]
   eta1 = eta[1]
-  eta0p1 = eta0 + eta1
   eta2 = eta[2]
   eta2p3 = eta2 + eta[3]
   eta2p3p4 = eta2p3 + eta[4]
   eta2p4 = eta2 + eta[4]
 
-  d_i, d_n = env.counts_for_likelihood_dict['next_infected'], \
-    env.counts_for_likelihood_dict['next_not_infected']
-  N_i, N_1_i, N_inf_neighbor_i, N_00_i, N_01_i, N_11_i, N_10_i = d_i['N'], d_i['N_1'], d_i['N_inf_neighbor'], \
-    d_i['N_00'], d_i['N_01'], d_i['N_11'], d_i['N_10']
-  N_n, N_1_n, N_inf_neighbor_n, N_00_n, N_01_n, N_11_n, N_10_n = d_n['N'], d_n['N_1'], d_n['N_inf_neighbor'], \
-    d_n['N_00'], d_n['N_01'], d_n['N_11'], d_n['N_10']
-
-  lik_success_component = success_component(eta0, eta1, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_i, N_1_i,
-                                            N_inf_neighbor_i, N_00_i, N_01_i, N_11_i, N_10_i)
-  lik_failure_component = failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_n, N_1_n, N_00_n, N_01_n,
-                                            N_11_n, N_10_n)
+  lik_success_component = component(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4, env.counts_for_likelihood_next_infected)
+  lik_failure_component = component(eta0, eta1, eta2, eta2p3, eta2p3p4, eta2p4,
+                                    env.counts_for_likelihood_next_not_infected)
   return -lik_success_component - lik_failure_component
 
