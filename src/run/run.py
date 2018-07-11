@@ -49,7 +49,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
   policy = policy_factory(policy_name)
   random_policy = policy_factory('random') # For initial actions
   argmaxer = argmaxer_factory(argmaxer_name)
-  policy_arguments = {'classifier': RidgeProb, 'regressor': RandomForestRegressor, 'env': env,
+  policy_arguments = {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': env,
                       'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                       'planning_depth': T, 'treatment_budget': treatment_budget, 'divide_evenly': False,
                       'argmaxer': argmaxer, 'q_model': None}
@@ -77,5 +77,5 @@ if __name__ == '__main__':
   n_rep = 1
   SIS_kwargs = {'L': 25, 'omega': 1, 'generate_network': generate_network.lattice}
   for k in range(1, 2):
-    scores = main(k, 25, n_rep, 'SIS', 'SIS_model_based', 'quad_approx', **SIS_kwargs)
+    scores = main(k, 25, n_rep, 'SIS', 'one_step', 'quad_approx', **SIS_kwargs)
     print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))

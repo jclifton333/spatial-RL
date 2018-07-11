@@ -24,7 +24,7 @@ def policy_factory(policy_type):
     return roll.one_step_policy
   elif policy_type == 'treat_all':
     return ref.treat_all
-  elif policy_type == 'SIS_model_based':
-    return roll.SIS_model_based_policy
+  # elif policy_type == 'SIS_model_based':
+  #   return roll.SIS_model_based_policy
   else:
     raise ValueError('Argument does not match any policy.')
