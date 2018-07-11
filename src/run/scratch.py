@@ -88,5 +88,5 @@ if __name__ == '__main__':
   n_rep = 1
   SIS_kwargs = {'L': 100, 'omega': 0, 'generate_network': generate_network.lattice}
   for k in range(1, 2):
-    scores = main(k, 100, n_rep, 'SIS', 'random', 'quad_approx', **SIS_kwargs)
+    scores = main(k, 1000, n_rep, 'SIS', 'random', 'quad_approx', **SIS_kwargs)
     print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))

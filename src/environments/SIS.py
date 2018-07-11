@@ -107,11 +107,8 @@ class SIS(SpatialDisease):
     self.current_state = self.S[-1,:]
 
     # These are for efficiently computing gradients for estimating generative model
-    next_infected_names = ['next_infected', 'next_not_infected']
-    count_names = ['N', 'N_1', 'N_inf_neighbor', 'N_00', 'N_01', 'N_11', 'N_10']
-    self.counts_for_likelihood_dict = {next_infected_name: {
-      count_name: 0 for count_name in count_names
-    } for next_infected_name in next_infected_names}
+    self.counts_for_likelihood_next_infected = []
+    self.counts_for_likelihood_next_not_infected = []
 
   def reset(self):
     """
@@ -125,11 +122,9 @@ class SIS(SpatialDisease):
     self.num_infected_and_treated_neighbors = []
     self.Phi = []
     self.current_state = self.S[-1,:]
-    next_infected_names = ['next_infected', 'next_not_infected']
-    count_names = ['N', 'N_1', 'N_inf_neighbor', 'N_00', 'N_01', 'N_11', 'N_10']
-    self.counts_for_likelihood_dict = {next_infected_name: {
-      count_name: 0 for count_name in count_names
-    } for next_infected_name in next_infected_names}
+    self.counts_for_likelihood_next_infected = []
+    self.counts_for_likelihood_next_not_infected = []
+
   ##############################################################
   ## Path-based feature function computation (see draft p7)   ##
   ##############################################################
@@ -302,22 +297,29 @@ class SIS(SpatialDisease):
   ################################################
 
   def update_likelihood_information(self, action, next_infections):
+    last_infections = self.Y[-2,:]
     for l in range(self.L):
-      is_infected = self.Y[-1,l]
+      is_infected = last_infections[l]
       if not is_infected:
         a_l = action[l]
         y_l = next_infections[l]
-        next_infection_name = ['next_infected', 'next_not_infected'][y_l]
+        next_infection_name = ['next_not_infected', 'next_infected'][y_l]
         neighbor_ixs = self.adjacency_list[l]
-        num_infected_neighbors = np.sum(next_infections[neighbor_ixs])
-        num_treated_and_infected_neighbors = np.sum(np.multiply(action[neighbor_ixs], next_infections[neighbor_ixs]))
+        num_infected_neighbors = np.sum(last_infections[neighbor_ixs])
+        num_treated_and_infected_neighbors = np.sum(np.multiply(action[neighbor_ixs], last_infections[neighbor_ixs]))
         num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
+        counts_for_likelihood = np.array([a_l, ])
+        if y_l:
+          self.counts_for_likelihood_next_infected.append()
         if a_l:
+          self.counts_for_likelihood_dict[next_infection_name]['N_1'] += 1
           self.counts_for_likelihood_dict[next_infection_name]['N_11'] += num_treated_and_infected_neighbors
           self.counts_for_likelihood_dict[next_infection_name]['N_10'] += num_untreated_and_infected_neighbors
         else:
           self.counts_for_likelihood_dict[next_infection_name]['N_01'] += num_treated_and_infected_neighbors
           self.counts_for_likelihood_dict[next_infection_name]['N_00'] += num_untreated_and_infected_neighbors
+        self.counts_for_likelihood_dict[next_infection_name]['N_inf_neighbor'] += num_infected_neighbors
+        self.counts_for_likelihood_dict[next_infection_name]['N'] += 1
 
   def data_block_at_action(self, data_block, action):
     """
@@ -348,7 +350,7 @@ class SIS(SpatialDisease):
     self.num_infected_neighbors.append(num_infected_neighbors)
     self.num_infected_and_treated_neighbors.append(num_infected_and_treated_neighbors)
     self.num_neighbors_rep.append(self.num_neighbors)
-    # self.update_gradient_information(a, self.current_infected)
+    self.update_likelihood_information(a, self.current_infected)
 
   def data_block_at_action(self, data_block_ix, action):
     """

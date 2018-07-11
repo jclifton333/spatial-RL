@@ -93,10 +93,7 @@ class SpatialDisease(ABC):
     Move model forward according to action a. 
     :param a: self.L-length array of binary actions at each state 
     """
-    try:
-      self.A = np.vstack((self.A, a))
-    except:
-      pdb.set_trace()
+    self.A = np.vstack((self.A, a))
     self.next_infections(a)
     self.next_state()
     self.update_obs_history(a)
