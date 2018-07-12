@@ -109,7 +109,8 @@ class SIS(SpatialDisease):
     # These are for efficiently computing gradients for estimating generative model
     self.counts_for_likelihood_next_infected = []
     self.counts_for_likelihood_next_not_infected = []
-
+    self.actions_for_likelihood_next_infected = []
+    self.actions_for_likelihood_next_not_infected = []
   def reset(self):
     """
     Reset state and observation histories.
@@ -124,6 +125,8 @@ class SIS(SpatialDisease):
     self.current_state = self.S[-1,:]
     self.counts_for_likelihood_next_infected = []
     self.counts_for_likelihood_next_not_infected = []
+    self.actions_for_likelihood_next_infected = []
+    self.actions_for_likelihood_next_not_infected = []
 
   ##############################################################
   ## Path-based feature function computation (see draft p7)   ##
@@ -309,11 +312,13 @@ class SIS(SpatialDisease):
         num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
         counts_for_likelihood = np.zeros((2, 2))
         counts_for_likelihood[int(a_l),:] = np.array([num_untreated_and_infected_neighbors,
-                                                 num_treated_and_infected_neighbors])
+                                                      num_treated_and_infected_neighbors])
         if y_l:
-          self.counts_for_likelihood_next_infected.append((counts_for_likelihood, a_l))
+          self.counts_for_likelihood_next_infected.append(counts_for_likelihood)
+          self.actions_for_likelihood_next_infected.append(a_l)
         else:
-          self.counts_for_likelihood_next_not_infected.append((counts_for_likelihood, a_l))
+          self.counts_for_likelihood_next_not_infected.append(counts_for_likelihood)
+          self.actions_for_likelihood_next_not_infected.append(a_l)
 
   def data_block_at_action(self, data_block, action):
     """
