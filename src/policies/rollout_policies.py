@@ -1,6 +1,7 @@
 from src.estimation.q_functions.rollout import rollout
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
+from src.estimation.stacking.greedy_gq import ggq
 # from src.estimation.model_based.SIS.fit import fit_transition_model
 # from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 import numpy as np
@@ -64,9 +65,26 @@ def SIS_model_based_policy(**kwargs):
   return a, new_q_model
 
 
-def SIS_stacked_q_policy(**kwargs):
-  q_mf = rollout_policy(**kwargs)
-  q_mb = SIS_model_based_policy(**kwargs)
+def dummy_stacked_q_policy(**kwargs):
+  """
+  This is for testing stacking.
+  """
+  q_0 = lambda x: np.zeros(x.shape[0])
+  q_1 = lambda x: np.ones(x.shape[0])
+  q_list = [q_0, q_1]
+  gamma, env, evaluation_budget, treatment_budget, argmaxer = kwargs['gamma'], kwargs['env'], \
+    kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer']
+  ixs = [0, 1, 2]
+  ixs_list = [ixs for _ in range(env.T)]
+  theta = ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs_list)
+  a = np.random.permutation(np.append(np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
+  new_q_model = lambda x: theta[0]*q_0(x) + theta[1]*q_1(x)
+  return a, new_q_model
+
+
+# def SIS_stacked_q_policy(**kwargs):
+#   q_mf = rollout_policy(**kwargs)
+#   q_mb = SIS_model_based_policy(**kwargs)
 
 
 # def network_features_rollout_policy(**kwargs):

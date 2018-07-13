@@ -23,7 +23,8 @@ from src.estimation.model_based.SIS.fit import fit_transition_model
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
-from src.utils.misc import RidgeProb, KerasLogit
+from src.utils.misc import RidgeProb
+# from src.utils.misc import KerasLogit
 
 
 def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwargs):
@@ -47,17 +48,16 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
 
   # Evaluation limit parameters
   treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
-  evaluation_budget = 10
+  evaluation_budget = treatment_budget
 
   policy = policy_factory(policy_name)
-  random_policy = policy_factory('random') # For initial actions
+  random_policy = policy_factory('random')  # For initial actions
   argmaxer = argmaxer_factory(argmaxer_name)
   policy_arguments = {'classifier': RidgeProb, 'regressor': RandomForestRegressor, 'env': env,
                       'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                       'planning_depth': T, 'treatment_budget': treatment_budget, 'divide_evenly': False,
                       'argmaxer': argmaxer, 'q_model': None}
   score_list = []
-  true_eta = copy.copy(env.ETA)
   for rep in range(n_rep):
     env.reset()
     env.step(random_policy(**policy_arguments)[0])
@@ -69,13 +69,6 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
       policy_arguments['planning_depth'] = T - t
       policy_arguments['q_model'] = q_model
       env.step(a)
-      eta_hat = fit_transition_model(env)
-      # print('True eta: {}\nEst eta: {}'.format(env.ETA, eta_hat))
-      true_probs = env.next_infected_probabilities(a)
-      env.eta = eta_hat
-      est_probs = env.next_infected_probabilities(a)
-      env.eta = true_eta
-      print('Max diff: {}'.format(np.max(np.abs(est_probs - true_probs))))
       t1 = time.time()
       print('rep: {} t: {} total time: {}'.format(rep, t, t1-t0))
     score_list.append(np.mean(env.Y))
@@ -88,5 +81,5 @@ if __name__ == '__main__':
   n_rep = 1
   SIS_kwargs = {'L': 100, 'omega': 0, 'generate_network': generate_network.lattice}
   for k in range(1, 2):
-    scores = main(k, 1000, n_rep, 'SIS', 'random', 'quad_approx', **SIS_kwargs)
+    scores = main(k, 1000, n_rep, 'SIS', 'dummy_stacked', 'random', **SIS_kwargs)
     print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))

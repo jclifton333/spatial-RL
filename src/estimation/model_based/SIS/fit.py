@@ -42,7 +42,7 @@ def fit_infection_prob_model(env, ixs):
   if ixs is None:
     X = np.vstack(env.X_raw)
     y = np.hstack(env.y)
-  else
+  else:
     X = np.vstack([env.X_raw[t][ixs[t],:] for t in range(len(env.X_raw))])
     y = np.hstack([env.y[t][ixs[t]] for t in range(len(env.y))])
   infected_ixs = np.where(X[:,2] == 1)

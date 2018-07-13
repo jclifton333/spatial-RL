@@ -18,7 +18,7 @@ def q_features(data_block, q_list, intercept):
   q_list = np.array([q(data_block) for q in q_list])
   if intercept:
     q_list = np.append([1], q_list)
-  return q_list
+  return q_list.T
 
 
 def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer, ixs,
@@ -36,11 +36,12 @@ def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X
     return np.dot(q_features_at_block(data_block), theta)
 
   q_max, argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget, stacked_q_fn, argmaxer, ixs)
-  q_max = q_max[1:,]
+  q_max = q_max[1:, ]
 
   # Compute TD * semi-gradient and q features at argmax (X_hat)
-  TD = np.hstack(env.y[:-1]).astype(float) + gamma*q_max.flatten() - q
-  TD = TD.reshape(TD.shape[0],1)
+  ys_at_ixs = [env.y[t][ixs[t]] for t in range(len(env.y[:-1]))]
+  TD = np.hstack(ys_at_ixs).astype(float) + gamma*q_max.flatten() - q
+  TD = TD.reshape(TD.shape[0], 1)
   TD_times_X = np.multiply(TD, X)
   X_hat = np.vstack([q_features_at_block(x) for x in argmax_list[1:]])
   
@@ -70,14 +71,15 @@ def update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_X, X, X_hat, proje
   return theta, w
 
 
-def ggq_step(theta, w, alpha, beta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer, intercept,
-             project):
-  TD_times_X, X_hat = ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer, intercept)
+def ggq_step(theta, w, alpha, beta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer, ixs,
+             intercept, project):
+  TD_times_X, X_hat = ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer, ixs,
+                                 intercept)
   theta, w = update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_X, X, X_hat, project)
   return theta, w
 
 
-def ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs, intercept=True, project=False):
+def ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs, intercept=False, project=False):
   """
   :param project: Boolean for projecting theta onto positive R^n (for stacking, since weights should be positive.)
   """
@@ -86,15 +88,15 @@ def ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs, 
   
   n_features = len(q_list) + intercept
   theta, w = np.zeros(n_features), np.zeros(n_features)
-  X = np.vstack([q_features(data_block, q_list, intercept) for data_block in env.X[:-1]])
+  X = np.zeros((0, n_features))
+  for t in range(len(env.X)-1):
+    data_block = env.X[t][ixs[t], :]
+    q_hat = q_features(data_block, q_list, intercept)
+    X = np.vstack((X, q_hat))
 
   for it in range(N_IT):
     alpha = NU / ((it + 1) * np.log(it + 2))
     beta = NU / (it + 1)
     theta, w = ggq_step(theta, w, alpha, beta, q_list, gamma, env, evaluation_budget, treatment_budget, X,
-                        argmaxer, intercept=intercept, project=project)
+                        argmaxer, ixs, intercept=intercept, project=project)
   return theta
-  
-  
-  
-  

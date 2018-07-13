@@ -324,16 +324,6 @@ class SIS(SpatialDisease):
           self.counts_for_likelihood_next_not_infected[int(a_l), num_untreated_and_infected_neighbors,
                                                        num_treated_and_infected_neighbors] += 1
 
-  def data_block_at_action(self, data_block, action):
-    """
-    Replace action in raw data_block with given action.
-    """
-    assert data_block.shape[1] == 3
-    new_data_block = np.column_stack((data_block[:,0], action, data_block[:,2]))
-    features = self.neighborFeatures(new_data_block)
-    new_data_block = np.column_stack((features, self.featureFunction(new_data_block)))
-    return new_data_block
-
   def update_obs_history(self, a):
     """
     :param a: self.L-length array of binary actions at each state
@@ -347,18 +337,7 @@ class SIS(SpatialDisease):
     self.X.append(data_block)
     self.y.append(self.current_infected)
 
-    # Neighbor count features
-    num_infected_neighbors, num_infected_and_treated_neighbors = \
-      self.get_num_infected_and_treated_neighbors(self.Y[-2,:], a)
-    self.num_infected_neighbors.append(num_infected_neighbors)
-    self.num_infected_and_treated_neighbors.append(num_infected_and_treated_neighbors)
-    self.num_neighbors_rep.append(self.num_neighbors)
     self.update_likelihood_information(a, self.current_infected)
-
-    # Check actions_for_likelihood
-    # X_raw_stacked = np.vstack(self.X_raw)
-    # assert np.sum(self.actions_for_likelihood_next_infected) + np.sum(self.actions_for_likelihood_next_not_infected) \
-    #   == np.sum(X_raw_stacked[np.where(X_raw_stacked[:,2] == 0), 1])
 
   def data_block_at_action(self, data_block_ix, action, ixs=None):
     """
@@ -368,7 +347,7 @@ class SIS(SpatialDisease):
     if self.A.shape[0] == 0:
       new_data_block = self.phi(np.column_stack((self.S_indicator[-1,:], action, self.Y[-1,:])))
     else:
-      new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1,:], action)
+      new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1, :], action, ixs=ixs)
     return new_data_block
 
   def train_test_split(self):

@@ -14,7 +14,7 @@ def q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model,
       q_fn = lambda a: q(a, t, env, predictive_model, network_features=network_features)
     else:
       q_fn = lambda a: q(a, t, env, predictive_model, ixs[t], network_features=network_features)
-    argmax = argmaxer(q_fn, evaluation_budget, treatment_budget, env)
-    argmax_list.append(argmax)
-    q_max_list.append(q_fn(argmax))
+    argmax = argmaxer(q_fn, evaluation_budget, treatment_budget, env, ixs[t])
+    argmax_list.append(argmax[ixs[t]])
+    q_max_list.append(q_fn(argmax[ixs[t]]))
   return np.array(q_max_list), argmax_list
