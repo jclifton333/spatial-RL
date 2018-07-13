@@ -107,10 +107,10 @@ class SIS(SpatialDisease):
     self.current_state = self.S[-1,:]
 
     # These are for efficiently computing gradients for estimating generative model
-    self.counts_for_likelihood_next_infected = []
-    self.counts_for_likelihood_next_not_infected = []
-    self.actions_for_likelihood_next_infected = []
-    self.actions_for_likelihood_next_not_infected = []
+    self.max_num_neighbors = int(np.max(np.sum(self.adjacency_matrix, axis=0)))
+    self.counts_for_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
+    self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
+
   def reset(self):
     """
     Reset state and observation histories.
@@ -123,10 +123,8 @@ class SIS(SpatialDisease):
     self.num_infected_and_treated_neighbors = []
     self.Phi = []
     self.current_state = self.S[-1,:]
-    self.counts_for_likelihood_next_infected = []
-    self.counts_for_likelihood_next_not_infected = []
-    self.actions_for_likelihood_next_infected = []
-    self.actions_for_likelihood_next_not_infected = []
+    self.counts_for_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
+    self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
 
   ##############################################################
   ## Path-based feature function computation (see draft p7)   ##
@@ -300,25 +298,24 @@ class SIS(SpatialDisease):
   ################################################
 
   def update_likelihood_information(self, action, next_infections):
-    last_infections = self.Y[-2,:]
+    last_infections = self.Y[-2, :]
     for l in range(self.L):
       is_infected = last_infections[l]
       if not is_infected:
         a_l = action[l]
         y_l = next_infections[l]
         neighbor_ixs = self.adjacency_list[l]
-        num_infected_neighbors = np.sum(last_infections[neighbor_ixs])
-        num_treated_and_infected_neighbors = np.sum(np.multiply(action[neighbor_ixs], last_infections[neighbor_ixs]))
+        num_infected_neighbors = int(np.sum(last_infections[neighbor_ixs]))
+        num_treated_and_infected_neighbors = \
+          int(np.sum(np.multiply(action[neighbor_ixs], last_infections[neighbor_ixs])))
         num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
-        counts_for_likelihood = np.zeros((2, 2))
-        counts_for_likelihood[int(a_l),:] = np.array([num_untreated_and_infected_neighbors,
-                                                      num_treated_and_infected_neighbors])
+
         if y_l:
-          self.counts_for_likelihood_next_infected.append(counts_for_likelihood)
-          self.actions_for_likelihood_next_infected.append(a_l)
+          self.counts_for_likelihood_next_infected[int(a_l), num_untreated_and_infected_neighbors,
+                                                   num_treated_and_infected_neighbors] += 1
         else:
-          self.counts_for_likelihood_next_not_infected.append(counts_for_likelihood)
-          self.actions_for_likelihood_next_not_infected.append(a_l)
+          self.counts_for_likelihood_next_not_infected[int(a_l), num_untreated_and_infected_neighbors,
+                                                       num_treated_and_infected_neighbors] += 1
 
   def data_block_at_action(self, data_block, action):
     """
@@ -350,6 +347,11 @@ class SIS(SpatialDisease):
     self.num_infected_and_treated_neighbors.append(num_infected_and_treated_neighbors)
     self.num_neighbors_rep.append(self.num_neighbors)
     self.update_likelihood_information(a, self.current_infected)
+
+    # Check actions_for_likelihood
+    # X_raw_stacked = np.vstack(self.X_raw)
+    # assert np.sum(self.actions_for_likelihood_next_infected) + np.sum(self.actions_for_likelihood_next_not_infected) \
+    #   == np.sum(X_raw_stacked[np.where(X_raw_stacked[:,2] == 0), 1])
 
   def data_block_at_action(self, data_block_ix, action):
     """

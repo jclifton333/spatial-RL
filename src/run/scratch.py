@@ -70,12 +70,12 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
       policy_arguments['q_model'] = q_model
       env.step(a)
       eta_hat = fit_transition_model(env)
-      print('True eta: {}\nEst eta: {}'.format(env.ETA, eta_hat))
-      # true_probs = env.next_infected_probabilities(a)
-      # env.eta = eta_hat
-      # est_probs = env.next_infected_probabilities(a)
-      # env.eta = true_eta
-      # print(np.multiply(env.A[-1,:], true_probs - est_probs))
+      # print('True eta: {}\nEst eta: {}'.format(env.ETA, eta_hat))
+      true_probs = env.next_infected_probabilities(a)
+      env.eta = eta_hat
+      est_probs = env.next_infected_probabilities(a)
+      env.eta = true_eta
+      print('Max diff: {}'.format(np.max(np.abs(est_probs - true_probs))))
       t1 = time.time()
       print('rep: {} t: {} total time: {}'.format(rep, t, t1-t0))
     score_list.append(np.mean(env.Y))

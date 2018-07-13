@@ -64,7 +64,8 @@ def fit_q(A_infected, y_infected):
 
 def fit_p(env):
   objective = partial(negative_log_likelihood, env=env)
-  eta_p = minimize(objective, x0=env.eta[:5], method='L-BFGS-B').x
+  res = minimize(objective, x0=env.eta[:5], method='L-BFGS-B')
+  eta_p = res.x
   return eta_p
 
 
