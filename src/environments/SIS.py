@@ -204,7 +204,8 @@ class SIS(SpatialDisease):
   def phi_at_action(self, data_block, old_action, action, ixs=None):
     locations_with_changed_actions = set(np.where(old_action == action)[0])
     if ixs is not None:
-      ixs_and_their_neighbors = ixs + [l for ix in ixs for l in self.adjacency_list[ix]]
+      # This only works when considering paths up to length 2!
+      ixs_and_their_neighbors = np.append(ixs, [l for ix in ixs for l in self.adjacency_list[ix]])
       locations_with_changed_actions = locations_with_changed_actions.intersection(ixs_and_their_neighbors)
 
     for k, length_k_paths in self.dict_of_path_lists.items():
@@ -381,15 +382,18 @@ class SIS(SpatialDisease):
 
   def train_test_split(self):
     super(SIS, self).train_test_split()
-    n_obs = len(self.X_raw)*self.L
-    n_test = int(np.floor(0.2*n_obs))
-    self.test_ixs = np.random.choice(n_obs, size=n_test, replace=False)
-    self.train_ixs = [ix for ix in range(n_obs) if ix not in self.test_ixs]
-
-    self.X_train = np.vstack(self.X)[self.train_ixs,:]
-    self.y_train = np.hstack(self.y)[self.train_ixs]
-    self.X_test = np.vstack(self.X)[self.test_ixs,:]
-    self.y_test = np.hstack(self.y)[self.test_ixs]
+    train_ixs_list = []
+    test_ixs_list = []
+    all_ixs = np.arange(self.L)
+    n_test = int(np.floor(0.2*self.L))
+    for t in range(self.T):
+      test_ix = set(np.random.choice(self.L, n_test, replace=False))
+      mask = np.array([(i in test_ix) for i in xrange(self.L)])
+      test_ixs = all_ixs[mask]
+      train_ixs = all_ixs[~mask]
+      train_ixs_list.append(train_ixs)
+      test_ixs_list.append(test_ixs)
+    return train_ixs_list, test_ixs_list
 
   def network_features_at_action(self, data_block, action):
     """

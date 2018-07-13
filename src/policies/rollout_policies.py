@@ -59,7 +59,7 @@ def SIS_model_based_policy(**kwargs):
 
   eta = fit_transition_model(env, train_ixs)
   simulation_env = simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget,
-                                     treatment_budget, train_ixs)
+                                     treatment_budget)
   kwargs['env'] = simulation_env
   a, new_q_model = rollout_policy(**kwargs)
   return a, new_q_model
@@ -83,11 +83,14 @@ def dummy_stacked_q_policy(**kwargs):
 
 
 def SIS_stacked_q_policy(**kwargs):
+  env = kwargs['env']
+  train_ixs, test_ixs = env.train_test_split()
+  kwargs['train_ixs'] = train_ixs
   q_mf = rollout_policy(**kwargs)
   q_mb = SIS_model_based_policy(**kwargs)
   q_list = [q_mf, q_mb]
-  gamma, env, evaluation_budget, treatment_budget, argmaxer = kwargs['gamma'], kwargs['env'], \
-    kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer']
+  gamma, evaluation_budget, treatment_budget, argmaxer = kwargs['gamma'], kwargs['evaluation_budget'], \
+                                                         kwargs['treatment_budget'], kwargs['argmaxer']
   ixs = [0, 1, 2]
   ixs_list = [ixs for _ in range(env.T)]
   theta = ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs_list)

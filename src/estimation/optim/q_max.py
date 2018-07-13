@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 from src.estimation.q_functions.q_functions import q
 
@@ -12,9 +13,10 @@ def q_max_all_states(env, evaluation_budget, treatment_budget, predictive_model,
   for t in range(env.T):
     if ixs is None:
       q_fn = lambda a: q(a, t, env, predictive_model, network_features=network_features)
+      argmax = argmaxer(q_fn, evaluation_budget, treatment_budget, env)
     else:
       q_fn = lambda a: q(a, t, env, predictive_model, ixs[t], network_features=network_features)
-    argmax = argmaxer(q_fn, evaluation_budget, treatment_budget, env, ixs[t])
-    argmax_list.append(argmax[ixs[t]])
-    q_max_list.append(q_fn(argmax[ixs[t]]))
+      argmax = argmaxer(q_fn, evaluation_budget, treatment_budget, env, ixs[t])
+    argmax_list.append(argmax)
+    q_max_list.append(q_fn(argmax))
   return np.array(q_max_list), argmax_list

@@ -24,17 +24,22 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
   regressor.resetPredictors()
   if ixs is None:
     target = np.hstack(env.y).astype(float)
+    features = np.vstack(env.X)
   else:
-    target = np.hstack([env.y[i][ixs[i]] for i in range(env.y)])
+    try:
+      target = np.hstack([env.y[i][ixs[i]] for i in range(len(env.y))])
+    except:
+      pdb.set_trace()
+    features = np.vstack([env.X[i][ixs[i]] for i in range(len(env.X))])
 
   # Fit 1-step model
-  regressor.fitClassifier(env, target, True)
+  regressor.fitClassifier(features, target, True)
   q_max = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
 
   # Look ahead
   for k in range(1, K):
     target += gamma*q_max.flatten()
-    regressor.fitRegressor(env, target, False)
+    regressor.fitRegressor(features, target, False)
     if k < K-1:
       q_max = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
   return regressor.autologitPredictor

@@ -34,7 +34,7 @@ def logit_with_label_check(X, y):
     return np.ones(X.shape[1] + 1)
 
 
-def fit_infection_prob_model(env, ixs=None):
+def fit_infection_prob_model(env, ixs):
   """
 
   :param env:
@@ -56,12 +56,12 @@ def fit_infection_prob_model(env, ixs=None):
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
 
   eta_q = fit_q(A_infected.T, y_infected)
-  eta_p = fit_p(counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected)
+  eta_p = fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected)
   return np.concatenate((eta_p, eta_q))
 
 
-def fit_transition_model(env):
-  eta = fit_infection_prob_model(env)
+def fit_transition_model(env, ixs=None):
+  eta = fit_infection_prob_model(env, ixs)
   # beta = fit_state_transition_model(env)
   return eta
 
@@ -71,7 +71,7 @@ def fit_q(A_infected, y_infected):
   return eta_q
 
 
-def fit_p(counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
+def fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
   """
   ToDo: Document these parameters.
   :param counts_for_likelihood_next_infected:

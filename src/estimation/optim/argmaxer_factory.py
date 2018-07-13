@@ -8,8 +8,8 @@ import numpy as np
 
 
 def argmaxer_random(q_fn, evaluation_budget, treatment_budget, env, ixs=None):
-  # For when you just need a placeholder.
-  if ixs:
+  # Placeholder argmax function for debugging.
+  if ixs is not None:
     L = len(ixs)
     treatment_budget = int(np.ceil((treatment_budget / env.L) * L))
   else:

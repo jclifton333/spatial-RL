@@ -15,7 +15,7 @@ treatment_budget: size of treated state subset
 """
 
 
-def q(a, data_block_ix, env, predictive_model, ixs, network_features=False):
+def q(a, data_block_ix, env, predictive_model, ixs=None, network_features=False):
   if network_features:  # Ignore this
     data_block = env.network_features_at_action(data_block_ix, a)
   else:
