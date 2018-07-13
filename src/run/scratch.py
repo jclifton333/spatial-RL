@@ -79,7 +79,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
 if __name__ == '__main__':
   import time
   n_rep = 1
-  SIS_kwargs = {'L': 100, 'omega': 0, 'generate_network': generate_network.lattice}
+  SIS_kwargs = {'L': 50, 'omega': 0, 'generate_network': generate_network.lattice}
   for k in range(1, 2):
     scores = main(k, 25, n_rep, 'SIS', 'SIS_stacked', 'random', **SIS_kwargs)
     print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))

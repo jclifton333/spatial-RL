@@ -46,12 +46,12 @@ def fit_quad_approx_at_location(sample_qs, sample_acts, l, neighbor_interaction_
 
 
 def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, L):
-  quadratic_parameters = np.zeros((L,L))
+  quadratic_parameters = np.zeros((L, L))
   intercept = 0
   for l in range(L):
     intercept_l, beta_l = fit_quad_approx_at_location(sample_qs, sample_acts, l, neighbor_interaction_lists)
     neighbor_interactions = neighbor_interaction_lists[l]
-    quadratic_parameters[neighbor_interactions[:,0], neighbor_interactions[:,1]] += beta_l
+    quadratic_parameters[neighbor_interactions[:,0], neighbor_interactions[:, 1]] += beta_l
     intercept += intercept_l
   return quadratic_parameters, intercept
 
