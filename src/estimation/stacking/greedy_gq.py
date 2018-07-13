@@ -21,7 +21,7 @@ def q_features(data_block, q_list, intercept):
   return q_list
 
 
-def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer,
+def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer, ixs,
                intercept=True):
   assert env.T > 1
 
@@ -35,7 +35,7 @@ def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X
   def stacked_q_fn(data_block):
     return np.dot(q_features_at_block(data_block), theta)
 
-  q_max, argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget, stacked_q_fn, argmaxer)
+  q_max, argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget, stacked_q_fn, argmaxer, ixs)
   q_max = q_max[1:,]
 
   # Compute TD * semi-gradient and q features at argmax (X_hat)

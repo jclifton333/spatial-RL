@@ -204,13 +204,17 @@ class SIS(SpatialDisease):
   def phi_at_action(self, data_block, old_action, action, ixs=None):
     locations_with_changed_actions = set(np.where(old_action == action)[0])
     if ixs is not None:
-      locations_with_changed_actions = locations_with_changed_actions.intersection(ixs)
+      ixs_and_their_neighbors = ixs + [l for ix in ixs for l in self.adjacency_list[ix]]
+      locations_with_changed_actions = locations_with_changed_actions.intersection(ixs_and_their_neighbors)
 
     for k, length_k_paths in self.dict_of_path_lists.items():
       for r in length_k_paths:
         if self.is_any_element_in_set(r, locations_with_changed_actions):
           data_block = self.modify_m_r(data_block, old_action, action, r, k)
-    return data_block
+    if ixs is None:
+      return data_block
+    else:
+      return data_block[ixs,:]
 
   ##############################################################
   ##            End path-based feature function stuff         ##
