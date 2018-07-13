@@ -1,8 +1,8 @@
 from src.estimation.q_functions.rollout import rollout
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
-from src.estimation.model_based.SIS.fit import fit_transition_model
-from src.estimation.model_based.SIS.simulate import simulate_from_SIS
+# from src.estimation.model_based.SIS.fit import fit_transition_model
+# from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 import numpy as np
 import pdb
 from functools import partial

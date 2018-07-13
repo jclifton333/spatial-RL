@@ -9,9 +9,10 @@ eta_q:  eta_5, eta_6
 """
 import pdb
 import numpy as np
-from scipy.special import expit
-from sklearn.linear_model import LinearRegression, LogisticRegression
 from functools import partial
+from .p_objective import negative_log_likelihood
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from scipy.optimize import minimize
 
 
 def logit_with_label_check(X, y):
@@ -30,7 +31,7 @@ def logit_with_label_check(X, y):
   if y0 == 0:
     return np.zeros(X.shape[1] + 1)
   elif y0 == 1:
-    return np.zeros(X.shape[1] + 1)
+    return np.ones(X.shape[1] + 1)
 
 
 def fit_infection_prob_model(env, ixs):
@@ -45,15 +46,17 @@ def fit_infection_prob_model(env, ixs):
     X = np.vstack([env.X_raw[t][ixs[t],:] for t in range(len(env.X_raw))])
     y = np.hstack([env.y[t][ixs[t]] for t in range(len(env.y))])
   infected_ixs = np.where(X[:,2] == 1)
-  not_infected_ixs = np.where(X[:,2] == 0)
+  # not_infected_ixs = np.where(X[:,2] == 0)
 
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
-  A_not_infected, y_not_infected = X[not_infected_ixs, 1], y[not_infected_ixs]
+  # A_not_infected, y_not_infected = X[not_infected_ixs, 1], y[not_infected_ixs]
+  # infected_neighbor_counts = np.hstack(env.num_infected_neighbors)[not_infected_ixs]
+  # infected_and_treated_neighbor_counts = np.hstack(env.num_infected_and_treated_neighbors)[not_infected_ixs]
 
   eta_q = fit_q(A_infected.T, y_infected)
-  eta_p0 = fit_p0(A_not_infected.T, y_not_infected)
+  # eta_p0 = fit_p0(A_not_infected.T, y_not_infected)
   eta_p = fit_p(env)
-  return np.concatenate((eta_p0, eta_p, eta_q))
+  return np.concatenate((eta_p, eta_q))
 
 
 def fit_transition_model(env):
@@ -63,13 +66,20 @@ def fit_transition_model(env):
 
 
 def fit_q(A_infected, y_infected):
-  eta_q = logit_with_label_check(A_infected, y_infected)
+  eta_q = logit_with_label_check(A_infected, 1 - y_infected)
   return eta_q
 
 
-def fit_p0(A_not_infected, y_not_infected):
-  eta_q = logit_with_label_check(A_not_infected, y_not_infected)
-  return eta_q
+def fit_p(env):
+  objective = partial(negative_log_likelihood, env=env)
+  res = minimize(objective, x0=env.eta[:5], method='L-BFGS-B')
+  eta_p = res.x
+  return eta_p
+
+
+# def fit_p0(A_not_infected, y_not_infected):
+#   eta_p0 = logit_with_label_check(A_not_infected, y_not_infected)
+#   return eta_p0
 
 
 def estimate_variance(X, y, fitted_regression_model):
@@ -82,6 +92,7 @@ def estimate_variance(X, y, fitted_regression_model):
 
 
 def fit_state_transition_model(env):
+  # This is not actually used in estimating model assuming omega=0.
   # ToDO: Compute online (Sherman-Woodbury)
   X = np.vstack(env.X_raw[:-1])
   X_plus = np.vstack(env.X_raw[1:])
@@ -93,41 +104,41 @@ def fit_state_transition_model(env):
   return beta_0_hat, beta_1_hat
 
 
-def log_p_gradient(eta_p, env):
-  """
-  The gradient with respect to eta_2, eta_3, eta_4 can be found by adding up the number of location-neighbor
-  pairs with the pattern (trt, trt), (trt, ~trt), (~trt, ~trt), (~trt, trt), respectively.  We keep track
-  of the relevant information in env for efficiency and combine it here to get the gradient.
-
-  ToDo: Limit to uninfected sites!
-  """
-  X_expit_trt_trt = np.array([1, 1, 1]) * expit(np.sum(eta_p))
-  X_expit_trt_notrt = np.array([1, 1, 0]) * expit(np.sum(eta_p[:2]))
-  X_expit_notrt_notrt = np.array([1, 0, 0]) * expit(eta_p[0])
-  X_expit_notrt_trt = np.array([1, 0, 1]) * expit(np.sum(eta_p[[0,2]]))
-
-  grad_mat = np.column_stack((X_expit_trt_trt, X_expit_trt_notrt, X_expit_notrt_notrt, X_expit_notrt_trt))
-  sum_Xy = env.sum_Xy
-  trt_pair_vec = env.treat_pair_vec
-  return sum_Xy - np.dot(grad_mat, trt_pair_vec)
+# def log_p_gradient(eta_p, env):
+#   """
+#   The gradient with respect to eta_2, eta_3, eta_4 can be found by adding up the number of location-neighbor
+#   pairs with the pattern (trt, trt), (trt, ~trt), (~trt, ~trt), (~trt, trt), respectively.  We keep track
+#   of the relevant information in env for efficiency and combine it here to get the gradient.
+#   """
+#   X_expit_trt_trt = np.array([1, 1, 1]) * expit(np.sum(eta_p))
+#   X_expit_trt_notrt = np.array([1, 1, 0]) * expit(np.sum(eta_p[:2]))
+#   X_expit_notrt_notrt = np.array([1, 0, 0]) * expit(eta_p[0])
+#   X_expit_notrt_trt = np.array([1, 0, 1]) * expit(np.sum(eta_p[[0,2]]))
+#
+#   grad_mat = np.column_stack((X_expit_trt_trt, X_expit_trt_notrt, X_expit_notrt_notrt, X_expit_notrt_trt))
+#   sum_Xy = env.sum_Xy
+#   trt_pair_vec = env.treat_pair_vec
+#   return sum_Xy - np.dot(grad_mat, trt_pair_vec)
 
 
-def fit_p(env, warm_start = None, tol=1e-4, max_iter=100):
-  grad_func = partial(log_p_gradient, env=env)
-  if warm_start is None:
-    eta_p = np.zeros(3)
-  else:
-    eta_p = warm_start
-  step_size = 1/len(env.X_raw)
-  iter = 0
-  while iter < max_iter:
-    new_eta_p = eta_p + step_size*grad_func(eta_p)
-    diff = np.linalg.norm(new_eta_p - eta_p) / (np.linalg.norm(eta_p) + 1)
-    if diff < tol:
-      break
-    eta_p = new_eta_p
-    iter += 1
-  return eta_p
+# def fit_p(env, warm_start = None, tol=1e-4, max_iter=100):
+#   grad_func = partial(log_p_gradient, env=env)
+#   if warm_start is None:
+#     eta_p = np.zeros(3)
+#   else:
+#     eta_p = warm_start
+#   step_size = 1/len(env.X_raw)
+#   iter = 0
+#   while iter < max_iter:
+#     new_eta_p = eta_p + step_size*grad_func(eta_p)
+#     diff = np.linalg.norm(new_eta_p - eta_p) / (np.linalg.norm(eta_p) + 1)
+#     if diff < tol:
+#       break
+#     eta_p = new_eta_p
+#     iter += 1
+#   return eta_p
+
+
 
 
 

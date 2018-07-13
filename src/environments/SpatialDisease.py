@@ -31,6 +31,8 @@ class SpatialDisease(ABC):
     self.adjacency_matrix = adjacency_matrix
     self.adjacency_list = [[l_prime for l_prime in range(self.L) if self.adjacency_matrix[l, l_prime] == 1]
                            for l in range(self.L)]
+    self.num_neighbors = [len(neighbors) for neighbors in self.adjacency_list]
+    self.num_neighbors_rep = [self.num_neighbors]
     self.neighbor_interaction_lists = [np.array([[i,j] for i in self.adjacency_list[l] for j in self.adjacency_list[l]])
                                        for l in range(self.L)]
 
@@ -95,10 +97,7 @@ class SpatialDisease(ABC):
     Move model forward according to action a. 
     :param a: self.L-length array of binary actions at each state 
     """
-    try:
-      self.A = np.vstack((self.A, a))
-    except:
-      pdb.set_trace()
+    self.A = np.vstack((self.A, a))
     self.next_infections(a)
     self.next_state()
     self.update_obs_history(a)

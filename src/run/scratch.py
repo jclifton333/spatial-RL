@@ -5,6 +5,8 @@ Created on Fri May  4 21:49:40 2018
 @author: Jesse
 """
 import numpy as np
+import copy
+import pdb
 
 # Hack bc python imports are stupid
 import sys
@@ -17,6 +19,7 @@ from src.environments import generate_network
 from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
+from src.estimation.model_based.SIS.fit import fit_transition_model
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
@@ -49,11 +52,12 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
   policy = policy_factory(policy_name)
   random_policy = policy_factory('random') # For initial actions
   argmaxer = argmaxer_factory(argmaxer_name)
-  policy_arguments = {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': env,
+  policy_arguments = {'classifier': RidgeProb, 'regressor': RandomForestRegressor, 'env': env,
                       'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                       'planning_depth': T, 'treatment_budget': treatment_budget, 'divide_evenly': False,
                       'argmaxer': argmaxer, 'q_model': None}
   score_list = []
+  true_eta = copy.copy(env.ETA)
   for rep in range(n_rep):
     env.reset()
     env.step(random_policy(**policy_arguments)[0])
@@ -65,6 +69,13 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
       policy_arguments['planning_depth'] = T - t
       policy_arguments['q_model'] = q_model
       env.step(a)
+      eta_hat = fit_transition_model(env)
+      # print('True eta: {}\nEst eta: {}'.format(env.ETA, eta_hat))
+      true_probs = env.next_infected_probabilities(a)
+      env.eta = eta_hat
+      est_probs = env.next_infected_probabilities(a)
+      env.eta = true_eta
+      print('Max diff: {}'.format(np.max(np.abs(est_probs - true_probs))))
       t1 = time.time()
       print('rep: {} t: {} total time: {}'.format(rep, t, t1-t0))
     score_list.append(np.mean(env.Y))
@@ -75,7 +86,7 @@ def main(lookahead_depth, T, n_rep, env_name, policy_name, argmaxer_name, **kwar
 if __name__ == '__main__':
   import time
   n_rep = 1
-  SIS_kwargs = {'L': 25, 'omega': 1, 'generate_network': generate_network.lattice}
+  SIS_kwargs = {'L': 100, 'omega': 0, 'generate_network': generate_network.lattice}
   for k in range(1, 2):
-    scores = main(k, 25, n_rep, 'SIS', 'one_step', 'quad_approx', **SIS_kwargs)
+    scores = main(k, 1000, n_rep, 'SIS', 'random', 'quad_approx', **SIS_kwargs)
     print('k={}: score={} se={}'.format(k, np.mean(scores), np.std(scores) / len(scores)))
