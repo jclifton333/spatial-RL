@@ -71,7 +71,7 @@ def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, failure_like
   return lik
 
 
-def negative_log_likelihood(eta, env):
+def negative_log_likelihood(eta, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
   eta0 = eta[0]
   eta0p1 = eta0 + eta[1]
   eta2 = eta[2]
@@ -80,8 +80,8 @@ def negative_log_likelihood(eta, env):
   eta2p4 = eta2 + eta[4]
 
   lik_success_component = success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4,
-                                            np.array(env.counts_for_likelihood_next_infected))
+                                            counts_for_likelihood_next_infected)
   lik_failure_component = failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4,
-                                            np.array(env.counts_for_likelihood_next_not_infected))
+                                            counts_for_likelihood_next_not_infected)
   return -lik_success_component - lik_failure_component
 

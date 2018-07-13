@@ -34,22 +34,29 @@ def logit_with_label_check(X, y):
     return np.ones(X.shape[1] + 1)
 
 
-def fit_infection_prob_model(env, ixs):
+def fit_infection_prob_model(env, ixs=None):
   """
-  ToDO: Adapt p objective computation, since what is computed online in SIS does not correspond to objective
-        for subsetted data (in CV case).
+
+  :param env:
+  :param ixs: List of lists of indexes for train subset (used for stacking method).
+  :return:
   """
   if ixs is None:
     X = np.vstack(env.X_raw)
     y = np.hstack(env.y)
+    counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected = \
+      env.counts_for_likelihood_next_infected, env.counts_for_likelihood_next_not_infected
   else:
     X = np.vstack([env.X_raw[t][ixs[t], :] for t in range(len(env.X_raw))])
     y = np.hstack([env.y[t][ixs[t]] for t in range(len(env.y))])
+    counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected = \
+      env.get_likelihood_information_for_cv_split(ixs)
+
   infected_ixs = np.where(X[:, 2] == 1)
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
 
   eta_q = fit_q(A_infected.T, y_infected)
-  eta_p = fit_p(env)
+  eta_p = fit_p(counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected)
   return np.concatenate((eta_p, eta_q))
 
 
@@ -64,8 +71,15 @@ def fit_q(A_infected, y_infected):
   return eta_q
 
 
-def fit_p(env):
-  objective = partial(negative_log_likelihood, env=env)
+def fit_p(counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
+  """
+  ToDo: Document these parameters.
+  :param counts_for_likelihood_next_infected:
+  :param counts_for_likelihood_next_not_infected:
+  :return:
+  """
+  objective = partial(negative_log_likelihood, counts_for_likelihood_next_infected=counts_for_likelihood_next_infected,
+                      counts_for_likelihood_next_not_infected=counts_for_likelihood_next_not_infected)
   res = minimize(objective, x0=env.eta[:5], method='L-BFGS-B')
   eta_p = res.x
   return eta_p
