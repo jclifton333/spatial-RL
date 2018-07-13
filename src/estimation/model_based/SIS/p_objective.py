@@ -1,3 +1,7 @@
+"""
+Component of log likelihood for infection probabilities at not-infected states ("p_l" in the draft).
+"""
+
 import pdb
 import numpy as np
 from numba import njit, jit
@@ -55,7 +59,7 @@ def success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, success_like
 @njit
 def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, failure_likelihood_counts_list):
   """
-  Component of log likelihood corresponding to infected-at-next-step.
+  Component of log likelihood corresponding to not-infected-at-next-step.
   """
   lik = 0
   for i in range(failure_likelihood_counts_list.shape[1]):
