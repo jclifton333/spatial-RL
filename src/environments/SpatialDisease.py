@@ -74,8 +74,12 @@ class SpatialDisease(ABC):
     
     # Current network status
     self.current_infected = self.Y[-1,:]
-    self.T = 0    
-  
+    self.T = 0
+
+  @abstractmethod
+  def train_test_split(self):
+    pass
+
   @abstractmethod
   def update_obs_history(self, a):
     pass
