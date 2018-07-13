@@ -38,8 +38,12 @@ def swap_action(q_fn, action):
     return None
 
 
-def argmaxer_sweep(q_fn, evaluation_budget, treatment_budget, env):
-  L = env.L
+def argmaxer_sweep(q_fn, evaluation_budget, treatment_budget, env, ixs=None):
+  if ixs:
+    L = len(ixs)
+    treatment_budget = int(np.ceil((treatment_budget/env.L) * L))
+  else:
+    L = env.L
   a = np.zeros(L)
   while np.sum(a) < treatment_budget:
     q = -q_fn(a)

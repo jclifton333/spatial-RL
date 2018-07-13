@@ -2,8 +2,8 @@ from src.estimation.q_functions.rollout import rollout
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
 from src.estimation.stacking.greedy_gq import ggq
-# from src.estimation.model_based.SIS.fit import fit_transition_model
-# from src.estimation.model_based.SIS.simulate import simulate_from_SIS
+from src.estimation.model_based.SIS.fit import fit_transition_model
+from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 import numpy as np
 import pdb
 from functools import partial
@@ -82,9 +82,19 @@ def dummy_stacked_q_policy(**kwargs):
   return a, new_q_model
 
 
-# def SIS_stacked_q_policy(**kwargs):
-#   q_mf = rollout_policy(**kwargs)
-#   q_mb = SIS_model_based_policy(**kwargs)
+def SIS_stacked_q_policy(**kwargs):
+  q_mf = rollout_policy(**kwargs)
+  q_mb = SIS_model_based_policy(**kwargs)
+  q_list = [q_mf, q_mb]
+  gamma, env, evaluation_budget, treatment_budget, argmaxer = kwargs['gamma'], kwargs['env'], \
+    kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer']
+  ixs = [0, 1, 2]
+  ixs_list = [ixs for _ in range(env.T)]
+  theta = ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs_list)
+  q_model = lambda x: theta[0]*q_mf(x) + theta[1]*q_mb(x)
+  q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
+  a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
+  return a, q_hat
 
 
 # def network_features_rollout_policy(**kwargs):

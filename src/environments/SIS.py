@@ -98,7 +98,7 @@ class SIS(SpatialDisease):
 
     self.omega = omega
     self.state_covariance = self.beta[1] * np.eye(self.L)
-    
+
     self.S = np.array([self.initial_state])
     self.S_indicator = self.S > 0
     self.num_infected_neighbors = []
@@ -304,25 +304,54 @@ class SIS(SpatialDisease):
   ## End infection probability helper functions ##
   ################################################
 
+  def update_likelihood_for_location(self, l, action, last_infections, next_infections,
+                                     counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
+    a_l = action[l]
+    y_l = next_infections[l]
+    neighbor_ixs = self.adjacency_list[l]
+    num_infected_neighbors = int(np.sum(last_infections[neighbor_ixs]))
+    num_treated_and_infected_neighbors = \
+      int(np.sum(np.multiply(action[neighbor_ixs], last_infections[neighbor_ixs])))
+    num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
+
+    if y_l:
+      counts_for_likelihood_next_infected[int(a_l), num_untreated_and_infected_neighbors,
+                                          num_treated_and_infected_neighbors] += 1
+    else:
+      counts_for_likelihood_next_not_infected[int(a_l), num_untreated_and_infected_neighbors,
+                                              num_treated_and_infected_neighbors] += 1
+    return counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected
+
   def update_likelihood_information(self, action, next_infections):
     last_infections = self.Y[-2, :]
     for l in range(self.L):
       is_infected = last_infections[l]
       if not is_infected:
-        a_l = action[l]
-        y_l = next_infections[l]
-        neighbor_ixs = self.adjacency_list[l]
-        num_infected_neighbors = int(np.sum(last_infections[neighbor_ixs]))
-        num_treated_and_infected_neighbors = \
-          int(np.sum(np.multiply(action[neighbor_ixs], last_infections[neighbor_ixs])))
-        num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
+        self.counts_for_likelihood_next_infected, self.counts_for_likelihood_next_not_infected = \
+          self.update_likelihood_for_location(l, action, last_infections, next_infections,
+                                              self.counts_for_likelihood_next_infected,
+                                              self.counts_for_likelihood_next_not_infected)
 
-        if y_l:
-          self.counts_for_likelihood_next_infected[int(a_l), num_untreated_and_infected_neighbors,
-                                                   num_treated_and_infected_neighbors] += 1
-        else:
-          self.counts_for_likelihood_next_not_infected[int(a_l), num_untreated_and_infected_neighbors,
-                                                       num_treated_and_infected_neighbors] += 1
+  def get_likelihood_information_for_cv_split(self, ixs):
+    """
+    :param ixs: List of lists containing integers in (0, self.L-1), indexing locations at each time point to keep in
+                split.
+    :return:
+    """
+    counts_for_cv_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
+    counts_for_cv_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
+    for t in range(len(ixs)):
+      ix = ixs[t]
+      y_next = self.y[t]
+      y_current = self.Y[t, :]
+      action = self.A[t, :]
+      for l in ix:
+        is_infected = y_current[l]
+        if is_infected:
+          counts_for_cv_likelihood_next_infected, counts_for_cv_likelihood_next_not_infected = \
+            self.update_likelihood_for_location(l, action, y_current, y_next, counts_for_cv_likelihood_next_infected,
+                                                counts_for_cv_likelihood_next_not_infected)
+    return counts_for_cv_likelihood_next_infected, counts_for_cv_likelihood_next_not_infected
 
   def update_obs_history(self, a):
     """
