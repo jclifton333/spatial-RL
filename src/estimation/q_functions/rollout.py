@@ -26,10 +26,7 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
     target = np.hstack(env.y).astype(float)
     features = np.vstack(env.X)
   else:
-    try:
-      target = np.hstack([env.y[i][ixs[i]] for i in range(len(env.y))])
-    except:
-      pdb.set_trace()
+    target = np.hstack([env.y[i][ixs[i]] for i in range(len(env.y))])
     features = np.vstack([env.X[i][ixs[i]] for i in range(len(env.X))])
 
   # Fit 1-step model

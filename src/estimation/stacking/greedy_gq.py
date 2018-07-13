@@ -35,7 +35,8 @@ def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X
   def stacked_q_fn(data_block):
     return np.dot(q_features_at_block(data_block), theta)
 
-  q_max, argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget, stacked_q_fn, argmaxer, ixs)
+  q_max, argmax_list, blocks_at_argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget, stacked_q_fn,
+                                                               argmaxer, ixs, return_blocks_at_argmax=True)
   q_max = q_max[1:, ]
 
   # Compute TD * semi-gradient and q features at argmax (X_hat)
@@ -43,8 +44,7 @@ def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X
   TD = np.hstack(ys_at_ixs).astype(float) + gamma*q_max.flatten() - q
   TD = TD.reshape(TD.shape[0], 1)
   TD_times_X = np.multiply(TD, X)
-  X_hat = np.vstack([q_features_at_block(x) for x in argmax_list[1:]])
-  
+  X_hat = np.vstack([q_features_at_block(x) for x in blocks_at_argmax_list[1:]])
   return TD_times_X, X_hat
 
 
