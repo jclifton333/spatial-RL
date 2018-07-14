@@ -1,13 +1,10 @@
-from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.rollout import rollout
 from .fit import fit_transition_model
 from .simulate import simulate_from_SIS
 
 
-def estimate_SIS_q_fn(env, classifier, regressor, rollout_depth, gamma, planning_depth, q_model, treatment_budget,
+def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth, q_model, treatment_budget,
                       evaluation_budget, argmaxer, train_ixs, bootstrap):
-
-  auto_regressor = AutoRegressor(classifier, regressor)
 
   # Need to fit q_model if it hasn't been already
   if q_model is None:
