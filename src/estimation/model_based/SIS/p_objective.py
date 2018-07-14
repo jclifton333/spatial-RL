@@ -42,36 +42,37 @@ def failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, 
 
 
 @njit
-def success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, success_likelihood_counts_list):
+def success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, success_weights):
   """
   Component of log likelihood corresponding to infected-at-next-step.
   """
   lik = 0
-  for i in range(success_likelihood_counts_list.shape[1]):
-    for j in range(success_likelihood_counts_list.shape[2]):
-      num_0_ij = success_likelihood_counts_list[0,i,j]
-      num_1_ij = success_likelihood_counts_list[1,i,j]
-      lik = lik + num_0_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 1, 0, i, j, 0, 0) + \
-        num_1_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, i, j)
+  for i in range(success_weights.shape[1]):
+    for j in range(success_weights.shape[2]):
+      weight_0_ij = success_weights[0,i,j]
+      weight_1_ij = success_weights[1,i,j]
+      lik = lik + weight_0_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 1, 0, i, j, 0, 0) + \
+        weight_1_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, i, j)
   return lik
 
 
 @njit
-def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, failure_likelihood_counts_list):
+def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, failure_weights):
   """
   Component of log likelihood corresponding to not-infected-at-next-step.
   """
   lik = 0
-  for i in range(failure_likelihood_counts_list.shape[1]):
-    for j in range(failure_likelihood_counts_list.shape[2]):
-      num_0_ij = failure_likelihood_counts_list[0,i,j]
-      num_1_ij = failure_likelihood_counts_list[1,i,j]
-      lik = lik + num_0_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 1, 0, i, j, 0, 0) + \
-        num_1_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, i, j)
+  for i in range(failure_weights.shape[1]):
+    for j in range(failure_weights.shape[2]):
+      weight_0_ij = failure_weights[0,i,j]
+      weight_1_ij = failure_weights[1,i,j]
+      lik = lik + weight_0_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 1, 0, i, j, 0, 0) + \
+        weight_1_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, i, j)
   return lik
 
 
-def negative_log_likelihood(eta, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
+def negative_log_likelihood(eta, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected,
+                            bootstrap):
   eta0 = eta[0]
   eta0p1 = eta0 + eta[1]
   eta2 = eta[2]
@@ -79,9 +80,17 @@ def negative_log_likelihood(eta, counts_for_likelihood_next_infected, counts_for
   eta2p3p4 = eta2p3 + eta[4]
   eta2p4 = eta2 + eta[4]
 
+  if bootstrap:
+    # Weights are sums of Exp(1) so use gamma
+    success_weights = np.random.gamma(shape=counts_for_likelihood_next_infected)
+    failure_weights = np.random.gamma(shape=counts_for_likelihood_next_not_infected)
+  else:
+    success_weights = counts_for_likelihood_next_infected
+    failure_weights = counts_for_likelihood_next_not_infected
+
   lik_success_component = success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4,
-                                            counts_for_likelihood_next_infected)
+                                            success_weights)
   lik_failure_component = failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4,
-                                            counts_for_likelihood_next_not_infected)
+                                            failure_weights)
   return -lik_success_component - lik_failure_component
 

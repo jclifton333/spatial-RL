@@ -12,10 +12,11 @@ import numpy as np
 from functools import partial
 from .p_objective import negative_log_likelihood
 from sklearn.linear_model import LinearRegression, LogisticRegression
+from src.utils.misc import KerasLogit
 from scipy.optimize import minimize
 
 
-def logit_with_label_check(X, y):
+def logit_with_label_check(X, y, weights):
   """
   Logistic regression with check for all-0s or all-1s.
   :param X:
@@ -25,8 +26,8 @@ def logit_with_label_check(X, y):
   y0 = y[0]
   for element in y:
     if element == 1 - y0:
-      clf = LogisticRegression()
-      clf.fit(X, y)
+      clf = KerasLogit()
+      clf.fit(X, y, weights)
       return np.append(clf.intercept_, clf.coef_)
   if y0 == 0:
     return np.zeros(X.shape[1] + 1)
@@ -34,11 +35,12 @@ def logit_with_label_check(X, y):
     return np.ones(X.shape[1] + 1)
 
 
-def fit_infection_prob_model(env, ixs):
+def fit_infection_prob_model(env, ixs, bootstrap):
   """
 
   :param env:
   :param ixs: List of lists of indexes for train subset (used for stacking method).
+  :param bootstrap: boolean for using bootstrapped objective
   :return:
   """
   if ixs is None:
@@ -54,14 +56,16 @@ def fit_infection_prob_model(env, ixs):
 
   infected_ixs = np.where(X[:, 2] == 1)
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
+  if bootstrap:
+    infected_weights = np.random.exponential(size = A_infected.shape[0])
 
-  eta_q = fit_q(A_infected.T, y_infected)
-  eta_p = fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected)
+  eta_q = fit_q(A_infected.T, y_infected, infected_weights)
+  eta_p = fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected, bootstrap)
   return np.concatenate((eta_p, eta_q))
 
 
-def fit_transition_model(env, ixs=None):
-  eta = fit_infection_prob_model(env, ixs)
+def fit_transition_model(env, bootstrap=False, ixs=None):
+  eta = fit_infection_prob_model(env, ixs, bootstrap)
   # beta = fit_state_transition_model(env)
   return eta
 
@@ -71,7 +75,7 @@ def fit_q(A_infected, y_infected):
   return eta_q
 
 
-def fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
+def fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected, bootstrap):
   """
   ToDo: Document these parameters.
   :param counts_for_likelihood_next_infected:
@@ -79,7 +83,8 @@ def fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_n
   :return:
   """
   objective = partial(negative_log_likelihood, counts_for_likelihood_next_infected=counts_for_likelihood_next_infected,
-                      counts_for_likelihood_next_not_infected=counts_for_likelihood_next_not_infected)
+                      counts_for_likelihood_next_not_infected=counts_for_likelihood_next_not_infected,
+                      bootstrap=bootstrap)
   res = minimize(objective, x0=env.eta[:5], method='L-BFGS-B')
   eta_p = res.x
   return eta_p

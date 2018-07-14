@@ -66,6 +66,8 @@ class KerasRegressor(object):
 class KerasLogit(object):
   def __init__(self):
     self.reg = Sequential()
+    self.intercept_ = None
+    self.coef_ = None
 
   def fit(self, X, y, weights):
     input_shape = X.shape[1]
@@ -79,6 +81,17 @@ class KerasLogit(object):
       loss = 'binary_crossentropy'
     self.reg.compile(optimizer='sgd', loss=loss)
     self.reg.fit(X, y)
+    self.get_coef()
+
+  def get_coef(self):
+    """
+    Keras stores info for each layer in list reg.layers, and each layer object has method get_weights(), which returns
+    list [hidden_layer_coefficient_array, hidden_layer_bias_array].
+    :return:
+    """
+    coef_list = self.reg.layers[0].get_weights()
+    self.intercept_ = coef_list[1]
+    self.coef_ = coef_list[0]
 
   def predict_proba(self, X):
     phat = self.reg.predict(X)
