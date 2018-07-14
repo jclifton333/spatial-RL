@@ -4,6 +4,7 @@ from src.estimation.q_functions.q_functions import q
 from src.estimation.stacking.greedy_gq import ggq
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
+from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
 import numpy as np
 import pdb
 from functools import partial
@@ -53,23 +54,18 @@ def rollout_policy(**kwargs):
 
 
 def SIS_model_based_policy(**kwargs):
-  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, q_model, train_ixs, bootstrap = \
-    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
-    kwargs['planning_depth'], kwargs['q_model'], kwargs['train_ixs'], kwargs['bootstrap']
-
-  # Need to fit q_model if it hasn't been already
-  if q_model is None:
+  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, q_model, train_ixs, bootstrap, \
     rollout_depth, gamma, classifier, regressor = \
-      kwargs['rollout_depth'], kwargs['gamma'], kwargs['classifier'], kwargs['regressor']
-    auto_regressor = AutoRegressor(classifier, regressor)
-    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
+    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
+    kwargs['planning_depth'], kwargs['q_model'], kwargs['train_ixs'], kwargs['bootstrap'], \
+    kwargs['rollout_depth'], kwargs['gamma'], kwargs['classifier'], kwargs['regressor']
 
-  eta = fit_transition_model(env, bootstrap=bootstrap, ixs=train_ixs)
-  simulation_env = simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget,
-                                     treatment_budget)
-  kwargs['env'] = simulation_env
-  kwargs['train_ixs'] = None
-  a, new_q_model = rollout_policy(**kwargs)
+  new_q_model = estimate_SIS_q_fn(env, classifier, regressor, rollout_depth, gamma, planning_depth,
+                                  q_model, treatment_budget, evaluation_budget, argmaxer, train_ixs,
+                                  bootstrap)
+
+  q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=new_q_model)
+  a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
   return a, new_q_model
 
 

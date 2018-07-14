@@ -1,6 +1,6 @@
 .idea/
-analysis/
 profile_output
+*.p
 
 # Scratchwork
 bin/scratch.sh

@@ -9,10 +9,9 @@ evaluated at the data.  (For e.g. stacking MB and MF q-functions.)
 See: http://old.sztaki.hu/~szcsaba/papers/ICML10_controlGQ.pdf
      https://arxiv.org/pdf/1406.0764.pdf (Ertefaie, algo on pdf pg 16)
 
-My X corresponds to \varphi in GGQ paper.
+"q_features" and "X" corresponds to \varphi in GGQ paper (this is confusing and I plan to fix it).
 """
 import numpy as np
-from src.estimation.optim.q_max import q_max_all_states
 from .compute_sample_bellman_error import compute_temporal_differences
 import pdb
 
@@ -37,28 +36,6 @@ def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, q
 
   _, TD_times_X, X_hat = compute_temporal_differences(stacked_q_fn, gamma, env, evaluation_budget, treatment_budget,
                                                       argmaxer, q_of_X=q_of_X, ixs=ixs)
-
-
-  # Evaluate Q
-  q = np.dot(X, theta)
-  
-  # Get Qmax
-  def q_features_at_block(data_block):
-    return q_features(data_block, q_list, intercept)
-
-  def stacked_q_fn(data_block):
-    return np.dot(q_features_at_block(data_block), theta)
-
-  q_max, argmax_list, blocks_at_argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget, stacked_q_fn,
-                                                               argmaxer, ixs, return_blocks_at_argmax=True)
-  q_max = q_max[1:, ]
-
-  # Compute TD * semi-gradient and q features at argmax (X_hat)
-  ys_at_ixs = [env.y[t][ixs[t]] for t in range(len(env.y[:-1]))]
-  TD = np.hstack(ys_at_ixs).astype(float) + gamma*q_max.flatten() - q
-  TD = TD.reshape(TD.shape[0], 1)
-  TD_times_X = np.multiply(TD, X)
-  X_hat = np.vstack([q_features_at_block(x) for x in blocks_at_argmax_list[1:]])
   return TD_times_X, X_hat
 
 
@@ -106,7 +83,7 @@ def ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs, 
   for t in range(len(env.X)-1):
     data_block = env.X[t][ixs[t], :]
     q_hat = q_features(data_block, q_list, intercept)
-    X = np.vstack((X, q_hat))
+    q_features = np.vstack((q_features, q_hat))
 
   for it in range(N_IT):
     alpha = NU / ((it + 1) * np.log(it + 2))
