@@ -70,8 +70,8 @@ def fit_transition_model(env, bootstrap=False, ixs=None):
   return eta
 
 
-def fit_q(A_infected, y_infected):
-  eta_q = logit_with_label_check(A_infected, 1 - y_infected)
+def fit_q(A_infected, y_infected, infected_weights):
+  eta_q = logit_with_label_check(A_infected, 1 - y_infected, infected_weights)
   return eta_q
 
 

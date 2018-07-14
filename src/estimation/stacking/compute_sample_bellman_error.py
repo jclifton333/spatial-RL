@@ -1,0 +1,49 @@
+import numpy as np
+from src.estimation.optim.q_max import q_max_all_states
+
+
+def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer,
+                                 q_of_X=None, ixs=None):
+  """
+  TD = Y + \gamma * q_max_of_Xp1 - q_of_X.
+
+  :param q_fn:
+  :param gamma:
+  :param env:
+  :param evaluation_budget:
+  :param treatment_budget:
+  :param argmaxer:
+  :param q_of_X: q_fn evaluated at env data blocks; calculated in function if not be provided.
+                 Should be provided for GGQ.
+  :param ixs:
+  :return:
+  """
+  assert env.T > 1
+
+  # Evaluate Q
+  if q_of_X is None:
+    q_of_X = np.array([])
+    for data_block in env.X[:-1]:
+      q_of_X = np.append(q_of_X, q_fn(data_block))
+
+  q_max_of_Xp1, argmax_list, blocks_at_argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget,
+                                                                      q_fn, argmaxer, ixs,
+                                                                      return_blocks_at_argmax=True)
+  q_max_of_Xp1 = q_max_of_Xp1[1:, ]
+
+  # Compute TD * semi-gradient and q features at argmax (X_hat)
+  if ixs is not None:
+    y = [env.y[t][ixs[t]] for t in range(len(env.y[:-1]))]
+  else:
+    y = env.y[:-1]
+
+  TD = np.hstack(y).astype(float) + gamma * q_max_of_Xp1.flatten() - q_of_X
+  TD = TD.reshape(TD.shape[0], 1)
+  TD_times_X = np.multiply(TD, X)
+  X_hat = np.vstack([q_fn(x) for x in blocks_at_argmax_list[1:]])
+  return TD, TD_times_X, X_hat
+
+
+def compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs=None):
+  TD = compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs=ixs)
+  return np.mean(TD**2)

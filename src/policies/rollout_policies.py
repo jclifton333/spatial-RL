@@ -53,9 +53,9 @@ def rollout_policy(**kwargs):
 
 
 def SIS_model_based_policy(**kwargs):
-  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, q_model, train_ixs = \
+  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, q_model, train_ixs, bootstrap = \
     kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
-    kwargs['planning_depth'], kwargs['q_model'], kwargs['train_ixs']
+    kwargs['planning_depth'], kwargs['q_model'], kwargs['train_ixs'], kwargs['bootstrap']
 
   # Need to fit q_model if it hasn't been already
   if q_model is None:
@@ -64,7 +64,7 @@ def SIS_model_based_policy(**kwargs):
     auto_regressor = AutoRegressor(classifier, regressor)
     q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
 
-  eta = fit_transition_model(env, train_ixs)
+  eta = fit_transition_model(env, bootstrap=bootstrap, ixs=train_ixs)
   simulation_env = simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget,
                                      treatment_budget)
   kwargs['env'] = simulation_env

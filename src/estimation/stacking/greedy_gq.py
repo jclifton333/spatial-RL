@@ -3,7 +3,9 @@
 Created on Sat May  5 21:53:17 2018
 
 @author: Jesse
-ggq implementation
+ggq implementation, *specifically* for the case where the features are themselves q-functions (q_features)
+evaluated at the data.  (For e.g. stacking MB and MF q-functions.)
+
 See: http://old.sztaki.hu/~szcsaba/papers/ICML10_controlGQ.pdf
      https://arxiv.org/pdf/1406.0764.pdf (Ertefaie, algo on pdf pg 16)
 
@@ -11,6 +13,7 @@ My X corresponds to \varphi in GGQ paper.
 """
 import numpy as np
 from src.estimation.optim.q_max import q_max_all_states
+from .compute_sample_bellman_error import compute_temporal_differences
 import pdb
 
 
@@ -21,9 +24,20 @@ def q_features(data_block, q_list, intercept):
   return q_list.T
 
 
-def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer, ixs,
+def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, q_features, argmaxer, ixs,
                intercept=True):
-  assert env.T > 1
+
+  q_of_X = np.dot(q_features, theta)
+
+  def q_features_at_block(data_block):
+      return q_features(data_block, q_list, intercept)
+
+  def stacked_q_fn(data_block):
+    return np.dot(q_features_at_block(data_block), theta)
+
+  _, TD_times_X, X_hat = compute_temporal_differences(stacked_q_fn, gamma, env, evaluation_budget, treatment_budget,
+                                                      argmaxer, q_of_X=q_of_X, ixs=ixs)
+
 
   # Evaluate Q
   q = np.dot(X, theta)
