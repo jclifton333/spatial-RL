@@ -6,10 +6,11 @@ import time
 import pdb
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from numba import njit
+from numba import njit, jit
 
 
-@njit
+# @njit
+# @jit
 def get_neighbor_ixn_features(a, neighbor_interactions):
   """
   Return treatments at l's neighbors and all neighbor treatment interactions, i.e.
@@ -17,8 +18,13 @@ def get_neighbor_ixn_features(a, neighbor_interactions):
   """
   neighbor_ixn_features = []
   for i in range(len(neighbor_interactions)):
-    ixn = neighbor_interactions[i]
-    neighbor_ixn_features.append(a[ixn[0]]*a[ixn[1]])
+    try:
+      ixn = neighbor_interactions[i]
+      neighbor_ixn_features.append(a[ixn[0]]*a[ixn[1]])
+    except IndexError:
+      pdb.set_trace()
+  if np.any(np.isnan(neighbor_ixn_features)):
+    pdb.set_trace()
   return neighbor_ixn_features
 
 
@@ -37,28 +43,35 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L):
   return np.array(sample_qs), sample_acts
 
 
-def fit_quad_approx_at_location(sample_qs, sample_acts, l, neighbor_interaction_lists):
+def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interaction_lists):
   reg = LinearRegression()
   X = np.array([get_neighbor_ixn_features(a, neighbor_interaction_lists[l]) for a in sample_acts])
-  y = sample_qs[:, l]
+  y = sample_qs[:, l_ix]
   reg.fit(X, y)
   return reg.intercept_, reg.coef_
 
 
-def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, L):
-  quadratic_parameters = np.zeros((L, L))
+def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, env_L, ixs):
+  quadratic_parameters = np.zeros((env_L, env_L))
   intercept = 0
-  for l in range(L):
-    intercept_l, beta_l = fit_quad_approx_at_location(sample_qs, sample_acts, l, neighbor_interaction_lists)
+  if ixs is None:
+    ixs = range(env_L)
+  for l_ix in range(len(ixs)):
+    l = ixs[l_ix]
+    intercept_l, beta_l = fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interaction_lists)
     neighbor_interactions = neighbor_interaction_lists[l]
     quadratic_parameters[neighbor_interactions[:,0], neighbor_interactions[:, 1]] += beta_l
     intercept += intercept_l
   return quadratic_parameters, intercept
 
 
-def get_quadratic_program_from_q(q, treatment_budget, evaluation_budget, env, L):
+def get_quadratic_program_from_q(q, treatment_budget, evaluation_budget, env, ixs):
+  if ixs is not None:
+    L = len(ixs)
+  else:
+    L = env.L
   sample_qs, sample_acts = sample_from_q(q, treatment_budget, evaluation_budget, L)
-  quadratic_parameters, intercept = fit_quad_approx(sample_qs, sample_acts, env.neighbor_interaction_lists, L)
+  quadratic_parameters, intercept = fit_quad_approx(sample_qs, sample_acts, env.neighbor_interaction_lists, env.L, ixs)
   return quadratic_parameters, intercept
 
 

@@ -388,7 +388,7 @@ class SIS(SpatialDisease):
     n_test = int(np.floor(0.2*self.L))
     for t in range(self.T):
       test_ix = set(np.random.choice(self.L, n_test, replace=False))
-      mask = np.array([(i in test_ix) for i in xrange(self.L)])
+      mask = np.array([(i in test_ix) for i in range(self.L)])
       test_ixs = all_ixs[mask]
       train_ixs = all_ixs[~mask]
       train_ixs_list.append(train_ixs)

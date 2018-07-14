@@ -4,7 +4,7 @@ Component of log likelihood for infection probabilities at not-infected states (
 
 import pdb
 import numpy as np
-from numba import njit, jit
+from numba import njit
 
 
 @njit

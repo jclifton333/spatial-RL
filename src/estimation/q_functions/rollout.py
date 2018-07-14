@@ -20,8 +20,7 @@ def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
   return rollout_Q_features
 
 
-def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, ixs=None):
-  regressor.resetPredictors()
+def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, bootstrap=True, ixs=None):
   if ixs is None:
     target = np.hstack(env.y).astype(float)
     features = np.vstack(env.X)
@@ -29,14 +28,19 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
     target = np.hstack([env.y[i][ixs[i]] for i in range(len(env.y))])
     features = np.vstack([env.X[i][ixs[i]] for i in range(len(env.X))])
 
+  if bootstrap:
+    weights = np.random.exponential(len(target))
+  else:
+    weights = None
+
   # Fit 1-step model
-  regressor.fitClassifier(features, target, True)
+  regressor.fitClassifier(features, target, weights, True)
   q_max = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
 
   # Look ahead
   for k in range(1, K):
     target += gamma*q_max.flatten()
-    regressor.fitRegressor(features, target, False)
+    regressor.fitRegressor(features, target, weights, False)
     if k < K-1:
       q_max = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
   return regressor.autologitPredictor

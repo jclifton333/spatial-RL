@@ -29,7 +29,7 @@ class AutoRegressor(object):
     self.autologitPredictor = None
     self.predictors = []  #  For storing sequence of fitted-Q functions (for use as features in QL); not currently used
         
-  def resetPredictors(self):
+  def resetPredictors(self, bootstrap):
     self.predictors = []
     
   def createAutologitPredictor(self, predictor, addToList, binary):
@@ -37,7 +37,7 @@ class AutoRegressor(object):
     Sets function that returns predictions from fitted autologit model for a given data block.
     '''
     def autologitPredictor(dataBlock):
-      #Fit UC predictions if not already provided
+      # Fit UC predictions if not already provided
       if binary:
         predictions = predictor.predict_proba(dataBlock)[:, -1]
       else:
@@ -46,14 +46,14 @@ class AutoRegressor(object):
     if addToList: self.predictors.append(autologitPredictor)
     self.autologitPredictor = autologitPredictor
     
-  def fitClassifier(self, features, target, addToList):
+  def fitClassifier(self, features, target, weights, addToList):
     classifier = self.ar_classifier()
-    classifier.fit(features, target)
+    classifier.fit(features, target, weights)
     self.createAutologitPredictor(classifier, addToList, binary=True)
     
-  def fitRegressor(self, features, target, addToList):
+  def fitRegressor(self, features, target, weights, addToList):
     regressor = self.regressor()
-    regressor.fit(features, target)
+    regressor.fit(features, target, weights)
     self.createAutologitPredictor(regressor, addToList, binary=False)
     
   

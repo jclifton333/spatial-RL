@@ -10,11 +10,18 @@ from functools import partial
 
 
 def one_step_policy(**kwargs):
-  classifier, env, evaluation_budget, treatment_budget, argmaxer = \
-    kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer']
+  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
+    kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
+    kwargs['bootstrap']
+
+  if bootstrap:
+    weights = np.random.exponential(size=len(env.X)*env.L)
+  else:
+    weights = None
+
   clf = classifier()
   target = np.hstack(env.y).astype(float)
-  clf.fit(np.vstack(env.X), target)
+  clf.fit(np.vstack(env.X), target, weights)
   true_expected_counts = np.hstack(env.true_infection_probs)
   phat = clf.predict_proba(np.vstack(env.X))[:,-1]
   r2 = 1 - (
