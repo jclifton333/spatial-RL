@@ -48,19 +48,20 @@ class KerasRegressor(object):
   def __init__(self):
     self.reg = Sequential()
 
-  def fit(self, X, y, weights):
+  def fit(self, X, y, weights, grid_search=True):
     input_shape = X.shape[1]
     self.reg.add(Dense(int(np.floor(input_shape/2)), input_dim=input_shape,
                  activation='relu', kernel_regularizer=L1L2(l1=0.0, l2=0.1)))
+    self.reg.add(Dense(1, kernel_regularizer=L1L2(l1=0.0, l2=10)))
     if weights is not None:
       loss = partial(bootstrap_sq_error_loss, weights=weights)
     else:
       loss = 'mean_squared_error'
     self.reg.compile(optimizer='adam', loss=loss)
-    self.reg.fit(X, y)
+    self.reg.fit(X, y, verbose=0)
 
   def predict(self, X):
-    return self.reg.predict(X)
+    return self.reg.predict(X).reshape(-1)
 
 
 class KerasLogit(object):
@@ -80,7 +81,7 @@ class KerasLogit(object):
     else:
       loss = 'binary_crossentropy'
     self.reg.compile(optimizer='sgd', loss=loss)
-    self.reg.fit(X, y)
+    self.reg.fit(X, y, verbose=0)
     self.get_coef()
 
   def get_coef(self):

@@ -23,8 +23,9 @@ def bootstrap_SIS_mb_qfn(env, classifier, regressor, rollout_depth, gamma, plann
   return be_list
 
 
-def bootstrap_rollout_qfn(env, auto_regressor, rollout_depth, gamma, treatment_budget,
+def bootstrap_rollout_qfn(env, classifier, regressor, rollout_depth, gamma, treatment_budget,
                           evaluation_budget, argmaxer, num_bootstrap_samples):
+  auto_regressor = AutoRegressor(classifier, regressor)
   be_list = []
   for rep in range(num_bootstrap_samples):
     q_fn = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,

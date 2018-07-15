@@ -1,3 +1,4 @@
+import pdb
 from src.estimation.q_functions.rollout import rollout
 from .fit import fit_transition_model
 from .simulate import simulate_from_SIS
@@ -5,6 +6,8 @@ from .simulate import simulate_from_SIS
 
 def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth, q_model, treatment_budget,
                       evaluation_budget, argmaxer, train_ixs, bootstrap):
+  # For testing
+  planning_depth = 3
 
   # Need to fit q_model if it hasn't been already
   if q_model is None:

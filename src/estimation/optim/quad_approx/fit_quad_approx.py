@@ -18,13 +18,8 @@ def get_neighbor_ixn_features(a, neighbor_interactions):
   """
   neighbor_ixn_features = []
   for i in range(len(neighbor_interactions)):
-    try:
-      ixn = neighbor_interactions[i]
-      neighbor_ixn_features.append(a[ixn[0]]*a[ixn[1]])
-    except IndexError:
-      pdb.set_trace()
-  if np.any(np.isnan(neighbor_ixn_features)):
-    pdb.set_trace()
+    ixn = neighbor_interactions[i]
+    neighbor_ixn_features.append(a[ixn[0]]*a[ixn[1]])
   return neighbor_ixn_features
 
 

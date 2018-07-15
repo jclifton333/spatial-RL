@@ -39,11 +39,11 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
 
   TD = np.hstack(y).astype(float) + gamma * q_max_of_Xp1.flatten() - q_of_X
   TD = TD.reshape(TD.shape[0], 1)
-  TD_times_X = np.multiply(TD, X)
-  X_hat = np.vstack([q_fn(x) for x in blocks_at_argmax_list[1:]])
-  return TD, TD_times_X, X_hat
+  TD_times_q_of_X = np.multiply(TD, q_of_X)
+  q_of_X_hat = np.vstack([q_fn(x) for x in blocks_at_argmax_list[1:]])
+  return TD, TD_times_q_of_X, q_of_X_hat
 
 
 def compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs=None):
-  TD = compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs=ixs)
+  TD, _, _ = compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs=ixs)
   return np.mean(TD**2)

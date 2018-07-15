@@ -5,7 +5,7 @@ from functools import partial
 
 
 def simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget, treatment_budget,
-                      n_rep=10):
+                      n_rep=1):
   """
   For model-based RL in the SIS generative model.
 
