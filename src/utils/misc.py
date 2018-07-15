@@ -51,8 +51,8 @@ class KerasRegressor(object):
   def fit(self, X, y, weights, grid_search=True):
     input_shape = X.shape[1]
     self.reg.add(Dense(int(np.floor(input_shape/2)), input_dim=input_shape,
-                 activation='relu', kernel_regularizer=L1L2(l1=0.0, l2=0.1)))
-    self.reg.add(Dense(1, kernel_regularizer=L1L2(l1=0.0, l2=10)))
+                 activation='relu', kernel_regularizer=L1L2(l1=0.0, l2=100)))
+    self.reg.add(Dense(1, kernel_regularizer=L1L2(l1=0.0, l2=100)))
     if weights is not None:
       loss = partial(bootstrap_sq_error_loss, weights=weights)
     else:

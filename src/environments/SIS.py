@@ -9,6 +9,7 @@ from .SpatialDisease import SpatialDisease
 from ..utils.features import get_all_paths
 import pdb
 import numba as nb
+import networkx as nx
 
 
 def sum_prod(A, B):
@@ -216,6 +217,15 @@ class SIS(SpatialDisease):
       return data_block
     else:
       return data_block[ixs,:]
+
+  def get_weighted_eigenvector_centrality(self, estimated_probabilities):
+    weighted_adjacency_matrix = np.zeros((self.L, self.L))
+    for l in range(self.L):
+      for l_prime in self.adjacency_list[l]:
+        weighted_adjacency_matrix[l,l_prime] = np.prod(estimated_probabilities[[l, l_prime]])
+    g = nx.from_numpy_matrix(weighted_adjacency_matrix)
+    centrality = nx.eigenvector_centrality(g)
+    return np.array([centrality[node] for node in centrality])
 
   ##############################################################
   ##            End path-based feature function stuff         ##
