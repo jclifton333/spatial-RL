@@ -18,7 +18,6 @@ from src.estimation.stacking.compute_sample_bellman_error import compute_sample_
 from src.policies.policy_factory import policy_factory
 from src.utils.misc import KerasLogit, KerasRegressor, SKLogit
 from analysis.bellman_error_bootstrappers import bootstrap_SIS_mb_qfn, bootstrap_rollout_qfn
-import pickle as pkl
 
 
 def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, argmaxer_name, **kwargs):
@@ -45,12 +44,9 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
   argmaxer = argmaxer_factory(argmaxer_name)
   policy_arguments = {'treatment_budget': treatment_budget, 'env': env, 'divide_evenly': False}
 
-  fname = 'bootstrap-dbns-omega-{}.p'.format(kwargs['omega'])
-  bootstrap_results = {'time': [], 'mb_be': [], 'mf_be': [], 'omega': kwargs['omega'],
-                       'notes': 'number of simulation reps: 50'}
 
   score_list = []
-  times_to_save = [0, 10, 20, T-3]
+  times_to_save = [0]
   for rep in range(n_rep):
     env.reset()
     env.step(random_policy(**policy_arguments)[0])
@@ -63,14 +59,10 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
       if t in times_to_save:
         print('Computing bootstrap BE for time {}'.format(t))
         mb_be = bootstrap_SIS_mb_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, T-t, q_model,
-                                     treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples)
+                                     treatment_budget, evaluation_budget, argmaxer, 2)
         mf_be = bootstrap_rollout_qfn(env, SKLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
-                                      evaluation_budget, argmaxer, num_bootstrap_samples)
+                                      evaluation_budget, argmaxer, 2)
         print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
-        bootstrap_results['time'].append(t)
-        bootstrap_results['mb_be'].append(mb_be)
-        bootstrap_results['mf_be'].append(mf_be)
-        pkl.dump(bootstrap_results, open(fname, 'wb'))
 
     score_list.append(np.mean(env.Y))
     print('Episode score: {}'.format(np.mean(env.Y)))
@@ -80,8 +72,8 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
 if __name__ == '__main__':
   import time
   n_rep = 1
-  omegas = [0.01, 0.45, 1]
+  omegas = [0]
   k = 0
   for omega in omegas:
     SIS_kwargs = {'L': 50, 'omega': omega, 'generate_network': generate_network.lattice}
-    run_sims_for_bootstrap_dbns(k, 30, 25, n_rep, 'quad_approx', **SIS_kwargs)
+    run_sims_for_bootstrap_dbns(k, 30, 3, n_rep, 'quad_approx', **SIS_kwargs)
