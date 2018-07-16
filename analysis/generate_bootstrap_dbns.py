@@ -68,7 +68,7 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
       bootstrap_results['time'].append(t)
       bootstrap_results['mb_be'].append(mb_be)
       bootstrap_results['mf_be'].append(mf_be)
-      pkl.dump(bootstrap_results, open(fname, 'wb'))
+      # pkl.dump(bootstrap_results, open(fname, 'wb'))
 
     score_list.append(np.mean(env.Y))
     print('Episode score: {}'.format(np.mean(env.Y)))

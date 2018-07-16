@@ -29,7 +29,7 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
     features = np.vstack([env.X[i][ixs[i]] for i in range(len(env.X))])
 
   if bootstrap:
-    weights = np.random.exponential(len(target))
+    weights = np.random.exponential(size=len(target))
   else:
     weights = None
 
