@@ -1,6 +1,7 @@
+import pdb
 from functools import partial
 import numpy as np
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, LogisticRegression
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.regularizers import L1L2
@@ -73,8 +74,8 @@ class KerasLogit(object):
   def fit(self, X, y, weights):
     input_shape = X.shape[1]
     self.reg.add(Dense(1,
-                       activation='softmax',
-                       kernel_regularizer=L1L2(l1=0.0, l2=0.1),
+                       activation='sigmoid',
+                       kernel_regularizer=L1L2(l1=0.0, l2=0.0),
                        input_dim=input_shape))
     if weights is not None:
       loss = partial(bootstrap_entropy_loss, weights=weights)
@@ -98,4 +99,21 @@ class KerasLogit(object):
     phat = self.reg.predict(X)
     return np.column_stack((1-phat, phat))
 
+
+class SKLogit(object):
+  def __init__(self):
+    self.reg = LogisticRegression()
+    self.intercept_ = None
+    self.coef_ = None
+
+  def fit(self, X, y, weights):
+    self.reg.fit(X, y, sample_weight=weights)
+    self.get_coef()
+
+  def get_coef(self):
+    self.intercept_ = self.reg.intercept_
+    self.coef_ = self.reg.coef_
+
+  def predict_proba(self, X):
+    return self.reg.predict_proba(X)
 

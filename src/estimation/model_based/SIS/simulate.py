@@ -5,7 +5,7 @@ from functools import partial
 
 
 def simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget, treatment_budget,
-                      n_rep=1):
+                      n_rep=30):
   """
   For model-based RL in the SIS generative model.
 
@@ -30,7 +30,6 @@ def simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_bu
   q_hat = partial(q, data_block_ix=-1, env=simulation_env, predictive_model=q_model)
   for rep in range(n_rep):
     for t in range(planning_depth):
-      print('Rep {} time {}'.format(rep, t))
       a = argmaxer(q_hat, evaluation_budget, treatment_budget, simulation_env)
       simulation_env.step(a)
     simulation_env.add_state(env.current_state)

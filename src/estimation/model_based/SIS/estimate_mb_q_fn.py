@@ -20,6 +20,6 @@ def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
 
   # Estimate optimal q-function from simulated data
   q_model = rollout(rollout_depth, gamma, simulation_env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,
-                    ixs=train_ixs)
+                    ixs=train_ixs, bootstrap=False)
 
   return q_model
