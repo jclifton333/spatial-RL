@@ -45,12 +45,12 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
   argmaxer = argmaxer_factory(argmaxer_name)
   policy_arguments = {'treatment_budget': treatment_budget, 'env': env, 'divide_evenly': False}
 
-  fname = 'bootstrap-dbns-omega-{}.p'.format(kwargs['omega'])
+  fname = 'bootstrap-dbns-omega-{}-horizon-{}.p'.format(kwargs['omega'], T)
   bootstrap_results = {'time': [], 'mb_be': [], 'mf_be': [], 'omega': kwargs['omega'],
                        'notes': 'number of simulation reps: 50'}
 
   score_list = []
-  times_to_save = [0, 10, 20, T-3]
+  times_to_save = [0, 10, 20, 30, 40, 45]
   for rep in range(n_rep):
     env.reset()
     env.step(random_policy(**policy_arguments)[0])
@@ -80,8 +80,8 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
 if __name__ == '__main__':
   import time
   n_rep = 1
-  omegas = [0.01, 0.45, 1]
+  omegas = [0, 0.5, 1]
   k = 0
   for omega in omegas:
     SIS_kwargs = {'L': 50, 'omega': omega, 'generate_network': generate_network.lattice}
-    run_sims_for_bootstrap_dbns(k, 30, 25, n_rep, 'quad_approx', **SIS_kwargs)
+    run_sims_for_bootstrap_dbns(k, 30, 50, n_rep, 'quad_approx', **SIS_kwargs)
