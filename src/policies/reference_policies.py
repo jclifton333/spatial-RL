@@ -75,3 +75,6 @@ def random(**kwargs):
     dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
     a = np.random.permutation(dummy_act)
   return a, None
+
+
+

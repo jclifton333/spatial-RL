@@ -5,6 +5,9 @@ except ImportError:
 
 from .sweep.argmaxer_sweep import argmaxer_sweep
 import numpy as np
+import logging
+from scipy.misc import comb
+from itertools import combinations
 
 
 def argmaxer_random(q_fn, evaluation_budget, treatment_budget, env, ixs=None):
@@ -18,6 +21,25 @@ def argmaxer_random(q_fn, evaluation_budget, treatment_budget, env, ixs=None):
   return np.random.permutation(dummy)
 
 
+def argmaxer_global(q_fn, evaluation_budget, treatment_budget, env, ixs=None):
+  HARD_EVALUATION_LIMIT = 1000
+  assert(comb(env.L, treatment_budget) < HARD_EVALUATION_LIMIT,
+         '(L choose treatment_budget) greater than HARD_EVALUATION_LIMIT.')
+  all_ix_combos = combinations(range(env.L), treatment_budget)
+  q_best = float('inf')
+  a_best = None
+  for ixs in all_ix_combos:
+    a = np.zeros(env.L)
+    a[ixs] = 1
+    q_sum = np.sum(q_fn(a))
+    if q_sum < q_best:
+      q_best = q_sum
+      a_best = a
+  return a
+
+
+  # Generate all possible actions with treatment_budget treatments.
+
 def argmaxer_factory(choice):
   """
   :param choice: str in ['sweep', 'quad_approx']
@@ -29,5 +51,8 @@ def argmaxer_factory(choice):
     return argmaxer_quad_approx
   elif choice == 'random':
     return argmaxer_random
+  elif choice == 'global':
+    logging.warning('Using global argmaxer; this may be especially slow.')
+    return argmaxer_global
   else:
     raise ValueError('Argument is not a valid argmaxer name.')

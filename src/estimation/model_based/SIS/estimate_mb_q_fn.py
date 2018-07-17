@@ -10,7 +10,7 @@ def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
 
   # Estimate MDP and generate data using policy = argmax q_model
   eta = fit_transition_model(env, bootstrap=bootstrap, ixs=train_ixs)
-  simulation_env = simulate_from_SIS(env, eta, planning_depth, q_model, argmaxer, evaluation_budget,
+  simulation_env = simulate_from_SIS(env, eta, planning_depth, argmaxer, evaluation_budget,
                                      treatment_budget)
 
   # Estimate optimal q-function from simulated data
