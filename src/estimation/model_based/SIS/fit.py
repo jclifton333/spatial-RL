@@ -23,16 +23,19 @@ def logit_with_label_check(X, y, weights):
   :param y:
   :return:
   """
-  y0 = y[0]
-  for element in y:
-    if element == 1 - y0:
-      clf = KerasLogit()
-      clf.fit(X, y, weights)
-      return np.append(clf.intercept_, clf.coef_)
-  if y0 == 0:
+  if len(y) > 0:
+    y0 = y[0]
+    for element in y:
+      if element == 1 - y0:
+        clf = KerasLogit()
+        clf.fit(X, y, weights)
+        return np.append(clf.intercept_, clf.coef_)
+    if y0 == 0:
+      return np.zeros(X.shape[1] + 1)
+    elif y0 == 1:
+      return np.ones(X.shape[1] + 1)
+  else:
     return np.zeros(X.shape[1] + 1)
-  elif y0 == 1:
-    return np.ones(X.shape[1] + 1)
 
 
 def fit_infection_prob_model(env, ixs, bootstrap):
