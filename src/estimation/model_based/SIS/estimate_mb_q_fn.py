@@ -7,9 +7,6 @@ from .simulate import simulate_from_SIS
 def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth, q_model, treatment_budget,
                       evaluation_budget, argmaxer, train_ixs, bootstrap):
 
-  # Need to fit q_model if it hasn't been already
-  if q_model is None:
-    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
 
   # Estimate MDP and generate data using policy = argmax q_model
   eta = fit_transition_model(env, bootstrap=bootstrap, ixs=train_ixs)
