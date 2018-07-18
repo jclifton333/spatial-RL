@@ -20,14 +20,16 @@ from src.utils.misc import KerasLogit, KerasRegressor, SKLogit
 from analysis.bellman_error_bootstrappers import bootstrap_SIS_mb_qfn, bootstrap_rollout_qfn
 
 
-def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, argmaxer_name, **kwargs):
+def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, argmaxer_name, replicate, **kwargs):
   """
   :param rollout_depth:
   :param T: duration of simulation rep
-  :param n_rep: number of replicates
+  :param replicate: label for simulation replicate
   :param argmaxer_name: string in ['sweep', 'quad_approx'] for method of taking q function argmax
   :param kwargs: environment-specific keyword arguments
   """
+  np.random.seed(replicate)
+
   # Initialize generative model
   gamma = 0.9
 
@@ -37,43 +39,47 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
   env = environment_factory('SIS', feature_function, **kwargs)
 
   # Evaluation limit parameters
-  treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
-  evaluation_budget = treatment_budget
+  # treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
+  treatment_budget = 1
+  evaluation_budget = None
 
   random_policy = policy_factory('random')  # For initial actions
   argmaxer = argmaxer_factory(argmaxer_name)
   policy_arguments = {'treatment_budget': treatment_budget, 'env': env, 'divide_evenly': False}
 
-
   score_list = []
-  times_to_save = [0]
-  for rep in range(n_rep):
-    env.reset()
-    env.step(random_policy(**policy_arguments)[0])
-    env.step(random_policy(**policy_arguments)[0])
-    for t in range(T-2):
-      a, q_model = random_policy(**policy_arguments)
-      env.step(a)
+  times_to_save = [0, 1, 3, 5, 10, 15, 20, 30, 40, T-2]
+  env.step(random_policy(**policy_arguments)[0])
+  env.step(random_policy(**policy_arguments)[0])
+  for t in range(T-2):
+    a, q_model = random_policy(**policy_arguments)
+    env.step(a)
 
-      # Compute bootstrap BE
-      if t in times_to_save:
-        print('Computing bootstrap BE for time {}'.format(t))
-        mb_be = bootstrap_SIS_mb_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, T-t, q_model,
-                                     treatment_budget, evaluation_budget, argmaxer, 2)
-        mf_be = bootstrap_rollout_qfn(env, SKLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
-                                      evaluation_budget, argmaxer, 2)
-        print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
+    # Compute bootstrap BE
+    if t in times_to_save:
+      print('Computing bootstrap BE for time {}'.format(t))
+      # mb_be = bootstrap_SIS_mb_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, T-t, q_model,
+      #                              treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples)
+      mf_be = bootstrap_rollout_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
+                                    evaluation_budget, argmaxer, num_bootstrap_samples)
+      # print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
+      # bootstrap_results['mb_be'].append(mb_be)
 
-    score_list.append(np.mean(env.Y))
-    print('Episode score: {}'.format(np.mean(env.Y)))
+  score_list.append(np.mean(env.Y))
+  print('Episode score: {}'.format(np.mean(env.Y)))
   return score_list
 
 
 if __name__ == '__main__':
-  import time
   n_rep = 1
-  omegas = [0]
+  omegas = [0, 0.5, 1]
   k = 0
-  for omega in omegas:
-    SIS_kwargs = {'L': 50, 'omega': omega, 'generate_network': generate_network.lattice}
-    run_sims_for_bootstrap_dbns(k, 30, 3, n_rep, 'quad_approx', **SIS_kwargs)
+
+  def mp_function(omega, replicate):
+    SIS_kwargs = {'L': 9, 'omega': omega, 'generate_network': generate_network.lattice,
+                  'initial_infections': np.random.binomial(1, p=0.3, size=9)}
+    run_sims_for_bootstrap_dbns(k, 30, 3, 'global', replicate, **SIS_kwargs)
+    return
+
+  mp_function(0, 0)
+

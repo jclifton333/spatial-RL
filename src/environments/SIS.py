@@ -3,6 +3,7 @@ Implementing susceptible-infected-susceptible (SIS) models described in
 spatial QL paper.
 """
 
+import copy
 import numpy as np
 from scipy.special import expit
 from .SpatialDisease import SpatialDisease
@@ -203,6 +204,7 @@ class SIS(SpatialDisease):
     return False
 
   def phi_at_action(self, data_block, old_action, action, ixs=None):
+    new_data_block = copy.copy(data_block)
     locations_with_changed_actions = set(np.where(old_action == action)[0])
     if ixs is not None:
       # This only works when considering paths up to length 2!
@@ -212,11 +214,11 @@ class SIS(SpatialDisease):
     for k, length_k_paths in self.dict_of_path_lists.items():
       for r in length_k_paths:
         if self.is_any_element_in_set(r, locations_with_changed_actions):
-          data_block = self.modify_m_r(data_block, old_action, action, r, k)
+          new_data_block = self.modify_m_r(new_data_block, old_action, action, r, k)
     if ixs is None:
-      return data_block
+      return new_data_block
     else:
-      return data_block[ixs,:]
+      return new_data_block[ixs,:]
 
   def get_weighted_eigenvector_centrality(self, estimated_probabilities):
     weighted_adjacency_matrix = np.zeros((self.L, self.L))

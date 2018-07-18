@@ -42,7 +42,6 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
   TD = TD.reshape(TD.shape[0], 1)
   TD_times_q_of_X = np.multiply(TD, q_of_X)
   q_of_X_hat = np.vstack([q_fn(x) for x in blocks_at_argmax_list[1:]])
-  pdb.set_trace()
   return TD, TD_times_q_of_X, q_of_X_hat
 
 

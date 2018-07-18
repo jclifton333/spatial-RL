@@ -24,10 +24,10 @@ class AutoRegressor(object):
     :param regressor:  Model family to be used for Q-fn regressions (e.g. RandomForestRegressor).
     '''
     
-    self.ar_classifier = ar_classifier
-    self.regressor = regressor
+    self.ar_classifier = ar_classifier()
+    self.regressor = regressor()
     self.autologitPredictor = None
-    self.predictors = []  #  For storing sequence of fitted-Q functions (for use as features in QL); not currently used
+    self.predictors = []  # For storing sequence of fitted-Q functions (for use as features in QL); not currently used
         
   def resetPredictors(self, bootstrap):
     self.predictors = []
@@ -47,14 +47,12 @@ class AutoRegressor(object):
     self.autologitPredictor = autologitPredictor
     
   def fitClassifier(self, features, target, weights, addToList):
-    classifier = self.ar_classifier()
-    classifier.fit(features, target, weights)
-    self.createAutologitPredictor(classifier, addToList, binary=True)
+    self.ar_classifier.fit(features, target, weights)
+    self.createAutologitPredictor(self.ar_classifier, addToList, binary=True)
     
   def fitRegressor(self, features, target, weights, addToList):
-    regressor = self.regressor()
-    regressor.fit(features, target, weights)
-    self.createAutologitPredictor(regressor, addToList, binary=False)
+    self.regressor.fit(features, target, weights)
+    self.createAutologitPredictor(self.regressor, addToList, binary=False)
     
   
 

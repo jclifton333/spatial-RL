@@ -6,6 +6,7 @@ except ImportError:
 from .sweep.argmaxer_sweep import argmaxer_sweep
 import numpy as np
 import logging
+import pdb
 from scipy.misc import comb
 from itertools import combinations
 
@@ -35,7 +36,7 @@ def argmaxer_global(q_fn, evaluation_budget, treatment_budget, env, ixs=None):
     if q_sum < q_best:
       q_best = q_sum
       a_best = a
-  return a
+  return a_best
 
 
   # Generate all possible actions with treatment_budget treatments.

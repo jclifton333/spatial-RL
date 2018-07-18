@@ -32,12 +32,9 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
     weights = np.random.exponential(size=len(target))
   else:
     weights = None
-
   # Fit 1-step model
   regressor.fitClassifier(features, target, weights, True)
-  pdb.set_trace()
   q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
-
   # Look ahead
   for k in range(1, K):
     target += gamma*q_max.flatten()
