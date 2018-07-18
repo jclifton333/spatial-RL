@@ -32,6 +32,8 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
   :param argmaxer_name: string in ['sweep', 'quad_approx'] for method of taking q function argmax
   :param kwargs: environment-specific keyword arguments
   """
+  np.random.seed(replicate)
+
   # Initialize generative model
   gamma = 0.9
 

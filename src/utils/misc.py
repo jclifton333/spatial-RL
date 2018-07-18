@@ -75,7 +75,7 @@ class KerasLogit(object):
     input_shape = X.shape[1]
     self.reg.add(Dense(1,
                        activation='sigmoid',
-                       kernel_regularizer=L1L2(l1=0.0, l2=0.0),
+                       kernel_regularizer=L1L2(l1=0.0, l2=0.1),
                        input_dim=input_shape))
     if weights is not None:
       loss = partial(bootstrap_entropy_loss, weights=weights)
@@ -92,8 +92,8 @@ class KerasLogit(object):
         self.fit_keras(X, y, weights)
         return
     # Hacky way of dealing with all-0 or all-1 targets
-    self.intercept_ = -1 + y0
-    self.coef_ = -1 + np.zeros(X.shape[1] + 1)
+    self.intercept_ = -0.001 + y0
+    self.coef_ = -0.001 + np.zeros(X.shape[1] + 1)
 
   def get_coef(self):
     """
