@@ -22,8 +22,6 @@ import pickle as pkl
 import multiprocessing as mp
 from itertools import product
 
-np.random.seed(3)
-
 
 def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, argmaxer_name, replicate, **kwargs):
   """

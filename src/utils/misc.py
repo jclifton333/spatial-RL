@@ -71,7 +71,7 @@ class KerasLogit(object):
     self.intercept_ = None
     self.coef_ = None
 
-  def fit(self, X, y, weights):
+  def fit_keras(self, X, y, weights):
     input_shape = X.shape[1]
     self.reg.add(Dense(1,
                        activation='sigmoid',
@@ -84,6 +84,16 @@ class KerasLogit(object):
     self.reg.compile(optimizer='sgd', loss=loss)
     self.reg.fit(X, y, verbose=0)
     self.get_coef()
+
+  def fit(self, X, y, weights):
+    y0 = y[0]
+    for element in y:
+      if element == 1 - y0:
+        self.fit_keras(X, y, weights)
+        return
+    # Hacky way of dealing with all-0 or all-1 targets
+    self.intercept_ = -1 + y0
+    self.coef_ = -1 + np.zeros(X.shape[1] + 1)
 
   def get_coef(self):
     """
@@ -100,20 +110,5 @@ class KerasLogit(object):
     return np.column_stack((1-phat, phat))
 
 
-class SKLogit(object):
-  def __init__(self):
-    self.reg = LogisticRegression()
-    self.intercept_ = None
-    self.coef_ = None
 
-  def fit(self, X, y, weights):
-    self.reg.fit(X, y, sample_weight=weights)
-    self.get_coef()
-
-  def get_coef(self):
-    self.intercept_ = self.reg.intercept_
-    self.coef_ = self.reg.coef_
-
-  def predict_proba(self, X):
-    return self.reg.predict_proba(X)
 
