@@ -37,7 +37,7 @@ class RidgeProb(object):
 
 def bootstrap_entropy_loss(yTrue, yPred, weights):
     success_component = weights * yTrue * K.log(yPred)
-    failure_component = weights * (1 - yTrue) * K.log(yPred)
+    failure_component = weights * (1 - yTrue) * K.log(1- yPred)
     return -K.sum(success_component + failure_component)
 
 
@@ -70,6 +70,7 @@ class KerasLogit(object):
     self.reg = Sequential()
     self.intercept_ = None
     self.coef_ = None
+    self.fitted_model = False
 
   def fit_keras(self, X, y, weights):
     input_shape = X.shape[1]
@@ -90,6 +91,7 @@ class KerasLogit(object):
     for element in y:
       if element == 1 - y0:
         self.fit_keras(X, y, weights)
+        self.fitted_model = True
         return
     # Hacky way of dealing with all-0 or all-1 targets
     self.intercept_ = -0.001 + y0
@@ -106,8 +108,11 @@ class KerasLogit(object):
     self.coef_ = coef_list[0]
 
   def predict_proba(self, X):
-    phat = self.reg.predict(X)
-    return np.column_stack((1-phat, phat))
+    if self.fitted_model:
+      phat = self.reg.predict(X)
+      return np.column_stack((1-phat, phat))
+    else:
+      return np.column_stack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
 
 
 class SKLogit(object):

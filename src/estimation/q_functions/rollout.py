@@ -35,6 +35,7 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
 
   # Fit 1-step model
   regressor.fitClassifier(features, target, weights, True)
+  pdb.set_trace()
   q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
 
   # Look ahead
