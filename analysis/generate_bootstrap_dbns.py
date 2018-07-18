@@ -73,11 +73,11 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
         #                              treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples)
         mf_be = bootstrap_rollout_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
                                       evaluation_budget, argmaxer, num_bootstrap_samples)
-        # print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
+        print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
         bootstrap_results['time'].append(t)
-        # bootstrap_results['mb_be'].append(mb_be)
+        bootstrap_results['mb_be'].append(mb_be)
         bootstrap_results['mf_be'].append(mf_be)
-        # pkl.dump(bootstrap_results, open(fname, 'wb'))
+        pkl.dump(bootstrap_results, open(fname, 'wb'))
 
     score_list.append(np.mean(env.Y))
     print('Episode score: {}'.format(np.mean(env.Y)))
@@ -97,6 +97,6 @@ if __name__ == '__main__':
 
   mp_function(0, 0)
 
-  # num_processes = int(np.min((mp.cpu_count(), 15)))
-  # with mp.Pool(processes=num_processes) as pool:
-  #   pool.starmap(mp_function, product(omegas, range(5)))
+  num_processes = int(np.min((mp.cpu_count(), 15)))
+  with mp.Pool(processes=num_processes) as pool:
+    pool.starmap(mp_function, product(omegas, range(5)))
