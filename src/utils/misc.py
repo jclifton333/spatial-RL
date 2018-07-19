@@ -83,7 +83,7 @@ class KerasLogit(object):
     else:
       loss = 'binary_crossentropy'
     self.reg.compile(optimizer='sgd', loss=loss)
-    self.reg.fit(X, y, verbose=0)
+    self.reg.fit(X, y)
     self.get_coef()
 
   def fit(self, X, y, weights):

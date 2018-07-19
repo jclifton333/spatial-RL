@@ -71,7 +71,6 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
       #                              treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples)
       mf_be = bootstrap_rollout_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
                                     evaluation_budget, argmaxer, num_bootstrap_samples)
-      pdb.set_trace()
       # print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
       bootstrap_results['time'].append(t)
       # bootstrap_results['mb_be'].append(mb_be)
