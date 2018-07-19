@@ -64,7 +64,7 @@ class KerasRegressor(object):
   def predict(self, X):
     return self.reg.predict(X).reshape(-1)
 
-
+# ToDo: SKLogit and KerasLogit inherit from Logit superclass
 class KerasLogit(object):
   def __init__(self):
     self.reg = Sequential()
@@ -136,8 +136,10 @@ class SKLogit(object):
     self.coef_ = self.reg.coef_
 
   def predict_proba(self, X):
-    return self.reg.predict_proba(X)
-
-
+    if self.fitted_model:
+      phat = self.reg.predict(X)
+      return np.column_stack((1-phat, phat))
+    else:
+      return np.column_stack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
 
 

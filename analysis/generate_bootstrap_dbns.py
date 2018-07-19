@@ -56,36 +56,34 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
   bootstrap_results = {'time': [], 'mb_be': [], 'mf_be': [], 'omega': kwargs['omega'], 'L': env.L,
                        'argmaxer_name': argmaxer_name}
 
-  score_list = []
   times_to_save = [0, 1, 3, 5, 10, 15, 20, 30, 40, T-2]
-  for rep in range(n_rep):
-    env.reset()
-    env.step(random_policy(**policy_arguments)[0])
-    env.step(random_policy(**policy_arguments)[0])
-    for t in range(T-2):
-      a, q_model = random_policy(**policy_arguments)
-      env.step(a)
+  env.reset()
+  env.step(random_policy(**policy_arguments)[0])
+  env.step(random_policy(**policy_arguments)[0])
+  for t in range(T-2):
+    a, q_model = random_policy(**policy_arguments)
+    env.step(a)
 
-      # Compute bootstrap BE
-      if t in times_to_save:
-        print('Computing bootstrap BE for time {}'.format(t))
-        # mb_be = bootstrap_SIS_mb_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, T-t, q_model,
-        #                              treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples)
-        mf_be = bootstrap_rollout_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
-                                      evaluation_budget, argmaxer, num_bootstrap_samples)
-        print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
-        bootstrap_results['time'].append(t)
-        bootstrap_results['mb_be'].append(mb_be)
-        bootstrap_results['mf_be'].append(mf_be)
-        pkl.dump(bootstrap_results, open(fname, 'wb'))
+    # Compute bootstrap BE
+    if t in times_to_save:
+      print('Computing bootstrap BE for time {}'.format(t))
+      # mb_be = bootstrap_SIS_mb_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, T-t, q_model,
+      #                              treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples)
+      mf_be = bootstrap_rollout_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
+                                    evaluation_budget, argmaxer, num_bootstrap_samples)
+      pdb.set_trace()
+      # print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
+      bootstrap_results['time'].append(t)
+      # bootstrap_results['mb_be'].append(mb_be)
+      bootstrap_results['mf_be'].append(mf_be)
+      pkl.dump(bootstrap_results, open(fname, 'wb'))
 
-    score_list.append(np.mean(env.Y))
-    print('Episode score: {}'.format(np.mean(env.Y)))
-  return score_list
+  print('Episode score: {}'.format(np.mean(env.Y)))
+  return
 
 
 if __name__ == '__main__':
-  n_rep = 5
+  n_rep = 1
   omegas = [0, 0.5, 1]
   k = 0
 
@@ -95,8 +93,8 @@ if __name__ == '__main__':
     run_sims_for_bootstrap_dbns(k, 30, 50, n_rep, 'global', replicate, **SIS_kwargs)
     return
 
-  mp_function(0, 0)
+  mp_function(0, 2)
 
-  num_processes = int(np.min((mp.cpu_count(), 15)))
-  with mp.Pool(processes=num_processes) as pool:
-    pool.starmap(mp_function, product(omegas, range(5)))
+  # num_processes = int(np.min((mp.cpu_count(), 15)))
+  # with mp.Pool(processes=num_processes) as pool:
+  #   pool.starmap(mp_function, product(omegas, range(5)))
