@@ -19,6 +19,7 @@ from src.policies.policy_factory import policy_factory
 from src.utils.misc import KerasLogit, KerasRegressor, SKLogit
 from analysis.bellman_error_bootstrappers import bootstrap_SIS_mb_qfn, bootstrap_rollout_qfn
 import pickle as pkl
+import time
 import multiprocessing as mp
 from itertools import product
 
@@ -69,13 +70,20 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
       print('Computing bootstrap BE for time {}'.format(t))
       # mb_be = bootstrap_SIS_mb_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, T-t, q_model,
       #                              treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples)
-      mf_be = bootstrap_rollout_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
-                                    evaluation_budget, argmaxer, num_bootstrap_samples)
+      t0 = time.time()
+      mf_be_sk = bootstrap_rollout_qfn(env, SKLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
+                                       evaluation_budget, argmaxer, num_bootstrap_samples)
+      sk_time = time.time() - t0
+      t0 = time.time()
+      mf_be_keras = bootstrap_rollout_qfn(env, KerasLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
+                                          evaluation_budget, argmaxer, num_bootstrap_samples)
+      keras_time = time.time() - t0
+      pdb.set_trace()
       # print('t: {}\nmb: {}\nmf: {}'.format(t, mb_be, mf_be))
-      bootstrap_results['time'].append(t)
+      # bootstrap_results['time'].append(t)
       # bootstrap_results['mb_be'].append(mb_be)
-      bootstrap_results['mf_be'].append(mf_be)
-      pkl.dump(bootstrap_results, open(fname, 'wb'))
+      # bootstrap_results['mf_be'].append(mf_be)
+      # pkl.dump(bootstrap_results, open(fname, 'wb'))
 
   print('Episode score: {}'.format(np.mean(env.Y)))
   return

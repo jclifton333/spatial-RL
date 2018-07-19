@@ -38,7 +38,7 @@ class RidgeProb(object):
 def bootstrap_entropy_loss(yTrue, yPred, weights):
     success_component = weights * yTrue * K.log(yPred)
     failure_component = weights * (1 - yTrue) * K.log(1- yPred)
-    return -K.sum(success_component + failure_component)
+    return -K.mean(success_component + failure_component)
 
 
 def bootstrap_sq_error_loss(yTrue, yPred, weights):
@@ -82,7 +82,7 @@ class KerasLogit(object):
       loss = partial(bootstrap_entropy_loss, weights=weights)
     else:
       loss = 'binary_crossentropy'
-    self.reg.compile(optimizer='sgd', loss=loss)
+    self.reg.compile(optimizer='rmsprop', loss=loss)
     self.reg.fit(X, y)
     self.get_coef()
 

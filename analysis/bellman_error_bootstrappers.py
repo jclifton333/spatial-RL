@@ -28,10 +28,10 @@ def bootstrap_SIS_mb_qfn(env, classifier, regressor, rollout_depth, gamma, plann
 
 def bootstrap_rollout_qfn(env, classifier, regressor, rollout_depth, gamma, treatment_budget,
                           evaluation_budget, argmaxer, num_bootstrap_samples):
-  auto_regressor = AutoRegressor(classifier, regressor)
   be_list = []
   for rep in range(num_bootstrap_samples):
     print(rep)
+    auto_regressor = AutoRegressor(classifier, regressor)
     q_fn = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,
                    bootstrap=True)
     bootstrap_be = compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget,
