@@ -125,7 +125,10 @@ class SKLogit(object):
     y0 = y[0]
     for element in y:
       if element == 1 - y0:
-        self.reg.fit(X, y, sample_weight=weights)
+        try:
+          self.reg.fit(X, y, sample_weight=weights)
+        except:
+          pdb.set_trace()
         self.fitted_model = True
     # Hacky way of dealing with all-0 or all-1 targets
     self.intercept_ = -0.001 + y0

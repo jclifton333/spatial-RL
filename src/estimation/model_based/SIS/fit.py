@@ -12,7 +12,7 @@ import numpy as np
 from functools import partial
 from .p_objective import negative_log_likelihood
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from src.utils.misc import KerasLogit
+from src.utils.misc import SKLogit
 from scipy.optimize import minimize
 
 
@@ -27,7 +27,7 @@ def logit_with_label_check(X, y, weights):
     y0 = y[0]
     for element in y:
       if element == 1 - y0:
-        clf = KerasLogit()
+        clf = SKLogit()
         clf.fit(X, y, weights)
         return np.append(clf.intercept_, clf.coef_)
     if y0 == 0:
@@ -60,7 +60,7 @@ def fit_infection_prob_model(env, ixs, bootstrap):
   infected_ixs = np.where(X[:, 2] == 1)
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
   if bootstrap:
-    infected_weights = np.random.exponential(size = A_infected.shape[0])
+    infected_weights = np.random.exponential(size = len(y_infected))
 
   eta_q = fit_q(A_infected.T, y_infected, infected_weights)
   eta_p = fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected, bootstrap)

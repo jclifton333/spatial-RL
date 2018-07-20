@@ -30,6 +30,7 @@ def simulate_from_SIS(env, eta, planning_depth, argmaxer, evaluation_budget, tre
   for rep in range(n_rep):
     for t in range(planning_depth):
       # Use myopic estimated probs as rollout (different rollout!) policy
+      print('rep {} t {}'.format(rep, t))
       a = np.zeros(L)
       probs = simulation_env.next_infected_probabilities(L)
       treat_ixs = random_argsort(-probs, treatment_budget)
