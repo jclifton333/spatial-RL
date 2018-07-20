@@ -56,8 +56,8 @@ class Ebola(SpatialDisease):
         TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)
   #  pdb.set_trace()
 
-  def __init__(self, feature_function):
-    SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, feature_function, initial_infections=Ebola.INITIAL_INFECTIONS)
+  def __init__(self):
+    SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, initial_infections=Ebola.INITIAL_INFECTIONS)
     # Initial steps
     self.step(np.zeros(self.L))
     self.step(np.zeros(self.L))

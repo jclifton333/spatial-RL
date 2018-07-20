@@ -65,7 +65,7 @@ class SIS(SpatialDisease):
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
-  def __init__(self, feature_function, L, omega, generate_network, adjacency_matrix=None, dict_of_path_lists=None,
+  def __init__(self, L, omega, generate_network, adjacency_matrix=None, dict_of_path_lists=None,
                initial_infections=None, initial_state=None, eta=None, beta=None):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
@@ -87,7 +87,7 @@ class SIS(SpatialDisease):
     else:
       self.adjacency_matrix = adjacency_matrix
       self.dict_of_path_lists = dict_of_path_lists
-    SpatialDisease.__init__(self, self.adjacency_matrix, feature_function, initial_infections)
+    SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections)
 
     if initial_state is None:
       self.initial_state = np.zeros(self.L)
