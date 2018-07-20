@@ -57,7 +57,7 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
   bootstrap_results = {'time': [], 'mb_be': [], 'mf_be': [], 'omega': kwargs['omega'], 'L': env.L,
                        'argmaxer_name': argmaxer_name}
 
-  times_to_save = [0, 1, 3, 5, 10, 15, 20, 30, 40, T-2]
+  times_to_save = [0, 1, 3, 5, 10, 15, 20, T-2]
   env.reset()
   env.step(random_policy(**policy_arguments)[0])
   env.step(random_policy(**policy_arguments)[0])
@@ -90,7 +90,7 @@ if __name__ == '__main__':
   def mp_function(omega, replicate):
     SIS_kwargs = {'L': 9, 'omega': omega, 'generate_network': generate_network.lattice,
                   'initial_infections': np.random.binomial(1, p=0.3, size=9)}
-    run_sims_for_bootstrap_dbns(k, 30, 50, n_rep, 'global', replicate, **SIS_kwargs)
+    run_sims_for_bootstrap_dbns(k, 30, 25, n_rep, 'global', replicate, **SIS_kwargs)
     return
 
   mp_function(0, 2)
