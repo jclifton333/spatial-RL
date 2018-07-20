@@ -68,7 +68,7 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
     # Compute bootstrap BE
     if t in times_to_save:
       print('Computing bootstrap BE for time {}'.format(t))
-      mb_be = bootstrap_SIS_mb_qfn(env, SKLogit, KerasRegressor, rollout_depth, gamma, T-t, q_model,
+      mb_be = bootstrap_SIS_mb_qfn(env, SKLogit, KerasRegressor, rollout_depth, gamma, T-t,
                                    treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples)
       mf_be = bootstrap_rollout_qfn(env, SKLogit, KerasRegressor, rollout_depth, gamma, treatment_budget,
                                     evaluation_budget, argmaxer, num_bootstrap_samples)

@@ -5,6 +5,7 @@ Created on Fri May  4 21:49:40 2018
 @author: Jesse
 """
 import numpy as np
+import time
 
 # Hack bc python imports are stupid
 import sys
@@ -17,6 +18,7 @@ from src.environments import generate_network
 from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
+from analysis.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
@@ -69,7 +71,6 @@ class Simulator(object):
       for t in range(self.time_horizon-2):
         a, q_model = self.policy(**self.policy_arguments)
         self.policy_arguments['planning_depth'] = self.time_horizon - t
-        self.policy_arguments['q_model'] = q_model
         self.env.step(a)
       t1 = time.time()
       self.scores.append(np.mean(self.env.Y))
@@ -81,6 +82,42 @@ class Simulator(object):
     :return:
     """
     pass
+
+  def generate_bootstrap_distributions(self, num_bootstrap_samples):
+    classifier, regressor, rollout_depth, gamma, treatment_budget, evaluation_budget, planning_depth = \
+      self.policy_arguments['classifier'], self.policy_arguments['regressor'], self.policy_arguments['rollout_depth'], \
+      self.policy_arguments['gamma'], self.policy_arguments['treatment_budget'], \
+      self.policy_arguments['evaluation_budget'], self.policy_arguments['planning_depth']
+
+    mb_be = bootstrap_SIS_mb_qfn(self.env, classifier, regressor, rollout_depth, gamma,
+                                 planning_depth, treatment_budget, evaluation_budget, self.argmaxer,
+                                 num_bootstrap_samples)
+    mf_be = bootstrap_rollout_qfn(self.env, classifier, regressor, rollout_depth, gamma,
+                                 treatment_budget, evaluation_budget, self.argmaxer, num_bootstrap_samples)
+    return mb_be, mf_be
+
+
+  def run_to_generate_bootstrap_distributions(self, num_bootstrap_samples=30,
+                                              times_to_evaluate=[0, 1, 3, 5, 10, 15, 20]):
+    bootstrap_results = {'times_to_evaluate': times_to_evaluate, 'mb_be': [], 'mf_be': []}
+    for rep in range(self.number_of_replicates):
+      t0 = time.time()
+      self.env.reset()
+      # Initial steps
+      self.env.step(self.random_policy(**self.policy_arguments)[0])
+      self.env.step(self.random_policy(**self.policy_arguments)[0])
+
+      for t in range(self.time_horizon - 2):
+        a, _ = self.random_policy(**self.policy_arguments)
+        self.policy_arguments['planning_depth'] = self.time_horizon - t
+        self.env.step(a)
+        if t in times_to_evaluate:
+          mb_be, mf_be = self.generate_bootstrap_distributions(num_bootstrap_samples)
+          bootstrap_results['mb_be'].append(mb_be)
+          bootstrap_results['mf_be'].append(mf_be)
+      t1 = time.time()
+      self.runtimes.append(t1 - t0)
+    for t in range(self.time_horizon-)
 
   def save_results(self):
     pass
