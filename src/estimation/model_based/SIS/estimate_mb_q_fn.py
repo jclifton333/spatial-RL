@@ -15,7 +15,7 @@ def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
   eta = fit_transition_model(env, bootstrap=bootstrap, ixs=train_ixs)
   print('running mb simulations')
   simulation_env = simulate_from_SIS(env, eta, planning_depth, argmaxer, evaluation_budget,
-                                     treatment_budget, n_rep=n_rep)
+                                     treatment_budget)
   print('estimating q function')
   # Estimate optimal q-function from simulated data
   q_model = rollout(rollout_depth, gamma, simulation_env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,

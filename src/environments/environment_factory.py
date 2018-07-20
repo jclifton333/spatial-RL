@@ -2,7 +2,7 @@ from .SIS import SIS
 from .Ebola import Ebola
 
 
-def environment_factory(environment_name, feature_function, **kwargs):
+def environment_factory(environment_name, **kwargs):
   """
   :param environment_name: String in ['SIS', 'Ebola']
   :param feature_function:
@@ -13,9 +13,9 @@ def environment_factory(environment_name, feature_function, **kwargs):
 
   VALID_ENVIRONMENT_NAMES = ['SIS', 'Ebola']
   if environment_name == 'SIS':
-    return SIS(feature_function, kwargs['L'], kwargs['omega'], kwargs['generate_network'],
+    return SIS(kwargs['L'], kwargs['omega'], kwargs['generate_network'],
                initial_infections=kwargs['initial_infections'])
   elif environment_name == 'Ebola':
-    return Ebola(feature_function)
+    return Ebola()
   else:
     raise ValueError('environment_name not in {}'.format(VALID_ENVIRONMENT_NAMES))

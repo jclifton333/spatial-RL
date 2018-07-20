@@ -41,7 +41,7 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, n_rep, 
   def feature_function(x):
     return x
 
-  env = environment_factory('SIS', feature_function, **kwargs)
+  env = environment_factory('SIS', **kwargs)
 
   # Evaluation limit parameters
   # treatment_budget = np.int(np.floor(0.05 * kwargs['L']))
@@ -88,13 +88,13 @@ if __name__ == '__main__':
   k = 0
 
   def mp_function(omega, replicate):
-    SIS_kwargs = {'L': 9, 'omega': omega, 'generate_network': generate_network.lattice,
+    SIS_kwargs = {'L': 100, 'omega': omega, 'generate_network': generate_network.lattice,
                   'initial_infections': np.random.binomial(1, p=0.3, size=9)}
-    run_sims_for_bootstrap_dbns(k, 30, 25, n_rep, 'global', replicate, **SIS_kwargs)
+    run_sims_for_bootstrap_dbns(k, 30, 25, n_rep, 'quad_approx', replicate, **SIS_kwargs)
     return
 
-  mp_function(0, 2)
+  # mp_function(0, 2)
 
-  # num_processes = int(np.min((mp.cpu_count(), 15)))
-  # with mp.Pool(processes=num_processes) as pool:
-  #   pool.starmap(mp_function, product(omegas, range(5)))
+  num_processes = int(np.min((mp.cpu_count(), 15)))
+  with mp.Pool(processes=num_processes) as pool:
+    pool.starmap(mp_function, product(omegas, range(5)))
