@@ -1,10 +1,13 @@
 import pdb
+import numpy as np
 from src.estimation.q_functions.rollout import rollout
 from .fit import fit_transition_model
 from .simulate import simulate_from_SIS
+from src.estimation.q_functions.regressor import AutoRegressor
+from src.utils.misc import KerasLogit, KerasRegressor, SKLogit
 
 
-def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth, q_model, treatment_budget,
+def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth, treatment_budget,
                       evaluation_budget, argmaxer, train_ixs, bootstrap):
 
 
@@ -12,7 +15,7 @@ def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
   eta = fit_transition_model(env, bootstrap=bootstrap, ixs=train_ixs)
   print('running mb simulations')
   simulation_env = simulate_from_SIS(env, eta, planning_depth, argmaxer, evaluation_budget,
-                                     treatment_budget)
+                                     treatment_budget, n_rep=n_rep)
   print('estimating q function')
   # Estimate optimal q-function from simulated data
   q_model = rollout(rollout_depth, gamma, simulation_env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,

@@ -35,12 +35,6 @@ class RidgeProb(object):
     return np.column_stack((1-phat, phat))
 
 
-def bootstrap_entropy_loss(yTrue, yPred, weights):
-    success_component = weights * yTrue * K.log(yPred)
-    failure_component = weights * (1 - yTrue) * K.log(1- yPred)
-    return -K.mean(success_component + failure_component)
-
-
 def bootstrap_sq_error_loss(yTrue, yPred, weights):
   return K.mean( weights * K.square(yTrue - yPred))
 
@@ -64,6 +58,7 @@ class KerasRegressor(object):
   def predict(self, X):
     return self.reg.predict(X).reshape(-1)
 
+
 # ToDo: SKLogit and KerasLogit inherit from Logit superclass
 class KerasLogit(object):
   def __init__(self):
@@ -78,12 +73,8 @@ class KerasLogit(object):
                        activation='sigmoid',
                        kernel_regularizer=L1L2(l1=0.0, l2=0.1),
                        input_dim=input_shape))
-    if weights is not None:
-      loss = partial(bootstrap_entropy_loss, weights=weights)
-    else:
-      loss = 'binary_crossentropy'
-    self.reg.compile(optimizer='rmsprop', loss=loss)
-    self.reg.fit(X, y)
+    self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy')
+    self.reg.fit(X, y, sample_weight=weights, epochs=5)
     self.get_coef()
 
   def fit(self, X, y, weights):
@@ -109,7 +100,7 @@ class KerasLogit(object):
 
   def predict_proba(self, X):
     if self.fitted_model:
-      phat = self.reg.predict(X)
+      phat = self.reg.predict_proba(X)
       return np.column_stack((1-phat, phat))
     else:
       return np.column_stack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
@@ -117,7 +108,7 @@ class KerasLogit(object):
 
 class SKLogit(object):
   def __init__(self):
-    self.reg = LogisticRegression()
+    self.reg = LogisticRegression(C=1.0 / 0.1)
     self.intercept_ = None
     self.coef_ = None
 
@@ -125,11 +116,10 @@ class SKLogit(object):
     y0 = y[0]
     for element in y:
       if element == 1 - y0:
-        try:
-          self.reg.fit(X, y, sample_weight=weights)
-        except:
-          pdb.set_trace()
+        self.reg.fit(X, y, sample_weight=weights)
         self.fitted_model = True
+        self.get_coef()
+        return
     # Hacky way of dealing with all-0 or all-1 targets
     self.intercept_ = -0.001 + y0
     self.coef_ = -0.001 + np.zeros(X.shape[1] + 1)
@@ -140,8 +130,8 @@ class SKLogit(object):
 
   def predict_proba(self, X):
     if self.fitted_model:
-      phat = self.reg.predict(X)
-      return np.column_stack((1-phat, phat))
+      phat = self.reg.predict_proba(X)
+      return phat
     else:
       return np.column_stack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
 
