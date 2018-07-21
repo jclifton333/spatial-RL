@@ -70,6 +70,7 @@ class Simulator(object):
     self.basename = '_'.join([env_name, policy_name, argmaxer_name, str(self.env.L)])
 
   def run(self, save_results=True):
+    # ToDo: Parallelize
     for rep in range(self.number_of_replicates):
       t0 = time.time()
       self.env.reset()
@@ -112,13 +113,13 @@ class Simulator(object):
   def run_to_generate_bootstrap_distributions(self, num_bootstrap_samples=30,
                                               times_to_evaluate=[0, 1, 3, 5, 10, 15, 20]):
     """
-
+    ToDo: Parallelize
     :param num_bootstrap_samples:
     :param times_to_evaluate: Times at which to generate bootstrap samples.
     :return:
     """
     self.settings['times_to_evaluate'] = times_to_evaluate
-    bootstrap_results = {'mb_be': [], 'mf_be': []}
+    bootstrap_results = {rep: {'mb_be': [], 'mf_be': []} for rep in range(self.number_of_replicates)}
 
     for rep in range(self.number_of_replicates):
       self.env.reset()
@@ -132,8 +133,8 @@ class Simulator(object):
         self.env.step(a)
         if t in times_to_evaluate:
           mb_be, mf_be = self.generate_bootstrap_distributions(num_bootstrap_samples)
-          bootstrap_results['mb_be'].append(mb_be)
-          bootstrap_results['mf_be'].append(mf_be)
+          bootstrap_results[rep]['mb_be'].append(mb_be)
+          bootstrap_results[rep]['mf_be'].append(mf_be)
     self.save_results(bootstrap_results)
 
   def save_results(self, results_dict):
