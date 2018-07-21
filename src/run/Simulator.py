@@ -6,6 +6,8 @@ Created on Fri May  4 21:49:40 2018
 """
 import numpy as np
 import time
+import datetime
+import yaml
 
 # Hack bc python imports are stupid
 import sys
@@ -27,7 +29,7 @@ from src.utils.misc import RidgeProb, KerasLogit
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               **env_kwargs):
+                **env_kwargs):
     """
     :param lookahead_depth:
     :param env_name: 'SIS' or 'Ebola'
@@ -35,7 +37,8 @@ class Simulator(object):
     :param number_of_replicates: number of replicates
     :param policy_name: string to be passed to policy_factory
     :param argmaxer_name: string in ['sweep', 'quad_approx'] for method of taking q function argmax
-    :param kwargs: environment-specific keyword arguments
+    :param gamma: discount factor
+    :param env_kwargs: environment-specific keyword arguments to be passed to environment_factory
     """
     self.env = environment_factory(env_name, **env_kwargs)
     self.policy = policy_factory(policy_name)
@@ -61,7 +64,7 @@ class Simulator(object):
                           'number_of_replicates': self.number_of_replicates})
     self.basename = '_'.join([env_name, policy_name, argmaxer_name, self.env.L])
 
-  def run(self):
+  def run(self, save_results=True):
     for rep in range(self.number_of_replicates):
       t0 = time.time()
       self.env.reset()
@@ -73,8 +76,13 @@ class Simulator(object):
         self.policy_arguments['planning_depth'] = self.time_horizon - t
         self.env.step(a)
       t1 = time.time()
-      self.scores.append(np.mean(self.env.Y))
+      score = np.mean(self.env.Y)
+      print('rep {} score {}'.format(rep, score))
+      self.scores.append(score)
       self.runtimes.append(t1 - t0)
+    results_dict = {'scores': self.scores}
+    if save_results:
+      self.save_results(results_dict)
 
   def run_for_profiling(self):
     """
@@ -93,15 +101,21 @@ class Simulator(object):
                                  planning_depth, treatment_budget, evaluation_budget, self.argmaxer,
                                  num_bootstrap_samples)
     mf_be = bootstrap_rollout_qfn(self.env, classifier, regressor, rollout_depth, gamma,
-                                 treatment_budget, evaluation_budget, self.argmaxer, num_bootstrap_samples)
+                                  treatment_budget, evaluation_budget, self.argmaxer, num_bootstrap_samples)
     return mb_be, mf_be
-
 
   def run_to_generate_bootstrap_distributions(self, num_bootstrap_samples=30,
                                               times_to_evaluate=[0, 1, 3, 5, 10, 15, 20]):
-    bootstrap_results = {'times_to_evaluate': times_to_evaluate, 'mb_be': [], 'mf_be': []}
+    """
+
+    :param num_bootstrap_samples:
+    :param times_to_evaluate: Times at which to generate bootstrap samples.
+    :return:
+    """
+    self.settings['times_to_evaluate'] = times_to_evaluate
+    bootstrap_results = {'mb_be': [], 'mf_be': []}
+
     for rep in range(self.number_of_replicates):
-      t0 = time.time()
       self.env.reset()
       # Initial steps
       self.env.step(self.random_policy(**self.policy_arguments)[0])
@@ -115,9 +129,14 @@ class Simulator(object):
           mb_be, mf_be = self.generate_bootstrap_distributions(num_bootstrap_samples)
           bootstrap_results['mb_be'].append(mb_be)
           bootstrap_results['mf_be'].append(mf_be)
-      t1 = time.time()
-      self.runtimes.append(t1 - t0)
-    for t in range(self.time_horizon-)
+    self.save_results(bootstrap_results)
 
-  def save_results(self):
-    pass
+  def save_results(self, results_dict):
+    save_dict = {'settings': self.settings,
+                 'results': results_dict}
+    prefix = os.path.join(pkg_dir, 'analysis', 'results', self.basename)
+    suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+    filename = '{}_{}.yml'.format(prefix, suffix)
+    with open(filename, 'w') as outfile:
+      yaml.dump(save_dict, outfile)
+    return
