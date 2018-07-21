@@ -20,7 +20,7 @@ def simulate_from_SIS(env, eta, planning_depth, argmaxer, evaluation_budget, tre
   :param n_rep: how many simulation replicates to run
   :return:
   """
-  simulation_env = SIS(env.feature_function, env.L, 0, None,
+  simulation_env = SIS(env.L, 0, None,
                        adjacency_matrix=env.adjacency_matrix,
                        dict_of_path_lists=env.dict_of_path_lists,
                        initial_infections=env.current_infected,

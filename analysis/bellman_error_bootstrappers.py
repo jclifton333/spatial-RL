@@ -11,7 +11,7 @@ from src.estimation.q_functions.rollout import rollout
 from keras import backend as K
 
 
-def bootstrap_SIS_mb_qfn(env, classifier, regressor, rollout_depth, gamma, planning_depth, q_model,
+def bootstrap_SIS_mb_qfn(env, classifier, regressor, rollout_depth, gamma, planning_depth,
                          treatment_budget, evaluation_budget, argmaxer, num_bootstrap_samples):
   be_list = []
   for rep in range(num_bootstrap_samples):
@@ -20,7 +20,7 @@ def bootstrap_SIS_mb_qfn(env, classifier, regressor, rollout_depth, gamma, plann
                              treatment_budget, evaluation_budget, argmaxer, train_ixs=None, bootstrap=True)
     bootstrap_be = compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget,
                                                         argmaxer)
-    be_list.append(bootstrap_be)
+    be_list.append(float(bootstrap_be))
     K.clear_session()
   return be_list
 
@@ -35,6 +35,6 @@ def bootstrap_rollout_qfn(env, classifier, regressor, rollout_depth, gamma, trea
                    bootstrap=True)
     bootstrap_be = compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget,
                                                         argmaxer)
-    be_list.append(bootstrap_be)
+    be_list.append(float(bootstrap_be))
     K.clear_session()
   return be_list

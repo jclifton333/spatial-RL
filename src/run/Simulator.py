@@ -8,6 +8,7 @@ import numpy as np
 import time
 import datetime
 import yaml
+import pdb
 
 # Hack bc python imports are stupid
 import sys
@@ -58,11 +59,15 @@ class Simulator(object):
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None}
 
     # Get settings dict for log
-    self.settings = {'policy_arguments': self.policy_arguments}
-    self.settings.update({'env_name': env_name, 'env_kwargs': env_kwargs, 'policy_name': policy_name,
+    self.settings = {'classifier': self.policy_arguments['classifier'].__name__,
+                     'regressor': self.policy_arguments['regressor'].__name__,
+                     'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
+                     'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
+                     'divide_evenly': self.policy_arguments['divide_evenly'], 'argmaxer': argmaxer_name}
+    self.settings.update({'env_name': env_name, 'L': self.env.L, 'policy_name': policy_name,
                           'argmaxer_name': argmaxer_name, 'time_horizon': self.time_horizon,
                           'number_of_replicates': self.number_of_replicates})
-    self.basename = '_'.join([env_name, policy_name, argmaxer_name, self.env.L])
+    self.basename = '_'.join([env_name, policy_name, argmaxer_name, str(self.env.L)])
 
   def run(self, save_results=True):
     for rep in range(self.number_of_replicates):
