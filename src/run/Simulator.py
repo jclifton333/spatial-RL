@@ -8,6 +8,7 @@ import numpy as np
 import time
 import datetime
 import yaml
+import multiprocessing as mp
 import pdb
 
 # Hack bc python imports are stupid
@@ -26,6 +27,8 @@ from analysis.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstra
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
 from src.utils.misc import RidgeProb, KerasLogit
+
+from functools import partial
 
 
 class Simulator(object):
@@ -51,7 +54,7 @@ class Simulator(object):
     self.runtimes = []
 
     # Set policy arguments
-    treatment_budget = np.int(np.floor(0.05 * env_kwargs['L']))
+    treatment_budget = np.int(np.ceil(0.05 * env_kwargs['L']))
     evaluation_budget = 10
     self.policy_arguments =  {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
@@ -110,32 +113,53 @@ class Simulator(object):
                                   treatment_budget, evaluation_budget, self.argmaxer, num_bootstrap_samples)
     return mb_be, mf_be
 
-  def run_to_generate_bootstrap_distributions(self, num_bootstrap_samples=30,
-                                              times_to_evaluate=[0, 1, 3, 5, 10, 15, 20]):
+  def bootstrap_distribution_episode(self, num_bootstrap_samples, times_to_evaluate=[0, 1, 3, 5, 10, 15, 20]):
+
+    bootstrap_results = {'mb_be': [], 'mf_be': []}
+    self.env.reset()
+    # Initial steps
+    self.env.step(self.random_policy(**self.policy_arguments)[0])
+    self.env.step(self.random_policy(**self.policy_arguments)[0])
+
+    for t in range(self.time_horizon - 2):
+      a, _ = self.random_policy(**self.policy_arguments)
+      self.policy_arguments['planning_depth'] = self.time_horizon - t
+      self.env.step(a)
+      if t in times_to_evaluate:
+        mb_be, mf_be = self.generate_bootstrap_distributions(num_bootstrap_samples)
+        bootstrap_results['mb_be'].append(mb_be)
+        bootstrap_results['mf_be'].append(mf_be)
+    return bootstrap_results
+
+  def bootstrap_distribution_episode_wrapper(self, replicate):
     """
-    ToDo: Parallelize
+    Wrap for multiprocessing.
+    :return:
+    """
+    results = self.bootstrap_distribution_episode(self.num_bootstrap_samples, self.times_to_evaluate)
+    return {replicate: results}
+
+  def run_generate_bootstrap_distributions(self, num_bootstrap_samples=30, times_to_evaluate=[0, 1, 3, 5, 10, 15, 20]):
+    """
+
     :param num_bootstrap_samples:
     :param times_to_evaluate: Times at which to generate bootstrap samples.
     :return:
     """
+    # Augment save info with bootstrap-specific stuff
+    self.basename = '_'.join(['bootstrap_dbns', self.basename])
     self.settings['times_to_evaluate'] = times_to_evaluate
-    bootstrap_results = {rep: {'mb_be': [], 'mf_be': []} for rep in range(self.number_of_replicates)}
+    self.times_to_evaluate = times_to_evaluate
+    self.num_bootstrap_samples = num_bootstrap_samples
 
-    for rep in range(self.number_of_replicates):
-      self.env.reset()
-      # Initial steps
-      self.env.step(self.random_policy(**self.policy_arguments)[0])
-      self.env.step(self.random_policy(**self.policy_arguments)[0])
+    # Multiprocess simulation replicates
+    num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 3)))
+    pool = mp.Pool(processes=num_processes)
+    results_list = pool.map(self.bootstrap_distribution_episode_wrapper, range(self.number_of_replicates))
 
-      for t in range(self.time_horizon - 2):
-        a, _ = self.random_policy(**self.policy_arguments)
-        self.policy_arguments['planning_depth'] = self.time_horizon - t
-        self.env.step(a)
-        if t in times_to_evaluate:
-          mb_be, mf_be = self.generate_bootstrap_distributions(num_bootstrap_samples)
-          bootstrap_results[rep]['mb_be'].append(mb_be)
-          bootstrap_results[rep]['mf_be'].append(mf_be)
-    self.save_results(bootstrap_results)
+    # Save results
+    results_dict = {k: v for d in results_list for k, v in d.items()}
+    self.save_results(results_dict)
 
   def save_results(self, results_dict):
     save_dict = {'settings': self.settings,

@@ -40,4 +40,4 @@ if __name__ == '__main__':
                 'initial_infections': None}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, **SIS_kwargs)
-  Sim.run_to_generate_bootstrap_distributions(num_bootstrap_samples=args.num_bootstrap_samples)
+  Sim.run_generate_bootstrap_distributions(num_bootstrap_samples=args.num_bootstrap_samples)
