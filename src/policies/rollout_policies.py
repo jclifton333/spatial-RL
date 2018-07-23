@@ -7,6 +7,7 @@ from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
 from src.utils.misc import random_argsort
 import numpy as np
+import keras.backend as K
 import pdb
 from functools import partial
 
@@ -50,6 +51,7 @@ def rollout_policy(**kwargs):
                       ixs=train_ixs)
     q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
     a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
+  K.clear_session()
   return a, q_model
 
 
@@ -60,12 +62,14 @@ def SIS_model_based_policy(**kwargs):
     kwargs['planning_depth'], kwargs['train_ixs'], kwargs['bootstrap'], \
     kwargs['rollout_depth'], kwargs['gamma'], kwargs['classifier'], kwargs['regressor']
 
-  new_q_model = estimate_SIS_q_fn(env, classifier, regressor, rollout_depth, gamma, planning_depth,
+  auto_reguressor = AutoRegressor(classifier, regressor)
+  new_q_model = estimate_SIS_q_fn(env, auto_reguressor, rollout_depth, gamma, planning_depth,
                                   treatment_budget, evaluation_budget, argmaxer, train_ixs,
                                   bootstrap)
 
   q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=new_q_model)
   a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
+  K.clear_session()
   return a, new_q_model
 
 

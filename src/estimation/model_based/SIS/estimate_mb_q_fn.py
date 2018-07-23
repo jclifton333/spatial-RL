@@ -10,7 +10,6 @@ from src.utils.misc import KerasLogit, KerasRegressor, SKLogit
 def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth, treatment_budget,
                       evaluation_budget, argmaxer, train_ixs, bootstrap):
 
-
   # Estimate MDP and generate data using policy = argmax q_model
   eta = fit_transition_model(env, bootstrap=bootstrap, ixs=train_ixs)
   print('running mb simulations')
