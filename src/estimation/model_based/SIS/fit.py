@@ -61,6 +61,8 @@ def fit_infection_prob_model(env, ixs, bootstrap):
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
   if bootstrap:
     infected_weights = np.random.exponential(size = len(y_infected))
+  else:
+    infected_weights=None
 
   eta_q = fit_q(A_infected.T, y_infected, infected_weights)
   eta_p = fit_p(env, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected, bootstrap)

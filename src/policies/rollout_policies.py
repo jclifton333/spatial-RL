@@ -56,16 +56,15 @@ def rollout_policy(**kwargs):
 
 
 def SIS_model_based_policy(**kwargs):
-  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, train_ixs, bootstrap, \
+  env, treatment_budget, evaluation_budget, argmaxer, planning_depth, bootstrap, \
     rollout_depth, gamma, classifier, regressor = \
     kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
-    kwargs['planning_depth'], kwargs['train_ixs'], kwargs['bootstrap'], \
+    kwargs['planning_depth'], kwargs['bootstrap'], \
     kwargs['rollout_depth'], kwargs['gamma'], kwargs['classifier'], kwargs['regressor']
 
   auto_reguressor = AutoRegressor(classifier, regressor)
   new_q_model = estimate_SIS_q_fn(env, auto_reguressor, rollout_depth, gamma, planning_depth,
-                                  treatment_budget, evaluation_budget, argmaxer, train_ixs,
-                                  bootstrap)
+                                  treatment_budget, evaluation_budget, argmaxer, bootstrap)
 
   q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=new_q_model)
   a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
