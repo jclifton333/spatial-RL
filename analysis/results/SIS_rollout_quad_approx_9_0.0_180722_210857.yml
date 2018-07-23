@@ -1,0 +1,21 @@
+results:
+  0:
+    runtime: 0.2707200050354004
+    score: !!python/object/apply:numpy.core.multiarray.scalar
+    - !!python/object/apply:numpy.dtype
+      args: [f8, 0, 1]
+      state: !!python/tuple [3, <, null, null, null, -1, -1, 0]
+    - !!binary |
+      AAAAAAAAAAA=
+  1:
+    runtime: 0.04272890090942383
+    score: !!python/object/apply:numpy.core.multiarray.scalar
+    - !!python/object/apply:numpy.dtype
+      args: [f8, 0, 1]
+      state: !!python/tuple [3, <, null, null, null, -1, -1, 0]
+    - !!binary |
+      HMdxHMdxnD8=
+settings: {L: 9, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: KerasLogit,
+  divide_evenly: false, env_name: SIS, evaluation_budget: 10, gamma: 0.9, number_of_replicates: 2,
+  planning_depth: 3, policy_name: rollout, regressor: RandomForestRegressor, rollout_depth: 0,
+  time_horizon: 3, treatment_budget: 1}

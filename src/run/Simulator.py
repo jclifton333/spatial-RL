@@ -59,7 +59,8 @@ class Simulator(object):
     self.policy_arguments =  {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
-                              'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None}
+                              'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
+                              'bootstrap': False}
 
     # Get settings dict for log
     self.settings = {'classifier': self.policy_arguments['classifier'].__name__,
@@ -70,28 +71,37 @@ class Simulator(object):
     self.settings.update({'env_name': env_name, 'L': self.env.L, 'policy_name': policy_name,
                           'argmaxer_name': argmaxer_name, 'time_horizon': self.time_horizon,
                           'number_of_replicates': self.number_of_replicates})
-    self.basename = '_'.join([env_name, policy_name, argmaxer_name, str(self.env.L)])
+    # Currently SIS-specific (omega)
+    self.basename = '_'.join([env_name, policy_name, argmaxer_name, str(self.env.L), str(env_kwargs['omega'])])
 
-  def run(self, save_results=True):
-    # ToDo: Parallelize
-    for rep in range(self.number_of_replicates):
-      t0 = time.time()
-      self.env.reset()
-      # Initial steps
-      self.env.step(self.random_policy(**self.policy_arguments)[0])
-      self.env.step(self.random_policy(**self.policy_arguments)[0])
-      for t in range(self.time_horizon-2):
-        a, q_model = self.policy(**self.policy_arguments)
-        self.policy_arguments['planning_depth'] = self.time_horizon - t
-        self.env.step(a)
-      t1 = time.time()
-      score = np.mean(self.env.Y)
-      print('rep {} score {}'.format(rep, score))
-      self.scores.append(score)
-      self.runtimes.append(t1 - t0)
-    results_dict = {'scores': self.scores}
-    if save_results:
-      self.save_results(results_dict)
+  def run(self):
+    # Multiprocess simulation replicates
+    num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 3)))
+    pool = mp.Pool(processes=num_processes)
+    results_list = pool.map(self.episode, range(self.number_of_replicates))
+
+    # Save results
+    results_dict = {k: v for d in results_list for k, v in d.items()}
+    self.save_results(results_dict)
+    return
+
+  def episode(self, replicate):
+    np.random.seed(replicate)
+    episode_results = {'score': None, 'runtime': None}
+    t0 = time.time()
+    self.env.reset()
+    # Initial steps
+    self.env.step(self.random_policy(**self.policy_arguments)[0])
+    self.env.step(self.random_policy(**self.policy_arguments)[0])
+    for t in range(self.time_horizon-2):
+      a, _ = self.policy(**self.policy_arguments)
+      self.policy_arguments['planning_depth'] = self.time_horizon - t
+      self.env.step(a)
+    t1 = time.time()
+    score = np.mean(self.env.Y)
+    episode_results['score'] = float(score)
+    episode_results['runtime'] = float(t1 - t0)
+    return {replicate: episode_results}
 
   def run_for_profiling(self):
     """
@@ -134,14 +144,13 @@ class Simulator(object):
   def bootstrap_distribution_episode_wrapper(self, replicate):
     """
     Wrap for multiprocessing.
-    :return:
-    """
+    :return: """
+    np.random.seed(replicate)
     results = self.bootstrap_distribution_episode(self.num_bootstrap_samples, self.times_to_evaluate)
     return {replicate: results}
 
   def run_generate_bootstrap_distributions(self, num_bootstrap_samples=30, times_to_evaluate=[0, 1, 3, 5, 10, 15, 20]):
     """
-
     :param num_bootstrap_samples:
     :param times_to_evaluate: Times at which to generate bootstrap samples.
     :return:

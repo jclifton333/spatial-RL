@@ -14,7 +14,7 @@ pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
 from src.environments import generate_network
-from .Simulator import Simulator
+from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['SIS']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'rollout', 'rollout', 'one_step',
@@ -34,7 +34,8 @@ if __name__ == '__main__':
   parser.add_argument('--gamma', type=float)
   args = parser.parse_args()
 
-  SIS_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice}
+  SIS_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
+                'initial_infections': None}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, **SIS_kwargs)
   Sim.run()

@@ -26,9 +26,8 @@ def one_step_policy(**kwargs):
   clf.fit(np.vstack(env.X), target, weights)
   true_expected_counts = np.hstack(env.true_infection_probs)
   phat = clf.predict_proba(np.vstack(env.X))[:,-1]
-  r2 = 1 - (
-      np.sum((phat - true_expected_counts) ** 2) / np.sum((true_expected_counts - np.mean(true_expected_counts)) ** 2))
-  print('R2: {}'.format(r2))
+  # r2 = 1 - (
+  #     np.sum((phat - true_expected_counts) ** 2) / np.sum((true_expected_counts - np.mean(true_expected_counts)) ** 2))
 
   def qfn(a):
     return clf.predict_proba(env.data_block_at_action(-1, a))[:,-1]
@@ -39,7 +38,7 @@ def one_step_policy(**kwargs):
 
 def rollout_policy(**kwargs):
   if kwargs['rollout_depth'] == 0:
-    a = one_step_policy(**kwargs)
+    a, q_model = one_step_policy(**kwargs)
   else:
     classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget, argmaxer, train_ixs = \
       kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
