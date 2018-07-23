@@ -1,0 +1,10 @@
+results:
+  0: {runtime: 0.3674015998840332, score: 0.4053846153846154}
+  1: {runtime: 0.4640960693359375, score: 0.37884615384615383}
+  2: {runtime: 0.3779013156890869, score: 0.4126923076923077}
+  3: {runtime: 0.3830723762512207, score: 0.3403846153846154}
+  4: {runtime: 0.36745738983154297, score: 0.4207692307692308}
+settings: {L: 100, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: KerasLogit,
+  divide_evenly: false, env_name: SIS, evaluation_budget: 10, gamma: 0.9, number_of_replicates: 5,
+  planning_depth: 25, policy_name: random, regressor: RandomForestRegressor, rollout_depth: 0,
+  time_horizon: 25, treatment_budget: 5}
