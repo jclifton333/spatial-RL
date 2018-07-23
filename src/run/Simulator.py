@@ -33,7 +33,7 @@ from functools import partial
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-                **env_kwargs):
+               evaluation_budget, **env_kwargs):
     """
     :param lookahead_depth:
     :param env_name: 'SIS' or 'Ebola'
@@ -42,6 +42,7 @@ class Simulator(object):
     :param policy_name: string to be passed to policy_factory
     :param argmaxer_name: string in ['sweep', 'quad_approx'] for method of taking q function argmax
     :param gamma: discount factor
+    :param policy_kwargs_dict:
     :param env_kwargs: environment-specific keyword arguments to be passed to environment_factory
     """
     self.env = environment_factory(env_name, **env_kwargs)
@@ -55,7 +56,6 @@ class Simulator(object):
 
     # Set policy arguments
     treatment_budget = np.int(np.ceil(0.05 * env_kwargs['L']))
-    evaluation_budget = 10
     self.policy_arguments =  {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
@@ -82,6 +82,7 @@ class Simulator(object):
 
     # Save results
     results_dict = {k: v for d in results_list for k, v in d.items()}
+    results_dict['mean'] = float(np.mean([v for v in results_dict.values]))
     self.save_results(results_dict)
     return
 
