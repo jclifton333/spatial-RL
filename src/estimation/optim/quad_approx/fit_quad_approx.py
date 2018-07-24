@@ -5,6 +5,7 @@ program).
 import time
 import pdb
 import numpy as np
+from src.estimation.optim.sweep.argmaxer_sweep import perturb_action
 from sklearn.linear_model import LinearRegression
 from numba import njit, jit
 
@@ -23,19 +24,17 @@ def get_neighbor_ixn_features(a, neighbor_interactions):
   return neighbor_ixn_features
 
 
-def sample_from_q(q, treatment_budget, evaluation_budget, L):
+def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
   """
   Evaluate q function at evaluation_budget points in order to fit quadratic approximation.
   """
-  sample_qs = []
-  sample_acts = []
-  dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
-  for sample in range(evaluation_budget):
-    rand_act = np.random.permutation(dummy_act)
-    q_sample = q(rand_act)
-    sample_qs.append(q_sample)
-    sample_acts.append(rand_act)
-  return np.array(sample_qs), sample_acts
+  if initial_act is not None:
+    acts_to_evaluate = [perturb_action(initial_act, 1) for e in range(evaluation_budget)]
+  else:
+    dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
+    acts_to_evaluate = [np.random.permutation(dummy_act) for e in range(evaluation_budget)]
+  sample_qs = np.array([q(act) for act in acts_to_evaluate])
+  return sample_qs, acts_to_evaluate
 
 
 def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interaction_lists):
@@ -60,12 +59,12 @@ def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, env_L, i
   return quadratic_parameters, intercept
 
 
-def get_quadratic_program_from_q(q, treatment_budget, evaluation_budget, env, ixs):
+def get_quadratic_program_from_q(q, treatment_budget, evaluation_budget, env, ixs, initial_act=None):
   if ixs is not None:
     L = len(ixs)
   else:
     L = env.L
-  sample_qs, sample_acts = sample_from_q(q, treatment_budget, evaluation_budget, L)
+  sample_qs, sample_acts = sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act)
   quadratic_parameters, intercept = fit_quad_approx(sample_qs, sample_acts, env.neighbor_interaction_lists, env.L, ixs)
   return quadratic_parameters, intercept
 
