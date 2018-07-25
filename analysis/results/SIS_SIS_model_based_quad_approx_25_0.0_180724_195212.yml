@@ -1,0 +1,7 @@
+results:
+  0: {runtime: 4.564777851104736, score: 0.07}
+  mean: 0.07
+settings: {L: 25, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: KerasLogit,
+  divide_evenly: false, env_name: SIS, evaluation_budget: 1, gamma: 0.9, number_of_replicates: 1,
+  planning_depth: 3, policy_name: SIS_model_based, regressor: RandomForestRegressor,
+  rollout_depth: 0, time_horizon: 3, treatment_budget: 2}

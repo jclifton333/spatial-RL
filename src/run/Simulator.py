@@ -80,13 +80,15 @@ class Simulator(object):
 
   def run(self):
     # Multiprocess simulation replicates
-    num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 3)))
+    num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
     pool = mp.Pool(processes=num_processes)
     results_list = pool.map(self.episode, range(self.number_of_replicates))
 
     # Save results
     results_dict = {k: v for d in results_list for k, v in d.items()}
-    results_dict['mean'] = float(np.mean([v for v in results_dict.values]))
+    list_of_scores = [v['score'] for v in results_dict.values()] 
+    results_dict['mean'] = float(np.mean(list_of_scores))
+    results_dict['se'] = float(np.std(list_of_scores)) / np.sqrt(len(list_of_scores))
     self.save_results(results_dict)
     return
 
