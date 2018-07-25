@@ -55,7 +55,7 @@ class Simulator(object):
     self.runtimes = []
 
     # Set policy arguments
-    treatment_budget = np.int(np.ceil(0.05 * env_kwargs['L']))
+    treatment_budget = np.int(np.ceil(0.05 * self.env.L))
     self.policy_arguments =  {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
@@ -71,8 +71,12 @@ class Simulator(object):
     self.settings.update({'env_name': env_name, 'L': self.env.L, 'policy_name': policy_name,
                           'argmaxer_name': argmaxer_name, 'time_horizon': self.time_horizon,
                           'number_of_replicates': self.number_of_replicates})
-    # Currently SIS-specific (omega)
-    self.basename = '_'.join([env_name, policy_name, argmaxer_name, str(self.env.L), str(env_kwargs['omega'])])
+
+    # Get filename base for saving results
+    to_join = [env_name, policy_name, argmaxer_name, str(self.env.L)]
+    if 'omega' in env_kwargs.keys():
+      to_join.append(str(env_kwargs['omega']))
+    self.basename = '_'.join(to_join)
 
   def run(self):
     # Multiprocess simulation replicates
@@ -102,6 +106,7 @@ class Simulator(object):
     score = np.mean(self.env.Y)
     episode_results['score'] = float(score)
     episode_results['runtime'] = float(t1 - t0)
+    print(np.mean(self.env.Y[-1,:]))
     return {replicate: episode_results}
 
   def run_for_profiling(self):

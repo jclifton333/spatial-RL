@@ -17,7 +17,7 @@ sys.path.append(pkg_dir)
 from src.environments import generate_network
 from src.run.Simulator import Simulator
 
-VALID_ENVIRONMENT_NAMES = ['SIS']
+VALID_ENVIRONMENT_NAMES = ['SIS', 'Ebola']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'rollout', 'rollout', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global']
