@@ -29,7 +29,8 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
   Evaluate q function at evaluation_budget points in order to fit quadratic approximation.
   """
   if initial_act is not None:
-    acts_to_evaluate = [perturb_action(initial_act, 1) for e in range(evaluation_budget)]
+    acts_to_evaluate = [perturb_action(initial_act, 1) for e in range(evaluation_budget - 1)]
+    acts_to_evaluate.append(initial_act)
   else:
     dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
     acts_to_evaluate = [np.random.permutation(dummy_act) for e in range(evaluation_budget)]

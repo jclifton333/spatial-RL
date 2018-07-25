@@ -1,5 +1,5 @@
 try:
-  from .quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
+  from .quad_approx.argmaxer_quad_approx import argmaxer_quad_approx, argmaxer_sequential_quad_approx
 except ImportError:
   print('Gurobi not available.  Can\'t use quad_approx.')
 
@@ -50,6 +50,8 @@ def argmaxer_factory(choice):
     return argmaxer_sweep
   elif choice == 'quad_approx':
     return argmaxer_quad_approx
+  elif choice == 'sequential_quad_approx':
+    return argmaxer_sequential_quad_approx
   elif choice == 'random':
     return argmaxer_random
   elif choice == 'global':

@@ -1,6 +1,8 @@
+import pdb
 import numpy as np
 from .fit_quad_approx import get_quadratic_program_from_q
 from .qp_max import qp_max
+from src.utils.misc import random_argsort
 import time
 
 
@@ -15,7 +17,7 @@ def argmaxer_quad_approx(q, evaluation_budget, treatment_budget, env, initial_ac
   return a
 
 
-def argmaxer_sequential_quad_approx(q, evaluation_budget, treatment_budget, env, sequence_length=3, ixs=None):
+def argmaxer_sequential_quad_approx(q, evaluation_budget, treatment_budget, env, sequence_length=5, ixs=None):
   """
 
   :param q:
@@ -29,7 +31,7 @@ def argmaxer_sequential_quad_approx(q, evaluation_budget, treatment_budget, env,
   # Get initial action
   initial = np.zeros(env.L)
   q_hat = q(initial)
-  treat_ixs = np.argsort(-q_hat, treatment_budget)
+  treat_ixs = random_argsort(-q_hat, treatment_budget)
   initial[treat_ixs] = 1
 
   for i in range(sequence_length):
