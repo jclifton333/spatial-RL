@@ -20,7 +20,7 @@ class Ebola(SpatialDisease):
   network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
   ADJACENCY_MATRIX = network_info['adjacency_matrix']
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
-  DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
+  DISTANCE_MATRIX = network_info['euclidean_distance_matrix'] / 1000.0
   SUSCEPTIBILITY  = network_info['pop_array']
   L = len(SUSCEPTIBILITY)
   OUTBREAK_TIMES = network_info['outbreak_time_array']
@@ -33,18 +33,23 @@ class Ebola(SpatialDisease):
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
 
   # Params for logit of transmission probability
-  ETA_0 = -3
-  ETA_1 = np.log(156)
-  ETA_2 = 5
-  ETA_3 = -8.0
-  ETA_4 = -8.0
-
+  # ETA_0 = -3
+  # ETA_1 = np.log(156)
+  # ETA_2 = 5
+  # ETA_3 = -8.0
+  # ETA_4 = -8.0
+  ETA_0 = -7.443
+  ETA_1 = -0.284
+  ETA_2 = -0.0
+  ETA_3 = -1.015
+  ETA_4 = -1.015
   # Compute transmission probs
   TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
   for l in range(L):
     s_l = SUSCEPTIBILITY[l]
     for l_prime in range(L):
-      if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
+      # if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
+      if True:
         """
         from https://github.com/LaberLabs/stdmMf_cpp/blob/master/src/main/ebolaStateGravityModel.cpp
         
@@ -91,7 +96,8 @@ class Ebola(SpatialDisease):
     if self.current_infected[l]:
       return 1
     else:
-      not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l) for l_prime in self.adjacency_list[l]])
+      # not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l) for l_prime in self.adjacency_list[l]])
+      not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l) for l_prime in range(self.L)])
       return 1 - not_infected_prob
 
   def update_obs_history(self, a):
