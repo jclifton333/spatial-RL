@@ -26,7 +26,7 @@ from analysis.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstra
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
-from src.utils.misc import RidgeProb, KerasLogit
+from src.utils.misc import RidgeProb, KerasLogit, KerasRegressor
 
 from functools import partial
 
@@ -56,7 +56,7 @@ class Simulator(object):
 
     # Set policy arguments
     treatment_budget = np.int(np.ceil(0.05 * self.env.L))
-    self.policy_arguments =  {'classifier': KerasLogit, 'regressor': RandomForestRegressor, 'env': self.env,
+    self.policy_arguments =  {'classifier': KerasLogit, 'regressor': KerasRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,

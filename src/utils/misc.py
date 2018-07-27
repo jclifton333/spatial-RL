@@ -43,17 +43,13 @@ class KerasRegressor(object):
   def __init__(self):
     self.reg = Sequential()
 
-  def fit(self, X, y, weights, grid_search=True):
+  def fit(self, X, y, weights):
     input_shape = X.shape[1]
     self.reg.add(Dense(int(np.floor(input_shape/2)), input_dim=input_shape,
-                 activation='relu', kernel_regularizer=L1L2(l1=0.0, l2=100)))
-    self.reg.add(Dense(1, kernel_regularizer=L1L2(l1=0.0, l2=100)))
-    if weights is not None:
-      loss = partial(bootstrap_sq_error_loss, weights=weights)
-    else:
-      loss = 'mean_squared_error'
-    self.reg.compile(optimizer='adam', loss=loss)
-    self.reg.fit(X, y, verbose=0)
+                 activation='relu', kernel_regularizer=L1L2(l1=0.0, l2=0.1)))
+    self.reg.add(Dense(1, kernel_regularizer=L1L2(l1=0.0, l2=0.1)))
+    self.reg.compile(optimizer='adam', loss='mean_squared_error')
+    self.reg.fit(X, y, sample_weight=weights, verbose=True)
 
   def predict(self, X):
     return self.reg.predict(X).reshape(-1)
@@ -76,7 +72,7 @@ class KerasLogit(object):
                        input_dim=self.input_shape))
     self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy')
 
-    self.reg.fit(X, y, sample_weight=weights, epochs=5)
+    self.reg.fit(X, y, sample_weight=weights, epochs=5, verbose=True)
     self.get_coef()
 
   def fit(self, X, y, weights, exclude_neighbor_features=False):
@@ -85,7 +81,7 @@ class KerasLogit(object):
     if exclude_neighbor_features:
       self.exclude_neighbor_features = True
       self.input_shape = int(self.input_shape / 2)  # adding neighbor features doubles number of features
-      X = X[:, self.input_shape]
+      X = X[:, :self.input_shape]
     y0 = y[0]
     for element in y:
       if element == 1 - y0:
@@ -94,7 +90,7 @@ class KerasLogit(object):
         return
     # Hacky way of dealing with all-0 or all-1 targets
     self.intercept_ = -0.001 + y0
-    self.coef_ = -0.001 + np.zeros(self.input_shape + 1)
+    self.coef_ = -0.001 + np.zeros(self.input_shape)
 
   def get_coef(self):
     """
