@@ -66,18 +66,26 @@ class KerasLogit(object):
     self.intercept_ = None
     self.coef_ = None
     self.fitted_model = False
+    self.exclude_neighbor_features = False  # This should be set to true if env.add_neighbor_features=True
+    self.input_shape = None
 
   def fit_keras(self, X, y, weights):
-    input_shape = X.shape[1]
     self.reg.add(Dense(1,
                        activation='sigmoid',
                        kernel_regularizer=L1L2(l1=0.0, l2=0.1),
-                       input_dim=input_shape))
+                       input_dim=self.input_shape))
     self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy')
+
     self.reg.fit(X, y, sample_weight=weights, epochs=5)
     self.get_coef()
 
-  def fit(self, X, y, weights):
+  def fit(self, X, y, weights, exclude_neighbor_features=False):
+    self.input_shape = X.shape[1]
+    # Cut X in half if exclude neighbor features
+    if exclude_neighbor_features:
+      self.exclude_neighbor_features = True
+      self.input_shape = int(self.input_shape / 2)  # adding neighbor features doubles number of features
+      X = X[:, self.input_shape]
     y0 = y[0]
     for element in y:
       if element == 1 - y0:
@@ -86,7 +94,7 @@ class KerasLogit(object):
         return
     # Hacky way of dealing with all-0 or all-1 targets
     self.intercept_ = -0.001 + y0
-    self.coef_ = -0.001 + np.zeros(X.shape[1] + 1)
+    self.coef_ = -0.001 + np.zeros(self.input_shape + 1)
 
   def get_coef(self):
     """
@@ -100,6 +108,8 @@ class KerasLogit(object):
 
   def predict_proba(self, X):
     if self.fitted_model:
+      if self.exclude_neighbor_features:
+        X = X[:, :self.input_shape]
       phat = self.reg.predict_proba(X)
       return np.column_stack((1-phat, phat))
     else:

@@ -46,8 +46,8 @@ class AutoRegressor(object):
     if addToList: self.predictors.append(autologitPredictor)
     self.autologitPredictor = autologitPredictor
     
-  def fitClassifier(self, features, target, weights, addToList):
-    self.ar_classifier.fit(features, target, weights)
+  def fitClassifier(self, features, target, weights, addToList, exclude_neighbor_sums):
+    self.ar_classifier.fit(features, target, weights, exclude_neighbor_sums)
     self.createAutologitPredictor(self.ar_classifier, addToList, binary=True)
     
   def fitRegressor(self, features, target, weights, addToList):

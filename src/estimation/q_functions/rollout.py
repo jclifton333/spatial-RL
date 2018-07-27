@@ -33,13 +33,14 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
   else:
     weights = None
   # Fit 1-step model
-  regressor.fitClassifier(features, target, weights, True)
+  regressor.fitClassifier(features, target, weights, True, env.add_neighbor_sums)
   q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
+  pdb.set_trace()
   # Look ahead
-  for k in range(1, K):
+  for k in range(1, K + 1):
     target += gamma*q_max.flatten()
     regressor.fitRegressor(features, target, weights, False)
-    if k < K-1:
+    if k < K:
       q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor,
                                      argmaxer, ixs)
   return regressor.autologitPredictor

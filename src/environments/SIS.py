@@ -65,12 +65,14 @@ class SIS(SpatialDisease):
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
-  def __init__(self, L, omega, generate_network, adjacency_matrix=None, dict_of_path_lists=None,
-               initial_infections=None, initial_state=None, eta=None, beta=None):
+  def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
+               dict_of_path_lists=None, initial_infections=None, initial_state=None, eta=None, beta=None):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
+    self.add_neighbor_sums = add_neighbor_sums
+
     if eta is None:
       self.eta = SIS.ETA
     else:
@@ -178,6 +180,8 @@ class SIS(SpatialDisease):
     for k in range(1, SIS.PATH_LENGTH + 1):
       phi_k = self.phi_k(k, data_block)
       phi = np.column_stack((phi, phi_k))
+    if self.add_neighbor_sums:
+      phi = self.phi_neighbor(phi)
     return phi
 
   # Functions for efficiently computing features-at-new-action
@@ -205,6 +209,8 @@ class SIS(SpatialDisease):
 
   def phi_at_action(self, data_block, old_action, action, ixs=None):
     new_data_block = copy.copy(data_block)
+    if self.add_neighbor_sums:
+      new_data_block = new_data_block[:, :int(new_data_block.shape[1] / 2)]
     locations_with_changed_actions = set(np.where(old_action == action)[0])
     if ixs is not None:
       # This only works when considering paths up to length 2!
@@ -215,10 +221,20 @@ class SIS(SpatialDisease):
       for r in length_k_paths:
         if self.is_any_element_in_set(r, locations_with_changed_actions):
           new_data_block = self.modify_m_r(new_data_block, old_action, action, r, k)
-    if ixs is None:
-      return new_data_block
-    else:
-      return new_data_block[ixs,:]
+    if self.add_neighbor_sums:
+      new_data_block = self.phi_neighbor(new_data_block)
+    return new_data_block
+
+  def phi_neighbor(self, data_block):
+    """
+    To phi features, concatenate another block of features which are the _sums of the neighboring phi features_.
+    :param data_block:
+    :return:
+    """
+    neighbor_data_block = np.zeros(data_block.shape)
+    for l in range(self.L):
+      neighbor_data_block[l] = np.sum(data_block[self.adjacency_list[l],:], axis=0)
+    return np.column_stack((data_block, neighbor_data_block))
 
   def get_weighted_eigenvector_centrality(self, estimated_probabilities):
     weighted_adjacency_matrix = np.zeros((self.L, self.L))

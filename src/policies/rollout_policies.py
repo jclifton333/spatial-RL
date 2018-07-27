@@ -24,9 +24,9 @@ def one_step_policy(**kwargs):
 
   clf = classifier()
   target = np.hstack(env.y).astype(float)
-  clf.fit(np.vstack(env.X), target, weights)
-  true_expected_counts = np.hstack(env.true_infection_probs)
-  phat = clf.predict_proba(np.vstack(env.X))[:,-1]
+  clf.fit(np.vstack(env.X), target, weights, env.add_neighbor_sums)
+  # true_expected_counts = np.hstack(env.true_infection_probs)
+  # phat = clf.predict_proba(np.vstack(env.X))[:,-1]
   # r2 = 1 - (
   #     np.sum((phat - true_expected_counts) ** 2) / np.sum((true_expected_counts - np.mean(true_expected_counts)) ** 2))
 
@@ -41,14 +41,13 @@ def rollout_policy(**kwargs):
   if kwargs['rollout_depth'] == 0:
     a, q_model = one_step_policy(**kwargs)
   else:
-    classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget, argmaxer, train_ixs = \
+    classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget, argmaxer = \
       kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
-      kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['train_ixs']
+      kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer']
 
     auto_regressor = AutoRegressor(classifier, regressor)
 
-    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,
-                      ixs=train_ixs)
+    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
     q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
     a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
   K.clear_session()
