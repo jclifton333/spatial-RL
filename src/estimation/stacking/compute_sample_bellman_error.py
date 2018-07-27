@@ -4,7 +4,7 @@ from src.estimation.optim.q_max import q_max_all_states
 
 
 def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer,
-                                 q_of_X=None, ixs=None):
+                                 bootstrap_correction_weights=None, q_of_X=None, ixs=None):
   """
   TD = Y + \gamma * q_max_of_Xp1 - q_of_X.
 
@@ -14,6 +14,7 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
   :param evaluation_budget:
   :param treatment_budget:
   :param argmaxer:
+  :param bootstrap_correction_weights: array of weights to correct for bootstrapping
   :param q_of_X: q_fn evaluated at env data blocks; calculated in function if not be provided.
                  Should be provided for GGQ.
   :param ixs:
@@ -40,6 +41,8 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
 
   TD = np.hstack(y).astype(float) + gamma * q_max_of_Xp1.flatten() - q_of_X
   TD = TD.reshape(TD.shape[0], 1)
+  if bootstrap_correction_weights is not None:
+    TD = np.multiply(TD, bootstrap_correction_weights)
   TD_times_q_of_X = np.multiply(TD, q_of_X)
   q_of_X_hat = np.vstack([q_fn(x) for x in blocks_at_argmax_list[1:]])
   return TD, TD_times_q_of_X, q_of_X_hat

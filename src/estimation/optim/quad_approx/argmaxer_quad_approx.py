@@ -36,6 +36,7 @@ def argmaxer_sequential_quad_approx(q, evaluation_budget, treatment_budget, env,
 
   for i in range(sequence_length):
     initial = argmaxer_quad_approx(q, evaluation_budget, treatment_budget, env, initial_act=initial)
+    print('Q{}: {}'.format(i, np.sum(q(initial))))
   a = initial
   return a
 

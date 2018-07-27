@@ -78,7 +78,7 @@ def get_bootstrap_weights(all_weights, counts_for_likelihood, indices_for_likeli
     for j in range(counts_for_likelihood.shape[1]):
       for k in range(counts_for_likelihood.shape[2]):
         indices = indices_for_likelihood[i][j][k]
-        weights[i,j,k] += np.sum(all_weights[indices])
+        weights[i,j,k] += np.sum([all_weights[ix] for ix in indices])
   return weights
 
 
@@ -101,9 +101,10 @@ def negative_log_likelihood(eta, counts_for_likelihood_next_infected, counts_for
   eta2p4 = eta2 + eta[4]
 
   if bootstrap_weights is not None:
-    # Weights are sums of Exp(1) so use gamma
-    success_weights = np.random.gamma(shape=counts_for_likelihood_next_infected)
-    failure_weights = np.random.gamma(shape=counts_for_likelihood_next_not_infected)
+    success_weights = get_bootstrap_weights(bootstrap_weights, counts_for_likelihood_next_infected,
+                                            indices_for_likelihood_next_infected)
+    failure_weights = get_bootstrap_weights(bootstrap_weights, counts_for_likelihood_next_not_infected,
+                                            indices_for_likelihood_next_not_infected)
   else:
     success_weights = counts_for_likelihood_next_infected
     failure_weights = counts_for_likelihood_next_not_infected

@@ -114,10 +114,10 @@ class SIS(SpatialDisease):
     self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
 
     # These are for figuring out which bootstrap weights correspond to the not-infected locations
-    self.indices_for_likelihood_next_infected = {i: {j:{k:{} for k in range(self.max_num_neighbors + 1)}
+    self.indices_for_likelihood_next_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
                                                      for j in range(self.max_num_neighbors + 1)}
                                                  for i in range(2)}
-    self.indices_for_likelihood_next_not_infected = {i: {j:{k:{} for k in range(self.max_num_neighbors + 1)}
+    self.indices_for_likelihood_next_not_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
                                                      for j in range(self.max_num_neighbors + 1)}
                                                  for i in range(2)}
   def reset(self):
@@ -134,10 +134,10 @@ class SIS(SpatialDisease):
     self.current_state = self.S[-1,:]
     self.counts_for_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
     self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
-    self.indices_for_likelihood_next_infected = {i: {j:{k:{} for k in range(self.max_num_neighbors + 1)}
+    self.indices_for_likelihood_next_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
                                                      for j in range(self.max_num_neighbors + 1)}
                                                  for i in range(2)}
-    self.indices_for_likelihood_next_not_infected = {i: {j:{k:{} for k in range(self.max_num_neighbors + 1)}
+    self.indices_for_likelihood_next_not_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
                                                      for j in range(self.max_num_neighbors + 1)}
                                                  for i in range(2)}
 
