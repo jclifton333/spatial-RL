@@ -19,7 +19,7 @@ from src.run.Simulator import Simulator
 VALID_ENVIRONMENT_NAMES = ['SIS']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'rollout', 'rollout', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based']
-VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global']
+VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -36,7 +36,7 @@ if __name__ == '__main__':
   args = parser.parse_args()
 
   SIS_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
-                'initial_infections': None}
+                'initial_infections': None, 'add_neighbor_sums': True}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, **SIS_kwargs)
   Sim.run()
