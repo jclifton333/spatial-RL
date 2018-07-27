@@ -25,6 +25,7 @@ def simulate_from_SIS(env, eta, planning_depth, argmaxer, evaluation_budget, tre
                        dict_of_path_lists=env.dict_of_path_lists,
                        initial_infections=env.current_infected,
                        initial_state=env.current_state,
+                       add_neighbor_sums=env.add_neighbor_sums,
                        eta=eta)
   L = simulation_env.L
   for rep in range(n_rep):
