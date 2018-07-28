@@ -153,11 +153,6 @@ class Simulator(object):
         bootstrap_results['mf_be'].append(mf_be)
     return bootstrap_results
 
-  @staticmethod
-  def cross_entropy(phat, p):
-    EPS = 0.01  # For stability
-    return -p * np.log(phat + EPS) - (1 - p) * np.log(1 - phat + EPS)
-
   def compare_probability_estimates_episode(self, model_constructor_list):
     """
     Assuming SIS generative model.

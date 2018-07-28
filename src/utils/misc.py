@@ -65,6 +65,21 @@ class KerasLogit(object):
     self.exclude_neighbor_features = False  # This should be set to true if env.add_neighbor_features=True
     self.input_shape = None
 
+  def set_weights(self, new_weights):
+    """
+
+    :param new_weights: [coef array, bias array]
+    :return:
+    """
+    if self.reg.layers:
+      self.reg.layers[0].set_weights(new_weights)
+    else:
+      self.reg.add(Dense(1,
+                         activation='sigmoid',
+                         kernel_regularizer=L1L2(l1=0.0, l2=0.1),
+                         input_dim=self.input_shape,
+                         weights=new_weights))
+
   def fit_keras(self, X, y, weights):
     self.reg.add(Dense(1,
                        activation='sigmoid',
