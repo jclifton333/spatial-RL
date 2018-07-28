@@ -18,7 +18,7 @@ from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['SIS']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'rollout', 'rollout', 'one_step',
-                      'treat_all', 'SIS_stacked', 'SIS_model_based']
+                      'treat_all', 'SIS_stacked', 'SIS_model_based', 'SIS_model_based_one_step']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 
 if __name__ == '__main__':

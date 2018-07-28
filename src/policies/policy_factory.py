@@ -28,5 +28,7 @@ def policy_factory(policy_type):
     return roll.SIS_stacked_q_policy
   elif policy_type == 'SIS_model_based':
     return roll.SIS_model_based_policy
+  elif policy_type == 'SIS_model_based_one_step':
+    return roll.SIS_model_based_one_step
   else:
     raise ValueError('Argument does not match any policy.')

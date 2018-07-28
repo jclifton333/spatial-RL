@@ -1,3 +1,4 @@
+from src.environments.SIS import SIS
 from src.estimation.q_functions.rollout import rollout
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
@@ -5,6 +6,7 @@ from src.estimation.stacking.greedy_gq import ggq
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
+from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.utils.misc import random_argsort
 import numpy as np
 import keras.backend as K
@@ -69,6 +71,22 @@ def SIS_model_based_policy(**kwargs):
   a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
   K.clear_session()
   return a, new_q_model
+
+
+def SIS_model_based_one_step(**kwargs):
+  env, bootstrap, argmaxer, evaluation_budget, treatment_budget = \
+    kwargs['env'], kwargs['bootstrap'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
+  eta = fit_transition_model(env, bootstrap=bootstrap)
+  simulation_env = SIS(env.L, 0, None,
+                       adjacency_matrix=env.adjacency_matrix,
+                       dict_of_path_lists=env.dict_of_path_lists,
+                       initial_infections=env.current_infected,
+                       initial_state=env.current_state,
+                       add_neighbor_sums=env.add_neighbor_sums,
+                       eta=eta)
+  one_step_q = simulation_env.next_infected_probabilities
+  a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)
+  return a, None
 
 
 def dummy_stacked_q_policy(**kwargs):
