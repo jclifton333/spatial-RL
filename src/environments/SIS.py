@@ -66,12 +66,15 @@ class SIS(SpatialDisease):
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
-               dict_of_path_lists=None, initial_infections=None, initial_state=None, eta=None, beta=None):
+               dict_of_path_lists=None, initial_infections=None, initial_state=None, eta=None, beta=None,
+               epsilon=0, contaminator=None):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
     self.add_neighbor_sums = add_neighbor_sums
+    self.epsilon = epsilon
+    self.contaminator = contaminator
 
     if eta is None:
       self.eta = SIS.ETA
@@ -264,7 +267,7 @@ class SIS(SpatialDisease):
     self.add_state(next_state)
     return next_state
 
-  def infection_probability(self, a, y, s):
+  def infection_probability(self, a, y, s, eta=self.eta):
     z = np.random.binomial(1, self.omega)
     indicator = (z*s <= 0)
     a_times_indicator = np.multiply(a, indicator)
@@ -273,13 +276,18 @@ class SIS(SpatialDisease):
     not_infected_indices = np.where(y == 0)
 
     infected_probabilities = np.zeros(self.L)
-    infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices,
-                                                                 infected_indices)
-    infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices])
+    infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices, infected_indices,
+                                                            eta)
+    infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices], eta)
     return infected_probabilities
 
-  def next_infected_probabilities(self, a):
-    return self.infection_probability(a, self.current_infected, self.current_state)
+  def next_infected_probabilities(self, a, eta=self.eta):
+    next_probs = self.infection_probability(a, self.current_infected, self.current_state, eta=eta)
+    if self.contaminator is not None:
+      current_X_at_action = self.data_block_at_action(-1, a)
+      contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:,-1]
+      next_probs = self.epsilon * next_probs + (1 - self.epsilon) * contaminator_probs
+    return next_probs
 
   def add_infections(self, y):
     self.Y = np.vstack((self.Y, y))
@@ -302,32 +310,31 @@ class SIS(SpatialDisease):
   ## Infection probability helper functions (see draft p. 13) ##
   ##############################################################
 
-  def p_l0(self, a_times_indicator):
-    logit_p_0 = self.eta[0] + self.eta[1] * a_times_indicator
+  def p_l0(self, a_times_indicator, eta):
+    logit_p_0 = eta[0] + eta[1] * a_times_indicator
     p_0 = expit(logit_p_0)
     return p_0
 
-  def q_l(self, a_times_indicator):
-    logit_q = self.eta[5] + self.eta[6] * a_times_indicator
+  def q_l(self, a_times_indicator, eta):
+    logit_q = eta[5] + eta[6] * a_times_indicator
     q = expit(logit_q)
     return q
 
-  def one_minus_p_llprime(self, a_times_indicator, not_infected_indices, infected_indices):
+  def one_minus_p_llprime(self, a_times_indicator, not_infected_indices, infected_indices, eta):
     product_vector = np.array([])
     for l in not_infected_indices[0].tolist():
       # Get infected neighbors
       infected_neighbor_indices = np.intersect1d(self.adjacency_list[l], infected_indices)
       a_times_indicator_lprime = a_times_indicator[infected_neighbor_indices]
-      logit_p_l = self.eta[2] + self.eta[3]*a_times_indicator[l] + \
-                  self.eta[4]*a_times_indicator_lprime
+      logit_p_l = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*a_times_indicator_lprime
       p_l = expit(logit_p_l)
       product_l = np.product(1 - p_l)
       product_vector = np.append(product_vector, product_l)
     return product_vector
 
-  def p_l(self, a_times_indicator, not_infected_indices, infected_indices):
-    p_l0 = self.p_l0(a_times_indicator[not_infected_indices])
-    one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices)
+  def p_l(self, a_times_indicator, not_infected_indices, infected_indices, eta):
+    p_l0 = self.p_l0(a_times_indicator[not_infected_indices], eta)
+    one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta)
     product = np.multiply(1 - p_l0, one_minus_p_llprime)
     return 1 - product
 

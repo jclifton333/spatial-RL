@@ -13,8 +13,7 @@ def environment_factory(environment_name, **kwargs):
 
   VALID_ENVIRONMENT_NAMES = ['SIS', 'Ebola']
   if environment_name == 'SIS':
-    return SIS(kwargs['L'], kwargs['omega'], kwargs['generate_network'],
-               initial_infections=kwargs['initial_infections'], add_neighbor_sums=kwargs['add_neighbor_sums'])
+    return SIS(kwargs['L'], kwargs['omega'], kwargs['generate_network'], **kwargs)
   elif environment_name == 'Ebola':
     return Ebola()
   else:
