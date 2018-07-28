@@ -264,20 +264,22 @@ class SIS(SpatialDisease):
     self.add_state(next_state)
     return next_state
 
-  def next_infected_probabilities(self, a):
+  def infection_probability(self, a, y, s):
     z = np.random.binomial(1, self.omega)
-    indicator = (z*self.current_state <= 0)
+    indicator = (z*s <= 0)
     a_times_indicator = np.multiply(a, indicator)
 
-    infected_indices = np.where(self.current_infected > 0)
-    not_infected_indices = np.where(self.current_infected == 0)
+    infected_indices = np.where(y > 0)
+    not_infected_indices = np.where(y == 0)
 
-    next_infected_probabilities = np.zeros(self.L)
-    next_infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices,
+    infected_probabilities = np.zeros(self.L)
+    infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices,
                                                                  infected_indices)
-    next_infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices])
+    infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices])
+    return infected_probabilities
 
-    return next_infected_probabilities
+  def next_infected_probabilities(self, a):
+    return self.infection_probability(a, self.current_infected, self.current_state)
 
   def add_infections(self, y):
     self.Y = np.vstack((self.Y, y))

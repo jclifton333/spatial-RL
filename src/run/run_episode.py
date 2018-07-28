@@ -15,6 +15,7 @@ pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
 from src.environments import generate_network
+from src.utils.misc import KerasLogit
 from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['SIS', 'Ebola']
@@ -40,4 +41,5 @@ if __name__ == '__main__':
                 'initial_infections': None, 'add_neighbor_sums': True}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, **SIS_kwargs)
-  Sim.episode(0)
+  # Sim.episode(0)
+  Sim.compare_probability_estimates_episode([KerasLogit])

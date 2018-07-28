@@ -21,6 +21,7 @@ VALID_ENVIRONMENT_NAMES = ['SIS']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'rollout', 'rollout', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global']
+VALID_DIAGNOSTIC_NAMES = ['generate_bootstrap_dbns', 'compare_probability_estimates']
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -34,10 +35,15 @@ if __name__ == '__main__':
   parser.add_argument('--L', type=int)
   parser.add_argument('--gamma', type=float)
   parser.add_argument('--num_bootstrap_samples', type=int)
+  parser.add_argument('--diagnostic_type', choices=VALID_DIAGNOSTIC_NAMES)
+  parser.add_argument('--evaluation_budget', type=int)
   args = parser.parse_args()
 
   SIS_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
-                'initial_infections': None}
+                'initial_infections': None, 'add_neighbor_sums': False}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
-                  args.argmaxer_name, args.gamma, **SIS_kwargs)
-  Sim.run_generate_bootstrap_distributions(num_bootstrap_samples=args.num_bootstrap_samples)
+                  args.argmaxer_name, args.gamma, args.evaluation_budget, **SIS_kwargs)
+  if args.diagnostic_type == 'generate_bootstrap_dbns':
+    Sim.run_generate_bootstrap_distributions(num_bootstrap_samples=args.num_bootstrap_samples)
+  elif args.diagnostic_type == 'compare_probability_estimates':
+    Sim.run_compare_probability_estimates()

@@ -19,6 +19,9 @@ pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
 from src.environments import generate_network
+from src.environments.SIS import SIS
+from src.estimation.model_based.SIS.fit import fit_transition_model
+from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
@@ -29,8 +32,9 @@ from sklearn.linear_model import LogisticRegression
 from src.utils.misc import RidgeProb, KerasLogit, KerasRegressor
 
 from functools import partial
+import keras.backend as K
 
-
+# ToDo: Refactor so there isn't a separate file for each type of simulation
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
                evaluation_budget, **env_kwargs):
@@ -148,6 +152,85 @@ class Simulator(object):
         bootstrap_results['mb_be'].append(mb_be)
         bootstrap_results['mf_be'].append(mf_be)
     return bootstrap_results
+
+  @staticmethod
+  def cross_entropy(phat, p):
+    EPS = 0.01  # For stability
+    return -p * np.log(phat + EPS) - (1 - p) * np.log(1 - phat + EPS)
+
+  def compare_probability_estimates_episode(self, model_constructor_list):
+    """
+    Assuming SIS generative model.
+    :param model_constructor_list: e.g. [KerasLogit, SKLogit, ...]
+    :return:
+    """
+    # Initialize results dict
+    estimates_results = {'mb_loss': []}
+    for model in model_constructor_list:
+      estimates_results.update({'obs_data_loss_{}'.format(model.__name__): [],
+                                'sim_data_loss_{}'.format(model.__name__): []})
+
+    self.env.reset()
+    # Initial steps
+    self.env.step(self.random_policy(**self.policy_arguments)[0])
+    self.env.step(self.random_policy(**self.policy_arguments)[0])
+
+    for t in range(self.time_horizon - 2):
+      a, _ = self.random_policy(**self.policy_arguments)
+      self.env.step(a)
+
+      target = np.hstack(self.env.y).astype(float)
+      features = np.vstack(self.env.X)
+      p = np.hstack(self.env.true_infection_probs)
+
+      # Fit models to observations
+      for model in model_constructor_list:
+        m = model()
+        m.fit(features, target, weights=None, exclude_neighbor_features=self.env.add_neighbor_sums)
+        phat = m.predict_proba(features)[:,-1]
+        loss = np.mean(self.cross_entropy(phat, p))
+        estimates_results['obs_data_loss_{}'.format(model.__name__)].append(float(loss))
+
+      # Fit SIS model
+      eta = fit_transition_model(self.env)
+      simulation_env = simulate_from_SIS(self.env, eta, 5, None, None, self.settings['treatment_budget'], n_rep=5)
+      sis_losses = []
+      for x, t in zip(self.env.X_raw, range(len(self.env.X_raw))):
+        s, a, y = x[:,0], x[:,1], x[:,2]
+        phat = simulation_env.infection_probability(a, y, s)
+        p_t = self.env.true_infection_probs[t]
+        sis_losses.append(self.cross_entropy(phat, p_t))
+      estimates_results['mb_loss'].append(float(np.mean(sis_losses)))
+
+      # Fit model to simulation data
+      sim_target = np.hstack(simulation_env.y).astype(float)
+      sim_features = np.vstack(simulation_env.X)
+      for model in model_constructor_list:
+        m = model()
+        m.fit(sim_features, sim_target, weights=None, exclude_neighbor_features=simulation_env.add_neighbor_sums)
+        phat = m.predict_proba(features)[:,-1]
+        loss = np.mean(self.cross_entropy(phat, p))
+        estimates_results['sim_data_loss_{}'.format(model.__name__)].append(float(loss))
+
+      K.clear_session()
+    return estimates_results
+
+  def probability_episode_wrapper(self, replicate):
+    np.random.seed(replicate)
+    results = self.compare_probability_estimates_episode(self.model_constructor_list)
+    return {replicate: results}
+
+  def run_compare_probability_estimates(self, model_constructor_list=[KerasLogit]):
+    self.basename = '_'.join(['prob_estimates', self.basename])
+    self.model_constructor_list = model_constructor_list
+
+    num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
+    pool = mp.Pool(processes=num_processes)
+    results_list = pool.map(self.probability_episode_wrapper, range(self.number_of_replicates))
+
+    # Save results
+    results_dict = {k: v for d in results_list for k, v in d.items()}
+    self.save_results(results_dict)
 
   def bootstrap_distribution_episode_wrapper(self, replicate):
     """
