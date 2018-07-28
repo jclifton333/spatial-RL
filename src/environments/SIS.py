@@ -267,7 +267,7 @@ class SIS(SpatialDisease):
     self.add_state(next_state)
     return next_state
 
-  def infection_probability(self, a, y, s, eta=self.eta):
+  def infection_probability(self, a, y, s, eta=ETA):
     z = np.random.binomial(1, self.omega)
     indicator = (z*s <= 0)
     a_times_indicator = np.multiply(a, indicator)
@@ -281,7 +281,7 @@ class SIS(SpatialDisease):
     infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices], eta)
     return infected_probabilities
 
-  def next_infected_probabilities(self, a, eta=self.eta):
+  def next_infected_probabilities(self, a, eta=ETA):
     next_probs = self.infection_probability(a, self.current_infected, self.current_state, eta=eta)
     if self.contaminator is not None:
       current_X_at_action = self.data_block_at_action(-1, a)
