@@ -188,7 +188,8 @@ class Simulator(object):
         m = model()
         m.fit(features, target, weights=None, exclude_neighbor_features=self.env.add_neighbor_sums)
         phat = m.predict_proba(features)[:,-1]
-        loss = np.mean(self.cross_entropy(phat, p))
+        # loss = np.mean(self.cross_entropy(phat, p))
+        loss = np.mean((phat - p)**2)
         estimates_results['obs_data_loss_{}'.format(model.__name__)].append(float(loss))
 
       # Fit SIS model
@@ -199,7 +200,9 @@ class Simulator(object):
         s, a, y = x[:,0], x[:,1], x[:,2]
         phat = simulation_env.infection_probability(a, y, s)
         p_t = self.env.true_infection_probs[t]
-        sis_losses.append(self.cross_entropy(phat, p_t))
+        # sis_losses.append(self.cross_entropy(phat, p_t))
+        loss = np.mean((phat - p_t)**2)
+        sis_losses.append(loss)
       estimates_results['mb_loss'].append(float(np.mean(sis_losses)))
 
       # Fit model to simulation data
@@ -209,7 +212,8 @@ class Simulator(object):
         m = model()
         m.fit(sim_features, sim_target, weights=None, exclude_neighbor_features=simulation_env.add_neighbor_sums)
         phat = m.predict_proba(features)[:,-1]
-        loss = np.mean(self.cross_entropy(phat, p))
+        # loss = np.mean(self.cross_entropy(phat, p))
+        loss = np.mean((phat - p)**2)
         estimates_results['sim_data_loss_{}'.format(model.__name__)].append(float(loss))
 
       K.clear_session()
