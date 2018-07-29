@@ -8,9 +8,16 @@ import numpy as np
 from scipy.special import expit
 from .SpatialDisease import SpatialDisease
 from ..utils.features import get_all_paths
+from ..utils.misc import KerasLogit
 import pdb
+import pickle as pkl
 import numba as nb
 import networkx as nx
+
+import os
+this_dir = os.path.dirname(os.path.abspath(__file__))
+tuning_data_dir = os.path.join(this_dir, 'tuning', 'tuning_data')
+
 
 
 def sum_prod(A, B):
@@ -30,6 +37,7 @@ class SIS(SpatialDisease):
   POWERS_OF_TWO_MATRICES ={
     k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
   }
+  pdb.set_trace()
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -65,9 +73,18 @@ class SIS(SpatialDisease):
   ETA_6 = np.log(1 / ((1 - PROB_REC) * 0.5) - 1) - ETA_5
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
+  # Contamination model stuff
+  CONTAMINATION_MODEL_FNAME = os.path.join(tuning_data_dir, 'initial-sample-ratios-and-losses-180729_172420.p')
+  CONTAMINATION_MODEL_DATA = pkl.load(open(CONTAMINATION_MODEL_FNAME, 'rb'))
+  CONTAMINATION_MODEL_PARAMETER = CONTAMINATION_MODEL_DATA[3]['contamination_model_parameter']
+  CONTAMINATION_MODEL_PARAMETER = [CONTAMINATION_MODEL_PARAMETER[:-1].reshape(-1, 1),
+                                   CONTAMINATION_MODEL_PARAMETER[-1].reshape(1)]
+  CONTAMINATOR = KerasLogit()
+  CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER, 90)
+
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
                dict_of_path_lists=None, initial_infections=None, initial_state=None, eta=None, beta=None,
-               epsilon=0, contaminator=None):
+               epsilon=0, contaminator=CONTAMINATOR):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
@@ -145,7 +162,7 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    b = data_block[r,:]
+    b = data_block[r, :]
     return b
 
   def m_r(self, r, data_block):
@@ -166,7 +183,7 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    M = 9**k
+    M = 8**k
     phi_k = np.zeros((data_block.shape[0], M))
     for r in self.dict_of_path_lists[k]:
       m_r = int(self.m_r(r, data_block))
@@ -283,10 +300,11 @@ class SIS(SpatialDisease):
 
   def next_infected_probabilities(self, a, eta=ETA):
     next_probs = self.infection_probability(a, self.current_infected, self.current_state, eta=eta)
-    if self.contaminator is not None:
+    if self.contaminator is not None and self.epsilon > 0:
       current_X_at_action = self.data_block_at_action(-1, a)
-      contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:,-1]
+      contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:, -1]
       next_probs = self.epsilon * next_probs + (1 - self.epsilon) * contaminator_probs
+    pdb.set_trace()
     return next_probs
 
   def add_infections(self, y):

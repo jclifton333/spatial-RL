@@ -62,17 +62,19 @@ def r(epsilon, r0):
   return (2 - r0) * epsilon + r0
 
 
-def loss(r0, r_epsilon_list):
+def loss(r0, r_epsilon_list, mean_infection_prop):
   """
   :param r0:
   :param r_epsilon_list: [r-evaluated-at-epsilon for epsilon=0.25, 0.5, 0.75, 1] in that order
+  :param mean_infection_prop:
   :return:
   """
   epsilon_list = (0.25, 0.5, 0.75, 1)
   closeness_loss = np.mean([(r(epsilon, r0) - r_epsilon)**2 for epsilon, r_epsilon in
                             zip(epsilon_list, r_epsilon_list)])
   # order_loss = np.mean(np.array(r_epsilon_list[1:]) - np.array(r_epsilon_list[:-1]) > 0)
-  return closeness_loss
+  infection_rate_loss = (mean_infection_prop < 0.3) + (mean_infection_prop > 0.5)
+  return closeness_loss + infection_rate_loss
 
 
 def save_in_tuning_data(dict_, basename, ftype):
