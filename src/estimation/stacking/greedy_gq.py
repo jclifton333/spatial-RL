@@ -125,7 +125,7 @@ def ggq_step_repeated(theta, w, alpha, beta, q_list, gamma, env, evaluation_budg
 
 
 def ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer,
-        bootstrap_weight_correction_arr=None, intercept=False, project=False):
+        bootstrap_weight_correction_arr=None, intercept=True, project=False):
   """
   :param project: Boolean for projecting theta onto positive R^n (for stacking, since weights should be positive.)
   """
