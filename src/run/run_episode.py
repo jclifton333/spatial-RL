@@ -19,7 +19,7 @@ from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['SIS', 'Ebola']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'rollout', 'rollout', 'one_step',
-                      'treat_all', 'SIS_stacked', 'SIS_model_based']
+                      'treat_all', 'SIS_stacked', 'SIS_model_based', 'dummy_stacked']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'sequential_quad_approx', 'random', 'global']
 
 if __name__ == '__main__':

@@ -91,6 +91,7 @@ def dummy_stacked_q_policy(**kwargs):
     bs_weights_b = np.random.exponential(size=(env.T, env.L))
     q1_list.append(q1_b)
     q2_list.append(q2_b)
+    bootstrap_weights_list.append(bs_weights_b)
 
   bootstrap_weight_correction_arr = compute_bootstrap_weight_correction(bootstrap_weights_list)
   theta = ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer,

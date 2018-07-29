@@ -18,14 +18,14 @@ import pdb
 def q_features(data_block, q_list, intercept):
   q_list = np.array([q(data_block) for q in q_list])
   if intercept:
-    q_list = np.append([1], q_list)
+    q_list = np.vstack((np.ones(q_list.shape[1]), q_list))
   return q_list.T
 
 
-def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, q_features, argmaxer,
+def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer,
                weights=None, intercept=True):
 
-  q_of_X = np.dot(q_features, theta)
+  q_of_X = np.dot(X, theta)
 
   def q_features_at_block(data_block):
       return q_features(data_block, q_list, intercept)
@@ -34,12 +34,11 @@ def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, q
     return np.dot(q_features_at_block(data_block), theta)
 
   _, TD_times_X, X_hat = compute_temporal_differences(stacked_q_fn, gamma, env, evaluation_budget, treatment_budget,
-                                                      argmaxer, bootstrap_correction_weights=weights, q_of_X=q_of_X,
-                                                      ixs=ixs)
+                                                      argmaxer, bootstrap_correction_weights=weights, q_of_X=q_of_X)
   return TD_times_X, X_hat
 
 
-def ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, q_features, argmaxer,
+def ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer,
                         weights_array, intercept=True):
   """
   Returns ggq_pieces weighted by each set weights in weights_list; for re-weighting according to bootstrap
@@ -59,7 +58,7 @@ def ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, 
   """
   TD_times_X, X_hat = [], []
   for q1_b, q2_b, weights_b in zip(q1_list, q2_list, weights_array):
-    TD_times_X_b, X_hat_b = ggq_pieces(theta, [q1_b, q2_b], gamma, env, evaluation_budget, treatment_budget, q_features,
+    TD_times_X_b, X_hat_b = ggq_pieces(theta, [q1_b, q2_b], gamma, env, evaluation_budget, treatment_budget, X,
                                        argmaxer, weights_b, intercept=intercept)
     TD_times_X.append(TD_times_X_b)
     X_hat_b.append(X_hat_b)
@@ -97,8 +96,8 @@ def ggq_step(theta, w, alpha, beta, q_list, gamma, env, evaluation_budget, treat
   return theta, w
 
 
-def ggq_step_repeated(theta, w, alpha, beta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer, ixs,
-                      weights_array, project=True, intercept=True):
+def ggq_step_repeated(theta, w, alpha, beta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, X,
+                      argmaxer, weights_array, project=True, intercept=True):
   """
   GGQ step for repeated bootstrap samples.
   :param theta:
@@ -118,8 +117,8 @@ def ggq_step_repeated(theta, w, alpha, beta, q_list, gamma, env, evaluation_budg
   :param weight_array:
   :return:
   """
-  TD_times_X, X_hat = ggq_pieces_repeated(theta, q_list, gamma, env, evaluation_budget, treatment_budget, X, argmaxer,
-                                          weights_array, intercept=intercept)
+  TD_times_X, X_hat = ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, X,
+                                          argmaxer, weights_array, intercept=intercept)
   theta, w = update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_X, X, X_hat, project)
   return theta, w
 
@@ -137,14 +136,14 @@ def ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argma
   B = len(q1_list)  # Number of bootstrap replicates
   theta, w = np.zeros(n_features), np.zeros(n_features)
   X = np.zeros((0, n_features))
-  for t in range(len(env.X)-1):
+  for t in range(env.T - 1):
     data_block = env.X[t]
     for b in range(B):
       q1_b = q1_list[b]
       q2_b = q2_list[b]
       q_list = [q1_b, q2_b]
       q_hat = q_features(data_block, q_list, intercept)
-      q_features = np.vstack((q_features, q_hat))
+    X = np.vstack((X, q_hat))
 
   for it in range(N_IT):
     alpha = NU / ((it + 1) * np.log(it + 2))
