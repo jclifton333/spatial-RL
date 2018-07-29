@@ -61,7 +61,7 @@ class SpatialDisease(ABC):
       number_initial_infections = int(self.INITIAL_INFECT_PROP * self.L)
       initial_infect_indices = np.random.choice(self.L, number_initial_infections, replace=False)
       self.Y = np.zeros((1, self.L))
-      self.Y[0,initial_infect_indices] = 1
+      self.Y[0, initial_infect_indices] = 1
     else:
       self.Y = np.array([self.initial_infections])
     self.A = np.zeros((0, self.L))
@@ -71,7 +71,7 @@ class SpatialDisease(ABC):
     self.true_infection_probs = []
     
     # Current network status
-    self.current_infected = self.Y[-1,:]
+    self.current_infected = self.Y[-1, :]
     self.T = 0
 
   @abstractmethod

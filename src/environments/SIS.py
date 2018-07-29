@@ -398,7 +398,6 @@ class SIS(SpatialDisease):
     super(SIS, self).update_obs_history(a)
     raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
     data_block = self.phi(raw_data_block)
-
     # Main features
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
@@ -411,13 +410,10 @@ class SIS(SpatialDisease):
     Replace action in raw data_block with given action.
     """
     super(SIS, self).data_block_at_action(data_block_ix, action)
-    if self.A.shape[0] == 0:
+    if len(self.X_raw) == 0:
       new_data_block = self.phi(np.column_stack((self.S_indicator[-1,:], action, self.Y[-1,:])))
     else:
-      try:
-        new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1, :], action, ixs=ixs)
-      except:
-        pdb.set_trace()
+      new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1, :], action, ixs=ixs)
     return new_data_block
 
   def train_test_split(self):

@@ -64,8 +64,9 @@ class KerasLogit(object):
     self.fitted_model = False
     self.exclude_neighbor_features = False  # This should be set to true if env.add_neighbor_features=True
     self.input_shape = None
+    self.layer_added = False
 
-  def set_weights(self, new_weights):
+  def set_weights(self, new_weights, n_feature):
     """
 
     :param new_weights: [coef array, bias array]
@@ -77,16 +78,18 @@ class KerasLogit(object):
       self.reg.add(Dense(1,
                          activation='sigmoid',
                          kernel_regularizer=L1L2(l1=0.0, l2=0.1),
-                         input_dim=self.input_shape,
+                         input_dim=n_feature,
                          weights=new_weights))
+      self.layer_added = True
 
   def fit_keras(self, X, y, weights):
-    self.reg.add(Dense(1,
-                       activation='sigmoid',
-                       kernel_regularizer=L1L2(l1=0.0, l2=0.1),
-                       input_dim=self.input_shape))
+    if not self.layer_added:
+      self.reg.add(Dense(1,
+                         activation='sigmoid',
+                         kernel_regularizer=L1L2(l1=0.0, l2=0.1),
+                         input_dim=self.input_shape))
+      self.layer_added = True
     self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy')
-
     self.reg.fit(X, y, sample_weight=weights, epochs=5, verbose=True)
     self.get_coef()
 

@@ -62,6 +62,19 @@ def r(epsilon, r0):
   return (2 - r0) * epsilon + r0
 
 
+def loss(r0, r_epsilon_list):
+  """
+  :param r0:
+  :param r_epsilon_list: [r-evaluated-at-epsilon for epsilon=0.25, 0.5, 0.75, 1] in that order
+  :return:
+  """
+  epsilon_list = (0.25, 0.5, 0.75, 1)
+  closeness_loss = np.mean([(r(epsilon, r0) - r_epsilon)**2 for epsilon, r_epsilon in
+                            zip(epsilon_list, r_epsilon_list)])
+  # order_loss = np.mean(np.array(r_epsilon_list[1:]) - np.array(r_epsilon_list[:-1]) > 0)
+  return closeness_loss
+
+
 def save_in_tuning_data(dict_, basename, ftype):
   suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
   if ftype == 'pkl':
@@ -121,7 +134,7 @@ def sample_weights(initial_weight_list, epsilon_list=(0.25, 0.5, 0.75, 1), n_sam
 
 
 def simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_constructor, contaminator_constructor,
-                                    time_horizon=25, n_rep=5):
+                                    time_horizon=25, n_rep=10):
   """
   Simulate from model epsilon * SIS + (1 - epsilon) * contaminated, fit MB and MF probs and return MSE ratio.
   :param epsilon:
@@ -139,34 +152,40 @@ def simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_con
 
   # env = SIS.SIS(50, 0, generate_network.lattice, )
   env = environment_factory('SIS', **sis_kwargs)
-  mf_model = mf_constructor()
 
-  r_eps = 0
   a = np.concatenate((np.zeros(47), np.ones(3)))
+  mb_loss = mf_loss = 0
   for rep in range(n_rep):
     env.reset()
-    r_eps_rep = 0
     env.step(np.random.permutation(a))
     env.step(np.random.permutation(a))
+    mb_loss_rep = mf_loss_rep = 0
     for t in range(time_horizon):
+      env.step(np.random.permutation(a))
+
       # Fit models
       features = np.vstack(env.X)
       target = np.hstack(env.y).astype(float)
       eta = fit_transition_model(env)
+      mf_model = mf_constructor()
       mf_model.fit(features, target, weights=None)
 
       # Compute losses
       true_probs = np.hstack(env.true_infection_probs)
-      phat_mb = env.next_infection_probabilities(a, eta=eta)
-      phat_mf = mf_model.predict_proba(env.X[-1])[:, -1]
-      loss_mb = np.sum((phat_mb - true_probs)**2)
-      loss_mf = np.sum((phat_mf - true_probs)**2)
-      r_eps_rep += (loss_mb/loss_mf - r_eps_rep) / (t + 1)
-
+      phat_mb = np.zeros(0)
+      for x, t in zip(env.X_raw, range(len(env.X_raw))):
+        s, a, y = x[:, 0], x[:, 1], x[:, 2]
+        phat_mb_t = env.infection_probability(a, s, y, eta=eta)
+        phat_mb = np.append(phat_mb, phat_mb_t)
+      phat_mf = mf_model.predict_proba(features)[:, -1]
+      mb_loss_t = np.sum((phat_mb - true_probs)**2)
+      mf_loss_t = np.sum((phat_mf - true_probs)**2)
+      mb_loss_rep += (mb_loss_t - mb_loss_rep) / (t + 1)
+      mf_loss_rep += (mf_loss_t - mf_loss_rep) / (t + 1)
       K.clear_session()
-      env.step(np.random.permutation(a))
-    r_eps += (r_eps_rep - r_eps) / (rep + 1)
-  return r_eps
+    mb_loss += (mb_loss_rep - mb_loss) / (rep + 1)
+    mf_loss += (mf_loss_rep - mf_loss) / (rep + 1)
+  return mb_loss / mf_loss
 
 
 def do_initial_sampling_and_get_losses(r0, initial_weight_list=None, sample_weights_and_epsilons=None,
@@ -176,13 +195,23 @@ def do_initial_sampling_and_get_losses(r0, initial_weight_list=None, sample_weig
   if sample_weights_and_epsilons is None:
     sample_weights_and_epsilons = sample_weights(initial_weight_list, n_samples=n_samples)
   losses = []
-  for eps, contamination_weight_vector in sample_weights_and_epsilons:
-    r_eps = simulate_and_estimate_mse_ratio(eps, contamination_weight_vector, mf_constructor=mf_constructor,
-                                            contaminator_constructor=contaminator_constructor)
-    r_desired = r(eps, r0)
-    loss = (r_eps - r_desired)**2
-    losses.append(loss)
-  return sample_weights_and_epsilons, loss_ratios
+  r_epsilon_lists = []
+  res = {}
+  sample_counter = 0
+  for _, contamination_weight_vector in sample_weights_and_epsilons:
+    r_epsilon_list = []
+    for epsilon in (0.25, 0.5, 0.75, 1):
+      r_eps = simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_constructor=mf_constructor,
+                                              contaminator_constructor=contaminator_constructor)
+      r_epsilon_list.append(r_eps)
+    loss_ = loss(r0, r_epsilon_list)
+    losses.append(loss_)
+    r_epsilon_lists.append(r_epsilon_list)
+    res[sample_counter] = {'contamination_model_parameter': contamination_weight_vector,
+                           'r_epsilon_list': r_epsilon_list, 'loss': loss_}
+    sample_counter += 1
+  save_in_tuning_data(res, 'initial-sample-ratios-and-losses', 'pkl')
+  return sample_weights_and_epsilons, r_epsilon_lists, losses
 
 
 if __name__ == '__main__':
@@ -192,7 +221,8 @@ if __name__ == '__main__':
   sample_weights_and_epsilons_fname = \
     os.path.join(this_dir, 'tuning_data', 'sis-tuning-initial-sample-weights-180728_184731.p')
   sample_weights_and_epsilons = pkl.load(open(sample_weights_and_epsilons_fname, 'rb'))['samples']
-  do_initial_sampling_and_get_losses(r0, sample_weights_and_epsilons=sample_weights_and_epsilons)
+  ans = do_initial_sampling_and_get_losses(r0, sample_weights_and_epsilons=sample_weights_and_epsilons)
+  print(ans[1], ans[2])
 
 
 
