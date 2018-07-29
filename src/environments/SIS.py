@@ -414,7 +414,10 @@ class SIS(SpatialDisease):
     if self.A.shape[0] == 0:
       new_data_block = self.phi(np.column_stack((self.S_indicator[-1,:], action, self.Y[-1,:])))
     else:
-      new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1, :], action, ixs=ixs)
+      try:
+        new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1, :], action, ixs=ixs)
+      except:
+        pdb.set_trace()
     return new_data_block
 
   def train_test_split(self):

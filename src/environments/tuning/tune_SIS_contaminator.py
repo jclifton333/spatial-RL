@@ -129,7 +129,8 @@ def simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_con
   :return:
   """
   contaminator = contaminator_constructor()
-  contaminator.set_weights([contamination_weight_vector[:-1], contamination_weight_vector[-1]])
+  coef, bias = contamination_weight_vector[:-1], contamination_weight_vector[-1]
+  contaminator.set_weights([coef.reshape(-1, 1), np.array(bias).reshape(1)], len(coef))
 
 # Set up simulator
   sis_kwargs = {'L': 50, 'omega': 0, 'generate_network': generate_network.lattice,
@@ -137,19 +138,17 @@ def simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_con
                 'epsilon': epsilon}
 
   # env = SIS.SIS(50, 0, generate_network.lattice, )
-  env = environment_factory(sis_kwargs)
+  env = environment_factory('SIS', **sis_kwargs)
   mf_model = mf_constructor()
 
   r_eps = 0
+  a = np.concatenate((np.zeros(47), np.ones(3)))
   for rep in range(n_rep):
     env.reset()
     r_eps_rep = 0
+    env.step(np.random.permutation(a))
+    env.step(np.random.permutation(a))
     for t in range(time_horizon):
-      # Take random step
-      a = np.concatenate((np.zeros(47), np.ones(3)))
-      a = np.random.permutation(a)
-      env.step(a)
-
       # Fit models
       features = np.vstack(env.X)
       target = np.hstack(env.y).astype(float)
@@ -165,6 +164,7 @@ def simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_con
       r_eps_rep += (loss_mb/loss_mf - r_eps_rep) / (t + 1)
 
       K.clear_session()
+      env.step(np.random.permutation(a))
     r_eps += (r_eps_rep - r_eps) / (rep + 1)
   return r_eps
 
@@ -191,9 +191,7 @@ if __name__ == '__main__':
   r0 = 0.01
   sample_weights_and_epsilons_fname = \
     os.path.join(this_dir, 'tuning_data', 'sis-tuning-initial-sample-weights-180728_184731.p')
-  sample_weights_and_epsilons_ = pkl.load(open(sample_weights_and_epsilons_fname, 'rb'))['samples']
-  pdb.set_trace()
-  sample_weights_and_epsilons = [sample_weights_and_epsilons_[0], np.array(sample_weights_and_epsilons_[-1])]
+  sample_weights_and_epsilons = pkl.load(open(sample_weights_and_epsilons_fname, 'rb'))['samples']
   do_initial_sampling_and_get_losses(r0, sample_weights_and_epsilons=sample_weights_and_epsilons)
 
 
