@@ -2,13 +2,12 @@ import numpy as np
 from .greedy_gq import ggq
 
 
-
 def compute_bootstrap_weight_correction(bootstrap_weights_list):
   """
   Compute corrections associated with bootstrap weights, in order to perform multiplier bootstrap prediction error
   estimation.
 
-  :param bootstrap_weights: (T x L) array of bootstrap weights.
+  :param bootstrap_weights_list: B-length list of (T x L) arrays of bootstrap weights.
   :return:
   """
   T, L = bootstrap_weights_list[0].shape
@@ -41,7 +40,7 @@ def stack(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, arg
   :return:
   """
   bootstrap_weight_correction_arr = compute_bootstrap_weight_correction(bootstrap_weight_list)
-  theta = ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, intercept,
-               bootstrap_weight_correction_arr=bootstrap_weight_correction_arr, project=True)
+  theta = ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, intercept=True,
+              bootstrap_weight_correction_arr=bootstrap_weight_correction_arr, project=True)
   return theta
 
