@@ -37,6 +37,7 @@ class SIS(SpatialDisease):
   POWERS_OF_TWO_MATRICES ={
     k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
   }
+  pdb.set_trace()
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -182,7 +183,7 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    M = 9**k
+    M = 8
     phi_k = np.zeros((data_block.shape[0], M))
     for r in self.dict_of_path_lists[k]:
       m_r = int(self.m_r(r, data_block))
@@ -196,13 +197,23 @@ class SIS(SpatialDisease):
     :return:
     """
     data_block[:, -1] = 1 - data_block[:, -1]
-    phi = np.zeros((data_block.shape[0], 0))
-    for k in range(1, SIS.PATH_LENGTH + 1):
-      phi_k = self.phi_k(k, data_block)
-      phi = np.column_stack((phi, phi_k))
-    if self.add_neighbor_sums:
-      phi = self.phi_neighbor(phi)
+    powers_of_two_matrix = SIS.POWERS_OF_TWO_MATRICES[1]
+    phi = np.zeros((data_block.shape[0], 16))
+    for l in range(self.L):
+      # Get encoding for location l
+      row_l = data_block[l,:]
+      ix = int(numba_sum_prod(row_l, powers_of_two_matrix))
+      phi[l, ix] = 1
+
+      # Get encodings for l's neighbors
+      for lprime in self.adjacency_list[l]:
+        row_lprime = data_block[lprime, :]
+        ix = int(numba_sum_prod(row_lprime, powers_of_two_matrix))
+        phi[8 + ix] += 1
     return phi
+
+  def modify_encoding(self, old_data_block, old_action, new_action):
+    pass
 
   # Functions for efficiently computing features-at-new-action
   def map_m_to_index(self, m, k):
@@ -364,15 +375,20 @@ class SIS(SpatialDisease):
   ## End infection probability helper functions ##
   ################################################
 
+  def neighbor_infection_and_treatment_status(self, l, a, y):
+    neighbor_ixs = self.adjacency_list[l]
+    num_infected_neighbors = int(np.sum(y[neighbor_ixs]))
+    num_treated_and_infected_neighbors = \
+      int(np.sum(np.multiply(a[neighbor_ixs], y[neighbor_ixs])))
+    num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
+    return num_treated_and_infected_neighbors, num_untreated_and_infected_neighbors
+
   def update_likelihood_for_location(self, l, action, last_infections, next_infections,
                                      counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
     a_l = action[l]
     y_l = next_infections[l]
-    neighbor_ixs = self.adjacency_list[l]
-    num_infected_neighbors = int(np.sum(last_infections[neighbor_ixs]))
-    num_treated_and_infected_neighbors = \
-      int(np.sum(np.multiply(action[neighbor_ixs], last_infections[neighbor_ixs])))
-    num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
+    num_treated_and_infected_neighbors, num_untreated_and_infected_neighbors = \
+      self.neighbor_infection_and_treatment_status(l, action, last_infections)
 
     if y_l:
       counts_for_likelihood_next_infected[int(a_l), num_untreated_and_infected_neighbors,
