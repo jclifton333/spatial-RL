@@ -5,8 +5,7 @@ from src.utils.misc import random_argsort
 from functools import partial
 
 
-def simulate_from_SIS(env, eta, planning_depth, argmaxer, evaluation_budget, treatment_budget,
-                      n_rep=30):
+def simulate_from_SIS(env, eta, planning_depth, treatment_budget, n_rep=30):
   """
   For model-based RL in the SIS generative model.
 
@@ -29,15 +28,16 @@ def simulate_from_SIS(env, eta, planning_depth, argmaxer, evaluation_budget, tre
                        epsilon=env.epsilon,
                        contaminator=env.contaminator,
                        eta=eta)
-  L = simulation_env.L
+  a = np.concatenate((np.zeros(simulation_env.L - treatment_budget), np.ones(treatment_budget)))
   for rep in range(n_rep):
     for t in range(planning_depth):
       # Use myopic estimated probs as rollout (different rollout!) policy
-      print('rep {} t {}'.format(rep, t))
-      a = np.zeros(L)
-      probs = simulation_env.next_infected_probabilities(L)
-      treat_ixs = random_argsort(-probs, treatment_budget)
-      a[treat_ixs] = 1
+      # print('rep {} t {}'.format(rep, t))
+      # a = np.zeros(L)
+      # probs = simulation_env.next_infected_probabilities(L)
+      # treat_ixs = random_argsort(-probs, treatment_budget)
+      # a[treat_ixs] = 1
+      a = np.random.permutation(a)
       simulation_env.step(a)
     simulation_env.add_state(env.current_state)
     simulation_env.add_infections(env.current_infected)

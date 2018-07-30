@@ -72,6 +72,7 @@ class KerasLogit(object):
     :param new_weights: [coef array, bias array]
     :return:
     """
+    self.fitted_model = True
     if self.reg.layers:
       self.reg.layers[0].set_weights(new_weights)
     else:
@@ -90,7 +91,7 @@ class KerasLogit(object):
                          input_dim=self.input_shape))
       self.layer_added = True
     self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy')
-    self.reg.fit(X, y, sample_weight=weights, epochs=5, verbose=True)
+    self.reg.fit(X, y, sample_weight=weights, epochs=5, verbose=False)
     self.get_coef()
 
   def fit(self, X, y, weights, exclude_neighbor_features=False):

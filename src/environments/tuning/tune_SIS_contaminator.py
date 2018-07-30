@@ -30,6 +30,7 @@ from src.environments.environment_factory import environment_factory
 from src.environments import generate_network, SIS
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.utils.misc import KerasLogit
+from functools import partial
 import keras.backend as K
 
 SEED = 3
@@ -62,17 +63,19 @@ def r(epsilon, r0):
   return (2 - r0) * epsilon + r0
 
 
-def loss(r0, r_epsilon_list, mean_infection_prop):
+def loss(r0, r1, mean_infection_prop):
   """
   :param r0:
-  :param r_epsilon_list: [r-evaluated-at-epsilon for epsilon=0.25, 0.5, 0.75, 1] in that order
+  :param r1: estimated mse ratio when eps = 1; we want this to be close to 2, i.e. MF is twice as accurate under
+             full contamination.
   :param mean_infection_prop:
   :return:
   """
-  epsilon_list = (0.25, 0.5, 0.75, 1)
-  closeness_loss = np.mean([(r(epsilon, r0) - r_epsilon)**2 for epsilon, r_epsilon in
-                            zip(epsilon_list, r_epsilon_list)])
+  # epsilon_list = (0.25, 0.5, 0.75, 1)
+  # closeness_loss = np.mean([(r(epsilon, r0) - r_epsilon)**2 for epsilon, r_epsilon in
+  #                           zip(epsilon_list, r_epsilon_list)])
   # order_loss = np.mean(np.array(r_epsilon_list[1:]) - np.array(r_epsilon_list[:-1]) > 0)
+  closeness_loss = (r1 - 2)**2
   infection_rate_loss = (mean_infection_prop < 0.3) + (mean_infection_prop > 0.5)
   return closeness_loss + infection_rate_loss
 
@@ -190,6 +193,72 @@ def simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_con
   return mb_loss / mf_loss
 
 
+def simulate_data_to_compare_on(contamination_weight_vector, contaminator_constructor, time_horizon=25, n_rep=10):
+  """
+  Simulate from model epsilon=1 with myopic policy and return observations; this will be to compare MSEs of fitted
+  models.
+  :param epsilon:
+  :param contamination_weight_vector: [coef, bias]
+  :return:
+  """
+  contaminator = contaminator_constructor()
+  coef, bias = contamination_weight_vector[:-1], contamination_weight_vector[-1]
+  contaminator.set_weights([coef.reshape(-1, 1), np.array(bias).reshape(1)], len(coef))
+
+  sis_kwargs = {'L': 50, 'omega': 0, 'generate_network': generate_network.lattice,
+                'initial_infections': None, 'add_neighbor_sums': False, 'contaminator': contaminator,
+                'epsilon': 1}
+
+  # env = SIS.SIS(50, 0, generate_network.lattice, )
+  env = environment_factory('SIS', **sis_kwargs)
+  simulation_env = simulate_from_SIS(env, env.eta, time_horizon, 3)
+  return simulation_env
+
+
+def simulate_and_get_loss(contamination_weight_vector, r0, contaminator_constructor, mf_constructor, time_horizon=25,
+                          n_rep=25):
+  reference_env = simulate_data_to_compare_on(contamination_weight_vector, contaminator_constructor,
+                                                 time_horizon=time_horizon, n_rep=1)
+  true_probs = np.hstack(reference_env.true_infection_probs)
+  reference_features = np.vstack(reference_env.X)
+  phat_mb_array = np.zeros((0, len(true_probs)))
+  phat_mf_array = np.zeros((0, len(true_probs)))
+  for rep in range(n_rep):
+    print(rep)
+    simulation_env = simulate_data_to_compare_on(contamination_weight_vector, contaminator_constructor,
+                                                 time_horizon=time_horizon, n_rep=1)
+    # Fit models
+    features = np.vstack(simulation_env.X)
+    target = np.hstack(simulation_env.y).astype(float)
+    eta = fit_transition_model(simulation_env)
+    mf_model = mf_constructor()
+    mf_model.fit(features, target, weights=None)
+
+    # Compute predicted probs
+    phat_mf = mf_model.predict_proba(reference_features)[:, -1]
+    phat_mb = np.zeros(0)
+    for t, x in enumerate(reference_env.X_raw):
+      s, a, y = x[:, 0], x[:, 1], x[:, 2]
+      phat_mb_t = reference_env.infection_probability(a, s, y, eta=eta)
+      phat_mb = np.append(phat_mb, phat_mb_t)
+    K.clear_session()
+
+    # Add to array
+    phat_mb_array = np.vstack((phat_mb_array, phat_mb))
+    phat_mf_array = np.vstack((phat_mf_array, phat_mf))
+
+  # Compute bias and variance
+  mb_bias = np.mean(np.mean(phat_mb_array, axis=0) - true_probs)
+  mb_variance = np.mean(np.var(phat_mb_array, axis=0))
+  mf_bias = np.mean(np.mean(phat_mf_array, axis=0) - true_probs)
+  mf_variance = np.mean(np.var(phat_mf_array, axis=0))
+  print('mb bias: {} mb var: {} mf bias: {} mb var: {}'.format(mb_bias, mb_variance, mf_bias, mf_variance))
+  r1 = (mb_bias**2 + mb_variance) / (mf_bias**2 + mf_variance)
+  mean_infection_prop = np.mean(reference_env.y)
+  loss_ = loss(r0, r1, mean_infection_prop)
+  return loss_, mean_infection_prop, r1
+
+
 def do_initial_sampling_and_get_losses(r0, initial_weight_list=None, sample_weights_and_epsilons=None,
                                        mf_constructor=KerasLogit, contaminator_constructor=KerasLogit, n_samples=50):
   if initial_weight_list is None and sample_weights_and_epsilons is None:
@@ -220,12 +289,38 @@ if __name__ == '__main__':
   np.random.seed(SEED)
   # r0 = get_r0()
   r0 = 0.01
-  sample_weights_and_epsilons_fname = \
-    os.path.join(this_dir, 'tuning_data', 'sis-tuning-initial-sample-weights-180728_184731.p')
-  sample_weights_and_epsilons = pkl.load(open(sample_weights_and_epsilons_fname, 'rb'))['samples']
-  ans = do_initial_sampling_and_get_losses(r0, sample_weights_and_epsilons=sample_weights_and_epsilons)
-  print(ans[1], ans[2])
-
+  # sample_weights_and_epsilons_fname = \
+  #   os.path.join(this_dir, 'tuning_data', 'sis-tuning-initial-sample-weights-180728_184731.p')
+  # sample_weights_and_epsilons = pkl.load(open(sample_weights_and_epsilons_fname, 'rb'))['samples']
+  # ans = do_initial_sampling_and_get_losses(r0, sample_weights_and_epsilons=sample_weights_and_epsilons)
+  # print(ans[1], ans[2])
+  loss_function = partial(simulate_and_get_loss, r0=r0, contaminator_constructor=KerasLogit,
+                          mf_constructor=KerasLogit)
+  num_nonzero = 55
+  counter = 0
+  max_counter = 100
+  mean_inf = 0
+  while counter < max_counter and (mean_inf > 0.5 or mean_inf < 0.3):
+    coef_ = np.zeros(91)
+    coef_[-1] = -2.2
+    rando = np.random.normal(loc=0.5, size=num_nonzero)
+    nonzero = np.random.choice(90, size=num_nonzero, replace=False)
+    coef_[nonzero] = rando
+    res = loss_function(coef_)
+    print(res)
+    counter += 1
+    mean_inf = res[1]
+  best_coef = coef_
+  best_loss = res[0]
+  while counter < max_counter:
+    new_coef = np.concatenate((np.random.multivariate_normal(mean=best_coef[:-1], cov=5*np.eye(90)), np.array([-2.2])))
+    print(res)
+    res = loss_function(coef_)
+    if res[0] < best_loss:
+      best_loss = res[0]
+      best_coef = new_coef
+    counter += 1
+  print('best loss {}'.format(best_loss))
 
 
 

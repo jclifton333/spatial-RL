@@ -37,7 +37,6 @@ class SIS(SpatialDisease):
   POWERS_OF_TWO_MATRICES ={
     k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
   }
-  pdb.set_trace()
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -183,7 +182,7 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    M = 8**k
+    M = 9**k
     phi_k = np.zeros((data_block.shape[0], M))
     for r in self.dict_of_path_lists[k]:
       m_r = int(self.m_r(r, data_block))
@@ -196,6 +195,7 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
+    data_block[:, -1] = 1 - data_block[:, -1]
     phi = np.zeros((data_block.shape[0], 0))
     for k in range(1, SIS.PATH_LENGTH + 1):
       phi_k = self.phi_k(k, data_block)
@@ -244,6 +244,11 @@ class SIS(SpatialDisease):
     if self.add_neighbor_sums:
       new_data_block = self.phi_neighbor(new_data_block)
     return new_data_block
+
+  def random_phi(self, l):
+    phi_1 = np.random.multinomial(1, np.ones(9)/9)
+    phi_2 = np.random.multinomial(len(self.adjacency_list[l]), np.ones(81)/81)
+    return np.concatenate((phi_1, phi_2))
 
   def phi_neighbor(self, data_block):
     """
@@ -303,8 +308,7 @@ class SIS(SpatialDisease):
     if self.contaminator is not None and self.epsilon > 0:
       current_X_at_action = self.data_block_at_action(-1, a)
       contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:, -1]
-      next_probs = self.epsilon * next_probs + (1 - self.epsilon) * contaminator_probs
-    pdb.set_trace()
+      next_probs = (1 - self.epsilon) * next_probs + self.epsilon * contaminator_probs
     return next_probs
 
   def add_infections(self, y):
