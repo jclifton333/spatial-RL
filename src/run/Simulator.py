@@ -78,8 +78,8 @@ class Simulator(object):
 
     # Get filename base for saving results
     to_join = [env_name, policy_name, argmaxer_name, str(self.env.L)]
-    if 'omega' in env_kwargs.keys():
-      to_join.append(str(env_kwargs['omega']))
+    if 'epsilon' in env_kwargs.keys():
+      to_join.append(str(env_kwargs['epsilon']))
     self.basename = '_'.join(to_join)
 
   def run(self):
@@ -105,6 +105,7 @@ class Simulator(object):
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     for t in range(self.time_horizon-2):
+      print(t)
       a, _ = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
       self.env.step(a)

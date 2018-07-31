@@ -70,12 +70,15 @@ class SIS(SpatialDisease):
   # CONTAMINATION_MODEL_PARAMETER = CONTAMINATION_MODEL_DATA[3]['contamination_model_parameter']
   # CONTAMINATION_MODEL_PARAMETER = [CONTAMINATION_MODEL_PARAMETER[:-1].reshape(-1, 1),
   #                                  CONTAMINATION_MODEL_PARAMETER[-1].reshape(1)]
-  # CONTAMINATOR = KerasLogit()
-  # CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER, 90)
+  CONTAMINATOR = SIS_Contaminator()
+  CONTAMINATION_MODEL_PARAMETER = np.array([
+    0.99, 0.32, 0.15, -0.83, -0.03, -0.07, 0.06, -0.21, 0.08, -0.14, -0.56, 0.54, 0.54, 0.95, 0.13, -0.10, -2.2
+  ])
+  CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER, 16)
 
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
                initial_infections=None, initial_state=None, eta=None, beta=None,
-               epsilon=0, contaminator=SIS_Contaminator):
+               epsilon=0, contaminator=CONTAMINATOR):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
@@ -243,7 +246,7 @@ class SIS(SpatialDisease):
     return next_state
 
   def infection_probability(self, a, y, s, eta=ETA):
-    return infection_probability(a, y, s, eta, self.L, self.adjacency_list)
+    return infection_probability(a, y, s, eta, self.omega, self.L, self.adjacency_list)
 
   def next_infected_probabilities(self, a, eta=ETA):
     if self.contaminator is not None and self.epsilon > 0:

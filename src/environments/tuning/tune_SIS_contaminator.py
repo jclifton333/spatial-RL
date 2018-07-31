@@ -27,6 +27,7 @@ import yaml
 import pickle as pkl
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.environments.environment_factory import environment_factory
+from src.environments.sis_infection_probs import infection_probability
 from src.environments import generate_network, SIS
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.utils.misc import KerasLogit, SKLogit
@@ -239,8 +240,7 @@ def simulate_and_get_loss(contamination_weight_vector, r0, contaminator_construc
     phat_mb = np.zeros(0)
     for t, x in enumerate(reference_env.X_raw):
       s, a, y = x[:, 0], x[:, 1], x[:, 2]
-      # ToDo: This is wrong, fix!
-      phat_mb_t = reference_env.infection_probability(a, s, y, eta=eta)
+      phat_mb_t = infection_probability(a, s, y, eta, 0, reference_env.L, reference_env.adjacency_list)
       phat_mb = np.append(phat_mb, phat_mb_t)
     K.clear_session()
 

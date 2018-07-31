@@ -1,10 +1,15 @@
+import pdb
 import numpy as np
-from scipy.special import expit
-from numba import njit
+from numba import njit, jit
 
 """"
 For computing SIS model infection probabilities.  See draft pg. 13.
 """
+
+
+@njit
+def expit(logit_p):
+  return 1 - 1 / (1 + np.exp(logit_p))
 
 
 def infection_probability(a, y, s, eta, omega, L, adjacency_lists):
@@ -23,8 +28,8 @@ def infection_probability(a, y, s, eta, omega, L, adjacency_lists):
   indicator = (z * s <= 0)
   a_times_indicator = np.multiply(a, indicator)
 
-  infected_indices = np.where(y > 0)
-  not_infected_indices = np.where(y == 0)
+  infected_indices = np.where(y > 0)[0].astype(int)
+  not_infected_indices = np.where(y == 0)[0].astype(int)
 
   infected_probabilities = np.zeros(L)
   infected_probabilities[not_infected_indices] = p_l(a_times_indicator, not_infected_indices, infected_indices, eta,
@@ -45,17 +50,30 @@ def q_l(a_times_indicator, eta):
   return q
 
 
-@njit
-def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists):
-  product_vector = np.ones(not_infected_indices[0])
-  for l in not_infected_indices[0]:
+@jit
+def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists,
+                        product_vector):
+  """
+
+  :param a_times_indicator:
+  :param not_infected_indices:
+  :param infected_indices:
+  :param eta:
+  :param adjacency_lists:
+  :param product_vector: array of 1s of length len(not_infected_indices)
+  :return:
+  """
+
+  i = 0
+  for l in not_infected_indices:
     neighbors = adjacency_lists[l]
     product_l = 1.0
     for lprime in neighbors:
       if lprime in infected_indices:
-        logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta4*a_times_indicator[lprime]
+        logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*a_times_indicator[lprime]
         product_l *= expit(logit_p_llprime)
-    product_vector[l] = product_l
+    product_vector[i] = product_l
+    i += 1
 
   # for l in not_infected_indices[0].tolist():
   #   # Get infected neighbors
@@ -70,8 +88,8 @@ def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indice
 
 
 def p_l(a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists):
-  p_l0 = p_l0(a_times_indicator[not_infected_indices], eta)
-  one_minus_p_llprime = one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta,
-                                            adjacency_lists)
-  product = np.multiply(1 - p_l0, one_minus_p_llprime)
+  p_l0_ = p_l0(a_times_indicator[not_infected_indices], eta)
+  one_minus_p_llprime_ = one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta,
+                                             adjacency_lists, np.array([1]*len(not_infected_indices)))
+  product = np.multiply(1 - p_l0_, one_minus_p_llprime_)
   return 1 - product
