@@ -218,7 +218,7 @@ def simulate_data_to_compare_on(contamination_weight_vector, contaminator_constr
 def simulate_and_get_loss(contamination_weight_vector, r0, contaminator_constructor, mf_constructor, time_horizon=25,
                           n_rep=25):
   reference_env = simulate_data_to_compare_on(contamination_weight_vector, contaminator_constructor,
-                                                 time_horizon=time_horizon, n_rep=1)
+                                              time_horizon=time_horizon, n_rep=1)
   true_probs = np.hstack(reference_env.true_infection_probs)
   reference_features = np.vstack(reference_env.X)
   phat_mb_array = np.zeros((0, len(true_probs)))
@@ -295,16 +295,16 @@ if __name__ == '__main__':
   # ans = do_initial_sampling_and_get_losses(r0, sample_weights_and_epsilons=sample_weights_and_epsilons)
   # print(ans[1], ans[2])
   loss_function = partial(simulate_and_get_loss, r0=r0, contaminator_constructor=KerasLogit,
-                          mf_constructor=KerasLogit)
-  num_nonzero = 55
+                          mf_constructor=KerasLogit, n_rep=1)
+  num_nonzero = 10
   counter = 0
-  max_counter = 100
+  max_counter = 1
   mean_inf = 0
   while counter < max_counter and (mean_inf > 0.5 or mean_inf < 0.3):
-    coef_ = np.zeros(91)
+    coef_ = np.zeros(17)
     coef_[-1] = -2.2
     rando = np.random.normal(loc=0.5, size=num_nonzero)
-    nonzero = np.random.choice(90, size=num_nonzero, replace=False)
+    nonzero = np.random.choice(16, size=num_nonzero, replace=False)
     coef_[nonzero] = rando
     res = loss_function(coef_)
     print(res)
@@ -313,7 +313,7 @@ if __name__ == '__main__':
   best_coef = coef_
   best_loss = res[0]
   while counter < max_counter:
-    new_coef = np.concatenate((np.random.multivariate_normal(mean=best_coef[:-1], cov=5*np.eye(90)), np.array([-2.2])))
+    new_coef = np.concatenate((np.random.multivariate_normal(mean=best_coef[:-1], cov=5*np.eye(16)), np.array([-2.2])))
     print(res)
     res = loss_function(coef_)
     if res[0] < best_loss:

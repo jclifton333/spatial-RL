@@ -189,7 +189,7 @@ class Simulator(object):
 
       # Fit SIS model
       eta = fit_transition_model(self.env)
-      simulation_env = simulate_from_SIS(self.env, eta, 5, None, None, self.settings['treatment_budget'], n_rep=5)
+      simulation_env = simulate_from_SIS(self.env, eta, 5,self.settings['treatment_budget'], n_rep=5)
       sis_losses = []
       for x, t in zip(self.env.X_raw, range(len(self.env.X_raw))):
         s, a, y = x[:,0], x[:,1], x[:,2]

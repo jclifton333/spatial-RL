@@ -75,10 +75,6 @@ class SpatialDisease(ABC):
     self.T = 0
 
   @abstractmethod
-  def train_test_split(self):
-    pass
-
-  @abstractmethod
   def update_obs_history(self, a):
     pass
   

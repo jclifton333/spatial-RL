@@ -21,7 +21,6 @@ def simulate_from_SIS(env, eta, planning_depth, treatment_budget, n_rep=30):
   """
   simulation_env = SIS(env.L, 0, None,
                        adjacency_matrix=env.adjacency_matrix,
-                       dict_of_path_lists=env.dict_of_path_lists,
                        initial_infections=env.current_infected,
                        initial_state=env.current_state,
                        add_neighbor_sums=env.add_neighbor_sums,

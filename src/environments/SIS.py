@@ -7,6 +7,7 @@ import copy
 import numpy as np
 from scipy.special import expit
 from .SpatialDisease import SpatialDisease
+from .sis_contaminator import random_contamination
 from ..utils.features import get_all_paths
 from ..utils.misc import KerasLogit
 import pdb
@@ -19,25 +20,12 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 tuning_data_dir = os.path.join(this_dir, 'tuning', 'tuning_data')
 
 
-
-def sum_prod(A, B):
-  m, n = A.shape
-  s = 1
-  for i in range(m):
-    for j in range(n):
-      s += A[i,j]*B[i,j]
-  return s
-
-
-numba_sum_prod = nb.jit(nb.float64(nb.float64[:,:], nb.float64[:,:]), nopython=True)(sum_prod)
-
-
 class SIS(SpatialDisease):
-  PATH_LENGTH = 2 # For path-based features
-  POWERS_OF_TWO_MATRICES ={
-    k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
-  }
-  pdb.set_trace()
+  # PATH_LENGTH = 2 # For path-based features
+  # POWERS_OF_TWO_MATRICES ={
+  #   k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
+  # }
+  ENCODING_MATRIX = np.array([np.power(2.0, 3-j) for j in range(1, 3+1)])
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -74,17 +62,17 @@ class SIS(SpatialDisease):
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
   # Contamination model stuff
-  CONTAMINATION_MODEL_FNAME = os.path.join(tuning_data_dir, 'initial-sample-ratios-and-losses-180729_172420.p')
-  CONTAMINATION_MODEL_DATA = pkl.load(open(CONTAMINATION_MODEL_FNAME, 'rb'))
-  CONTAMINATION_MODEL_PARAMETER = CONTAMINATION_MODEL_DATA[3]['contamination_model_parameter']
-  CONTAMINATION_MODEL_PARAMETER = [CONTAMINATION_MODEL_PARAMETER[:-1].reshape(-1, 1),
-                                   CONTAMINATION_MODEL_PARAMETER[-1].reshape(1)]
-  CONTAMINATOR = KerasLogit()
-  CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER, 90)
+  # CONTAMINATION_MODEL_FNAME = os.path.join(tuning_data_dir, 'initial-sample-ratios-and-losses-180729_172420.p')
+  # CONTAMINATION_MODEL_DATA = pkl.load(open(CONTAMINATION_MODEL_FNAME, 'rb'))
+  # CONTAMINATION_MODEL_PARAMETER = CONTAMINATION_MODEL_DATA[3]['contamination_model_parameter']
+  # CONTAMINATION_MODEL_PARAMETER = [CONTAMINATION_MODEL_PARAMETER[:-1].reshape(-1, 1),
+  #                                  CONTAMINATION_MODEL_PARAMETER[-1].reshape(1)]
+  # CONTAMINATOR = KerasLogit()
+  # CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER, 90)
 
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
-               dict_of_path_lists=None, initial_infections=None, initial_state=None, eta=None, beta=None,
-               epsilon=0, contaminator=CONTAMINATOR):
+               initial_infections=None, initial_state=None, eta=None, beta=None,
+               epsilon=0, contaminator=None):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
@@ -105,20 +93,14 @@ class SIS(SpatialDisease):
 
     if adjacency_matrix is None:
       self.adjacency_matrix = generate_network(L)
-      self.dict_of_path_lists = get_all_paths(self.adjacency_matrix, SIS.PATH_LENGTH - 1)
     else:
       self.adjacency_matrix = adjacency_matrix
-      self.dict_of_path_lists = dict_of_path_lists
     SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections)
 
     if initial_state is None:
       self.initial_state = np.zeros(self.L)
     else:
       self.initial_state = initial_state
-
-    # These are for efficiently getting features at different actions
-    self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
-    self.map_m_to_index_dict = {k: np.sum([9**i for i in range(1, k)]) for k in self.dict_of_path_lists.keys()}
 
     self.omega = omega
     self.state_covariance = self.beta[1] * np.eye(self.L)
@@ -128,7 +110,7 @@ class SIS(SpatialDisease):
     self.num_infected_neighbors = []
     self.num_infected_and_treated_neighbors = []
     self.Phi = [] # Network-level features
-    self.current_state = self.S[-1,:]
+    self.current_state = self.S[-1, :]
 
     # These are for efficiently computing gradients for estimating generative model
     self.max_num_neighbors = int(np.max(np.sum(self.adjacency_matrix, axis=0)))
@@ -140,7 +122,6 @@ class SIS(SpatialDisease):
     Reset state and observation histories.
     """
     super(SIS, self).reset()
-    self.map_to_path_signature = {r: None for k, r_list in self.dict_of_path_lists.items() for r in r_list}
     self.S = np.array([self.initial_state])
     self.S_indicator = self.S > 0
     self.num_infected_neighbors = []
@@ -151,45 +132,24 @@ class SIS(SpatialDisease):
     self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
 
   ##############################################################
-  ## Path-based feature function computation (see draft p7)   ##
+  ##            Feature function computation                  ##
   ##############################################################
 
-  def get_b(self, r, data_block):
-    """
-    Get b vector associated with current s, y, a
-    on path r.
-    :param r: list of indices of states on path
-    :param data_block:
-    :return:
-    """
-    b = data_block[r, :]
-    return b
+  def phi_at_location(self, l, data_block):
+    phi_l = np.zeros(16)
 
-  def m_r(self, r, data_block):
-    """
-    Compute m_r for given path as defined in paper.
-    :param r: list of indices on defining path
-    :param data_block:
-    :return:
-    """
-    b = self.get_b(r, data_block)
-    k, q = b.shape
-    powers_of_2_matrix = SIS.POWERS_OF_TWO_MATRICES[k]
-    return numba_sum_prod(b, powers_of_2_matrix)
+    # Get encoding for location l
+    row_l = data_block[l, :]
+    ix = int(np.dot(row_l, SIS.ENCODING_MATRIX))
+    phi_l[ix] = 1
 
-  def phi_k(self, k, data_block):
-    """
-    :param k: path length
-    :param data_block:
-    :return:
-    """
-    M = 8
-    phi_k = np.zeros((data_block.shape[0], M))
-    for r in self.dict_of_path_lists[k]:
-      m_r = int(self.m_r(r, data_block))
-      self.map_to_path_signature[r] = m_r
-      phi_k[r, [m_r - 1]*k] += 1
-    return phi_k
+    # Get encodings for l's neighbors
+    for lprime in self.adjacency_list[l]:
+      row_lprime = data_block[lprime, :]
+      ix = int(np.dot(row_lprime, SIS.ENCODING_MATRIX))
+      phi_l[8 + ix] += 1
+
+    return phi_l
 
   def phi(self, data_block):
     """
@@ -197,39 +157,11 @@ class SIS(SpatialDisease):
     :return:
     """
     data_block[:, -1] = 1 - data_block[:, -1]
-    powers_of_two_matrix = SIS.POWERS_OF_TWO_MATRICES[1]
-    phi = np.zeros((data_block.shape[0], 16))
+    phi = np.zeros((0, 16))
     for l in range(self.L):
-      # Get encoding for location l
-      row_l = data_block[l,:]
-      ix = int(numba_sum_prod(row_l, powers_of_two_matrix))
-      phi[l, ix] = 1
-
-      # Get encodings for l's neighbors
-      for lprime in self.adjacency_list[l]:
-        row_lprime = data_block[lprime, :]
-        ix = int(numba_sum_prod(row_lprime, powers_of_two_matrix))
-        phi[8 + ix] += 1
+      phi_l = self.phi_at_location(l, data_block)
+      phi = np.vstack((phi, phi_l))
     return phi
-
-  def modify_encoding(self, old_data_block, old_action, new_action):
-    pass
-
-  # Functions for efficiently computing features-at-new-action
-  def map_m_to_index(self, m, k):
-    start = self.map_m_to_index_dict[k]
-    return int(start + m - 1)
-
-  def modify_m_r(self, data_block, old_action, new_action, r, k):
-    old_m_r = self.map_to_path_signature[r]
-    action_weights = SIS.POWERS_OF_TWO_MATRICES[k][:,1]
-    m_r_diff = np.dot(action_weights, new_action[list(r)] - old_action[list(r)])
-    new_m_r = old_m_r + m_r_diff
-    old_ix = self.map_m_to_index(old_m_r, k)
-    new_ix = self.map_m_to_index(new_m_r, k)
-    data_block[r, old_ix] -= 1
-    data_block[r, new_ix] += 1
-    return data_block
 
   @staticmethod
   def is_any_element_in_set(list_, set_):
@@ -238,28 +170,19 @@ class SIS(SpatialDisease):
         return True
     return False
 
-  def phi_at_action(self, data_block, old_action, action, ixs=None):
-    new_data_block = copy.copy(data_block)
+  def phi_at_action(self, old_raw_data_block, old_data_block, old_action, action):
+    new_data_block = copy.copy(old_data_block)
     if self.add_neighbor_sums:
       new_data_block = new_data_block[:, :int(new_data_block.shape[1] / 2)]
-    locations_with_changed_actions = set(np.where(old_action == action)[0])
-    if ixs is not None:
-      # This only works when considering paths up to length 2!
-      ixs_and_their_neighbors = np.append(ixs, [l for ix in ixs for l in self.adjacency_list[ix]])
-      locations_with_changed_actions = locations_with_changed_actions.intersection(ixs_and_their_neighbors)
+    locations_with_changed_actions = set(np.where(old_action != action)[0])
 
-    for k, length_k_paths in self.dict_of_path_lists.items():
-      for r in length_k_paths:
-        if self.is_any_element_in_set(r, locations_with_changed_actions):
-          new_data_block = self.modify_m_r(new_data_block, old_action, action, r, k)
+    for l in range(self.L):
+      l_and_neighbors = [l] + self.adjacency_list[l]
+      if self.is_any_element_in_set(l_and_neighbors, locations_with_changed_actions):
+        new_data_block[l, :] = self.phi_at_location(l, old_raw_data_block)
     if self.add_neighbor_sums:
       new_data_block = self.phi_neighbor(new_data_block)
     return new_data_block
-
-  def random_phi(self, l):
-    phi_1 = np.random.multinomial(1, np.ones(9)/9)
-    phi_2 = np.random.multinomial(len(self.adjacency_list[l]), np.ones(81)/81)
-    return np.concatenate((phi_1, phi_2))
 
   def phi_neighbor(self, data_block):
     """
@@ -276,7 +199,7 @@ class SIS(SpatialDisease):
     weighted_adjacency_matrix = np.zeros((self.L, self.L))
     for l in range(self.L):
       for l_prime in self.adjacency_list[l]:
-        weighted_adjacency_matrix[l,l_prime] = np.prod(estimated_probabilities[[l, l_prime]])
+        weighted_adjacency_matrix[l, l_prime] = np.prod(estimated_probabilities[[l, l_prime]])
     g = nx.from_numpy_matrix(weighted_adjacency_matrix)
     centrality = nx.eigenvector_centrality(g)
     return np.array([centrality[node] for node in centrality])
@@ -315,12 +238,17 @@ class SIS(SpatialDisease):
     return infected_probabilities
 
   def next_infected_probabilities(self, a, eta=ETA):
-    next_probs = self.infection_probability(a, self.current_infected, self.current_state, eta=eta)
     if self.contaminator is not None and self.epsilon > 0:
       current_X_at_action = self.data_block_at_action(-1, a)
-      contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:, -1]
-      next_probs = (1 - self.epsilon) * next_probs + self.epsilon * contaminator_probs
-    return next_probs
+      # contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:, -1]
+      contaminator_probs = random_contamination(current_X_at_action)
+      if self.epsilon == 1.0:
+        return contaminator_probs
+      else:
+        SIS_probs = self.infection_probability(a, self.current_infected, self.current_state, eta=eta)
+        return (1 - self.epsilon) * SIS_probs + self.epsilon * contaminator_probs
+    else:
+      return self.infection_probability(a, self.current_infected, self.current_state, eta=eta)
 
   def add_infections(self, y):
     self.Y = np.vstack((self.Y, y))
@@ -443,7 +371,7 @@ class SIS(SpatialDisease):
 
     self.update_likelihood_information(a, self.current_infected)
 
-  def data_block_at_action(self, data_block_ix, action, ixs=None):
+  def data_block_at_action(self, data_block_ix, action):
     """
     Replace action in raw data_block with given action.
     """
@@ -451,30 +379,6 @@ class SIS(SpatialDisease):
     if len(self.X_raw) == 0:
       new_data_block = self.phi(np.column_stack((self.S_indicator[-1,:], action, self.Y[-1,:])))
     else:
-      new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1, :], action, ixs=ixs)
+      new_data_block = self.phi_at_action(self.X_raw[data_block_ix], self.X[data_block_ix], self.A[-1, :], action)
     return new_data_block
 
-  def train_test_split(self):
-    super(SIS, self).train_test_split()
-    train_ixs_list = []
-    test_ixs_list = []
-    all_ixs = np.arange(self.L)
-    n_test = int(np.floor(0.2*self.L))
-    for t in range(self.T):
-      test_ix = set(np.random.choice(self.L, n_test, replace=False))
-      mask = np.array([(i in test_ix) for i in range(self.L)])
-      test_ixs = all_ixs[mask]
-      train_ixs = all_ixs[~mask]
-      train_ixs_list.append(train_ixs)
-      test_ixs_list.append(test_ixs)
-    return train_ixs_list, test_ixs_list
-
-  def network_features_at_action(self, data_block, action):
-    """
-    :param data_block:
-    :param action:
-    :return:
-    """
-    new_data_block = np.column_stack((data_block[:, 0] > 0, action, data_block[:, 2]))
-    new_data_block = self.phi(new_data_block)
-    return new_data_block.reshape(1,-1)
