@@ -239,6 +239,7 @@ def simulate_and_get_loss(contamination_weight_vector, r0, contaminator_construc
     phat_mb = np.zeros(0)
     for t, x in enumerate(reference_env.X_raw):
       s, a, y = x[:, 0], x[:, 1], x[:, 2]
+      # ToDo: This is wrong, fix!
       phat_mb_t = reference_env.infection_probability(a, s, y, eta=eta)
       phat_mb = np.append(phat_mb, phat_mb_t)
     K.clear_session()

@@ -8,6 +8,7 @@ import numpy as np
 from scipy.special import expit
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator
+from .sis_infection_probs import infection_probability
 from ..utils.features import get_all_paths
 from ..utils.misc import KerasLogit
 import pdb
@@ -242,18 +243,7 @@ class SIS(SpatialDisease):
     return next_state
 
   def infection_probability(self, a, y, s, eta=ETA):
-    z = np.random.binomial(1, self.omega)
-    indicator = (z*s <= 0)
-    a_times_indicator = np.multiply(a, indicator)
-
-    infected_indices = np.where(y > 0)
-    not_infected_indices = np.where(y == 0)
-
-    infected_probabilities = np.zeros(self.L)
-    infected_probabilities[not_infected_indices] = self.p_l(a_times_indicator, not_infected_indices, infected_indices,
-                                                            eta)
-    infected_probabilities[infected_indices] = 1 - self.q_l(a_times_indicator[infected_indices], eta)
-    return infected_probabilities
+    return infection_probability(a, y, s, eta, self.L, self.adjacency_list)
 
   def next_infected_probabilities(self, a, eta=ETA):
     if self.contaminator is not None and self.epsilon > 0:
@@ -283,42 +273,6 @@ class SIS(SpatialDisease):
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.true_infection_probs.append(next_infected_probabilities)
     self.add_infections(next_infections)
-
-  ##############################################################
-  ## Infection probability helper functions (see draft p. 13) ##
-  ##############################################################
-
-  def p_l0(self, a_times_indicator, eta):
-    logit_p_0 = eta[0] + eta[1] * a_times_indicator
-    p_0 = expit(logit_p_0)
-    return p_0
-
-  def q_l(self, a_times_indicator, eta):
-    logit_q = eta[5] + eta[6] * a_times_indicator
-    q = expit(logit_q)
-    return q
-
-  def one_minus_p_llprime(self, a_times_indicator, not_infected_indices, infected_indices, eta):
-    product_vector = np.array([])
-    for l in not_infected_indices[0].tolist():
-      # Get infected neighbors
-      infected_neighbor_indices = np.intersect1d(self.adjacency_list[l], infected_indices)
-      a_times_indicator_lprime = a_times_indicator[infected_neighbor_indices]
-      logit_p_l = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*a_times_indicator_lprime
-      p_l = expit(logit_p_l)
-      product_l = np.product(1 - p_l)
-      product_vector = np.append(product_vector, product_l)
-    return product_vector
-
-  def p_l(self, a_times_indicator, not_infected_indices, infected_indices, eta):
-    p_l0 = self.p_l0(a_times_indicator[not_infected_indices], eta)
-    one_minus_p_llprime = self.one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta)
-    product = np.multiply(1 - p_l0, one_minus_p_llprime)
-    return 1 - product
-
-  ################################################
-  ## End infection probability helper functions ##
-  ################################################
 
   def neighbor_infection_and_treatment_status(self, l, a, y):
     neighbor_ixs = self.adjacency_list[l]
