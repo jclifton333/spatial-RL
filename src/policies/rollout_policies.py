@@ -1,4 +1,5 @@
 from src.environments.SIS import SIS
+from src.environments.sis_infection_probs import infection_probability
 from src.estimation.q_functions.rollout import rollout
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
@@ -77,14 +78,8 @@ def SIS_model_based_one_step(**kwargs):
   env, bootstrap, argmaxer, evaluation_budget, treatment_budget = \
     kwargs['env'], kwargs['bootstrap'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
   eta = fit_transition_model(env, bootstrap=bootstrap)
-  simulation_env = SIS(env.L, 0, None,
-                       adjacency_matrix=env.adjacency_matrix,
-                       dict_of_path_lists=env.dict_of_path_lists,
-                       initial_infections=env.current_infected,
-                       initial_state=env.current_state,
-                       add_neighbor_sums=env.add_neighbor_sums,
-                       eta=eta)
-  one_step_q = simulation_env.next_infected_probabilities
+  one_step_q = partial(infection_probability, y=env.current_infected, s=env.current_state, eta=eta,
+                       omega=0, L=env.L, adjacency_lists=env.adjacency_list)
   a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)
   return a, None
 
