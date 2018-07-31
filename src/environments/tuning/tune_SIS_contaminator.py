@@ -29,7 +29,7 @@ from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.environments.environment_factory import environment_factory
 from src.environments import generate_network, SIS
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
-from src.utils.misc import KerasLogit
+from src.utils.misc import KerasLogit, SKLogit
 from functools import partial
 import keras.backend as K
 
@@ -215,7 +215,7 @@ def simulate_data_to_compare_on(contamination_weight_vector, contaminator_constr
   return simulation_env
 
 
-def simulate_and_get_loss(contamination_weight_vector, r0, contaminator_constructor, mf_constructor, time_horizon=25,
+def simulate_and_get_loss(contamination_weight_vector, r0, contaminator_constructor, mf_constructor, time_horizon=10,
                           n_rep=25):
   reference_env = simulate_data_to_compare_on(contamination_weight_vector, contaminator_constructor,
                                               time_horizon=time_horizon, n_rep=1)
@@ -252,7 +252,7 @@ def simulate_and_get_loss(contamination_weight_vector, r0, contaminator_construc
   mb_variance = np.mean(np.var(phat_mb_array, axis=0))
   mf_bias = np.mean(np.mean(phat_mf_array, axis=0) - true_probs)
   mf_variance = np.mean(np.var(phat_mf_array, axis=0))
-  print('mb bias: {} mb var: {} mf bias: {} mb var: {}'.format(mb_bias, mb_variance, mf_bias, mf_variance))
+  print('mb bias: {} mb var: {} mf bias: {} mf var: {}'.format(mb_bias, mb_variance, mf_bias, mf_variance))
   r1 = (mb_bias**2 + mb_variance) / (mf_bias**2 + mf_variance)
   mean_infection_prop = np.mean(reference_env.y)
   loss_ = loss(r0, r1, mean_infection_prop)
@@ -260,7 +260,7 @@ def simulate_and_get_loss(contamination_weight_vector, r0, contaminator_construc
 
 
 def do_initial_sampling_and_get_losses(r0, initial_weight_list=None, sample_weights_and_epsilons=None,
-                                       mf_constructor=KerasLogit, contaminator_constructor=KerasLogit, n_samples=50):
+                                       mf_constructor=SKLogit, contaminator_constructor=KerasLogit, n_samples=50):
   if initial_weight_list is None and sample_weights_and_epsilons is None:
     initial_weight_list = fit_mf_estimator_to_uncontaminated_sis(mf_constructor_name=mf_constructor)
   if sample_weights_and_epsilons is None:
@@ -295,32 +295,32 @@ if __name__ == '__main__':
   # ans = do_initial_sampling_and_get_losses(r0, sample_weights_and_epsilons=sample_weights_and_epsilons)
   # print(ans[1], ans[2])
   loss_function = partial(simulate_and_get_loss, r0=r0, contaminator_constructor=KerasLogit,
-                          mf_constructor=KerasLogit, n_rep=1)
-  num_nonzero = 10
+                          mf_constructor=SKLogit, n_rep=5)
   counter = 0
-  max_counter = 1
+  max_counter = 10
   mean_inf = 0
+  intercept_ = np.array([-2.2])
   while counter < max_counter and (mean_inf > 0.5 or mean_inf < 0.3):
-    coef_ = np.zeros(17)
-    coef_[-1] = -2.2
-    rando = np.random.normal(loc=0.5, size=num_nonzero)
-    nonzero = np.random.choice(16, size=num_nonzero, replace=False)
-    coef_[nonzero] = rando
-    res = loss_function(coef_)
+    coef_ = np.random.normal(size=16, loc=0.1, scale=0.5)
+    print(coef_)
+    weight = np.concatenate((coef_, intercept_))
+    res = loss_function(weight)
     print(res)
     counter += 1
     mean_inf = res[1]
-  best_coef = coef_
-  best_loss = res[0]
+  best_coef_ = coef_
+  best_res = res
   while counter < max_counter:
-    new_coef = np.concatenate((np.random.multivariate_normal(mean=best_coef[:-1], cov=5*np.eye(16)), np.array([-2.2])))
+    new_coef_ = np.random.normal(loc=best_coef_)
+    weight = np.concatenate((new_coef_, intercept_))
     print(res)
-    res = loss_function(coef_)
-    if res[0] < best_loss:
-      best_loss = res[0]
-      best_coef = new_coef
+    res = loss_function(weight)
+    if res[0] < best_res[0]:
+      best_res = res
+      best_coef = new_coef_
     counter += 1
-  print('best loss {}'.format(best_loss))
+  print('best res {}'.format(best_res), 'best coef {}'.format(best_coef_))
+
 
 
 

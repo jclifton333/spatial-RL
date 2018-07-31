@@ -7,7 +7,7 @@ import copy
 import numpy as np
 from scipy.special import expit
 from .SpatialDisease import SpatialDisease
-from .sis_contaminator import random_contamination
+from .sis_contaminator import SIS_Contaminator
 from ..utils.features import get_all_paths
 from ..utils.misc import KerasLogit
 import pdb
@@ -26,6 +26,8 @@ class SIS(SpatialDisease):
   #   k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
   # }
   ENCODING_MATRIX = np.array([np.power(2.0, 3-j) for j in range(1, 3+1)])
+
+
   # Fixed generative model parameters
   BETA_0 = 0.9
   BETA_1 = 1.0
@@ -72,11 +74,21 @@ class SIS(SpatialDisease):
 
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
                initial_infections=None, initial_state=None, eta=None, beta=None,
-               epsilon=0, contaminator=None):
+               epsilon=0, contaminator=SIS_Contaminator):
     """
     :param omega: parameter in [0,1] for mixing two SIS models
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
+    self.ENCODING_DICT = {
+          s: {
+            a: {
+              y:
+                int(np.dot(np.array([s, a, y]), SIS.ENCODING_MATRIX)) for y in range(2)
+            }
+            for a in range(2)
+          }
+          for s in range(2)
+    }
     self.add_neighbor_sums = add_neighbor_sums
     self.epsilon = epsilon
     self.contaminator = contaminator
@@ -136,20 +148,26 @@ class SIS(SpatialDisease):
   ##############################################################
 
   def phi_at_location(self, l, data_block):
-    phi_l = np.zeros(16)
+    # phi_l = np.zeros(16)
 
-    # Get encoding for location l
-    row_l = data_block[l, :]
-    ix = int(np.dot(row_l, SIS.ENCODING_MATRIX))
-    phi_l[ix] = 1
+    # # Get encoding for location l
+    # row_l = data_block[l, :]
+    # ix = int(np.dot(row_l, SIS.ENCODING_MATRIX))
+    # phi_l[ix] = 1
 
-    # Get encodings for l's neighbors
+    # # Get encodings for l's neighbors
+    # for lprime in self.adjacency_list[l]:
+    #   row_lprime = data_block[lprime, :]
+    #   ix = int(np.dot(row_lprime, SIS.ENCODING_MATRIX))
+    #   phi_l[8 + ix] += 1
+    s, a, y = data_block[l, :]
+    phi_l = [0]*8
+    phi_l[self.ENCODING_DICT[int(s)][int(a)][int(y)]] = 1
+    phi_neighbors = [0]*8
     for lprime in self.adjacency_list[l]:
-      row_lprime = data_block[lprime, :]
-      ix = int(np.dot(row_lprime, SIS.ENCODING_MATRIX))
-      phi_l[8 + ix] += 1
-
-    return phi_l
+      s, a, y = data_block[lprime, :]
+      phi_neighbors[self.ENCODING_DICT[int(s)][int(a)][int(y)]] += 1
+    return np.concatenate((phi_l, phi_neighbors))
 
   def phi(self, data_block):
     """
@@ -240,8 +258,7 @@ class SIS(SpatialDisease):
   def next_infected_probabilities(self, a, eta=ETA):
     if self.contaminator is not None and self.epsilon > 0:
       current_X_at_action = self.data_block_at_action(-1, a)
-      # contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:, -1]
-      contaminator_probs = random_contamination(current_X_at_action)
+      contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:, -1]
       if self.epsilon == 1.0:
         return contaminator_probs
       else:
