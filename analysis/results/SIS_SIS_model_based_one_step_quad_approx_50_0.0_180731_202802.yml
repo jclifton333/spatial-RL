@@ -1,0 +1,52 @@
+results:
+  0: {runtime: 8.44146990776062, score: 0.7238461538461538}
+  1: {runtime: 7.880126476287842, score: 0.7446153846153846}
+  2: {runtime: 7.9083826541900635, score: 0.7461538461538462}
+  3: {runtime: 7.9386069774627686, score: 0.7269230769230769}
+  4: {runtime: 8.348904132843018, score: 0.7307692307692307}
+  5: {runtime: 8.077865839004517, score: 0.7184615384615385}
+  6: {runtime: 8.154706716537476, score: 0.73}
+  7: {runtime: 7.981925964355469, score: 0.7092307692307692}
+  8: {runtime: 8.04131007194519, score: 0.7269230769230769}
+  9: {runtime: 6.962021827697754, score: 0.7530769230769231}
+  10: {runtime: 8.186858654022217, score: 0.73}
+  11: {runtime: 7.799010276794434, score: 0.7415384615384616}
+  12: {runtime: 8.276073455810547, score: 0.7238461538461538}
+  13: {runtime: 8.40920114517212, score: 0.73}
+  14: {runtime: 7.948257207870483, score: 0.7469230769230769}
+  15: {runtime: 7.959628582000732, score: 0.7246153846153847}
+  16: {runtime: 8.560790300369263, score: 0.7484615384615385}
+  17: {runtime: 7.6681835651397705, score: 0.7530769230769231}
+  18: {runtime: 7.877890586853027, score: 0.7230769230769231}
+  19: {runtime: 8.008325338363647, score: 0.7369230769230769}
+  20: {runtime: 7.683163166046143, score: 0.7330769230769231}
+  21: {runtime: 8.344874143600464, score: 0.7315384615384616}
+  22: {runtime: 8.093648433685303, score: 0.7207692307692307}
+  23: {runtime: 8.363500356674194, score: 0.7330769230769231}
+  24: {runtime: 7.604600191116333, score: 0.7430769230769231}
+  25: {runtime: 8.06973934173584, score: 0.7461538461538462}
+  26: {runtime: 7.909036636352539, score: 0.7376923076923076}
+  27: {runtime: 7.90498161315918, score: 0.7353846153846154}
+  28: {runtime: 8.032579898834229, score: 0.72}
+  29: {runtime: 8.11087703704834, score: 0.7369230769230769}
+  30: {runtime: 8.389015197753906, score: 0.6853846153846154}
+  31: {runtime: 7.536032676696777, score: 0.7192307692307692}
+  32: {runtime: 8.384502172470093, score: 0.7269230769230769}
+  33: {runtime: 8.114826917648315, score: 0.7107692307692308}
+  34: {runtime: 8.349650144577026, score: 0.7192307692307692}
+  35: {runtime: 6.894397497177124, score: 0.7261538461538461}
+  36: {runtime: 8.083852052688599, score: 0.7284615384615385}
+  37: {runtime: 8.425516605377197, score: 0.7361538461538462}
+  38: {runtime: 7.870375394821167, score: 0.7192307692307692}
+  39: {runtime: 7.504628896713257, score: 0.7330769230769231}
+  mean: 0.7302692307692308
+  se: !!python/object/apply:numpy.core.multiarray.scalar
+  - !!python/object/apply:numpy.dtype
+    args: [f8, 0, 1]
+    state: !!python/tuple [3, <, null, null, null, -1, -1, 0]
+  - !!binary |
+    xmW+XL+vYD8=
+settings: {L: 50, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: KerasLogit,
+  divide_evenly: false, env_name: SIS, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 40,
+  planning_depth: 25, policy_name: SIS_model_based_one_step, regressor: KerasRegressor,
+  rollout_depth: 1, time_horizon: 25, treatment_budget: 3}
