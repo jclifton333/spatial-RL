@@ -29,11 +29,11 @@ def one_step_policy(**kwargs):
   target = np.hstack(env.y).astype(float)
   clf.fit(np.vstack(env.X), target, weights)
   true_expected_counts = np.hstack(env.true_infection_probs)
-  phat = clf.predict_proba(np.vstack(env.X))[:,-1]
-  r2 = 1 - (
-      np.sum((phat - true_expected_counts) ** 2) / np.sum((true_expected_counts - np.mean(true_expected_counts)) ** 2))
-
-  print(r2)
+  phat = clf.predict_proba(np.vstack(env.X))[:, -1]
+  loss = np.mean((phat - true_expected_counts)**2)
+  print('loss {} mean infection {} mean state {}'.format(loss,
+                                                             np.mean(env.current_infected),
+                                                             np.mean(env.current_state < 0)))
 
   def qfn(a):
     return clf.predict_proba(env.data_block_at_action(-1, a))[:,-1]

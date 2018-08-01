@@ -133,7 +133,7 @@ class KerasLogit(object):
 
 class SKLogit(object):
   def __init__(self):
-    self.reg = LogisticRegression(C=1.0 / 0.1)
+    self.reg = LogisticRegression()
     self.intercept_ = None
     self.coef_ = None
 

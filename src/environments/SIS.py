@@ -310,39 +310,17 @@ class SIS(SpatialDisease):
                                               self.counts_for_likelihood_next_infected,
                                               self.counts_for_likelihood_next_not_infected)
 
-  def get_likelihood_information_for_cv_split(self, ixs):
-    """
-    :param ixs: List of lists containing integers in (0, self.L-1), indexing locations at each time point to keep in
-                split.
-    :return:
-    """
-    counts_for_cv_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
-    counts_for_cv_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
-    for t in range(len(ixs)):
-      ix = ixs[t]
-      y_next = self.y[t]
-      y_current = self.Y[t, :]
-      action = self.A[t, :]
-      for l in ix:
-        is_infected = y_current[l]
-        if is_infected:
-          counts_for_cv_likelihood_next_infected, counts_for_cv_likelihood_next_not_infected = \
-            self.update_likelihood_for_location(l, action, y_current, y_next, counts_for_cv_likelihood_next_infected,
-                                                counts_for_cv_likelihood_next_not_infected)
-    return counts_for_cv_likelihood_next_infected, counts_for_cv_likelihood_next_not_infected
-
   def update_obs_history(self, a):
     """
     :param a: self.L-length array of binary actions at each state
     """
     super(SIS, self).update_obs_history(a)
-    raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
+    raw_data_block = np.column_stack((self.S_indicator[-2, :], a, self.Y[-2, :]))
     data_block = self.phi(raw_data_block)
     # Main features
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)
-
     self.update_likelihood_information(a, self.current_infected)
 
   def data_block_at_action(self, data_block_ix, action):
@@ -350,9 +328,6 @@ class SIS(SpatialDisease):
     Replace action in raw data_block with given action.
     """
     super(SIS, self).data_block_at_action(data_block_ix, action)
-    if len(self.X_raw) == 0:
-      new_data_block = self.phi(np.column_stack((self.S_indicator[-1,:], action, self.Y[-1,:])))
-    else:
-      new_data_block = self.phi_at_action(self.X_raw[data_block_ix], self.X[data_block_ix], self.A[-1, :], action)
+    new_data_block = self.phi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])))
     return new_data_block
 
