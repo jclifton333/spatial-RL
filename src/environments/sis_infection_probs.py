@@ -51,8 +51,7 @@ def q_l(a_times_indicator, eta):
 
 
 @jit
-def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists,
-                        product_vector):
+def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists):
   """
 
   :param a_times_indicator:
@@ -60,11 +59,10 @@ def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indice
   :param infected_indices:
   :param eta:
   :param adjacency_lists:
-  :param product_vector: array of 1s of length len(not_infected_indices)
   :return:
   """
 
-  i = 0
+  product_vector = []
   for l in not_infected_indices:
     neighbors = adjacency_lists[l]
     product_l = 1.0
@@ -72,8 +70,7 @@ def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indice
       if lprime in infected_indices:
         logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*a_times_indicator[lprime]
         product_l *= 1 - expit(logit_p_llprime)
-    product_vector[i] = product_l
-    i += 1
+    product_vector.append(product_l)
 
   # for l in not_infected_indices[0].tolist():
   #   # Get infected neighbors
@@ -90,6 +87,6 @@ def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indice
 def p_l(a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists):
   p_l0_ = p_l0(a_times_indicator[not_infected_indices], eta)
   one_minus_p_llprime_ = one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indices, eta,
-                                             adjacency_lists, np.array([1]*len(not_infected_indices)))
+                                             adjacency_lists)
   product = np.multiply(1 - p_l0_, one_minus_p_llprime_)
   return 1 - product
