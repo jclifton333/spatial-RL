@@ -71,7 +71,7 @@ def one_minus_p_llprime(a_times_indicator, not_infected_indices, infected_indice
     for lprime in neighbors:
       if lprime in infected_indices:
         logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*a_times_indicator[lprime]
-        product_l *= expit(logit_p_llprime)
+        product_l *= 1 - expit(logit_p_llprime)
     product_vector[i] = product_l
     i += 1
 
