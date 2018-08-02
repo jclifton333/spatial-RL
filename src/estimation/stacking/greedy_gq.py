@@ -23,14 +23,32 @@ def q_feature_function(data_block, q_list, intercept):
   return q_list.T
 
 
-def temporal_differences(stacked_q_fn, feature_function, gamma, env, evaluation_budget, treatment_budget, argmaxer,
-                         bootstrap_correction_weight, q_of_phi):
+def temporal_differences(stacked_q_fn, q_list, intercept, feature_function, gamma, env, evaluation_budget, treatment_budget,
+                         argmaxer, bootstrap_correction_weight, phi_list, q_list, gamma):
+
+  phi_hat_list = []
+  q_max_list = []
 
   # Evaluate stacked q_fn at Xp1
-  for data_block in env.X:
-    phi_at_data_block = feature_function(data_block)
-    stacked_q_fn_at_X =
-    X_hat = argmaxer(stacked_q_fn, evaluation_budget, treatment_budget, env)
+  for t, data_block in enumerate(env.X[:-1]):
+
+    def stacked_q_fn_at_data_block(action):
+      data_block_at_action = env.data_block_at_action(t+1, action)
+      phi_at_action = q_feature_function(data_block_at_action, q_list, intercept)
+      return stacked_q_fn(phi_at_action)
+
+    X_hat = argmaxer(stacked_q_fn_at_data_block, evaluation_budget, treatment_budget, env)
+    phi_hat = q_feature_function(X_hat, q_list, intercept)
+    q_max = stacked_q_fn(phi_hat)
+    phi_hat_list.append(phi_hat)
+    q_max_list.append(q_max)
+
+  # Get temporal differences
+  td = np.hstack(env.y).astype(float) + gamma * np.vstack(q_max_list) = np.vstack(q_list)
+  td = np.multiply(td, bootstrap_correction_weight)
+  td_times_phi = np.multiply(td, np.vstack(phi_list))
+
+
 
 
   return
