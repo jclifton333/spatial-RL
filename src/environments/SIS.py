@@ -168,30 +168,30 @@ class SIS(SpatialDisease):
     powers_of_2_matrix = SIS.POWERS_OF_TWO_MATRICES[k]
     return numba_sum_prod(b, powers_of_2_matrix)
 
-  def phi_k(self, k, data_block):
+  def psi_k(self, k, data_block):
     """
     :param k: path length
     :param data_block:
     :return:
     """
     M = 9**k
-    phi_k = np.zeros((data_block.shape[0], M))
+    psi_k = np.zeros((data_block.shape[0], M))
     for r in self.dict_of_path_lists[k]:
       m_r = int(self.m_r(r, data_block))
       self.map_to_path_signature[r] = m_r
-      phi_k[r, [m_r - 1]*k] += 1
-    return phi_k
+      psi_k[r, [m_r - 1]*k] += 1
+    return psi_k
 
-  def phi(self, data_block):
+  def psi(self, data_block):
     """
     :param data_block:
     :return:
     """
-    phi = np.zeros((data_block.shape[0], 0))
+    psi = np.zeros((data_block.shape[0], 0))
     for k in range(1, SIS.PATH_LENGTH + 1):
-      phi_k = self.phi_k(k, data_block)
-      phi = np.column_stack((phi, phi_k))
-    return phi
+      psi_k = self.psi_k(k, data_block)
+      psi = np.column_stack((psi, psi_k))
+    return psi
 
   # Functions for efficiently computing features-at-new-action
   def map_m_to_index(self, m, k):
@@ -216,7 +216,7 @@ class SIS(SpatialDisease):
         return True
     return False
 
-  def phi_at_action(self, data_block, old_action, action, ixs=None):
+  def psi_at_action(self, data_block, old_action, action, ixs=None):
     new_data_block = copy.copy(data_block)
     locations_with_changed_actions = set(np.where(old_action == action)[0])
     if ixs is not None:
@@ -389,7 +389,7 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).update_obs_history(a)
     raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
-    data_block = self.phi(raw_data_block)
+    data_block = self.psi(raw_data_block)
 
     # Main features
     self.X_raw.append(raw_data_block)
@@ -404,9 +404,9 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).data_block_at_action(data_block_ix, action)
     if self.A.shape[0] == 0:
-      new_data_block = self.phi(np.column_stack((self.S_indicator[-1,:], action, self.Y[-1,:])))
+      new_data_block = self.psi(np.column_stack((self.S_indicator[-1,:], action, self.Y[-1,:])))
     else:
-      new_data_block = self.phi_at_action(self.X[data_block_ix], self.A[-1, :], action, ixs=ixs)
+      new_data_block = self.psi_at_action(self.X[data_block_ix], self.A[-1, :], action, ixs=ixs)
     return new_data_block
 
   def train_test_split(self):
@@ -431,5 +431,5 @@ class SIS(SpatialDisease):
     :return:
     """
     new_data_block = np.column_stack((data_block[:, 0] > 0, action, data_block[:, 2]))
-    new_data_block = self.phi(new_data_block)
+    new_data_block = self.psi(new_data_block)
     return new_data_block.reshape(1,-1)

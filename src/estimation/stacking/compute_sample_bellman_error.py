@@ -28,6 +28,7 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
     for data_block in env.X[:-1]:
       q_of_X = np.append(q_of_X, q_fn(data_block))
 
+  # blocks_at_argmax_list is list of [S, A, Y] blocks where A = argmax_a q_fn( S, a, Y)
   q_max_of_Xp1, argmax_list, blocks_at_argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget,
                                                                       q_fn, argmaxer, ixs,
                                                                       return_blocks_at_argmax=True)
@@ -43,9 +44,8 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
   TD = TD.reshape(TD.shape[0], 1)
   if bootstrap_correction_weights is not None:
     TD = np.multiply(TD, bootstrap_correction_weights.T.flatten())
-  TD_times_q_of_X = np.multiply(TD, q_of_X)
-  q_of_X_hat = np.vstack([q_fn(x) for x in blocks_at_argmax_list[1:]])
-  return TD, TD_times_q_of_X, q_of_X_hat
+  TD_times_q_of_X = np.multiply(TD.T, q_of_X)
+  return TD, TD_times_q_of_X, blocks_at_argmax_list[1:]
 
 
 def compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs=None):
