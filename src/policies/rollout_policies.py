@@ -27,16 +27,28 @@ def one_step_policy(**kwargs):
 
   clf = classifier()
   target = np.hstack(env.y).astype(float)
-  clf.fit(np.vstack(env.X), target, weights)
+  features = np.vstack(env.X)
+
+  if clf.condition_on_infection:
+    X_raw = np.vstack(env.X_raw)
+    clf_kwargs = {'infected_locations': np.where(X_raw[:, -1] == 1),
+                  'not_infected_locations': np.where(X_raw[:, -1] == 0)}
+    predict_proba_kwargs = {'infected_locations': np.where(env.X_raw[-1][:, -1] == 1),
+                            'not_infected_locations': np.where(env.X_raw[-1][:, -1] == 0)}
+  else:
+    clf_kwargs = {}
+    predict_proba_kwargs = {}
+
+  clf.fit(features, target, weights, **clf_kwargs)
   true_expected_counts = np.hstack(env.true_infection_probs)
-  phat = clf.predict_proba(np.vstack(env.X))[:, -1]
+  phat = clf.predict_proba(features, **clf_kwargs)[:, -1]
   loss = np.mean((phat - true_expected_counts)**2)
   print('loss {} mean infection {} mean state {}'.format(loss,
-                                                             np.mean(env.current_infected),
-                                                             np.mean(env.current_state < 0)))
+                                                         np.mean(env.current_infected),
+                                                         np.mean(env.current_state < 0)))
 
   def qfn(a):
-    return clf.predict_proba(env.data_block_at_action(-1, a))[:,-1]
+    return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)[:, -1]
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, None

@@ -6,7 +6,6 @@ import pdb
 from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
 from src.estimation.stacking.compute_sample_bellman_error import compute_sample_squared_bellman_error
 from src.estimation.q_functions.regressor import AutoRegressor
-from src.utils.misc import KerasLogit, SKLogit
 from src.estimation.q_functions.rollout import rollout
 from keras import backend as K
 

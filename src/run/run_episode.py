@@ -15,7 +15,6 @@ pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
 from src.environments import generate_network
-from src.utils.misc import KerasLogit
 from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['SIS', 'Ebola']

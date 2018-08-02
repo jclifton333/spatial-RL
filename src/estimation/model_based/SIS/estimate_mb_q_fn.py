@@ -1,10 +1,7 @@
 import pdb
-import numpy as np
 from src.estimation.q_functions.rollout import rollout
 from .fit import fit_transition_model
 from .simulate import simulate_from_SIS
-from src.estimation.q_functions.regressor import AutoRegressor
-from src.utils.misc import KerasLogit, KerasRegressor, SKLogit
 
 
 def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth, treatment_budget,

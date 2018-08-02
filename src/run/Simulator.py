@@ -18,8 +18,6 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
-from src.environments import generate_network
-from src.environments.SIS import SIS
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.environments.environment_factory import environment_factory
@@ -27,11 +25,8 @@ from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 from analysis.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
 
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LogisticRegression
-from src.utils.misc import RidgeProb, KerasLogit, KerasRegressor, SKLogit
+from src.utils.misc import RidgeProb, KerasRegressor, SKLogit, SKLogit2
 
-from functools import partial
 import keras.backend as K
 
 # ToDo: Refactor so there isn't a separate file for each type of simulation
@@ -60,7 +55,7 @@ class Simulator(object):
 
     # Set policy arguments
     treatment_budget = np.int(np.ceil(0.05 * self.env.L))
-    self.policy_arguments =  {'classifier': SKLogit, 'regressor': KerasRegressor, 'env': self.env,
+    self.policy_arguments = {'classifier': SKLogit2, 'regressor': KerasRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
@@ -219,7 +214,7 @@ class Simulator(object):
     results = self.compare_probability_estimates_episode(self.model_constructor_list)
     return {replicate: results}
 
-  def run_compare_probability_estimates(self, model_constructor_list=[KerasLogit]):
+  def run_compare_probability_estimates(self, model_constructor_list=[SKLogit, SKLogit2]):
     self.basename = '_'.join(['prob_estimates', self.basename])
     self.model_constructor_list = model_constructor_list
 

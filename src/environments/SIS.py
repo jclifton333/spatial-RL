@@ -5,15 +5,10 @@ spatial QL paper.
 
 import copy
 import numpy as np
-from scipy.special import expit
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator
 from .sis_infection_probs import infection_probability
-from ..utils.features import get_all_paths
-from ..utils.misc import KerasLogit
 import pdb
-import pickle as pkl
-import numba as nb
 import networkx as nx
 
 import os
