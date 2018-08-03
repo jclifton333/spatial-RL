@@ -4,7 +4,7 @@ from src.estimation.optim.q_max import q_max_all_states
 
 
 def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer,
-                                 q_of_X=None, ixs=None):
+                                 bootstrap_correction_weights=None, q_of_X=None, ixs=None):
   """
   TD = Y + \gamma * q_max_of_Xp1 - q_of_X.
 
@@ -14,6 +14,7 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
   :param evaluation_budget:
   :param treatment_budget:
   :param argmaxer:
+  :param bootstrap_correction_weights: (T x L) array of weights to correct for bootstrapping
   :param q_of_X: q_fn evaluated at env data blocks; calculated in function if not be provided.
                  Should be provided for GGQ.
   :param ixs:
@@ -27,6 +28,7 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
     for data_block in env.X[:-1]:
       q_of_X = np.append(q_of_X, q_fn(data_block))
 
+  # blocks_at_argmax_list is list of [S, A, Y] blocks where A = argmax_a q_fn( S, a, Y)
   q_max_of_Xp1, argmax_list, blocks_at_argmax_list = q_max_all_states(env, evaluation_budget, treatment_budget,
                                                                       q_fn, argmaxer, ixs,
                                                                       return_blocks_at_argmax=True)
@@ -40,9 +42,10 @@ def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_
 
   TD = np.hstack(y).astype(float) + gamma * q_max_of_Xp1.flatten() - q_of_X
   TD = TD.reshape(TD.shape[0], 1)
-  TD_times_q_of_X = np.multiply(TD, q_of_X)
-  q_of_X_hat = np.vstack([q_fn(x) for x in blocks_at_argmax_list[1:]])
-  return TD, TD_times_q_of_X, q_of_X_hat
+  if bootstrap_correction_weights is not None:
+    TD = np.multiply(TD, bootstrap_correction_weights.T.flatten())
+  TD_times_q_of_X = np.multiply(TD.T, q_of_X)
+  return TD, TD_times_q_of_X, blocks_at_argmax_list[1:]
 
 
 def compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs=None):

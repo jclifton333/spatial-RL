@@ -128,6 +128,13 @@ class SIS(SpatialDisease):
     self.counts_for_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
     self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
 
+    # These are for figuring out which bootstrap weights correspond to the not-infected locations
+    self.indices_for_likelihood_next_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
+                                                     for j in range(self.max_num_neighbors + 1)}
+                                                 for i in range(2)}
+    self.indices_for_likelihood_next_not_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
+                                                     for j in range(self.max_num_neighbors + 1)}
+                                                 for i in range(2)}
   def reset(self):
     """
     Reset state and observation histories.
@@ -141,53 +148,52 @@ class SIS(SpatialDisease):
     self.current_state = self.S[-1,:]
     self.counts_for_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
     self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
+    self.indices_for_likelihood_next_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
+                                                     for j in range(self.max_num_neighbors + 1)}
+                                                 for i in range(2)}
+    self.indices_for_likelihood_next_not_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
+                                                     for j in range(self.max_num_neighbors + 1)}
+                                                 for i in range(2)}
 
   ##############################################################
   ##            Feature function computation                  ##
   ##############################################################
 
-  def phi_at_location(self, l, data_block):
-    # phi_l = np.zeros(16)
+  def psi_at_location(self, l, data_block):
+    # psi_l = np.zeros(16)
 
     # # Get encoding for location l
     # row_l = data_block[l, :]
     # ix = int(np.dot(row_l, SIS.ENCODING_MATRIX))
-    # phi_l[ix] = 1
+    # psi_l[ix] = 1
 
     # # Get encodings for l's neighbors
     # for lprime in self.adjacency_list[l]:
     #   row_lprime = data_block[lprime, :]
     #   ix = int(np.dot(row_lprime, SIS.ENCODING_MATRIX))
-    #   phi_l[8 + ix] += 1
+    #   psi_l[8 + ix] += 1
     s, a, y = data_block[l, :]
-    phi_l = [0]*8
-    phi_l[self.ENCODING_DICT[int(s)][int(a)][int(y)]] = 1
-    phi_neighbors = [0]*8
+    psi_l = [0]*8
+    psi_l[self.ENCODING_DICT[int(s)][int(a)][int(y)]] = 1
+    psi_neighbors = [0]*8
     for lprime in self.adjacency_list[l]:
       s, a, y = data_block[lprime, :]
-      phi_neighbors[self.ENCODING_DICT[int(s)][int(a)][int(y)]] += 1
-    return np.concatenate((phi_l, phi_neighbors))
+      psi_neighbors[self.ENCODING_DICT[int(s)][int(a)][int(y)]] += 1
+    return np.concatenate((psi_l, psi_neighbors))
 
-  def phi(self, data_block):
+  def psi(self, data_block):
     """
     :param data_block:
     :return:
     """
     data_block[:, -1] = 1 - data_block[:, -1]
-    phi = np.zeros((0, 16))
+    psi = np.zeros((0, 16))
     for l in range(self.L):
-      phi_l = self.phi_at_location(l, data_block)
-      phi = np.vstack((phi, phi_l))
-    return phi
+      psi_l = self.psi_at_location(l, data_block)
+      psi = np.vstack((psi, psi_l))
+    return psi
 
-  @staticmethod
-  def is_any_element_in_set(list_, set_):
-    for l in list_:
-      if l in set_:
-        return True
-    return False
-
-  def phi_at_action(self, old_raw_data_block, old_data_block, old_action, action):
+  def psi_at_action(self, old_raw_data_block, old_data_block, old_action, action):
     new_data_block = copy.copy(old_data_block)
     if self.add_neighbor_sums:
       new_data_block = new_data_block[:, :int(new_data_block.shape[1] / 2)]
@@ -196,14 +202,14 @@ class SIS(SpatialDisease):
     for l in range(self.L):
       l_and_neighbors = [l] + self.adjacency_list[l]
       if self.is_any_element_in_set(l_and_neighbors, locations_with_changed_actions):
-        new_data_block[l, :] = self.phi_at_location(l, old_raw_data_block)
+        new_data_block[l, :] = self.psi_at_location(l, old_raw_data_block)
     if self.add_neighbor_sums:
-      new_data_block = self.phi_neighbor(new_data_block)
+      new_data_block = self.psi_neighbor(new_data_block)
     return new_data_block
 
-  def phi_neighbor(self, data_block):
+  def psi_neighbor(self, data_block):
     """
-    To phi features, concatenate another block of features which are the _sums of the neighboring phi features_.
+    To psi features, concatenate another block of features which are the _sums of the neighboring psi features_.
     :param data_block:
     :return:
     """
@@ -211,15 +217,6 @@ class SIS(SpatialDisease):
     for l in range(self.L):
       neighbor_data_block[l] = np.sum(data_block[self.adjacency_list[l],:], axis=0)
     return np.column_stack((data_block, neighbor_data_block))
-
-  def get_weighted_eigenvector_centrality(self, estimated_probabilities):
-    weighted_adjacency_matrix = np.zeros((self.L, self.L))
-    for l in range(self.L):
-      for l_prime in self.adjacency_list[l]:
-        weighted_adjacency_matrix[l, l_prime] = np.prod(estimated_probabilities[[l, l_prime]])
-    g = nx.from_numpy_matrix(weighted_adjacency_matrix)
-    centrality = nx.eigenvector_centrality(g)
-    return np.array([centrality[node] for node in centrality])
 
   ##############################################################
   ##            End path-based feature function stuff         ##
@@ -290,9 +287,13 @@ class SIS(SpatialDisease):
     if y_l:
       counts_for_likelihood_next_infected[int(a_l), num_untreated_and_infected_neighbors,
                                           num_treated_and_infected_neighbors] += 1
+      self.indices_for_likelihood_next_infected[int(a_l)][num_untreated_and_infected_neighbors][num_treated_and_infected_neighbors]\
+        .append((self.T, l))
     else:
       counts_for_likelihood_next_not_infected[int(a_l), num_untreated_and_infected_neighbors,
                                               num_treated_and_infected_neighbors] += 1
+      self.indices_for_likelihood_next_not_infected[int(a_l)][num_untreated_and_infected_neighbors][num_treated_and_infected_neighbors]\
+        .append((self.T, l))
     return counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected
 
   def update_likelihood_information(self, action, next_infections):
@@ -310,8 +311,9 @@ class SIS(SpatialDisease):
     :param a: self.L-length array of binary actions at each state
     """
     super(SIS, self).update_obs_history(a)
-    raw_data_block = np.column_stack((self.S_indicator[-2, :], a, self.Y[-2, :]))
-    data_block = self.phi(raw_data_block)
+    raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
+    data_block = self.psi(raw_data_block)
+
     # Main features
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
@@ -323,6 +325,5 @@ class SIS(SpatialDisease):
     Replace action in raw data_block with given action.
     """
     super(SIS, self).data_block_at_action(data_block_ix, action)
-    new_data_block = self.phi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])))
+    new_data_block = self.psi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])))
     return new_data_block
-

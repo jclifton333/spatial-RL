@@ -20,7 +20,7 @@ class Ebola(SpatialDisease):
   network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
   ADJACENCY_MATRIX = network_info['adjacency_matrix']
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
-  DISTANCE_MATRIX = network_info['euclidean_distance_matrix'] / 1000.0
+  DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
   SUSCEPTIBILITY  = network_info['pop_array']
   L = len(SUSCEPTIBILITY)
   OUTBREAK_TIMES = network_info['outbreak_time_array']

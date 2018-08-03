@@ -4,6 +4,7 @@ from src.estimation.q_functions.rollout import rollout
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
 from src.estimation.stacking.greedy_gq import ggq
+from src.estimation.stacking.stack_fitted_qs import compute_bootstrap_weight_correction
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
@@ -78,8 +79,8 @@ def SIS_model_based_policy(**kwargs):
     kwargs['planning_depth'], kwargs['bootstrap'], \
     kwargs['rollout_depth'], kwargs['gamma'], kwargs['classifier'], kwargs['regressor']
 
-  auto_reguressor = AutoRegressor(classifier, regressor)
-  new_q_model = estimate_SIS_q_fn(env, auto_reguressor, rollout_depth, gamma, planning_depth,
+  auto_regressor = AutoRegressor(classifier, regressor)
+  new_q_model = estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
                                   treatment_budget, evaluation_budget, argmaxer, bootstrap)
 
   q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=new_q_model)
@@ -102,20 +103,42 @@ def dummy_stacked_q_policy(**kwargs):
   """
   This is for testing stacking.
   """
-  q_0 = lambda x: np.zeros(x.shape[0])
-  q_1 = lambda x: np.ones(x.shape[0])
-  q_list = [q_0, q_1]
   gamma, env, evaluation_budget, treatment_budget, argmaxer = kwargs['gamma'], kwargs['env'], \
     kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer']
-  ixs = [0, 1, 2]
-  ixs_list = [ixs for _ in range(env.T)]
-  theta = ggq(q_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, ixs_list)
+
+  # Generate dummy q functions
+  B = 2
+  q1_list = []
+  q2_list = []
+  bootstrap_weights_list = []
+  for b in range(B):
+    q1_b = lambda x: np.random.random(x.shape[0])
+    q2_b = lambda x: np.random.random(x.shape[0])
+    bs_weights_b = np.random.exponential(size=(env.T, env.L))
+    q1_list.append(q1_b)
+    q2_list.append(q2_b)
+    bootstrap_weights_list.append(bs_weights_b)
+
+  bootstrap_weight_correction_arr = compute_bootstrap_weight_correction(bootstrap_weights_list)
+  theta = ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer,
+              bootstrap_weight_correction_arr=bootstrap_weight_correction_arr)
   a = np.random.permutation(np.append(np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
   new_q_model = lambda x: theta[0]*q_0(x) + theta[1]*q_1(x)
   return a, new_q_model
 
 
-def SIS_stacked_q_policy(**kwargs):
+def sis_one_step_stacked_q_policy(**kwargs):
+  env = kwargs['env']
+
+  # Generate bootstrap weights
+  bootstrap_weights = np.random.exponential(size=(env.T, env.L))
+
+  # Get model-based one-step q fn
+  eta = fit_transition_model(env, bootstrap_weights=bootstrap_weights)
+  q_mb =
+
+
+def sis_stacked_q_policy(**kwargs):
   env = kwargs['env']
   train_ixs, test_ixs = env.train_test_split()
   kwargs['train_ixs'] = train_ixs

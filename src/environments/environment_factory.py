@@ -1,5 +1,5 @@
 from .SIS import SIS
-from .Ebola import Ebola
+# from .Ebola import Ebola
 
 
 def environment_factory(environment_name, **kwargs):

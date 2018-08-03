@@ -43,6 +43,7 @@ if __name__ == '__main__':
                 'initial_infections': None, 'add_neighbor_sums': False}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, **SIS_kwargs)
+
   if args.diagnostic_type == 'generate_bootstrap_dbns':
     Sim.run_generate_bootstrap_distributions(num_bootstrap_samples=args.num_bootstrap_samples)
   elif args.diagnostic_type == 'compare_probability_estimates':

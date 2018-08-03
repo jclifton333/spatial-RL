@@ -71,8 +71,28 @@ def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, failure_weig
   return lik
 
 
+# ToDo: jitify!
+def get_bootstrap_weights(all_weights, counts_for_likelihood, indices_for_likelihood):
+  weights = np.zeros(shape=counts_for_likelihood.shape)
+  for i in range(counts_for_likelihood.shape[0]):
+    for j in range(counts_for_likelihood.shape[1]):
+      for k in range(counts_for_likelihood.shape[2]):
+        indices = indices_for_likelihood[i][j][k]
+        weights[i,j,k] += np.sum([all_weights[ix] for ix in indices])
+  return weights
+
+
 def negative_log_likelihood(eta, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected,
-                            bootstrap):
+                            indices_for_likelihood_next_infected=None,
+                            indices_for_likelihood_next_not_infected=None, bootstrap_weights=None):
+  """
+
+  :param eta:
+  :param counts_for_likelihood_next_infected:
+  :param counts_for_likelihood_next_not_infected:
+  :param bootstrap_weights: T x L array of exponential bootstrap weights.
+  :return:
+  """
   eta0 = eta[0]
   eta0p1 = eta0 + eta[1]
   eta2 = eta[2]
@@ -80,10 +100,11 @@ def negative_log_likelihood(eta, counts_for_likelihood_next_infected, counts_for
   eta2p3p4 = eta2p3 + eta[4]
   eta2p4 = eta2 + eta[4]
 
-  if bootstrap:
-    # Weights are sums of Exp(1) so use gamma
-    success_weights = np.random.gamma(shape=counts_for_likelihood_next_infected)
-    failure_weights = np.random.gamma(shape=counts_for_likelihood_next_not_infected)
+  if bootstrap_weights is not None:
+    success_weights = get_bootstrap_weights(bootstrap_weights, counts_for_likelihood_next_infected,
+                                            indices_for_likelihood_next_infected)
+    failure_weights = get_bootstrap_weights(bootstrap_weights, counts_for_likelihood_next_not_infected,
+                                            indices_for_likelihood_next_not_infected)
   else:
     success_weights = counts_for_likelihood_next_infected
     failure_weights = counts_for_likelihood_next_not_infected

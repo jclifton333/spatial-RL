@@ -24,8 +24,8 @@ def policy_factory(policy_type):
     return ref.treat_all
   elif policy_type == 'dummy_stacked':
     return roll.dummy_stacked_q_policy
-  elif policy_type == 'SIS_stacked':
-    return roll.SIS_stacked_q_policy
+  elif policy_type == 'sis_stacked':
+    return roll.sis_stacked_q_policy
   elif policy_type == 'SIS_model_based':
     return roll.SIS_model_based_policy
   elif policy_type == 'SIS_model_based_one_step':
