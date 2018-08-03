@@ -38,30 +38,27 @@ def logit_with_label_check(X, y, weights):
     return np.zeros(X.shape[1] + 1)
 
 
-def fit_infection_prob_model(env, ixs, bootstrap):
+def fit_infection_prob_model(env, ixs, bootstrap_weights):
   """
 
   :param env:
   :param ixs: List of lists of indexes for train subset (used for stacking method).
-  :param bootstrap: boolean for using bootstrapped objective
+  :param bootstrap_weights: (env.T, env.L) - size array of bootstrap weights, or None
   :return:
   """
   if ixs is None:
     X = np.vstack(env.X_raw)
     y = np.hstack(env.y)
-    counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected = \
-      env.counts_for_likelihood_next_infected, env.counts_for_likelihood_next_not_infected
   else:
     X = np.vstack([env.X_raw[t][ixs[t], :] for t in range(len(env.X_raw))])
     y = np.hstack([env.y[t][ixs[t]] for t in range(len(env.y))])
 
   infected_ixs = np.where(X[:, 2] == 1)
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
-  if bootstrap:
-    bootstrap_weights = np.random.exponential(size = (env.T, env.L))
+  if bootstrap_weights is not None:
     infected_weights = bootstrap_weights.flatten()[infected_ixs]
   else:
-    bootstrap_weights=None
+    bootstrap_weights = None
     infected_weights = None
 
   eta_q = fit_q(A_infected.T, y_infected, infected_weights)
@@ -69,8 +66,8 @@ def fit_infection_prob_model(env, ixs, bootstrap):
   return np.concatenate((eta_p, eta_q))
 
 
-def fit_transition_model(env, bootstrap=False, ixs=None):
-  eta = fit_infection_prob_model(env, ixs, bootstrap)
+def fit_transition_model(env, bootstrap_weights=None, ixs=None):
+  eta = fit_infection_prob_model(env, ixs, bootstrap_weights)
   # beta = fit_state_transition_model(env)
   return eta
 

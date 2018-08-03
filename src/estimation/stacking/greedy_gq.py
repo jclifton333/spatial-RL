@@ -23,8 +23,8 @@ def q_feature_function(data_block, q_list, intercept):
   return q_list.T
 
 
-def temporal_differences(stacked_q_fn, q_list, intercept, feature_function, gamma, env, evaluation_budget, treatment_budget,
-                         argmaxer, bootstrap_correction_weight, phi_list, q_list, gamma):
+def temporal_differences(stacked_q_fn, q_list, intercept, env, evaluation_budget, treatment_budget,
+                         argmaxer, bootstrap_correction_weight, phi, q_of_phi, gamma):
 
   phi_hat_list = []
   q_max_list = []
@@ -38,20 +38,16 @@ def temporal_differences(stacked_q_fn, q_list, intercept, feature_function, gamm
       return stacked_q_fn(phi_at_action)
 
     X_hat = argmaxer(stacked_q_fn_at_data_block, evaluation_budget, treatment_budget, env)
-    phi_hat = q_feature_function(X_hat, q_list, intercept)
-    q_max = stacked_q_fn(phi_hat)
-    phi_hat_list.append(phi_hat)
+    phi_hat_ = q_feature_function(X_hat, q_list, intercept)
+    q_max = stacked_q_fn(phi_hat_)
+    phi_hat_list.append(phi_hat_)
     q_max_list.append(q_max)
 
   # Get temporal differences
-  td = np.hstack(env.y).astype(float) + gamma * np.vstack(q_max_list) = np.vstack(q_list)
-  td = np.multiply(td, bootstrap_correction_weight)
-  td_times_phi = np.multiply(td, np.vstack(phi_list))
-
-
-
-
-  return
+  td = np.hstack(env.y[1:]).astype(float) + gamma * np.vstack(q_max_list) + q_of_phi
+  td = np.multiply(td, np.vstack(bootstrap_correction_weight[:-1, :]))
+  td_gradient = np.multiply(td.reshape((1, td.shape[1])).T, phi)
+  return td_gradient, np.vstack(phi_hat_list)
 
 
 def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, phi, argmaxer,
@@ -60,22 +56,18 @@ def ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, p
   q_of_phi = np.dot(phi, theta)
 
   def q_features_at_block(data_block):
-      return phi(data_block, q_list, intercept)
+      return q_feature_function(data_block, q_list, intercept)
 
   def stacked_q_fn(data_block):
     return np.dot(q_features_at_block(data_block), theta)
 
-  _, TD_times_phi, X_hat = temporal_differences(stacked_q_fn, gamma, env, evaluation_budget, treatment_budget,
-                                                argmaxer, bootstrap_correction_weights=weights, q_of_X=q_of_X)
+  td_gradient, phi_hat = temporal_differences(stacked_q_fn, q_list, intercept, env, evaluation_budget, treatment_budget,
+                                              argmaxer, weights, phi, q_of_phi, gamma)
 
-  # X_hat are env features with actions as the argmax of stacked q_fn; we need to transform these into
-  # q features
-  phi_hat = np.vstack([q_features_at_block(X_hat_block) for X_hat_block in X_hat])
-
-  return TD_times_q_features, phi_hat
+  return td_gradient, phi_hat
 
 
-def ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, phi, argmaxer,
+def ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, phi_list, argmaxer,
                         weights_array, intercept=True):
   """
   Returns ggq_pieces weighted by each set weights in weights_list; for re-weighting according to bootstrap
@@ -87,76 +79,62 @@ def ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, 
   :param env:
   :param evaluation_budget:
   :param treatment_budget:
-  :param phi:
+  :param phi_list: B-length list of q-function arrays of size (T, 2 + intercept)
   :param argmaxer:
   :param weights_array: (B x T x L) array of weights
   :param intercept:
   :return:
   """
-  TD_times_phi, phi_hat = [], []
-  for q1_b, q2_b, weights_b in zip(q1_list, q2_list, weights_array):
-    TD_times_phi_b, phi_hat_b = ggq_pieces(theta, [q1_b, q2_b], gamma, env, evaluation_budget, treatment_budget, phi,
-                                           argmaxer, weights_b, intercept=intercept)
-    TD_times_phi.append(TD_times_phi_b)
+  td_gradient, phi_hat = [], []
+  for q1_b, q2_b, weights_b, phi_b in zip(q1_list, q2_list, weights_array, phi_list):
+    td_gradient_b, phi_hat_b = ggq_pieces(theta, [q1_b, q2_b], gamma, env, evaluation_budget, treatment_budget, phi_b,
+                                          argmaxer, weights_b, intercept=intercept)
+    td_gradient.append(td_gradient_b)
     phi_hat.append(phi_hat_b)
-  return np.vstack(TD_times_phi), np.vstack(phi_hat)
+  return np.vstack(td_gradient), np.vstack(phi_hat)
 
 
-def update_theta(theta, alpha, gamma, TD_times_phi, phi_dot_w, phi_hat):
+def update_theta(theta, alpha, gamma, td_gradient, phi_dot_w, phi_hat):
   phi_dot_w_times_phi_hat = np.multiply(phi_dot_w.reshape(len(phi_dot_w), 1), phi_hat)
-  gradient_block = TD_times_phi - gamma*phi_dot_w_times_phi_hat
+  gradient_block = td_gradient - gamma*phi_dot_w_times_phi_hat
   theta += alpha * np.mean(gradient_block, axis=0)
   return theta
 
 
-def update_w(w, beta, TD_times_phi, phi, phi_dot_w):
+def update_w(w, beta, td_gradient, phi, phi_dot_w):
   phi_dot_w_times_phi_hat = np.multiply(phi_dot_w.reshape(len(phi_dot_w), 1), phi)
-  gradient_block = TD_times_phi - phi_dot_w_times_phi_hat
+  gradient_block = td_gradient - phi_dot_w_times_phi_hat
   w += beta * np.mean(gradient_block, axis=0)
   return w
 
 
-def update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_phi, phi, phi_hat, project):
+def update_theta_and_w(theta, w, alpha, beta, gamma, td_gradient, phi, phi_hat, project):
   phi_dot_w = np.dot(phi, w)
-  theta = update_theta(theta, alpha, gamma, TD_times_phi, phi_dot_w, phi_hat)
+  theta = update_theta(theta, alpha, gamma, td_gradient, phi_dot_w, phi_hat)
   if project:
     theta = np.max((theta, np.zeros(len(theta))), axis=0)
-  w = update_w(w, beta, TD_times_phi, phi, phi_dot_w)
+  w = update_w(w, beta, td_gradient, phi, phi_dot_w)
   return theta, w
 
 
-def ggq_step(theta, w, alpha, beta, q_list, gamma, env, evaluation_budget, treatment_budget, phi, argmaxer, ixs,
+def ggq_step(theta, w, alpha, beta, q_list, gamma, env, evaluation_budget, treatment_budget, phi_list, argmaxer, ixs,
              intercept, project):
-  TD_times_phi, phi_hat = ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, phi, argmaxer, ixs,
-                                     intercept)
-  theta, w = update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_phi, phi, phi_hat, project)
+  td_gradient, phi_hat = ggq_pieces(theta, q_list, gamma, env, evaluation_budget, treatment_budget, phi_list, argmaxer,
+                                    ixs, intercept)
+  phi = np.vstack(phi_list)
+  theta, w = update_theta_and_w(theta, w, alpha, beta, gamma, td_gradient, phi, phi_hat, project)
   return theta, w
 
 
-def ggq_step_repeated(theta, w, alpha, beta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, phi,
-                      argmaxer, weights_array, project=True, intercept=True):
+def ggq_step_repeated(theta, w, alpha, beta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget,
+                      phi_list, argmaxer, weights_array, project=True, intercept=True):
   """
   GGQ step for repeated bootstrap samples.
-  :param theta:
-  :param w:
-  :param alpha:
-  :param beta:
-  :param q_list:
-  :param gamma:
-  :param env:
-  :param evaluation_budget:
-  :param treatment_budget:
-  :param phi:
-  :param argmaxer:
-  :param ixs:
-  :param intercept:
-  :param project:
-  :param weight_array:
-  :return:
   """
-  TD_times_phi, phi_hat = ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget,
-                                              phi, argmaxer, weights_array, intercept=intercept)
-  theta, w = update_theta_and_w(theta, w, alpha, beta, gamma, TD_times_phi, phi, phi_hat, project)
+  td_gradient, phi_hat = ggq_pieces_repeated(theta, q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget,
+                                              phi_list, argmaxer, weights_array, intercept=intercept)
+  phi = np.vstack(phi_list)
+  theta, w = update_theta_and_w(theta, w, alpha, beta, gamma, td_gradient, phi, phi_hat, project)
   return theta, w
 
 
@@ -172,20 +150,21 @@ def ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argma
   n_features = 3  # Currently just combining 2 q functions (plus intercept)
   B = len(q1_list)  # Number of bootstrap replicates
   theta, w = np.zeros(n_features), np.zeros(n_features)
-  phi = np.zeros((0, n_features))
-  for t in range(env.T - 1):
-    data_block = env.X[t]
-    for b in range(B):
-      q1_b = q1_list[b]
-      q2_b = q2_list[b]
-      q_list = [q1_b, q2_b]
-      phi_at_data_block = q_features(data_block, q_list, intercept)
-    phi = np.vstack((phi, phi_at_data_block))
+  phi_list = []
+  for b in range(B):
+    q1_b = q1_list[b]
+    q2_b = q2_list[b]
+    q_list = [q1_b, q2_b]
+    phi_b = np.zeros((0, n_features))
+    for data_block in env.X[:-1]:
+      phi_at_data_block = q_feature_function(data_block, q_list, intercept)
+      phi_b = np.vstack((phi_b, phi_at_data_block))
+    phi_list.append(phi_b)
 
   for it in range(N_IT):
     alpha = NU / ((it + 1) * np.log(it + 2))
     beta = NU / (it + 1)
     theta, w = ggq_step_repeated(theta, w, alpha, beta, q1_list, q2_list, gamma, env, evaluation_budget,
-                                 treatment_budget, phi, argmaxer, weights_array=bootstrap_weight_correction_arr,
+                                 treatment_budget, phi_list, argmaxer, weights_array=bootstrap_weight_correction_arr,
                                  intercept=intercept, project=project)
   return theta

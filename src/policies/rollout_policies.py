@@ -63,8 +63,8 @@ def SIS_model_based_policy(**kwargs):
     kwargs['planning_depth'], kwargs['bootstrap'], \
     kwargs['rollout_depth'], kwargs['gamma'], kwargs['classifier'], kwargs['regressor']
 
-  auto_reguressor = AutoRegressor(classifier, regressor)
-  new_q_model = estimate_SIS_q_fn(env, auto_reguressor, rollout_depth, gamma, planning_depth,
+  auto_regressor = AutoRegressor(classifier, regressor)
+  new_q_model = estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
                                   treatment_budget, evaluation_budget, argmaxer, bootstrap)
 
   q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=new_q_model)
@@ -101,7 +101,18 @@ def dummy_stacked_q_policy(**kwargs):
   return a, new_q_model
 
 
-def SIS_stacked_q_policy(**kwargs):
+def sis_one_step_stacked_q_policy(**kwargs):
+  env = kwargs['env']
+
+  # Generate bootstrap weights
+  bootstrap_weights = np.random.exponential(size=(env.T, env.L))
+
+  # Get model-based one-step q fn
+  eta = fit_transition_model(env, bootstrap_weights=bootstrap_weights)
+  q_mb =
+
+
+def sis_stacked_q_policy(**kwargs):
   env = kwargs['env']
   train_ixs, test_ixs = env.train_test_split()
   kwargs['train_ixs'] = train_ixs
