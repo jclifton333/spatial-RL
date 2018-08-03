@@ -40,7 +40,7 @@ def stack(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, arg
   :return:
   """
   bootstrap_weight_correction_arr = compute_bootstrap_weight_correction(bootstrap_weight_list)
-  theta = ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, intercept=True,
+  theta = ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, intercept=intercept,
               bootstrap_weight_correction_arr=bootstrap_weight_correction_arr, project=True)
   return theta
 

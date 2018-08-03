@@ -7,7 +7,7 @@ import copy
 import numpy as np
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator
-from .sis_infection_probs import infection_probability
+from .sis_infection_probs import sis_infection_probability
 import pdb
 import networkx as nx
 
@@ -238,7 +238,7 @@ class SIS(SpatialDisease):
     return next_state
 
   def infection_probability(self, a, y, s, eta=ETA):
-    return infection_probability(a, y, s, eta, self.omega, self.L, self.adjacency_list)
+    return sis_infection_probability(a, y, s, eta, self.omega, self.L, self.adjacency_list)
 
   def next_infected_probabilities(self, a, eta=ETA):
     if self.contaminator is not None and self.epsilon > 0:

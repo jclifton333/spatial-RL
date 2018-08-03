@@ -5,12 +5,7 @@ Created on Thu May 17 00:08:33 2018
 @author: Jesse
 """
 import numpy as np
-from src.estimation.optim.q_max import q_max_all_states
-from src.estimation.q_functions.q_functions import q
-from functools import partial
-from scipy.special import expit, logit
-import pdb
-import time
+from src.estimation.q_functions.q_max import q_max_all_states
 
 
 def rollout_Q_features(data_block, rollout_Q_function_list, intercept):

@@ -1,6 +1,5 @@
-import pdb
 import numpy as np
-from src.estimation.optim.q_max import q_max_all_states
+from src.estimation.q_functions.q_max import q_max_all_states
 
 
 def compute_temporal_differences(q_fn, gamma, env, evaluation_budget, treatment_budget, argmaxer,

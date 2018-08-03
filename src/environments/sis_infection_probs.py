@@ -12,7 +12,7 @@ def expit(logit_p):
   return 1 - 1 / (1 + np.exp(logit_p))
 
 
-def infection_probability(a, y, s, eta, omega, L, adjacency_lists):
+def sis_infection_probability(a, y, s, eta, omega, L, adjacency_lists):
   """
 
   :param a:
