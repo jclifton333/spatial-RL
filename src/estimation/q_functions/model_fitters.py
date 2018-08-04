@@ -87,16 +87,20 @@ class SKLogit2(object):
         not_inf_weights = weights[not_infected_locations]
       else:
         inf_weights = not_inf_weights = None
-      self.reg_inf.fit(X[infected_locations], y[infected_locations], sample_weight=inf_weights)
-      self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations],
-                           sample_weight=not_inf_weights)
+      if len(infected_locations) > 0:
+        self.reg_inf.fit(X[infected_locations], y[infected_locations], sample_weight=inf_weights)
+      if len(not_infected_locations) > 0:
+        self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations],
+                             sample_weight=not_inf_weights)
       self.fitted_model = True
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     if self.fitted_model:
       phat = np.zeros((X.shape[0], 2))
-      phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])
-      phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])
+      if len(infected_locations) > 0:
+        phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])
+      if len(not_infected_locations) > 0:
+        phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])
       return phat
     else:
       return np.column_stack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
