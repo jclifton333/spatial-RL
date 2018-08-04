@@ -125,7 +125,7 @@ def sis_one_step_stacked_q_policy(**kwargs):
 
   q_stacked = partial(q, data_block_ix=-1, env=env, predictive_model=stacked_q_model)
   a = argmaxer(q_stacked, evaluation_budget, treatment_budget, env)
-  return a, None
+  return a, {'theta': theta}
 
 
 def sis_stacked_q_policy(**kwargs):

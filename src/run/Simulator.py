@@ -100,10 +100,10 @@ class Simulator(object):
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     for t in range(self.time_horizon-2):
-      print(t)
-      a, _ = self.policy(**self.policy_arguments)
+      a, info = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
       self.env.step(a)
+      print('{} theta {}'.format(t, info))
     t1 = time.time()
     score = np.mean(self.env.Y)
     episode_results['score'] = float(score)

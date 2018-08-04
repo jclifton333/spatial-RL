@@ -47,12 +47,9 @@ def temporal_differences(stacked_q_fn, q_mb, q_mf, intercept, env, evaluation_bu
     q_max_list.append(q_max)
 
   # Get temporal differences
-  td = np.hstack(env.y[1:]).astype(float) + gamma * np.hstack(q_max_list) + q_of_phi
+  td = np.hstack(env.y[1:]).astype(float) + gamma * np.hstack(q_max_list) - q_of_phi
   td = np.multiply(td, np.hstack(bootstrap_correction_weight[:-1, :]))
-  try:
-    td_gradient = np.multiply(td.reshape(-1, 1), phi)
-  except:
-    pdb.set_trace()
+  td_gradient = np.multiply(td.reshape(-1, 1), phi)
   return td_gradient, np.vstack(phi_hat_list)
 
 
@@ -103,7 +100,9 @@ def ggq_pieces_repeated(theta, q_mb_list, q_mf_list, gamma, env, evaluation_budg
 def update_theta(theta, alpha, gamma, td_gradient, phi_dot_w, phi_hat):
   phi_dot_w_times_phi_hat = np.multiply(phi_dot_w.reshape(len(phi_dot_w), 1), phi_hat)
   gradient_block = td_gradient - gamma*phi_dot_w_times_phi_hat
-  theta += alpha * np.mean(gradient_block, axis=0)
+  theta_diff = alpha * np.mean(gradient_block, axis=0)
+  print(theta[0] / (theta[0] + theta[1]))
+  theta += theta_diff
   return theta
 
 
@@ -149,13 +148,13 @@ def ggq(q_mb_list, q_mf_list, gamma, env, evaluation_budget, treatment_budget, a
   """
   :param project: Boolean for projecting theta onto positive R^n (for stacking, since weights should be positive.)
   """
-  N_IT = 20
-  NU = 1/25
+  N_IT = 10
+  NU = 100
   
   # n_features = len(q_list) + intercept
   n_features = 2 + intercept   # Currently just combining 2 q functions (plus intercept)
   B = len(q_mb_list)  # Number of bootstrap replicates
-  theta, w = np.zeros(n_features), np.zeros(n_features)
+  theta, w = np.array([0.5, 0.5]), np.ones(n_features)
   phi_list = []
   for b in range(B):
     q_mb_b = q_mb_list[b]
@@ -172,4 +171,5 @@ def ggq(q_mb_list, q_mf_list, gamma, env, evaluation_budget, treatment_budget, a
     theta, w = ggq_step_repeated(theta, w, alpha, beta, q_mb_list, q_mf_list, gamma, env, evaluation_budget,
                                  treatment_budget, phi_list, argmaxer, weights_array=bootstrap_weight_correction_arr,
                                  intercept=intercept, project=project)
+    print('it {} theta {} w {}'.format(it, theta, w))
   return theta
