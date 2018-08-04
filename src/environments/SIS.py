@@ -327,3 +327,15 @@ class SIS(SpatialDisease):
     super(SIS, self).data_block_at_action(data_block_ix, action)
     new_data_block = self.psi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])))
     return new_data_block
+
+  def raw_data_block_at_action(self, data_block_ix, action):
+    """
+
+    :param data_block_ix:
+    :param action:
+    :return:
+    """
+    new_raw_data_block = copy.copy(self.X_raw[data_block_ix])
+    new_raw_data_block[:, 1] = action
+    return new_raw_data_block
+

@@ -12,30 +12,8 @@ import numpy as np
 from functools import partial
 from .p_objective import negative_log_likelihood
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from src.utils.misc import SKLogit
+from src.estimation.q_functions.model_fitters import SKLogit
 from scipy.optimize import minimize
-
-
-def logit_with_label_check(X, y, weights):
-  """
-  Logistic regression with check for all-0s or all-1s.
-  :param X:
-  :param y:
-  :return:
-  """
-  if len(y) > 0:
-    y0 = y[0]
-    for element in y:
-      if element == 1 - y0:
-        clf = SKLogit()
-        clf.fit(X, y, weights)
-        return np.append(clf.intercept_, clf.coef_)
-    if y0 == 0:
-      return np.zeros(X.shape[1] + 1)
-    elif y0 == 1:
-      return np.ones(X.shape[1] + 1)
-  else:
-    return np.zeros(X.shape[1] + 1)
 
 
 def fit_infection_prob_model(env, ixs, bootstrap_weights):
@@ -73,7 +51,9 @@ def fit_transition_model(env, bootstrap_weights=None, ixs=None):
 
 
 def fit_q(A_infected, y_infected, infected_weights):
-  eta_q = logit_with_label_check(A_infected, 1 - y_infected, infected_weights)
+  clf = SKLogit()
+  clf.fit(A_infected, 1-y_infected, infected_weights)
+  eta_q = np.append(clf.intercept_, clf.coef_)
   return eta_q
 
 

@@ -24,12 +24,12 @@ def compute_bootstrap_weight_correction(bootstrap_weights_list):
   return bootstrap_weight_correction_arr
 
 
-def stack(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, bootstrap_weight_list,
+def stack(q_mb_list, q_mf_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, bootstrap_weight_list,
           intercept=False):
   """
 
-  :param q1_list: B-length list of fitted q functions
-  :param q2_list: B-length list of fitted q functions
+  :param q_mb_list: B-length list of fitted model based q functions
+  :param q_mf_list: B-length list of fitted model free q functions
   :param gamma:
   :param env:
   :param evaluation_budget:
@@ -40,7 +40,7 @@ def stack(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, arg
   :return:
   """
   bootstrap_weight_correction_arr = compute_bootstrap_weight_correction(bootstrap_weight_list)
-  theta = ggq(q1_list, q2_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, intercept=intercept,
+  theta = ggq(q_mb_list, q_mf_list, gamma, env, evaluation_budget, treatment_budget, argmaxer, intercept=intercept,
               bootstrap_weight_correction_arr=bootstrap_weight_correction_arr, project=True)
   return theta
 

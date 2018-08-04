@@ -7,7 +7,7 @@ For computing SIS model infection probabilities.  See draft pg. 13.
 """
 
 
-@njit
+@jit
 def expit(logit_p):
   return 1 - 1 / (1 + np.exp(logit_p))
 

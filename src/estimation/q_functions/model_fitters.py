@@ -57,6 +57,7 @@ class SKLogit(object):
       self.coef_ = np.zeros(X.shape[1])
     else:
       self.reg.fit(X, y, sample_weight=weights)
+      self.get_coef()
 
   def get_coef(self):
     self.intercept_ = self.reg.intercept_

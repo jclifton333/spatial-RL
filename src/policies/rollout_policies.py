@@ -111,10 +111,10 @@ def sis_one_step_stacked_q_policy(**kwargs):
 
   # Get bootstrapped qs
   B = 1  # Fix number of bootstrap replicates for now
-  bootstrap_q_lists = bootstrap_one_step_q_functions(env, B)
+  bootstrap_q_lists = bootstrap_one_step_q_functions(env, classifier, B)
 
   # Get stacking parameter
-  theta = stack(bootstrap_q_lists['q_mf_list'], bootstrap_q_lists['q_mb_list'], gamma, env, evaluation_budget,
+  theta = stack(bootstrap_q_lists['q_mb_list'], bootstrap_q_lists['q_mf_list'], gamma, env, evaluation_budget,
                 treatment_budget, argmaxer, bootstrap_weight_list=bootstrap_q_lists['bootstrap_weight_list'])
 
   # Fit non-bootstrapped q functions and combine for final policy
@@ -125,7 +125,7 @@ def sis_one_step_stacked_q_policy(**kwargs):
 
   q_stacked = partial(q, data_block_ix=-1, env=env, predictive_model=stacked_q_model)
   a = argmaxer(q_stacked, evaluation_budget, treatment_budget, env)
-  return a
+  return a, None
 
 
 def sis_stacked_q_policy(**kwargs):

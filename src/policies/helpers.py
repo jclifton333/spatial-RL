@@ -1,6 +1,7 @@
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.environments.sis_infection_probs import sis_infection_probability
 import numpy as np
+import pdb
 
 
 def compare_with_true_probs(env, features, fitted_clf, clf_kwargs):
@@ -29,6 +30,8 @@ def fit_one_step_predictor(classifier, env, weights, print_compare_with_true_pro
   if print_compare_with_true_probs:
     compare_with_true_probs(env, features, clf, clf_kwargs)
 
+  if weights is not None:
+    weights = weights.flatten()
   clf.fit(features, target, weights, **clf_kwargs)
   return clf, predict_proba_kwargs
 
@@ -38,14 +41,15 @@ def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None):
     eta = fit_transition_model(env, bootstrap_weights=bootstrap_weights)
 
     def q_mb(data_block):
-      return sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,
-                                       env.adjacency_list)
+      infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,
+                                                 env.adjacency_list)
+      return infection_prob
 
     # Get model-free
-    clf, predict_proba_kwargs = fit_one_step_predictor(classifier, bootstrap_weights, env)
+    clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights)
 
     def q_mf(data_block):
-      return clf.predict_proba(data_block, **predict_proba_kwargs)
+      return clf.predict_proba(data_block, **predict_proba_kwargs)[:, -1]
 
     return q_mb, q_mf
 

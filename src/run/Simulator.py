@@ -25,7 +25,7 @@ from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 from analysis.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
 
-from src.utils.misc import RidgeProb, KerasRegressor, SKLogit, SKLogit2
+from src.estimation.q_functions.model_fitters import RidgeProb, KerasRegressor, SKLogit, SKLogit2
 
 import keras.backend as K
 
@@ -100,6 +100,7 @@ class Simulator(object):
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     for t in range(self.time_horizon-2):
+      print(t)
       a, _ = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
       self.env.step(a)
