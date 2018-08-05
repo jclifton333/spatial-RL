@@ -320,12 +320,16 @@ class SIS(SpatialDisease):
     self.y.append(self.current_infected)
     self.update_likelihood_information(a, self.current_infected)
 
-  def data_block_at_action(self, data_block_ix, action):
+  def data_block_at_action(self, data_block_ix, action, raw=False):
     """
     Replace action in raw data_block with given action.
     """
     super(SIS, self).data_block_at_action(data_block_ix, action)
-    new_data_block = self.psi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])))
+    if raw:
+     new_data_block = copy.copy(self.X_raw[data_block_ix])
+     new_data_block[:, 1] = action
+    else:
+      new_data_block = self.psi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])))
     return new_data_block
 
   def raw_data_block_at_action(self, data_block_ix, action):

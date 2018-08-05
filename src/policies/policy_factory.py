@@ -32,5 +32,7 @@ def policy_factory(policy_type):
     return roll.SIS_model_based_one_step
   elif policy_type == 'sis_one_step_stacked_q':
     return roll.sis_one_step_stacked_q_policy
+  elif policy_type == 'sis_one_step_be_averaged':
+    return roll.sis_one_step_be_averaged_policy
   else:
     raise ValueError('Argument does not match any policy.')

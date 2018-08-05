@@ -6,7 +6,8 @@ from src.estimation.stacking.greedy_gq import ggq
 from src.estimation.stacking.stack_fitted_qs import compute_bootstrap_weight_correction, stack
 from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
 from src.estimation.model_based.SIS.fit import fit_transition_model
-from src.policies.helpers import fit_one_step_predictor, bootstrap_one_step_q_functions, fit_one_step_mf_and_mb_qs
+from src.policies.helpers import fit_one_step_predictor, bootstrap_one_step_q_functions, fit_one_step_mf_and_mb_qs, \
+                                 bellman_error
 import numpy as np
 import keras.backend as K
 import pdb
@@ -102,6 +103,41 @@ def dummy_stacked_q_policy(**kwargs):
   a = np.random.permutation(np.append(np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
   new_q_model = lambda x: theta[0]*q_0(x) + theta[1]*q_1(x)
   return a, new_q_model
+
+
+def sis_one_step_be_averaged_policy(**kwargs):
+  """
+  Average one step MB and MF policies using bootstrap distributions of bellman errors.
+  :param kwargs:
+  :return:
+  """
+  env, classifier, argmaxer, evaluation_budget, treatment_budget, gamma = \
+    kwargs['env'], kwargs['classifier'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['gamma']
+  B = 30
+
+  # Bootstrap functions to get P( BE(MB) > BE(MF)), which we use to average the q-functions
+  bootstrapped_q_lists = bootstrap_one_step_q_functions(env, classifier, B)
+  q_mb_list, q_mf_list = bootstrapped_q_lists['q_mb_list'], bootstrapped_q_lists['q_mf_list']
+  q_mb_be = np.array([bellman_error(env, q_mb, evaluation_budget, treatment_budget, argmaxer, gamma,
+                                    use_raw_features=True) for q_mb in q_mb_list])
+  q_mf_be = np.array([bellman_error(env, q_mf, evaluation_budget, treatment_budget, argmaxer, gamma,
+                                    use_raw_features=False) for q_mf in q_mf_list])
+  mb_weight = np.mean(q_mb_be < q_mf_be)
+  mf_weight = 1 - mb_weight
+
+  # Fit non-bootstrapped q functions and combine for final policy
+  q_mb, q_mf = fit_one_step_mf_and_mb_qs(env, classifier)
+
+  # Compare accuracy
+
+
+  def averaged_q_model(data_block):
+    return mb_weight*q_mb(data_block) + mf_weight*q_mf(data_block)
+
+  q_stacked = partial(q, data_block_ix=-1, env=env, predictive_model=averaged_q_model)
+  a = argmaxer(q_stacked, evaluation_budget, treatment_budget, env)
+  return a, {'theta': [mb_weight, mf_weight]}
 
 
 def sis_one_step_stacked_q_policy(**kwargs):

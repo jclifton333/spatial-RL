@@ -9,7 +9,6 @@ import time
 import datetime
 import yaml
 import multiprocessing as mp
-import pdb
 
 # Hack bc python imports are stupid
 import sys
@@ -23,9 +22,9 @@ from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
-from analysis.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
+from src.estimation.stacking.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
 
-from src.estimation.q_functions.model_fitters import RidgeProb, KerasRegressor, SKLogit, SKLogit2
+from src.estimation.q_functions.model_fitters import KerasRegressor, SKLogit, SKLogit2
 
 import keras.backend as K
 

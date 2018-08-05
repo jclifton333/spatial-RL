@@ -1,12 +1,16 @@
 from src.estimation.model_based.SIS.fit import fit_transition_model
+from src.estimation.q_functions.q_max import q_max_all_states
 from src.environments.sis_infection_probs import sis_infection_probability
 import numpy as np
 import pdb
 
 
-def compare_with_true_probs(env, features, fitted_clf, clf_kwargs):
+def compare_with_true_probs(env, predictor, raw):
+  if raw:
+    phat = np.hstack([predictor(data_block ) for data_block in env.X_raw])
+  else:
+    phat = np.hstack([predictor(data_block) for data_block in env.X])
   true_expected_counts = np.hstack(env.true_infection_probs)
-  phat = fitted_clf.predict_proba(features, **clf_kwargs)[:, -1]
   loss = np.mean((phat - true_expected_counts) ** 2)
   print('loss {}'.format(loss))
   return
@@ -51,6 +55,11 @@ def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None):
     def q_mf(data_block):
       return clf.predict_proba(data_block, **predict_proba_kwargs)[:, -1]
 
+    print('mb loss')
+    compare_with_true_probs(env, q_mb, raw=True)
+    print('mf loss')
+    compare_with_true_probs(env, q_mf, raw=False)
+
     return q_mb, q_mf
 
 
@@ -68,3 +77,18 @@ def bootstrap_one_step_q_functions(env, classifier, B):
     q_mb_list.append(q_mb)
     bootstrap_weight_list.append(bootstrap_weights)
   return {'q_mf_list': q_mf_list, 'q_mb_list': q_mb_list, 'bootstrap_weight_list': bootstrap_weight_list}
+
+
+def bellman_error(env, q_fn, evaluation_budget, treatment_budget, argmaxer, gamma, use_raw_features=False):
+  r = np.hstack(np.array([np.sum(y) for y in env.y[1:]]))
+  if use_raw_features:
+    q = np.hstack(np.array([np.sum(q_fn(data_block)) for data_block in env.X_raw[:-1]]))
+  else:
+    q = np.hstack(np.array([np.sum(q_fn(data_block)) for data_block in env.X[:-1]]))
+  qp1_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, q_fn, argmaxer, raw=use_raw_features)
+  qp1_max = np.sum(qp1_max[1:, :], axis=1)
+  td = r + gamma * qp1_max - q
+  return np.linalg.norm(td)
+
+
+
