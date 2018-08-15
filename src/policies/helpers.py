@@ -40,27 +40,34 @@ def fit_one_step_predictor(classifier, env, weights, print_compare_with_true_pro
   return clf, predict_proba_kwargs
 
 
+def fit_one_step_mb_q(env, bootstrap_weights=None):
+  # Get model-based
+  eta = fit_transition_model(env, bootstrap_weights=bootstrap_weights)
+
+  def q_mb(data_block):
+    infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,
+                                               env.adjacency_list)
+    return infection_prob
+
+  return q_mb
+
+
 def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None):
-    # Get model-based
-    eta = fit_transition_model(env, bootstrap_weights=bootstrap_weights)
+  # Get model-based
+  q_mb = fit_one_step_mb_q(env, bootstrap_weights=bootstrap_weights)
 
-    def q_mb(data_block):
-      infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,
-                                                 env.adjacency_list)
-      return infection_prob
+  # Get model-free
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights)
 
-    # Get model-free
-    clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights)
+  def q_mf(data_block):
+    return clf.predict_proba(data_block, **predict_proba_kwargs)[:, -1]
 
-    def q_mf(data_block):
-      return clf.predict_proba(data_block, **predict_proba_kwargs)[:, -1]
+  print('mb loss')
+  compare_with_true_probs(env, q_mb, raw=True)
+  print('mf loss')
+  compare_with_true_probs(env, q_mf, raw=False)
 
-    print('mb loss')
-    compare_with_true_probs(env, q_mb, raw=True)
-    print('mf loss')
-    compare_with_true_probs(env, q_mf, raw=False)
-
-    return q_mb, q_mf
+  return q_mb, q_mf
 
 
 def bootstrap_one_step_q_functions(env, classifier, B):
@@ -89,6 +96,40 @@ def bellman_error(env, q_fn, evaluation_budget, treatment_budget, argmaxer, gamm
   qp1_max = np.sum(qp1_max[1:, :], axis=1)
   td = r + gamma * qp1_max - q
   return np.linalg.norm(td)
+
+
+def estimate_mb_bias(q_mb_one_step, env):
+  y = np.hstack(env.y)
+  X = np.vstack(env.X)
+  phat = q_mb_one_step(X)
+  return np.mean(phat - y)
+
+
+def estimate_mf_and_mb_variance(q_mb_one_step, env):
+  """
+  Parametric estimate of one step mf variance, using one step mb.
+  Also estimate mb variance.
+  """
+  X = np.vstack(env.X)
+  phat = q_mb_one_step(X)
+  mf_variance = np.multiply(phat, 1 - phat)
+  mb_variance = np.multiply(phat, 1 - phat) / len(phat)
+  return np.mean(mf_variance), np.mean(mb_variance)
+
+
+def estimate_alpha_from_mse_components(mb_bias, mb_variance, mf_variance):
+  """
+  Get estimated mse-optimal convex combination weight for combining q-functions, ignorning correlations between
+  estimators.
+  :param mb_bias:
+  :param mb_variance:
+  :param mf_variance:
+  :return:
+  """
+
+  # Estimate bias coefficients k
+  pass
+
 
 
 

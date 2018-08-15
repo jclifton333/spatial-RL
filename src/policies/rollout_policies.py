@@ -6,8 +6,8 @@ from src.estimation.stacking.greedy_gq import ggq
 from src.estimation.stacking.stack_fitted_qs import compute_bootstrap_weight_correction, stack
 from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
 from src.estimation.model_based.SIS.fit import fit_transition_model
-from src.policies.helpers import fit_one_step_predictor, bootstrap_one_step_q_functions, fit_one_step_mf_and_mb_qs, \
-                                 bellman_error
+from src.policies.helpers import *
+
 import numpy as np
 import keras.backend as K
 import pdb
@@ -131,7 +131,6 @@ def sis_one_step_be_averaged_policy(**kwargs):
 
   # Compare accuracy
 
-
   def averaged_q_model(data_block):
     return mb_weight*q_mb(data_block) + mf_weight*q_mf(data_block)
 
@@ -180,6 +179,13 @@ def sis_stacked_q_policy(**kwargs):
   q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
   a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
   return a, q_hat
+
+
+def sis_one_step_mse_averaged(**kwargs):
+  env = kwargs['env']
+  q_mb = fit_one_step_mb_q(env)
+  mb_bias = estimate_mb_bias(q_mb, env)
+  mf_variance, mb_variance = estimate_mf_and_mb_variance(q_mb, env)
 
 
 # def network_features_rollout_policy(**kwargs):
