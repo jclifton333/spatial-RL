@@ -98,38 +98,70 @@ def bellman_error(env, q_fn, evaluation_budget, treatment_budget, argmaxer, gamm
   return np.linalg.norm(td)
 
 
-def estimate_mb_bias(q_mb_one_step, env):
+def estimate_mb_bias(phat, env):
+  """
+
+  :param phat: Estimated one step probabilities
+  :param env:
+  :return:
+  """
   y = np.hstack(env.y)
-  X = np.vstack(env.X)
-  phat = q_mb_one_step(X)
   return np.mean(phat - y)
 
 
-def estimate_mf_and_mb_variance(q_mb_one_step, env):
+def estimate_mf_and_mb_variance(phat):
   """
   Parametric estimate of one step mf variance, using one step mb.
   Also estimate mb variance.
+  :param phat: estimated one step probabilities
+  :param env:
   """
-  X = np.vstack(env.X)
-  phat = q_mb_one_step(X)
   mf_variance = np.multiply(phat, 1 - phat)
   mb_variance = np.multiply(phat, 1 - phat) / len(phat)
   return np.mean(mf_variance), np.mean(mb_variance)
 
 
-def estimate_alpha_from_mse_components(mb_bias, mb_variance, mf_variance):
+def estimate_alpha_from_mse_components(q_mb, mb_bias, mb_variance, mf_variance):
   """
   Get estimated mse-optimal convex combination weight for combining q-functions, ignorning correlations between
   estimators.
+  :param q_mb:
   :param mb_bias:
   :param mb_variance:
   :param mf_variance:
   :return:
   """
+  q_mb_mean = np.mean(q_mb)
+  preliminary_backup_estimate = q_mb_mean - mb_bias
 
   # Estimate bias coefficients k
-  pass
+  k_mb = q_mb_mean / preliminary_backup_estimate
+  k_mf = 1
 
+  # Estimate coefficients of variation v
+  v_mf = mf_variance / preliminary_backup_estimate**2
+  v_mb = mb_variance / preliminary_backup_estimate**2
+
+  lambda_ = np.sqrt((k_mf**2 * v_mb) / (k_mb**2 * v_mf))
+  correlation = 0.0
+
+  # Estimate alpha
+  alpha_mf = \
+    (lambda_ * (lambda_ - correlation)) / \
+    (1 - 2*correlation*lambda_ + lambda_**2 + (1 + correlation**2) * (v_mb / k_mb**2))
+
+  # Clip to [0, 1]
+  alpha_mf = np.max((0.0, np.min((1.0, alpha_mf))))
+  alpha_mb = 1 - alpha_mf
+  return alpha_mb, alpha_mf
+
+
+def estimate_mse_optimal_convex_combination(q_mb_one_step, env):
+  phat = np.hstack([q_mb_one_step(data_block) for data_block in env.X])
+  mb_bias = estimate_mb_bias(phat, env)
+  mf_variance, mb_variance = estimate_mf_and_mb_variance(phat)
+  alpha_mb, alpha_mf = estimate_alpha_from_mse_components(phat, mb_bias, mb_variance, mf_variance)
+  return alpha_mb, alpha_mf, phat
 
 
 

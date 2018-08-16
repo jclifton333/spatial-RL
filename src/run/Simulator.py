@@ -25,6 +25,7 @@ from src.policies.policy_factory import policy_factory
 from src.estimation.stacking.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
 
 from src.estimation.q_functions.model_fitters import KerasRegressor, SKLogit, SKLogit2
+from sklearn.ensemble import RandomForestRegressor
 
 import keras.backend as K
 
@@ -54,7 +55,7 @@ class Simulator(object):
 
     # Set policy arguments
     treatment_budget = np.int(np.ceil(0.05 * self.env.L))
-    self.policy_arguments = {'classifier': SKLogit2, 'regressor': KerasRegressor, 'env': self.env,
+    self.policy_arguments = {'classifier': SKLogit2, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
@@ -86,7 +87,7 @@ class Simulator(object):
     results_dict = {k: v for d in results_list for k, v in d.items()}
     list_of_scores = [v['score'] for v in results_dict.values()] 
     results_dict['mean'] = float(np.mean(list_of_scores))
-    results_dict['se'] = float(np.std(list_of_scores)) / np.sqrt(len(list_of_scores))
+    results_dict['se'] = float(np.std(list_of_scores) / np.sqrt(len(list_of_scores)))
     self.save_results(results_dict)
     return
 

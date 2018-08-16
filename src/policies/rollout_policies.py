@@ -183,14 +183,24 @@ def sis_stacked_q_policy(**kwargs):
 
 def sis_one_step_mse_averaged(**kwargs):
   env = kwargs['env']
-  q_mb = fit_one_step_mb_q(env)
-  mb_bias = estimate_mb_bias(q_mb, env)
-  mf_variance, mb_variance = estimate_mf_and_mb_variance(q_mb, env)
+
+  # Get modified target
+  q_mb_one_step = fit_one_step_mb_q(env)
+  alpha_mb, alpha_mf, phat = estimate_mse_optimal_convex_combination(q_mb_one_step, env)
+  target = alpha_mb * phat + alpha_mf * np.hstack(env.y).astype(float)
+
+  # Fit model to modified target
+  regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
+    kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
+    kwargs['bootstrap']
+
+  reg = regressor()
+  reg.fit(np.vstack(env.X), target)
+
+  def qfn(a):
+    return reg.predict(env.data_block_at_action(-1, a))
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  return a, None
 
 
-# def network_features_rollout_policy(**kwargs):
-#   env, evaluation_budget, treatment_budget, regressor = \
-#     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['regressor']
-#   argmax_actions, _ = network_features_rollout(env, evaluation_budget, treatment_budget, regressor())
-#   a = argmax_actions[-1]
-#   return a
