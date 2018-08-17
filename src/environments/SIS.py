@@ -135,6 +135,7 @@ class SIS(SpatialDisease):
     self.indices_for_likelihood_next_not_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
                                                      for j in range(self.max_num_neighbors + 1)}
                                                  for i in range(2)}
+
   def reset(self):
     """
     Reset state and observation histories.

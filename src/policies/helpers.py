@@ -98,27 +98,46 @@ def bellman_error(env, q_fn, evaluation_budget, treatment_budget, argmaxer, gamm
   return np.linalg.norm(td)
 
 
-def estimate_mb_bias(phat, env):
+def estimate_mb_bias_and_variance(phat, env):
   """
 
   :param phat: Estimated one step probabilities
   :param env:
   :return:
   """
-  y = np.hstack(env.y)
-  return np.mean(phat - y)
+  NUMBER_OF_BOOTSTRAP_SAMPLES = 100
+  THRESHOLD = 0.05  # For softhresholding bias estimate
+
+  mb_bias = 0.0
+  phat_mean_replicates = []
+  for b in range(NUMBER_OF_BOOTSTRAP_SAMPLES):
+    one_step_q_b = fit_one_step_mb_q(env, np.random.multinomial(env.L, np.ones(env.L)/env.L, size=env.T))
+    phat_b = np.hstack([one_step_q_b(data_block) for data_block in env.X])
+    mb_bias += (np.mean(phat - phat_b) - mb_bias) / (b + 1)
+    phat_mean_replicates.append(np.mean(phat_b))
+  # mb_variance = np.var(phat_mean_replicates)
+
+  # Get mb variance from asymptotic normality
+  X = np.vstack(env.X)
+  V = np.diag(np.multiply(phat, 1 - phat))
+  beta_hat_cov_inv = np.dot(X.T, np.dot(V, X))
+  beta_hat_cov = np.linalg.inv(beta_hat_cov_inv)
+  X_beta_hat_cov = np.dot(X.T, np.dot(beta_hat_cov, X))
+  mb_variance = np.sum(np.multiply(np.diag(X_beta_hat_cov), expit_derivative(phat)**2)) / len(phat)**2
+
+  print('bias before threshold: {}'.format(mb_bias))
+  mb_bias = softhresholder(mb_bias, THRESHOLD)
+  return mb_bias, mb_variance
 
 
-def estimate_mf_and_mb_variance(phat):
+def estimate_mf_variance(phat):
   """
   Parametric estimate of one step mf variance, using one step mb.
-  Also estimate mb variance.
   :param phat: estimated one step probabilities
   :param env:
   """
   mf_variance = np.multiply(phat, 1 - phat)
-  mb_variance = np.multiply(phat, 1 - phat) / len(phat)
-  return np.mean(mf_variance), np.mean(mb_variance)
+  return np.sum(mf_variance) / len(mf_variance)**2
 
 
 def estimate_alpha_from_mse_components(q_mb, mb_bias, mb_variance, mf_variance):
@@ -157,11 +176,29 @@ def estimate_alpha_from_mse_components(q_mb, mb_bias, mb_variance, mf_variance):
 
 
 def estimate_mse_optimal_convex_combination(q_mb_one_step, env):
-  phat = np.hstack([q_mb_one_step(data_block) for data_block in env.X])
-  mb_bias = estimate_mb_bias(phat, env)
-  mf_variance, mb_variance = estimate_mf_and_mb_variance(phat)
+  phat = np.hstack([q_mb_one_step(data_block) for data_block in env.X_raw])
+  mb_bias, mb_variance = estimate_mb_bias_and_variance(phat, env)
+  mf_variance = estimate_mf_variance(phat)
+  mb_variance = np.min((mb_variance, mf_variance))  # We know that mb_variance must be smaller than mf_variance
   alpha_mb, alpha_mf = estimate_alpha_from_mse_components(phat, mb_bias, mb_variance, mf_variance)
-  return alpha_mb, alpha_mf, phat
+  mse_components = {'mb_bias': mb_bias, 'mb_variance': mb_variance, 'mf_variance': mf_variance}
+  return alpha_mb, alpha_mf, phat, mse_components
+
+
+def expit_derivative(x):
+  """
+  For delta method estimate of mb variance.
+  :param x:
+  :return:
+  """
+  return np.exp(-x) / (1 + np.exp(-x))**2
+
+
+def softhresholder(x, threshold):
+  if -threshold < x < threshold:
+    return 0
+  else:
+    return x - np.sign(x)*threshold
 
 
 

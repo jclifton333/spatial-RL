@@ -186,7 +186,7 @@ def sis_one_step_mse_averaged(**kwargs):
 
   # Get modified target
   q_mb_one_step = fit_one_step_mb_q(env)
-  alpha_mb, alpha_mf, phat = estimate_mse_optimal_convex_combination(q_mb_one_step, env)
+  alpha_mb, alpha_mf, phat, mse_components = estimate_mse_optimal_convex_combination(q_mb_one_step, env)
   target = alpha_mb * phat + alpha_mf * np.hstack(env.y).astype(float)
 
   # Fit model to modified target
@@ -201,6 +201,8 @@ def sis_one_step_mse_averaged(**kwargs):
     return reg.predict(env.data_block_at_action(-1, a))
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  return a, None
+  info = mse_components
+  info.update({'alpha_mb': alpha_mb})
+  return a, info
 
 
