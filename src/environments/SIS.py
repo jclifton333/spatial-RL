@@ -5,9 +5,12 @@ spatial QL paper.
 
 import copy
 import numpy as np
+from src.policies.helpers import expit_derivative
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator
 from .sis_infection_probs import sis_infection_probability
+from scipy.special import expit
+from scipy.linalg import block_diag
 import pdb
 import networkx as nx
 
@@ -343,4 +346,68 @@ class SIS(SpatialDisease):
     new_raw_data_block = copy.copy(self.X_raw[data_block_ix])
     new_raw_data_block[:, 1] = action
     return new_raw_data_block
+
+  def compute_joint_gradient_and_hessian(self, mb_params, mf_params):
+    """
+    Compute the gradient and hessian of the stacked estimating equations used to estimate one-step
+    mb and mf q functions.  (Assume mf_params were fit to env.X using SKLogit2.
+
+    ToDo: This can be optimized!
+
+    :param mb_params:
+    :param mf_params:
+    :return:
+    """
+    dim = len(mb_params) + len(mf_params)
+    grad_outer = np.zeros((dim, dim))
+    hess = np.zeros((dim, dim))
+
+    for t in range(self.T):
+      data_block, raw_data_block = self.X[t], self.X_raw[t]
+      for l in range(self.L):
+        x_raw, x, y = raw_data_block[l, :], data_block[l, :], self.y[t][l]
+
+        # MB gradient
+        if raw_data_block[l, 2]:
+          # Compute gradient of  recovery model
+          recovery_features = np.concatenate(([1.0], x_raw[1]))
+          mb_grad = logit_gradient(recovery_features, y, mb_params[-2:])
+          mb_hess = logit_hessian(recovery_features, mb_params[-2:])
+        else:
+          # Compute gradient of infection model
+          mb_grad = None
+
+        # MF gradient
+        mf_features = np.concatenate(([1.0], x))
+        mf_grad = logit_gradient(mf_features, y, mf_params)
+        mf_hess = logit_hessian(mf_features, mf_params)
+
+        grad_lt = np.concatenate((mb_grad, mf_grad))
+        grad_outer_lt = np.outer(grad_lt, grad_lt)
+        hess_lt = block_diag(mb_hess, mf_hess)
+
+        grad_outer += grad_outer_lt
+        hess += hess_lt
+
+    hess_inv = np.linalg.inv(hess_inv)
+    cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
+    return cov
+
+
+def logit_gradient(x, y, beta):
+  x_dot_beta = np.dot(x, beta)
+  expit_x_dot_beta = expit(x_dot_beta)
+  expit_derivative_ = expit_derivative(x_dot_beta)
+  success_component = y / expit_x_dot_beta * expit_derivative_ * x
+  failure_component = (1 - y) / (1 - expit_x_dot_beta) * -expit_derivative_ * x
+  return success_component + failure_component
+
+
+def logit_hessian(x, beta):
+  outer_ = np.outer(x, x)
+  expit_x_dot_beta = expit(np.dot(x, beta))
+  return outer_ * expit_x_dot_beta * (1 - expit_x_dot_beta)
+
+
+
 

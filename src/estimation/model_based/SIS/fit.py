@@ -16,12 +16,13 @@ from src.estimation.q_functions.model_fitters import SKLogit
 from scipy.optimize import minimize
 
 
-def fit_infection_prob_model(env, ixs, bootstrap_weights):
+def fit_infection_prob_model(env, ixs, bootstrap_weights, y=None):
   """
 
   :param env:
   :param ixs: List of lists of indexes for train subset (used for stacking method).
   :param bootstrap_weights: (env.T, env.L) - size array of bootstrap weights, or None
+  :param y: if provided, use this as target rather than env.y
   :return:
   """
   if ixs is None:

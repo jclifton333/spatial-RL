@@ -1,6 +1,7 @@
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.estimation.q_functions.q_max import q_max_all_states
 from src.environments.sis_infection_probs import sis_infection_probability
+from sklearn.linear_model import LogisticRegression
 import numpy as np
 import pdb
 
@@ -117,17 +118,54 @@ def estimate_mb_bias_and_variance(phat, env):
     phat_mean_replicates.append(np.mean(phat_b))
   # mb_variance = np.var(phat_mean_replicates)
 
-  # Get mb variance from asymptotic normality
-  X = np.vstack(env.X)
-  V = np.diag(np.multiply(phat, 1 - phat))
-  beta_hat_cov_inv = np.dot(X.T, np.dot(V, X))
-  beta_hat_cov = np.linalg.inv(beta_hat_cov_inv)
-  X_beta_hat_cov = np.dot(X.T, np.dot(beta_hat_cov, X))
-  mb_variance = np.sum(np.multiply(np.diag(X_beta_hat_cov), expit_derivative(phat)**2)) / len(phat)**2
+  mb_variance = estimate_mb_variance(phat, env)
 
   print('bias before threshold: {}'.format(mb_bias))
   mb_bias = softhresholder(mb_bias, THRESHOLD)
   return mb_bias, mb_variance
+
+
+def estimate_mb_variance(phat, env):
+  # Get mb variance from asymptotic normality
+  X_raw = np.vstack(env.X_raw)
+  V = np.diag(np.multiply(phat, 1 - phat))
+  beta_hat_cov_inv = np.dot(X_raw.T, np.dot(V, X_raw))
+  beta_hat_cov = np.linalg.inv(beta_hat_cov_inv + 0.01*np.eye(beta_hat_cov_inv.shape[0]))
+  X_beta_hat_cov = np.dot(X_raw, np.dot(beta_hat_cov, X_raw.T))
+  mb_variance = np.sum(np.multiply(np.diag(X_beta_hat_cov), expit_derivative(phat)**2)) / len(phat)**2
+  return mb_variance
+
+
+# def estimate_cov_and_mb_bias(phat, env, classifier):
+#   """
+#
+#   :param phat:
+#   :param env:
+#   :param classifier: This should be a flexible model.
+#   :return:
+#   """
+#   NUMBER_OF_BOOTSTRAP_SAMPLES = 100
+#
+#   clf = classifier()
+#   X, y = np.vstack(env.X), np.hstack(env.y).astype(float)
+#   clf.fit(X, y)
+#   phat_parametric = clf.predict_proba(X)[:, -1]
+#   phat_parametric_mean = np.mean(phat)
+#   correlation = 0.0
+#
+#   # Bias estimate
+#   mb_bias = phat - phat_parametric
+#
+#   # Parametric bootstrap correlation estimate
+#   # for b in range(NUMBER_OF_BOOTSTRAP_SAMPLES):
+#   #   y_b = np.random.binomial(1, p=phat_parametric)
+#   #   clf_b = classifier()
+#   #   clf_b.fit(X, y_b)
+#  #   phat_b = clf.predict_proba(X)
+#   #   correlation += ((np.mean(phat_b) - phat_parametric_mean)*(np.mean(y_b) - phat_parametric_mean)
+#   #                   - correlation) / (b + 1)
+#
+#   return softhresholder(np.mean(mb_bias), 0.05), 0.0
 
 
 def estimate_mf_variance(phat):
@@ -140,7 +178,7 @@ def estimate_mf_variance(phat):
   return np.sum(mf_variance) / len(mf_variance)**2
 
 
-def estimate_alpha_from_mse_components(q_mb, mb_bias, mb_variance, mf_variance):
+def estimate_alpha_from_mse_components(q_mb, mb_bias, mb_variance, mf_variance, correlation):
   """
   Get estimated mse-optimal convex combination weight for combining q-functions, ignorning correlations between
   estimators.
@@ -161,13 +199,11 @@ def estimate_alpha_from_mse_components(q_mb, mb_bias, mb_variance, mf_variance):
   v_mf = mf_variance / preliminary_backup_estimate**2
   v_mb = mb_variance / preliminary_backup_estimate**2
 
-  lambda_ = np.sqrt((k_mf**2 * v_mb) / (k_mb**2 * v_mf))
-  correlation = 0.0
+  # lambda_ = np.sqrt((k_mf**2 * v_mb) / (k_mb**2 * v_mf))
+  # correlation = 0.0
 
   # Estimate alpha
-  alpha_mf = \
-    (lambda_ * (lambda_ - correlation)) / \
-    (1 - 2*correlation*lambda_ + lambda_**2 + (1 + correlation**2) * (v_mb / k_mb**2))
+  alpha_mf = (mb_variance + mb_bias**2 - correlation) / (mb_bias**2 + mb_variance + mf_variance - 2*correlation)
 
   # Clip to [0, 1]
   alpha_mf = np.max((0.0, np.min((1.0, alpha_mf))))
@@ -178,10 +214,12 @@ def estimate_alpha_from_mse_components(q_mb, mb_bias, mb_variance, mf_variance):
 def estimate_mse_optimal_convex_combination(q_mb_one_step, env):
   phat = np.hstack([q_mb_one_step(data_block) for data_block in env.X_raw])
   mb_bias, mb_variance = estimate_mb_bias_and_variance(phat, env)
+  covariance = 0.0
   mf_variance = estimate_mf_variance(phat)
   mb_variance = np.min((mb_variance, mf_variance))  # We know that mb_variance must be smaller than mf_variance
-  alpha_mb, alpha_mf = estimate_alpha_from_mse_components(phat, mb_bias, mb_variance, mf_variance)
-  mse_components = {'mb_bias': mb_bias, 'mb_variance': mb_variance, 'mf_variance': mf_variance}
+  alpha_mb, alpha_mf = estimate_alpha_from_mse_components(phat, mb_bias, mb_variance, mf_variance, covariance)
+  mse_components = {'mb_bias': mb_bias, 'mb_variance': mb_variance, 'mf_variance': mf_variance,
+                    'covariance': covariance}
   return alpha_mb, alpha_mf, phat, mse_components
 
 
