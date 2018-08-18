@@ -5,6 +5,7 @@ from src.estimation.q_functions.q_functions import q
 from src.estimation.stacking.greedy_gq import ggq
 from src.estimation.stacking.stack_fitted_qs import compute_bootstrap_weight_correction, stack
 from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
+from src.estimation.q_functions.model_fitters import SKLogit2
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.policies.helpers import *
 
@@ -183,25 +184,53 @@ def sis_stacked_q_policy(**kwargs):
 
 def sis_one_step_mse_averaged(**kwargs):
   env = kwargs['env']
+  q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2)
 
-  # Get modified target
-  q_mb_one_step = fit_one_step_mb_q(env)
-  alpha_mb, alpha_mf, phat, mse_components = estimate_mse_optimal_convex_combination(q_mb_one_step, env)
-  target = alpha_mb * phat + alpha_mf * np.hstack(env.y).astype(float)
+  # Compute covariances
+  cov = env.joint_mf_and_mb_covariance(mb_params, fitted_mf_clf)
 
-  # Fit model to modified target
+  # Simulate from estimated sampling dbns
+  params = np.concatenate((fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
+  simulated_params = np.random.multivariate_normal(mean=params, cov=cov, size=100)
+
+  yhat_mb_means = []
+  yhat_mf_means = []
+  for simulated_param in simulated_params:
+    simulated_mb_params = simulated_param[:len(mb_params)]
+    simulated_mf_params = simulated_param[len(mb_params):]
+    # X, X_raw = np.vstack(env.X), np.vstack(env.X_raw)
+    # yhat_mb = f(mb_params, X_raw)
+    # yhat_mf = f(mf_params, X)
+    # yhat_mb_means.append(np.mean(yhat_mb))
+    # yhat_mf_means.append(np.mean(yhat_mf))
+    pass
+
+  # Compute variances and covariance
+  yhat_cov = np.cov(np.array([yhat_mb_means, yhat_mf_means]))
+
+  # Compute mb bias
+  # yhat_mb =
+  # yhat_mf =
+  # mb_bias = softhresholder(yhat_mb - yhat_mf)
+
+  # Get mixing weight
+  mb_var = yhat_cov[0,0]
+  mf_var = yhat_cov[1,1]
+  cov = yhat_cov[0,1]
+  alpha_mf = (mb_bias**2 + mb_var - cov) / (mb_bias**2 + mb_var + mf_var - 2*cov)
+  alpha_mb = 1 - alpha_mf
+
+  # Get modified q_function
+
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
     kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
     kwargs['bootstrap']
 
-  reg = regressor()
-  reg.fit(np.vstack(env.X), target)
-
   def qfn(a):
-    return reg.predict(env.data_block_at_action(-1, a))
+    return alpha_mb*q_mb(a) + alpha_mf*q_mf(a)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  info = mse_components
+  info = {'mb_var': mb_var, 'mf_var': mf_var, 'cov': cov}
   info.update({'alpha_mb': alpha_mb})
   return a, info
 

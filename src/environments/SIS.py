@@ -6,6 +6,7 @@ spatial QL paper.
 import copy
 import numpy as np
 from src.policies.helpers import expit_derivative
+from src.estimation.model_based.SIS.p_objective import success_component_single, failure_component_single
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator
 from .sis_infection_probs import sis_infection_probability
@@ -347,15 +348,15 @@ class SIS(SpatialDisease):
     new_raw_data_block[:, 1] = action
     return new_raw_data_block
 
-  def compute_joint_gradient_and_hessian(self, mb_params, mf_params):
+  def joint_mf_and_mb_covariance(self, mb_params, fitted_mf_clf):
     """
-    Compute the gradient and hessian of the stacked estimating equations used to estimate one-step
-    mb and mf q functions.  (Assume mf_params were fit to env.X using SKLogit2.
+    Compute covariance of mf and mb estimators, where mb_params are maximum likelihood estimate of SIS model with
+    omega=0, and mf is fitted to env.X using SKLogit2.
 
     ToDo: This can be optimized!
 
     :param mb_params:
-    :param mf_params:
+    :param fitted_mf_clf: flexible SKLogit2-like classifier
     :return:
     """
     dim = len(mb_params) + len(mf_params)
@@ -364,23 +365,32 @@ class SIS(SpatialDisease):
 
     for t in range(self.T):
       data_block, raw_data_block = self.X[t], self.X_raw[t]
+      a, y = raw_data_block[:, 1], raw_data_block[:, 2]
       for l in range(self.L):
-        x_raw, x, y = raw_data_block[l, :], data_block[l, :], self.y[t][l]
+        x_raw, x, y_next = raw_data_block[l, :], data_block[l, :], self.y[t][l]
 
         # MB gradient
         if raw_data_block[l, 2]:
           # Compute gradient of  recovery model
-          recovery_features = np.concatenate(([1.0], x_raw[1]))
-          mb_grad = logit_gradient(recovery_features, y, mb_params[-2:])
+          recovery_features = np.concatenate(([1.0], [a[l]]))
+          mb_grad = logit_gradient(recovery_features, y_next, mb_params[-2:])
           mb_hess = logit_hessian(recovery_features, mb_params[-2:])
         else:
           # Compute gradient of infection model
-          mb_grad = None
+          num_treated_and_infected_neighbors, num_untreated_and_infected_neighbors = \
+            self.neighbor_infection_and_treatment_status(l, a, y)
+
+          def mb_log_lik_at_x(mb_params_infect):
+            return mb_log_lik_single(mb_params_infect, x_raw, y_next, num_treated_and_infected_neighbors,
+                                     num_untreated_and_infected_neighbors)
+
+          mb_grad = central_diff_grad(mb_log_lik_at_x, mb_params[:5])
+          mb_hess = central_diff_hess(mb_log_lik_at_x, mb_params[:5])
 
         # MF gradient
         mf_features = np.concatenate(([1.0], x))
-        mf_grad = logit_gradient(mf_features, y, mf_params)
-        mf_hess = logit_hessian(mf_features, mf_params)
+        mf_grad = fitted_mf_clf.log_lik_gradient(mf_features, y_next, y[l])
+        mf_hess = fitted_mf_clf.log_lik_hess(mf_features, mf_params, y[l])
 
         grad_lt = np.concatenate((mb_grad, mf_grad))
         grad_outer_lt = np.outer(grad_lt, grad_lt)
@@ -389,7 +399,7 @@ class SIS(SpatialDisease):
         grad_outer += grad_outer_lt
         hess += hess_lt
 
-    hess_inv = np.linalg.inv(hess_inv)
+    hess_inv = np.linalg.inv(hess)
     cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
     return cov
 
@@ -408,6 +418,53 @@ def logit_hessian(x, beta):
   expit_x_dot_beta = expit(np.dot(x, beta))
   return outer_ * expit_x_dot_beta * (1 - expit_x_dot_beta)
 
+
+def mb_log_lik_single(mb_params, x_raw, y_next, num_treated_and_infected_neighbors,
+                      num_untreated_and_infected_neighbors):
+  a = x_raw[1]
+  N_0, N_1, N_00, N_11, N_01, N_10 = 1 - a, a, (1-a)*num_untreated_and_infected_neighbors, \
+                                           a*num_treated_and_infected_neighbors, \
+                                     (1-a)*num_treated_and_infected_neighbors, a*num_untreated_and_infected_neighbors
+  eta0 = mb_params[0]
+  eta0p1 = eta0 + mb_params[1]
+  eta2 = mb_params[2]
+  eta2p3 = eta2 + mb_params[3]
+  eta2p3p4 = eta2p3 + mb_params[4]
+  eta2p4 = eta2 + mb_params[4]
+
+  if y_next:
+    lik = success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_11, N_10)
+  else:
+    lik = failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_11, N_10)
+  return lik
+
+
+def central_diff_grad(f, x0, h=0.1):
+  dim = len(x0)
+  grad = np.zeros(dim)
+  for i in range(dim):
+    e_i = np.zeros(dim)
+    e_i[i] = h
+    grad[i] = (f(x0 + e_i) - f(x0 - e_i)) / 2*h
+  return grad
+
+
+def central_diff_hess(f, x0, h=0.1):
+  dim = len(x0)
+  hess = np.zeros((dim, dim))
+  for i in range(dim):
+    e_i = np.zeros(dim)
+    e_i[i] = h
+    for j in range(dim):
+      e_j = np.zeros(dim)
+      e_j[j] = h
+      if i == j:
+        hess[i, j] = (-f(x0 + 2*e_i) + 16*f(x0 + e_i) - 30*f(x0) + 16*f(x0 - e_i) - f(x0 - 2*e_i)) / \
+                     (12*h**2)
+      else:
+        hess[i, j] = (f(x0 + e_i + e_j) - f(x + e_i - e_j) - f(x0 - e_i + e_j) + f(x0 - e_i - e_j)) / \
+                     (4*h**2)
+  return hess
 
 
 

@@ -1,8 +1,10 @@
 import numpy as np
 from sklearn.linear_model import Ridge, LogisticRegression
+from scipy.linalg import block_diag
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.regularizers import L1L2
+from src.environments.SIS import logit_gradient, logit_hessian
 
 
 class RidgeProb(object):
@@ -77,6 +79,28 @@ class SKLogit2(object):
     self.reg_not_inf = LogisticRegression()
     self.condition_on_infection = True
     self.fitted_model = False
+    self.inf_params = None
+    self.not_inf_params = None
+
+  def log_lik_gradient(self, x, y_next, infected):
+    dim = len(x)
+    if infected:
+      inf_grad = logit_gradient(x, y_next, self.inf_params)
+      not_inf_grad = np.zeros(dim)
+    else:
+      inf_grad = np.zeros(dim)
+      not_inf_grad = logit_gradient(x, y_next, self.not_inf_params)
+    return np.concatenate((inf_grad, not_inf_grad))
+
+  def log_lik_hess(self, x, infected):
+    dim = len(x)
+    if infected:
+      inf_hess = logit_gradient(x, self.inf_params)
+      not_inf_hess = np.zeros((dim, dim))
+    else:
+      inf_hess = np.zeros((dim, dim))
+      not_inf_hess = logit_gradient(x,  self.not_inf_params)
+    return block_diag(inf_hess, not_inf_hess)
 
   def fit(self, X, y, weights, infected_locations, not_infected_locations):
     if is_y_all_1_or_0(y):
@@ -93,6 +117,8 @@ class SKLogit2(object):
         self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations],
                              sample_weight=not_inf_weights)
       self.fitted_model = True
+      self.inf_params = np.concatenate((self.reg_inf.intercept_, self.reg_inf.coef_))
+      self.not_inf_params = np.concatenate((self.not_reg_inf.intercept_, self.not_reg_inf.coef_))
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     if self.fitted_model:

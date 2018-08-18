@@ -50,12 +50,12 @@ def fit_one_step_mb_q(env, bootstrap_weights=None):
                                                env.adjacency_list)
     return infection_prob
 
-  return q_mb
+  return q_mb, eta
 
 
 def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None):
   # Get model-based
-  q_mb = fit_one_step_mb_q(env, bootstrap_weights=bootstrap_weights)
+  q_mb, mb_params = fit_one_step_mb_q(env, bootstrap_weights=bootstrap_weights)
 
   # Get model-free
   clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights)
@@ -68,7 +68,7 @@ def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None):
   print('mf loss')
   compare_with_true_probs(env, q_mf, raw=False)
 
-  return q_mb, q_mf
+  return q_mb, q_mf, mb_params, clf
 
 
 def bootstrap_one_step_q_functions(env, classifier, B):
@@ -80,7 +80,7 @@ def bootstrap_one_step_q_functions(env, classifier, B):
   q_mf_list, q_mb_list, bootstrap_weight_list = [], [], []
   for b in range(B):
     bootstrap_weights = np.random.exponential(size=(env.T, env.L))
-    q_mb, q_mf = fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=bootstrap_weights)
+    q_mb, q_mf, mb_params = fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=bootstrap_weights)
     q_mf_list.append(q_mf)
     q_mb_list.append(q_mb)
     bootstrap_weight_list.append(bootstrap_weights)
