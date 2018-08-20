@@ -198,30 +198,36 @@ def sis_one_step_mse_averaged(**kwargs):
   for simulated_param in simulated_params:
     simulated_mb_params = simulated_param[:len(mb_params)]
     simulated_mf_params = simulated_param[len(mb_params):]
-    # X, X_raw = np.vstack(env.X), np.vstack(env.X_raw)
-    # yhat_mb = f(mb_params, X_raw)
-    # yhat_mf = f(mf_params, X)
-    # yhat_mb_means.append(np.mean(yhat_mb))
-    # yhat_mf_means.append(np.mean(yhat_mf))
+    yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
+                                                   eta=simulated_mb_params) for data_block in env.X_raw])
+    yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_param(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                 np.where(raw_data_block[:, 2] == 0),
+                                                                 simulated_mf_params)
+                         for data_block, raw_data_block in zip(env.X, env.X_raw)])
+    yhat_mb_means.append(np.mean(yhat_mb))
+    yhat_mf_means.append(np.mean(yhat_mf))
     pass
 
   # Compute variances and covariance
   yhat_cov = np.cov(np.array([yhat_mb_means, yhat_mf_means]))
 
   # Compute mb bias
-  # yhat_mb =
-  # yhat_mf =
-  # mb_bias = softhresholder(yhat_mb - yhat_mf)
+  yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
+                                                 eta=mb_params) for data_block in env.X_raw])
+  yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_param(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                 np.where(raw_data_block[:, 2] == 0),
+                                                                 params[len(mb_params):])
+                       for data_block, raw_data_block in zip(env.X, env.X_raw)])
+  mb_bias = softhresholder(np.mean(yhat_mb - yhat_mf), 0.05)
 
   # Get mixing weight
-  mb_var = yhat_cov[0,0]
-  mf_var = yhat_cov[1,1]
-  cov = yhat_cov[0,1]
-  alpha_mf = (mb_bias**2 + mb_var - cov) / (mb_bias**2 + mb_var + mf_var - 2*cov)
+  mb_var = yhat_cov[0, 0]
+  mf_var = yhat_cov[1, 1]
+  mb_mf_cov = yhat_cov[0, 1]
+  alpha_mf = (mb_bias**2 + mb_var - mb_mf_cov) / (mb_bias**2 + mb_var + mf_var - 2*mb_mf_cov)
   alpha_mb = 1 - alpha_mf
 
   # Get modified q_function
-
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
     kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
     kwargs['bootstrap']

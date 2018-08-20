@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.linear_model import Ridge, LogisticRegression
 from scipy.linalg import block_diag
+from scipy.special import expit
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.regularizers import L1L2
@@ -130,6 +131,31 @@ class SKLogit2(object):
       return phat
     else:
       return np.column_stack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
+
+  @staticmethod
+  def predict_proba_given_parameter(X, infected_locations, not_infected_locations, parameter):
+    """
+
+    :param X:
+    :param infected_locations:
+    :param not_infected_locations:
+    :param parameter: array of the form [inf_intercept, inf_coef, not_inf_intercept, not_inf_coef]
+    :return:
+    """
+    phat = np.zeros(X.shape[0])
+    number_of_parameters = X.shape[1]
+
+    # Get probabilities at infected locations
+    inf_coef = parameter[1:number_of_parameters+1]
+    inf_intercept = parameter[0]
+    phat[infected_locations] = expit(np.dot(X[infected_locations, :], inf_coef) + inf_intercept)
+
+    # Get probabilities at not-infected locations
+    not_inf_coef = parameter[number_of_parameters+2:]
+    not_inf_intercept = parameter[number_of_parameters+1]
+    phat[not_infected_locations] = expit(np.dot(X[not_infected_locations, :], not_inf_coef) + not_inf_intercept)
+
+    return np.column_stack((1 - phat, phat))
 
 
 # #
