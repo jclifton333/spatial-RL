@@ -40,6 +40,30 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
   return regressor.autologitPredictor
 
 
+def rollout_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget, regressor, argmaxer,
+                              infection_probabilities, num_rep=100):
+  """
+
+  :param K:
+  :param gamma:
+  :param env:
+  :param evaluation_budget:
+  :param treatmnet_budget:
+  :param regressor:
+  :param argmaxer:
+  :param infection_probabilities: Vector of estimated infection probabilities, for parametric bootstrapping.
+  :param num_rep:
+  :return:
+  """
+  y_tilde = np.random.binomial(1, p=infection_probabilities)
+  for rep in range(num_rep):
+    # q0 ~ y_tilde
+    # q1 ~ y_tilde + \gamma max q0
+    # q1_tilde = bootstrap(q1)
+    # back up until K
+
+
+
 # def network_features_rollout(env, evaluation_budget, treatment_budget, regressor):
 #   # target = np.sum(env.y, axis=1).astype(float)
 #   target = np.sum(env.true_infection_probs, axis=1).astype(float)
