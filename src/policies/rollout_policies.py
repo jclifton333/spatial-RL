@@ -185,46 +185,48 @@ def sis_stacked_q_policy(**kwargs):
 def sis_one_step_mse_averaged(**kwargs):
   env = kwargs['env']
   q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2)
-
   # Compute covariances
   cov = env.joint_mf_and_mb_covariance(mb_params, fitted_mf_clf)
 
   # Simulate from estimated sampling dbns
-  params = np.concatenate((fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
+  params = np.concatenate((mb_params, fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
   simulated_params = np.random.multivariate_normal(mean=params, cov=cov, size=100)
 
-  yhat_mb_means = []
-  yhat_mf_means = []
+  yhat_mb = np.zeros((0, env.T * env.L))
+  yhat_mf = np.zeros((0, env.T * env.L))
+
   for simulated_param in simulated_params:
     simulated_mb_params = simulated_param[:len(mb_params)]
     simulated_mf_params = simulated_param[len(mb_params):]
-    yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
-                                                   eta=simulated_mb_params) for data_block in env.X_raw])
-    yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_param(data_block, np.where(raw_data_block[:, 2] == 1),
-                                                                 np.where(raw_data_block[:, 2] == 0),
-                                                                 simulated_mf_params)
-                         for data_block, raw_data_block in zip(env.X, env.X_raw)])
-    yhat_mb_means.append(np.mean(yhat_mb))
-    yhat_mf_means.append(np.mean(yhat_mf))
-    pass
+    yhat_mb_ = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
+                                                    eta=simulated_mb_params) for data_block in env.X_raw])
+    yhat_mf_ = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                     np.where(raw_data_block[:, 2] == 0),
+                                                                     simulated_mf_params)[:, -1]
+                          for data_block, raw_data_block in zip(env.X, env.X_raw)])
+    yhat_mb = np.vstack((yhat_mb, yhat_mb_))
+    yhat_mf = np.vstack((yhat_mf, yhat_mf_))
 
   # Compute variances and covariance
-  yhat_cov = np.cov(np.array([yhat_mb_means, yhat_mf_means]))
+  mb_var = np.mean(np.var(yhat_mb, axis=0))
+  mf_var = np.mean(np.var(yhat_mf, axis=0))
+  mb_mf_cov = np.cov(np.array([np.mean(yhat_mb, axis=1), np.mean(yhat_mf, axis=1)]))[0, 1]
 
-  # Compute mb bias
+  # Compute bias
   yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
                                                  eta=mb_params) for data_block in env.X_raw])
-  yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_param(data_block, np.where(raw_data_block[:, 2] == 1),
-                                                                 np.where(raw_data_block[:, 2] == 0),
-                                                                 params[len(mb_params):])
-                       for data_block, raw_data_block in zip(env.X, env.X_raw)])
-  mb_bias = softhresholder(np.mean(yhat_mb - yhat_mf), 0.05)
+  yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                     np.where(raw_data_block[:, 2] == 0),
+                                                                     params[len(mb_params):])[:, -1]
+                          for data_block, raw_data_block in zip(env.X, env.X_raw)])
+  mb_bias = softhresholder(np.mean(yhat_mb - np.hstack(env.y)), 0.05)
+  mf_bias = softhresholder(np.mean(yhat_mf - np.hstack(env.y)), 0.05)
 
   # Get mixing weight
-  mb_var = yhat_cov[0, 0]
-  mf_var = yhat_cov[1, 1]
-  mb_mf_cov = yhat_cov[0, 1]
-  alpha_mf = (mb_bias**2 + mb_var - mb_mf_cov) / (mb_bias**2 + mb_var + mf_var - 2*mb_mf_cov)
+  # mb_var = yhat_cov[0, 0]
+  # mf_var = yhat_cov[1, 1]
+  # mb_mf_cov = yhat_cov[0, 1]
+  alpha_mf = (mb_bias**2 + mb_var - mb_mf_cov) / (mb_bias**2 + mb_var + mf_var + mf_bias**2 - 2*mb_mf_cov)
   alpha_mb = 1 - alpha_mf
 
   # Get modified q_function
@@ -233,10 +235,12 @@ def sis_one_step_mse_averaged(**kwargs):
     kwargs['bootstrap']
 
   def qfn(a):
-    return alpha_mb*q_mb(a) + alpha_mf*q_mf(a)
+    data_block = env.data_block_at_action(-1, a)
+    raw_data_block = env.data_block_at_action(-1, a, raw=True)
+    return alpha_mb*q_mb(raw_data_block) + alpha_mf*q_mf(data_block)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  info = {'mb_var': mb_var, 'mf_var': mf_var, 'cov': cov}
+  info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
   info.update({'alpha_mb': alpha_mb})
   return a, info
 

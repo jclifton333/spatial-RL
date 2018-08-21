@@ -1,9 +1,8 @@
-from src.estimation.model_based.SIS.fit import fit_transition_model
+import pdb
+import numpy as np
+from src.estimation.model_based.SIS import fit
 from src.estimation.q_functions.q_max import q_max_all_states
 from src.environments.sis_infection_probs import sis_infection_probability
-from sklearn.linear_model import LogisticRegression
-import numpy as np
-import pdb
 
 
 def compare_with_true_probs(env, predictor, raw):
@@ -12,7 +11,7 @@ def compare_with_true_probs(env, predictor, raw):
   else:
     phat = np.hstack([predictor(data_block) for data_block in env.X])
   true_expected_counts = np.hstack(env.true_infection_probs)
-  loss = np.mean((phat - true_expected_counts) ** 2)
+  loss = np.max(np.abs(phat - true_expected_counts))
   print('loss {}'.format(loss))
   return
 
@@ -43,7 +42,7 @@ def fit_one_step_predictor(classifier, env, weights, print_compare_with_true_pro
 
 def fit_one_step_mb_q(env, bootstrap_weights=None):
   # Get model-based
-  eta = fit_transition_model(env, bootstrap_weights=bootstrap_weights)
+  eta = fit.fit_transition_model(env, bootstrap_weights=bootstrap_weights)
 
   def q_mb(data_block):
     infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,

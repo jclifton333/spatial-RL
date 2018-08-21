@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 from sklearn.linear_model import Ridge, LogisticRegression
 from scipy.linalg import block_diag
@@ -96,11 +97,11 @@ class SKLogit2(object):
   def log_lik_hess(self, x, infected):
     dim = len(x)
     if infected:
-      inf_hess = logit_gradient(x, self.inf_params)
+      inf_hess = logit_hessian(x, self.inf_params)
       not_inf_hess = np.zeros((dim, dim))
     else:
       inf_hess = np.zeros((dim, dim))
-      not_inf_hess = logit_gradient(x,  self.not_inf_params)
+      not_inf_hess = logit_hessian(x,  self.not_inf_params)
     return block_diag(inf_hess, not_inf_hess)
 
   def fit(self, X, y, weights, infected_locations, not_infected_locations):
@@ -118,8 +119,8 @@ class SKLogit2(object):
         self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations],
                              sample_weight=not_inf_weights)
       self.fitted_model = True
-      self.inf_params = np.concatenate((self.reg_inf.intercept_, self.reg_inf.coef_))
-      self.not_inf_params = np.concatenate((self.not_reg_inf.intercept_, self.not_reg_inf.coef_))
+      self.inf_params = np.concatenate((self.reg_inf.intercept_, self.reg_inf.coef_[0]))
+      self.not_inf_params = np.concatenate((self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]))
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     if self.fitted_model:

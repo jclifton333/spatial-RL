@@ -191,7 +191,6 @@ class SIS(SpatialDisease):
     :param data_block:
     :return:
     """
-    data_block[:, -1] = 1 - data_block[:, -1]
     psi = np.zeros((0, 16))
     for l in range(self.L):
       psi_l = self.psi_at_location(l, data_block)
@@ -359,6 +358,8 @@ class SIS(SpatialDisease):
     :param fitted_mf_clf: flexible SKLogit2-like classifier
     :return:
     """
+    mf_params = np.concatenate((fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
+    mb_dim = len(mb_params)
     dim = len(mb_params) + len(mf_params)
     grad_outer = np.zeros((dim, dim))
     hess = np.zeros((dim, dim))
@@ -374,7 +375,10 @@ class SIS(SpatialDisease):
           # Compute gradient of  recovery model
           recovery_features = np.concatenate(([1.0], [a[l]]))
           mb_grad = logit_gradient(recovery_features, y_next, mb_params[-2:])
+          mb_grad = np.concatenate((np.zeros(mb_dim-2), mb_grad))
           mb_hess = logit_hessian(recovery_features, mb_params[-2:])
+          mb_hess = block_diag(np.zeros((mb_dim-2, mb_dim-2)), mb_hess)
+
         else:
           # Compute gradient of infection model
           num_treated_and_infected_neighbors, num_untreated_and_infected_neighbors = \
@@ -385,12 +389,14 @@ class SIS(SpatialDisease):
                                      num_untreated_and_infected_neighbors)
 
           mb_grad = central_diff_grad(mb_log_lik_at_x, mb_params[:5])
+          mb_grad = np.concatenate((mb_grad, np.zeros(2)))
           mb_hess = central_diff_hess(mb_log_lik_at_x, mb_params[:5])
+          mb_hess = block_diag(mb_hess, np.zeros((2, 2)))
 
         # MF gradient
         mf_features = np.concatenate(([1.0], x))
         mf_grad = fitted_mf_clf.log_lik_gradient(mf_features, y_next, y[l])
-        mf_hess = fitted_mf_clf.log_lik_hess(mf_features, mf_params, y[l])
+        mf_hess = fitted_mf_clf.log_lik_hess(mf_features, y[l])
 
         grad_lt = np.concatenate((mb_grad, mf_grad))
         grad_outer_lt = np.outer(grad_lt, grad_lt)
@@ -399,7 +405,7 @@ class SIS(SpatialDisease):
         grad_outer += grad_outer_lt
         hess += hess_lt
 
-    hess_inv = np.linalg.inv(hess)
+    hess_inv = np.linalg.inv(hess + 0.1*np.eye(dim))
     cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
     return cov
 
@@ -439,7 +445,7 @@ def mb_log_lik_single(mb_params, x_raw, y_next, num_treated_and_infected_neighbo
   return lik
 
 
-def central_diff_grad(f, x0, h=0.1):
+def central_diff_grad(f, x0, h=0.01):
   dim = len(x0)
   grad = np.zeros(dim)
   for i in range(dim):
@@ -449,7 +455,7 @@ def central_diff_grad(f, x0, h=0.1):
   return grad
 
 
-def central_diff_hess(f, x0, h=0.1):
+def central_diff_hess(f, x0, h=0.01):
   dim = len(x0)
   hess = np.zeros((dim, dim))
   for i in range(dim):
@@ -462,7 +468,7 @@ def central_diff_hess(f, x0, h=0.1):
         hess[i, j] = (-f(x0 + 2*e_i) + 16*f(x0 + e_i) - 30*f(x0) + 16*f(x0 - e_i) - f(x0 - 2*e_i)) / \
                      (12*h**2)
       else:
-        hess[i, j] = (f(x0 + e_i + e_j) - f(x + e_i - e_j) - f(x0 - e_i + e_j) + f(x0 - e_i - e_j)) / \
+        hess[i, j] = (f(x0 + e_i + e_j) - f(x0 + e_i - e_j) - f(x0 - e_i + e_j) + f(x0 - e_i - e_j)) / \
                      (4*h**2)
   return hess
 

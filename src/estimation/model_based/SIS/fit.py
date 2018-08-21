@@ -11,7 +11,7 @@ import pdb
 import numpy as np
 from functools import partial
 from .p_objective import negative_log_likelihood
-from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.linear_model import LinearRegression
 from src.estimation.q_functions.model_fitters import SKLogit
 from scipy.optimize import minimize
 
@@ -53,7 +53,7 @@ def fit_transition_model(env, bootstrap_weights=None, ixs=None):
 
 def fit_q(A_infected, y_infected, infected_weights):
   clf = SKLogit()
-  clf.fit(A_infected, 1-y_infected, infected_weights)
+  clf.fit(A_infected, 1 - y_infected, infected_weights)
   eta_q = np.append(clf.intercept_, clf.coef_)
   return eta_q
 

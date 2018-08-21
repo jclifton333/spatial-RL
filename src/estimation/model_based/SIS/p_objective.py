@@ -21,7 +21,7 @@ def exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01,
   exp_list = np.array([exp_0, exp_1, exp_00, exp_01, exp_10, exp_11])
   powers = np.array([-N_0, -N_1, -N_00, -N_01, -N_10, -N_11])
   prod = 1
-  for i in range(5):
+  for i in range(6):
     prod = prod * exp_list[i]**powers[i]
   return prod
 
@@ -31,12 +31,12 @@ def success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, 
   """
   Negative log lik for a single success observation.
   """
-  prod = exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_11, N_10)
+  prod = exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_10, N_11)
   return np.log(1 - prod)
 
 
 @njit
-def failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_11, N_10):
+def failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_10, N_11):
   prod = exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_11, N_10)
   return np.log(prod)
 
