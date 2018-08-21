@@ -68,7 +68,7 @@ def SIS_model_based_policy(**kwargs):
   return a, new_q_model
 
 
-def SIS_model_based_one_step(**kwargs):
+def sis_model_based_one_step(**kwargs):
   env, bootstrap, argmaxer, evaluation_budget, treatment_budget = \
     kwargs['env'], kwargs['bootstrap'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
   eta = fit_transition_model(env, bootstrap=bootstrap)
@@ -185,6 +185,9 @@ def sis_stacked_q_policy(**kwargs):
 def sis_one_step_mse_averaged(**kwargs):
   env = kwargs['env']
   q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2)
+
+  print('eta hat: {}\neta: {}'.format(mb_params, env.ETA))
+
   # Compute covariances
   cov = env.joint_mf_and_mb_covariance(mb_params, fitted_mf_clf)
 
@@ -219,8 +222,8 @@ def sis_one_step_mse_averaged(**kwargs):
                                                                      np.where(raw_data_block[:, 2] == 0),
                                                                      params[len(mb_params):])[:, -1]
                           for data_block, raw_data_block in zip(env.X, env.X_raw)])
-  mb_bias = softhresholder(np.mean(yhat_mb - np.hstack(env.y)), 0.05)
-  mf_bias = softhresholder(np.mean(yhat_mf - np.hstack(env.y)), 0.05)
+  mb_bias = np.mean(yhat_mb - np.hstack(env.y))
+  mf_bias = np.mean(yhat_mf - np.hstack(env.y))
 
   # Get mixing weight
   # mb_var = yhat_cov[0, 0]

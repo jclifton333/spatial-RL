@@ -7,11 +7,11 @@ from src.environments.sis_infection_probs import sis_infection_probability
 
 def compare_with_true_probs(env, predictor, raw):
   if raw:
-    phat = np.hstack([predictor(data_block ) for data_block in env.X_raw])
+    phat = np.hstack([predictor(data_block) for data_block in env.X_raw])
   else:
     phat = np.hstack([predictor(data_block) for data_block in env.X])
   true_expected_counts = np.hstack(env.true_infection_probs)
-  loss = np.max(np.abs(phat - true_expected_counts))
+  loss = np.mean(np.abs(phat - true_expected_counts))
   print('loss {}'.format(loss))
   return
 
