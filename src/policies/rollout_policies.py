@@ -1,8 +1,8 @@
 from src.estimation.q_functions.rollout import rollout, rollout_variance_estimate
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
-from src.estimation.model_based.SIS.estimate_mb_q_fn import estimate_SIS_q_fn
-from src.estimation.model_based.SIS.fit import fit_transition_model
+from src.estimation.model_based.sis.estimate_mb_q_fn import estimate_SIS_q_fn
+from src.estimation.model_based.sis.fit import fit_transition_model
 from src.estimation.q_functions.one_step import *
 
 import numpy as np

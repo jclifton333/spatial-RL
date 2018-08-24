@@ -5,7 +5,7 @@ To see the effects of model misspecification on MB vs. MF approaches, we examine
 contamination_transition_probs will be output by a neural network, which is tuned as follows:
 
 1. Estimate r(0) = MSE( \hat{p}_MB | \epsilon=0) / MSE( \hat{p}_MF | \epsilon=0 ), i.e. the relative performance of
-   MB and MF one-step probability estimates when the SIS model is uncontaminated, for a size 50 lattice integrated
+   MB and MF one-step probability estimates when the sis model is uncontaminated, for a size 50 lattice integrated
    over 25 time steps.
 2. For \epsilon = 0.25, 0.75, 1, randomly generate contamination network parameters, and estimate relative MSEs
    for each.
@@ -25,17 +25,17 @@ import numpy as np
 import datetime
 import yaml
 import pickle as pkl
-from src.estimation.model_based.SIS.fit import fit_transition_model
+from src.estimation.model_based.sis.fit import fit_transition_model
 from src.environments.environment_factory import environment_factory
 from src.environments.sis_infection_probs import sis_infection_probability
 from src.environments import generate_network, sis
-from src.estimation.model_based.SIS.simulate import simulate_from_SIS
+from src.estimation.model_based.sis.simulate import simulate_from_SIS
 from src.utils.misc import KerasLogit, SKLogit
 from functools import partial
 import keras.backend as K
 
 SEED = 3
-# yml containing MSE info for uncontaminated SIS model
+# yml containing MSE info for uncontaminated sis model
 SAVED_MSE_FNAME = '../../analysis/results/prob_estimates_SIS_random_quad_approx_50_0.0_180728_125347.yml'
 
 
@@ -99,14 +99,14 @@ def save_in_tuning_data(dict_, basename, ftype):
 
 def fit_mf_estimator_to_uncontaminated_sis(mf_constructor_name, time_horizon=25, n_rep=5):
   """
-  Simulate from SIS omega=1, fit MF model, and save weights; these will be used to initialize search for
+  Simulate from sis omega=1, fit MF model, and save weights; these will be used to initialize search for
   contamination model weights.
   :return:
   """
   # Set up simulator and run
   sis_kwargs = {'L': 100, 'omega': 1, 'generate_network': generate_network.lattice,
                 'initial_infections': None, 'add_neighbor_sums': False}
-  env = environment_factory('SIS', **sis_kwargs)
+  env = environment_factory('sis', **sis_kwargs)
   simulation_env = simulate_from_SIS(env, env.eta, time_horizon, None, None, 5, n_rep=n_rep)
 
   # Fit model
@@ -142,7 +142,7 @@ def sample_weights(initial_weight_list, epsilon_list=(0.25, 0.5, 0.75, 1), n_sam
 def simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_constructor, contaminator_constructor,
                                     time_horizon=25, n_rep=10):
   """
-  Simulate from model epsilon * SIS + (1 - epsilon) * contaminated, fit MB and MF probs and return MSE ratio.
+  Simulate from model epsilon * sis + (1 - epsilon) * contaminated, fit MB and MF probs and return MSE ratio.
   :param epsilon:
   :param contamination_weight_vector: [coef, bias]
   :return:
@@ -156,8 +156,8 @@ def simulate_and_estimate_mse_ratio(epsilon, contamination_weight_vector, mf_con
                 'initial_infections': None, 'add_neighbor_sums': False, 'contaminator': contaminator,
                 'epsilon': epsilon}
 
-  # env = SIS.SIS(50, 0, generate_network.lattice, )
-  env = environment_factory('SIS', **sis_kwargs)
+  # env = sis.sis(50, 0, generate_network.lattice, )
+  env = environment_factory('sis', **sis_kwargs)
 
   a = np.concatenate((np.zeros(47), np.ones(3)))
   mb_loss = mf_loss = 0
@@ -210,8 +210,8 @@ def simulate_data_to_compare_on(contamination_weight_vector, contaminator_constr
                 'initial_infections': None, 'add_neighbor_sums': False, 'contaminator': contaminator,
                 'epsilon': 1}
 
-  # env = SIS.SIS(50, 0, generate_network.lattice, )
-  env = environment_factory('SIS', **sis_kwargs)
+  # env = sis.sis(50, 0, generate_network.lattice, )
+  env = environment_factory('sis', **sis_kwargs)
   simulation_env = simulate_from_SIS(env, env.eta, time_horizon, 3)
   return simulation_env
 

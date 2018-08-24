@@ -17,8 +17,8 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
-from src.estimation.model_based.SIS.fit import fit_transition_model
-from src.estimation.model_based.SIS.simulate import simulate_from_SIS
+from src.estimation.model_based.sis.fit import fit_transition_model
+from src.estimation.model_based.sis.simulate import simulate_from_SIS
 from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
@@ -35,7 +35,7 @@ class Simulator(object):
                evaluation_budget, **env_kwargs):
     """
     :param lookahead_depth:
-    :param env_name: 'SIS' or 'Ebola'
+    :param env_name: 'sis' or 'Ebola'
     :param time_horizon: duration of simulation rep
     :param number_of_replicates: number of replicates
     :param policy_name: string to be passed to policy_factory
@@ -151,7 +151,7 @@ class Simulator(object):
 
   def compare_probability_estimates_episode(self, model_constructor_list):
     """
-    Assuming SIS generative model.
+    Assuming sis generative model.
     :param model_constructor_list: e.g. [KerasLogit, SKLogit, ...]
     :return:
     """
@@ -183,7 +183,7 @@ class Simulator(object):
         loss = np.mean((phat - p)**2)
         estimates_results['obs_data_loss_{}'.format(model.__name__)].append(float(loss))
 
-      # Fit SIS model
+      # Fit sis model
       eta = fit_transition_model(self.env)
       simulation_env = simulate_from_SIS(self.env, eta, 5,self.settings['treatment_budget'], n_rep=5)
       sis_losses = []

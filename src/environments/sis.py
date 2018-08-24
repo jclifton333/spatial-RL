@@ -1,18 +1,17 @@
 """
-Implementing susceptible-infected-susceptible (SIS) models described in 
+Implementing susceptible-infected-susceptible (sis) models described in
 spatial QL paper.
 """
 
 import copy
 import numpy as np
-from src.estimation.model_based.SIS.p_objective import success_component_single, failure_component_single
+from src.estimation.model_based.sis.p_objective import success_component_single, failure_component_single
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator
 from .sis_infection_probs import sis_infection_probability
 from scipy.linalg import block_diag
 import src.utils.gradient as gradient
 import pdb
-import networkx as nx
 
 import os
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,12 +19,7 @@ tuning_data_dir = os.path.join(this_dir, 'tuning', 'tuning_data')
 
 
 class SIS(SpatialDisease):
-  # PATH_LENGTH = 2 # For path-based features
-  # POWERS_OF_TWO_MATRICES ={
-  #   k: np.array([[np.power(2.0, 3*i-j) for j in range(1, 3+1)] for i in range(1, k + 1)]) for k in range(1, PATH_LENGTH + 1)
-  # }
   ENCODING_MATRIX = np.array([np.power(2.0, 3-j) for j in range(1, 3+1)])
-
 
   # Fixed generative model parameters
   BETA_0 = 0.9
@@ -78,14 +72,13 @@ class SIS(SpatialDisease):
                initial_infections=None, initial_state=None, eta=None, beta=None,
                epsilon=0, contaminator=CONTAMINATOR):
     """
-    :param omega: parameter in [0,1] for mixing two SIS models
+    :param omega: parameter in [0,1] for mixing two sis models
     :param generate_network: function that accepts network size L and returns adjacency matrix
     """
     self.ENCODING_DICT = {
           s: {
             a: {
-              y:
-                int(np.dot(np.array([s, a, y]), SIS.ENCODING_MATRIX)) for y in range(2)
+              y: int(np.dot(np.array([s, a, y]), SIS.ENCODING_MATRIX)) for y in range(2)
             }
             for a in range(2)
           }
@@ -123,7 +116,7 @@ class SIS(SpatialDisease):
     self.S_indicator = self.S > 0
     self.num_infected_neighbors = []
     self.num_infected_and_treated_neighbors = []
-    self.Phi = [] # Network-level features
+    self.Phi = []  # Network-level features
     self.current_state = self.S[-1, :]
 
     # These are for efficiently computing gradients for estimating generative model
@@ -159,31 +152,38 @@ class SIS(SpatialDisease):
                                                      for j in range(self.max_num_neighbors + 1)}
                                                  for i in range(2)}
 
+
   ##############################################################
   ##            Feature function computation                  ##
   ##############################################################
 
   def psi_at_location(self, l, data_block):
-    # psi_l = np.zeros(16)
-
-    # # Get encoding for location l
-    # row_l = data_block[l, :]
-    # ix = int(np.dot(row_l, SIS.ENCODING_MATRIX))
-    # psi_l[ix] = 1
-
-    # # Get encodings for l's neighbors
-    # for lprime in self.adjacency_list[l]:
-    #   row_lprime = data_block[lprime, :]
-    #   ix = int(np.dot(row_lprime, SIS.ENCODING_MATRIX))
-    #   psi_l[8 + ix] += 1
     s, a, y = data_block[l, :]
     psi_l = [0]*8
-    psi_l[self.ENCODING_DICT[int(s)][int(a)][int(y)]] = 1
+    encoding = 1*s + 2*a + 4*y
+    psi_l[encoding] = 1
     psi_neighbors = [0]*8
     for lprime in self.adjacency_list[l]:
       s, a, y = data_block[lprime, :]
-      psi_neighbors[self.ENCODING_DICT[int(s)][int(a)][int(y)]] += 1
+      encoding = 1*s + 2*a + 4*y
+      psi_neighbors[encoding] += 1
     return np.concatenate((psi_l, psi_neighbors))
+
+  def get_counts_from_psi(self):
+    """
+    Counts of treatment status x neighbor treatment status x neighbor infection status, for fitting SIS model.
+    Subscripts denote (location treatment status, neighbor treatment status)
+
+    :return:
+    """
+    X, y, y_next = np.vstack(self.X), np.hstack(self.Y), np.hstack(self.y)
+    not_infected_ixs = np.where(y == 1)
+    X, y_next = X[not_infected_ixs, :], y_next[not_infected_ixs]
+
+    next_infected_ixs = np.where(y_next == 1)
+
+    next_not_infected_ixs = np.where(y_next == 0)
+    next_infected_00 = np.sum(np.multiply(X[next_infected_ixs, ]
 
   def psi(self, data_block):
     """
@@ -348,7 +348,7 @@ class SIS(SpatialDisease):
 
   def joint_mf_and_mb_covariance(self, mb_params, fitted_mf_clf):
     """
-    Compute covariance of mf and mb estimators, where mb_params are maximum likelihood estimate of SIS model with
+    Compute covariance of mf and mb estimators, where mb_params are maximum likelihood estimate of sis model with
     omega=0, and mf is fitted to env.X using SKLogit2.
 
     ToDo: This can be optimized!

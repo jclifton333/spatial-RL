@@ -7,9 +7,9 @@ from functools import partial
 
 def simulate_from_SIS(env, eta, planning_depth, treatment_budget, n_rep=30):
   """
-  For model-based RL in the SIS generative model.
+  For model-based RL in the sis generative model.
 
-  :param env: SIS object
+  :param env: sis object
   :param eta: length 7 array of disease probability parameters
   :param beta: length 2 array of state transition parameters
   :param planning_depth: how many steps ahead from current state to simulate

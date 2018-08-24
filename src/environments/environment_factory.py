@@ -4,15 +4,15 @@ from .Ebola import Ebola
 
 def environment_factory(environment_name, **kwargs):
   """
-  :param environment_name: String in ['SIS', 'Ebola']
+  :param environment_name: String in ['sis', 'Ebola']
   :param feature_function:
   :param **kwargs: environment-specific keyword arguments
   :return: SpatialDisease environment
   """
 
 
-  VALID_ENVIRONMENT_NAMES = ['SIS', 'Ebola']
-  if environment_name == 'SIS':
+  VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola']
+  if environment_name == 'sis':
     return SIS(**kwargs)
   elif environment_name == 'Ebola':
     return Ebola()

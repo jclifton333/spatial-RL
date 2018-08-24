@@ -3040,6 +3040,6 @@ results:
       0.05076940881310738, 0.048896473652312894, 0.05621994997463205, 0.044512629523548765,
       0.049256140974112184, 0.05136343374318274, 0.048319304311673604]
 settings: {L: 50, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: KerasLogit,
-  divide_evenly: false, env_name: SIS, evaluation_budget: null, gamma: 0.9, number_of_replicates: 40,
+  divide_evenly: false, env_name: sis, evaluation_budget: null, gamma: 0.9, number_of_replicates: 40,
   planning_depth: 100, policy_name: random, regressor: KerasRegressor, rollout_depth: 0,
   time_horizon: 100, treatment_budget: 3}

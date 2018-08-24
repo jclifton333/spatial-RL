@@ -1,5 +1,5 @@
 """
-Gradients for (log) likelihood of SIS generative model.
+Gradients for (log) likelihood of sis generative model.
 State transitions are parameterized by beta = [beta_0, beta_1].
 Infection transitions are parameterized by eta = [eta_0, ..., eta_6].
 

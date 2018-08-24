@@ -57,6 +57,6 @@ results:
   - !!binary |
     d8fGeZHEhj8=
 settings: {L: 50, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: KerasLogit,
-  divide_evenly: false, env_name: SIS, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 50,
+  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 50,
   planning_depth: 25, policy_name: SIS_model_based_one_step, regressor: KerasRegressor,
   rollout_depth: 1, time_horizon: 25, treatment_budget: 3}

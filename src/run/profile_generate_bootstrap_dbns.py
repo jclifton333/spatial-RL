@@ -32,7 +32,7 @@ def run_sims_for_bootstrap_dbns(rollout_depth, num_bootstrap_samples, T, argmaxe
   def feature_function(x):
     return x
 
-  env = environment_factory('SIS', feature_function, **kwargs)
+  env = environment_factory('sis', feature_function, **kwargs)
 
   # Evaluation limit parameters
   # treatment_budget = np.int(np.floor(0.05 * kwargs['L']))

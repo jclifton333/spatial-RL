@@ -1,6 +1,6 @@
 import pdb
 import numpy as np
-from src.estimation.model_based.SIS import fit
+from src.estimation.model_based.sis import fit
 from src.environments.sis_infection_probs import sis_infection_probability
 
 

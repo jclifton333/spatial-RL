@@ -3,7 +3,7 @@ import numpy as np
 from numba import njit, jit
 
 """"
-For computing SIS model infection probabilities.  See draft pg. 13.
+For computing sis model infection probabilities.  See draft pg. 13.
 """
 
 
