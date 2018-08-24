@@ -1,4 +1,4 @@
-from .SIS import SIS
+from .sis import SIS
 from .Ebola import Ebola
 
 

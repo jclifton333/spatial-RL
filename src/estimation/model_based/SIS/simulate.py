@@ -1,5 +1,5 @@
 import numpy as np
-from src.environments.SIS import SIS
+from src.environments.sis import SIS
 from src.estimation.q_functions.q_functions import q
 from src.utils.misc import random_argsort
 from functools import partial

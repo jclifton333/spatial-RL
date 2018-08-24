@@ -1,6 +1,6 @@
 import pdb
 import numpy as np
-from ..SIS import SIS
+from ..sis import SIS
 
 
 def test_transition_probs_from_draft():

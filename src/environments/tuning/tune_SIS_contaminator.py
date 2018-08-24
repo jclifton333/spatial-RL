@@ -28,7 +28,7 @@ import pickle as pkl
 from src.estimation.model_based.SIS.fit import fit_transition_model
 from src.environments.environment_factory import environment_factory
 from src.environments.sis_infection_probs import sis_infection_probability
-from src.environments import generate_network, SIS
+from src.environments import generate_network, sis
 from src.estimation.model_based.SIS.simulate import simulate_from_SIS
 from src.utils.misc import KerasLogit, SKLogit
 from functools import partial
