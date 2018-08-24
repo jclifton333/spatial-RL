@@ -1,5 +1,5 @@
 from src.environments.sis_infection_probs import sis_infection_probability
-from src.estimation.q_functions.rollout import rollout
+from src.estimation.q_functions.rollout import rollout, rollout_variance_estimate
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
 from src.estimation.stacking.greedy_gq import ggq
@@ -184,53 +184,8 @@ def sis_stacked_q_policy(**kwargs):
 
 def sis_one_step_mse_averaged(**kwargs):
   env = kwargs['env']
-  q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2)
 
-  print('eta hat: {}\neta: {}'.format(mb_params, env.ETA))
-
-  # Compute covariances
-  cov = env.joint_mf_and_mb_covariance(mb_params, fitted_mf_clf)
-
-  # Simulate from estimated sampling dbns
-  params = np.concatenate((mb_params, fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
-  simulated_params = np.random.multivariate_normal(mean=params, cov=cov, size=100)
-
-  yhat_mb = np.zeros((0, env.T * env.L))
-  yhat_mf = np.zeros((0, env.T * env.L))
-
-  for simulated_param in simulated_params:
-    simulated_mb_params = simulated_param[:len(mb_params)]
-    simulated_mf_params = simulated_param[len(mb_params):]
-    yhat_mb_ = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
-                                                    eta=simulated_mb_params) for data_block in env.X_raw])
-    yhat_mf_ = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
-                                                                     np.where(raw_data_block[:, 2] == 0),
-                                                                     simulated_mf_params)[:, -1]
-                          for data_block, raw_data_block in zip(env.X, env.X_raw)])
-    yhat_mb = np.vstack((yhat_mb, yhat_mb_))
-    yhat_mf = np.vstack((yhat_mf, yhat_mf_))
-
-  # Compute variances and covariance
-  mb_var = np.mean(np.var(yhat_mb, axis=0))
-  mf_var = np.mean(np.var(yhat_mf, axis=0))
-  mb_mf_cov = np.cov(np.array([np.mean(yhat_mb, axis=1), np.mean(yhat_mf, axis=1)]))[0, 1]
-
-  # Compute bias
-  yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
-                                                 eta=mb_params) for data_block in env.X_raw])
-  yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
-                                                                     np.where(raw_data_block[:, 2] == 0),
-                                                                     params[len(mb_params):])[:, -1]
-                          for data_block, raw_data_block in zip(env.X, env.X_raw)])
-  mb_bias = np.mean(yhat_mb - np.hstack(env.y))
-  mf_bias = np.mean(yhat_mf - np.hstack(env.y))
-
-  # Get mixing weight
-  # mb_var = yhat_cov[0, 0]
-  # mf_var = yhat_cov[1, 1]
-  # mb_mf_cov = yhat_cov[0, 1]
-  alpha_mf = (mb_bias**2 + mb_var - mb_mf_cov) / (mb_bias**2 + mb_var + mf_var + mf_bias**2 - 2*mb_mf_cov)
-  alpha_mb = 1 - alpha_mf
+  alpha_mb, alpha_mf, q_mb, q_mf = one_step_sis_convex_combo(env)
 
   # Get modified q_function
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
@@ -247,5 +202,33 @@ def sis_one_step_mse_averaged(**kwargs):
   info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
   info.update({'alpha_mb': alpha_mb})
   return a, info
+
+
+def sis_mse_averaged(**kwargs):
+  classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget, argmaxer = \
+      kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
+      kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer']
+
+  X, X_raw = np.vstack(env.X), np.vstack(env.X_raw)
+  y = np.hstack(y)
+
+  # Fit one-step
+  alpha_mb, alpha_mf, q_mb, q_mf = one_step_sis_convex_combo(env)
+  infection_probabilities = alpha_mb*q_mb(X_raw) + alpha_mf*q_mf(X)
+  regressor.fitRegressor(X, infection_probabilities, None, False)
+
+  # Fit k-steps
+  for k in range(1, rollout_depth + 1):
+    # Estimate bias and variance of mb
+    # Estimate variance of mf
+    mf_var = rollout_variance_estimate(k, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
+                                       infection_probabilities)
+
+  return
+
+
+
+
+
 
 

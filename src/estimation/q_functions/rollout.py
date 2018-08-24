@@ -15,18 +15,19 @@ def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
   return rollout_Q_features
 
 
-def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, bootstrap=True, ixs=None):
-  if ixs is None:
+def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, y=None, bootstrap=True,
+            bootstrap_residuals=False):
+  if y is None:
     target = np.hstack(env.y).astype(float)
-    features = np.vstack(env.X)
   else:
-    target = np.hstack([env.y[i][ixs[i]] for i in range(len(env.y))])
-    features = np.vstack([env.X[i][ixs[i]] for i in range(len(env.X))])
+    target = y
+  features = np.vstack(env.X)
 
   if bootstrap:
     weights = np.random.exponential(size=len(target))
   else:
     weights = None
+
   # Fit 1-step model
   regressor.fitClassifier(features, target, weights, True, env.add_neighbor_sums)
   q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
@@ -34,6 +35,13 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
   for k in range(1, K + 1):
     target += gamma*q_max.flatten()
     regressor.fitRegressor(features, target, weights, False)
+
+    # For estimating variance of fitted qs
+    if k == 1 and bootstrap_residuals:
+      residuals = regressor.regressor.predict(features) - target
+      bootstrapped_target = target + residuals
+      regressor.fitRegressor(features, bootstrapped_target, weights, False)
+
     if k < K:
       q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor,
                                      argmaxer, ixs)
@@ -55,13 +63,15 @@ def rollout_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget
   :param num_rep:
   :return:
   """
-  y_tilde = np.random.binomial(1, p=infection_probabilities)
+  features = np.vstack(env.X)
+  q_vals = np.zeros((0, env.T * env.L))
   for rep in range(num_rep):
-    # q0 ~ y_tilde
-    # q1 ~ y_tilde + \gamma max q0
-    # q1_tilde = bootstrap(q1)
-    # back up until K
-
+    y_tilde = np.random.binomial(1, p=infection_probabilities)
+    q_tilde = rollout(K, gamma, env, evaluation_budget, treatmnet_budget, regressor, argmaxer, y=y_tilde,
+                      bootstrap=False, bootstrap_residuals=True)
+    q_tilde_of_X = q_tilde(features)
+    q_vals = np.vstack((q_vals, q_tilde_of_X))
+  return np.mean(np.var(q_vals, axis=0))
 
 
 # def network_features_rollout(env, evaluation_budget, treatment_budget, regressor):

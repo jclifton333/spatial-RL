@@ -52,7 +52,7 @@ def success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, success_weig
       weight_0_ij = success_weights[0,i,j]
       weight_1_ij = success_weights[1,i,j]
       lik = lik + weight_0_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 1, 0, i, j, 0, 0) + \
-        weight_1_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, i, j)
+        weight_1_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, j, i)
   return lik
 
 
@@ -67,7 +67,7 @@ def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, failure_weig
       weight_0_ij = failure_weights[0,i,j]
       weight_1_ij = failure_weights[1,i,j]
       lik = lik + weight_0_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 1, 0, i, j, 0, 0) + \
-        weight_1_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, i, j)
+        weight_1_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, j, i)
   return lik
 
 

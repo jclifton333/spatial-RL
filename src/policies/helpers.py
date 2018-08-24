@@ -1,7 +1,9 @@
 import pdb
 import numpy as np
+import src.utils.gradient as gradient
 from src.estimation.model_based.SIS import fit
 from src.estimation.q_functions.q_max import q_max_all_states
+from src.estimation.q_functions.model_fitters import SKLogit2
 from src.environments.sis_infection_probs import sis_infection_probability
 
 
@@ -11,7 +13,7 @@ def compare_with_true_probs(env, predictor, raw):
   else:
     phat = np.hstack([predictor(data_block) for data_block in env.X])
   true_expected_counts = np.hstack(env.true_infection_probs)
-  loss = np.mean(np.abs(phat - true_expected_counts))
+  loss = np.max(np.abs(phat - true_expected_counts))
   print('loss {}'.format(loss))
   return
 
@@ -62,8 +64,8 @@ def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None):
   def q_mf(data_block, infected_indices, not_infected_indices):
     return clf.predict_proba(data_block, infected_indices, not_infected_indices)[:, -1]
 
-  # print('mb loss')
-  # compare_with_true_probs(env, q_mb, raw=True)
+  print('mb loss')
+  compare_with_true_probs(env, q_mb, raw=True)
   # print('mf loss')
   # compare_with_true_probs(env, q_mf, raw=False)
 
@@ -131,7 +133,7 @@ def estimate_mb_variance(phat, env):
   beta_hat_cov_inv = np.dot(X_raw.T, np.dot(V, X_raw))
   beta_hat_cov = np.linalg.inv(beta_hat_cov_inv + 0.01*np.eye(beta_hat_cov_inv.shape[0]))
   X_beta_hat_cov = np.dot(X_raw, np.dot(beta_hat_cov, X_raw.T))
-  mb_variance = np.sum(np.multiply(np.diag(X_beta_hat_cov), expit_derivative(phat)**2)) / len(phat)**2
+  mb_variance = np.sum(np.multiply(np.diag(X_beta_hat_cov), gradient.expit_derivative(phat)**2)) / len(phat)**2
   return mb_variance
 
 
@@ -222,15 +224,6 @@ def estimate_mse_optimal_convex_combination(q_mb_one_step, env):
   return alpha_mb, alpha_mf, phat, mse_components
 
 
-def expit_derivative(x):
-  """
-  For delta method estimate of mb variance.
-  :param x:
-  :return:
-  """
-  return np.exp(-x) / (1 + np.exp(-x))**2
-
-
 def softhresholder(x, threshold):
   if -threshold < x < threshold:
     return 0
@@ -238,5 +231,48 @@ def softhresholder(x, threshold):
     return x - np.sign(x)*threshold
 
 
+def one_step_sis_convex_combo(env):
+  q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2)
 
+  print('eta hat: {}\neta: {}'.format(mb_params, env.ETA))
+  # Compute covariances
+  cov = env.joint_mf_and_mb_covariance(mb_params, fitted_mf_clf)
 
+  # Simulate from estimated sampling dbns
+  params = np.concatenate((mb_params, fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
+  simulated_params = np.random.multivariate_normal(mean=params, cov=cov, size=100)
+
+  yhat_mb = np.zeros((0, env.T * env.L))
+  yhat_mf = np.zeros((0, env.T * env.L))
+
+  for simulated_param in simulated_params:
+    simulated_mb_params = simulated_param[:len(mb_params)]
+    simulated_mf_params = simulated_param[len(mb_params):]
+    yhat_mb_ = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
+                                                    eta=simulated_mb_params) for data_block in env.X_raw])
+    yhat_mf_ = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                      np.where(raw_data_block[:, 2] == 0),
+                                                                      simulated_mf_params)[:, -1]
+                          for data_block, raw_data_block in zip(env.X, env.X_raw)])
+    yhat_mb = np.vstack((yhat_mb, yhat_mb_))
+    yhat_mf = np.vstack((yhat_mf, yhat_mf_))
+
+  # Compute variances and covariance
+  mb_var = np.mean(np.var(yhat_mb, axis=0))
+  mf_var = np.mean(np.var(yhat_mf, axis=0))
+  mb_mf_cov = np.cov(np.array([np.mean(yhat_mb, axis=1), np.mean(yhat_mf, axis=1)]))[0, 1]
+
+  # Compute bias
+  yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
+                                                 eta=mb_params) for data_block in env.X_raw])
+  yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                   np.where(raw_data_block[:, 2] == 0),
+                                                                   params[len(mb_params):])[:, -1]
+                       for data_block, raw_data_block in zip(env.X, env.X_raw)])
+  mb_bias = np.mean(yhat_mb - np.hstack(env.y))
+  mf_bias = np.mean(yhat_mf - np.hstack(env.y))
+
+  # Get mixing weight
+  alpha_mf = (mb_bias ** 2 + mb_var - mb_mf_cov) / (mb_bias ** 2 + mb_var + mf_var + mf_bias ** 2 - 2 * mb_mf_cov)
+  alpha_mb = 1 - alpha_mf
+  return alpha_mb, alpha_mf, q_mb, q_mf

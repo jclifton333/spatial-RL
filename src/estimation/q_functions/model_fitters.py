@@ -1,12 +1,12 @@
 import pdb
 import numpy as np
+import src.utils.gradient as gradient
 from sklearn.linear_model import Ridge, LogisticRegression
 from scipy.linalg import block_diag
 from scipy.special import expit
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.regularizers import L1L2
-from src.environments.SIS import logit_gradient, logit_hessian
 
 
 class RidgeProb(object):
@@ -87,21 +87,21 @@ class SKLogit2(object):
   def log_lik_gradient(self, x, y_next, infected):
     dim = len(x)
     if infected:
-      inf_grad = logit_gradient(x, y_next, self.inf_params)
+      inf_grad = gradient.logit_gradient(x, y_next, self.inf_params)
       not_inf_grad = np.zeros(dim)
     else:
       inf_grad = np.zeros(dim)
-      not_inf_grad = logit_gradient(x, y_next, self.not_inf_params)
+      not_inf_grad = gradient.logit_gradient(x, y_next, self.not_inf_params)
     return np.concatenate((inf_grad, not_inf_grad))
 
   def log_lik_hess(self, x, infected):
     dim = len(x)
     if infected:
-      inf_hess = logit_hessian(x, self.inf_params)
+      inf_hess = gradient.logit_hessian(x, self.inf_params)
       not_inf_hess = np.zeros((dim, dim))
     else:
       inf_hess = np.zeros((dim, dim))
-      not_inf_hess = logit_hessian(x,  self.not_inf_params)
+      not_inf_hess = gradient.logit_hessian(x,  self.not_inf_params)
     return block_diag(inf_hess, not_inf_hess)
 
   def fit(self, X, y, weights, infected_locations, not_infected_locations):
