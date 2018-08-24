@@ -82,15 +82,11 @@ def get_bootstrap_weights(all_weights, counts_for_likelihood, indices_for_likeli
   return weights
 
 
-def negative_log_likelihood(eta, counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected,
-                            indices_for_likelihood_next_infected=None,
-                            indices_for_likelihood_next_not_infected=None, bootstrap_weights=None):
+def negative_log_likelihood(eta, counts_for_likliehood):
   """
 
   :param eta:
-  :param counts_for_likelihood_next_infected:
-  :param counts_for_likelihood_next_not_infected:
-  :param bootstrap_weights: T x L array of exponential bootstrap weights.
+  :param counts_for_likelihood:
   :return:
   """
   eta0 = eta[0]

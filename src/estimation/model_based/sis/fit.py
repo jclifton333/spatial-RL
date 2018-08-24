@@ -59,11 +59,8 @@ def fit_q(A_infected, y_infected, infected_weights):
 
 
 def fit_p(env, bootstrap_weights):
-  objective = partial(negative_log_likelihood, counts_for_likelihood_next_infected=env.counts_for_likelihood_next_infected,
-                      counts_for_likelihood_next_not_infected=env.counts_for_likelihood_next_not_infected,
-                      indices_for_likelihood_next_infected=env.indices_for_likelihood_next_infected,
-                      indices_for_likelihood_next_not_infected=env.indices_for_likelihood_next_not_infected,
-                      bootstrap_weights=bootstrap_weights)
+  counts_for_likelihood = env.counts_from_psi()
+  objective = partial(negative_log_likelihood, counts_for_likelihood)
   res = minimize(objective, x0=env.eta[:5], method='L-BFGS-B')
   eta_p = res.x
   return eta_p

@@ -169,21 +169,43 @@ class SIS(SpatialDisease):
       psi_neighbors[encoding] += 1
     return np.concatenate((psi_l, psi_neighbors))
 
-  def get_counts_from_psi(self):
+  def counts_from_psi(self):
     """
     Counts of treatment status x neighbor treatment status x neighbor infection status, for fitting SIS model.
-    Subscripts denote (location treatment status, neighbor treatment status)
+    Subscripts denote (location treatment status, neighbor treatment status, next_infection_status)
 
     :return:
     """
+    treatment_indices = np.array([2, 3, 6, 7])  # Indices corresponding to encodings where a = 1
+    no_treatment_indices = np.array([0, 1, 4, 5])
+
     X, y, y_next = np.vstack(self.X), np.hstack(self.Y), np.hstack(self.y)
     not_infected_ixs = np.where(y == 1)
     X, y_next = X[not_infected_ixs, :], y_next[not_infected_ixs]
 
-    next_infected_ixs = np.where(y_next == 1)
+    next_infected = (y_next == 1)
+    is_treated = np.sum(X[:, treatment_indices], axis=1)
+    num_neighbor_is_treated = np.sum(X[:, treatment_indices + 8], axis=1)
+    num_neighbor_is_not_treated = np.sum(X[:, no_treatment_indices + 8], axis=1)
 
-    next_not_infected_ixs = np.where(y_next == 0)
-    next_infected_00 = np.sum(np.multiply(X[next_infected_ixs, ]
+    def count(is_treated_bool, neighbor_is_treated_bool, next_infected_bool):
+      next_infected_arr = next_infected_bool * next_infected + (1 - next_infected_bool) * (1 - next_infected)
+      is_treated_arr = is_treated_bool * is_treated + (1 - is_treated_bool) * (1 - is_treated)
+      neighbor_is_treated_arr = neighbor_is_treated_bool * num_neighbor_is_treated + (1 - neighbor_is_treated_bool) * \
+        num_neighbor_is_not_treated
+      return np.sum(np.multiply(is_treated_arr, np.multiply(neighbor_is_treated_arr, next_infected_arr)))
+
+    n_00_0 = count(0, 0, 0)
+    n_00_1 = count(0, 0, 1)
+    n_01_0 = count(0, 1, 0)
+    n_01_1 = count(0, 1, 1)
+    n_10_0 = count(1, 0, 0)
+    n_10_1 = count(1, 0, 1)
+    n_11_0 = count(1, 1, 0)
+    n_11_1 = count(1, 1, 1)
+
+    return {'n_00_0': n_00_0, 'n_00_1': n_00_1, 'n_01_0': n_01_0, 'n_01_1': n_01_1, 'n_10_0': n_10_0, 'n_10_1': n_10_1,
+            'n_11_0': n_11_0, 'n_11_1': n_11_1}
 
   def psi(self, data_block):
     """
