@@ -1,6 +1,6 @@
 import pdb
 import numpy as np
-from src.estimation.model_based.sis import fit
+from src.estimation.model_based.sis import estimate_sis_parameters
 from src.environments.sis_infection_probs import sis_infection_probability
 
 
@@ -41,7 +41,7 @@ def fit_one_step_predictor(classifier, env, weights, print_compare_with_true_pro
 
 def fit_one_step_sis_mb_q(env, bootstrap_weights=None):
   # Get model-based
-  eta = fit.fit_transition_model(env, bootstrap_weights=bootstrap_weights)
+  eta = estimate_sis_parameters.fit_transition_model(env, bootstrap_weights=bootstrap_weights)
 
   def q_mb(data_block):
     infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,

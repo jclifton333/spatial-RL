@@ -10,7 +10,7 @@ eta_q:  eta_5, eta_6
 import pdb
 import numpy as np
 from functools import partial
-from .p_objective import negative_log_likelihood
+from .infection_model_objective import negative_log_likelihood
 from sklearn.linear_model import LinearRegression
 from src.estimation.q_functions.model_fitters import SKLogit
 from scipy.optimize import minimize
@@ -53,7 +53,7 @@ def fit_q(A_infected, y_infected, infected_weights):
 
 
 def fit_p(env, bootstrap_weights):
-  objective = partial(negative_log_likelihood, env.counts_for_likelihood)
+  objective = partial(negative_log_likelihood, counts_for_likelihood=env.counts_for_likelihood)
   res = minimize(objective, x0=env.eta[:5], method='L-BFGS-B')
   eta_p = res.x
   return eta_p

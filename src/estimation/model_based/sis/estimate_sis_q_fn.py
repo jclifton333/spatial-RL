@@ -1,7 +1,7 @@
 import pdb
 from src.estimation.q_functions.fqi import fqi
-from .fit import fit_transition_model
-from .simulate import simulate_from_SIS
+from .estimate_sis_parameters import fit_transition_model
+from .simulate_from_sis import simulate_from_SIS
 
 
 def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth, treatment_budget,

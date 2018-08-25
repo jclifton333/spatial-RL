@@ -3,7 +3,7 @@ Functions for generating bootstrap Bellman error distributions.
 """
 
 import pdb
-from src.estimation.model_based.sis.estimate_mb_q_fn import estimate_SIS_q_fn
+from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_SIS_q_fn
 from src.estimation.stacking.compute_sample_bellman_error import compute_sample_squared_bellman_error
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.fqi import fqi

@@ -25,11 +25,11 @@ import numpy as np
 import datetime
 import yaml
 import pickle as pkl
-from src.estimation.model_based.sis.fit import fit_transition_model
+from src.estimation.model_based.sis.estimate_sis_parameters import fit_transition_model
 from src.environments.environment_factory import environment_factory
 from src.environments.sis_infection_probs import sis_infection_probability
 from src.environments import generate_network, sis
-from src.estimation.model_based.sis.simulate import simulate_from_SIS
+from src.estimation.model_based.sis.simulate_from_sis import simulate_from_SIS
 from src.utils.misc import KerasLogit, SKLogit
 from functools import partial
 import keras.backend as K

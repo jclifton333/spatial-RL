@@ -5,7 +5,7 @@ spatial QL paper.
 
 import copy
 import numpy as np
-from src.estimation.model_based.sis.p_objective import success_or_failure_component
+from src.estimation.model_based.sis.infection_model_objective import success_or_failure_component
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator
 from .sis_infection_probs import sis_infection_probability
@@ -120,7 +120,8 @@ class SIS(SpatialDisease):
     self.current_state = self.S[-1, :]
 
     # For computing likelihood
-    counts_for_likelihood_names = ['n_00_0', 'n_01_0', 'n_10_0', 'n_11_0', 'n_00_1', 'n_01_1', 'n_10_1', 'n_11_1']
+    counts_for_likelihood_names = ['n_00_0', 'n_01_0', 'n_10_0', 'n_11_0', 'n_00_1', 'n_01_1', 'n_10_1', 'n_11_1',
+                                   'a_0', 'a_1']
     self.counts_for_likelihood = {count_name: [] for count_name in counts_for_likelihood_names}
 
   def reset(self):
@@ -135,7 +136,8 @@ class SIS(SpatialDisease):
     self.Phi = []
     self.current_state = self.S[-1,:]
 
-    counts_for_likelihood_names = ['n_00_0', 'n_01_0', 'n_10_0', 'n_11_0', 'n_00_1', 'n_01_1', 'n_10_1', 'n_11_1']
+    counts_for_likelihood_names = ['n_00_0', 'n_01_0', 'n_10_0', 'n_11_0', 'n_00_1', 'n_01_1', 'n_10_1', 'n_11_1',
+                                   'a_0', 'a_1']
     self.counts_for_likelihood = {count_name: [] for count_name in counts_for_likelihood_names}
 
   ##############################################################
@@ -145,12 +147,12 @@ class SIS(SpatialDisease):
   def psi_at_location(self, l, data_block):
     s, a, y = data_block[l, :]
     psi_l = [0]*8
-    encoding = 1*s + 2*a + 4*y
+    encoding = int(1*s + 2*a + 4*y)
     psi_l[encoding] = 1
     psi_neighbors = [0]*8
     for lprime in self.adjacency_list[l]:
       s, a, y = data_block[lprime, :]
-      encoding = 1*s + 2*a + 4*y
+      encoding = int(1*s + 2*a + 4*y)
       psi_neighbors[encoding] += 1
     return np.concatenate((psi_l, psi_neighbors))
 
@@ -249,7 +251,7 @@ class SIS(SpatialDisease):
     num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
     return num_treated_and_infected_neighbors, num_untreated_and_infected_neighbors
 
-  def update_counts_for_likelihood(self, data_block, y_next):
+  def update_counts_for_likelihood(self, data_block, y, y_next):
     """
     Counts of treatment status x neighbor treatment status x neighbor infection status, for fitting SIS model.
     Subscripts denote (location treatment status, neighbor treatment status, next_infection_status)
@@ -262,7 +264,7 @@ class SIS(SpatialDisease):
     no_treatment_indices = np.array([0, 1, 4, 5])
 
     not_infected_ixs = np.where(y == 1)
-    X, y_next = data_block[not_infected_ixs, :], y_next[not_infected_ixs]
+    X, y_next = data_block[not_infected_ixs], y_next[not_infected_ixs]
 
     next_infected_ixs = np.where(y_next == 1)
     next_not_infected_ixs = np.where(y_next == 0)
@@ -274,15 +276,19 @@ class SIS(SpatialDisease):
     n_01 = (1 - is_treated) * num_neighbor_is_treated
     n_10 = is_treated * num_neighbor_is_not_treated
     n_11 = is_treated * num_neighbor_is_treated
+    a = (n_10 + n_11 > 0).astype(float)
 
+    # Need to know whether the next infection status is "success" or "failure"
     n_00_0 = n_00[next_not_infected_ixs]
     n_00_1 = n_00[next_infected_ixs]
     n_01_0 = n_01[next_not_infected_ixs]
     n_01_1 = n_01[next_infected_ixs]
     n_10_0 = n_10[next_not_infected_ixs]
-    n_10_1 = n_10[next_not_infected_ixs]
+    n_10_1 = n_10[next_infected_ixs]
     n_11_0 = n_11[next_not_infected_ixs]
     n_11_1 = n_11[next_infected_ixs]
+    a_0 = a[next_not_infected_ixs]
+    a_1 = a[next_infected_ixs]
 
     self.counts_for_likelihood['n_00_0'] = np.append(self.counts_for_likelihood['n_00_0'], n_00_0)
     self.counts_for_likelihood['n_00_1'] = np.append(self.counts_for_likelihood['n_00_1'], n_00_1)
@@ -292,6 +298,8 @@ class SIS(SpatialDisease):
     self.counts_for_likelihood['n_10_1'] = np.append(self.counts_for_likelihood['n_10_1'], n_10_1)
     self.counts_for_likelihood['n_11_0'] = np.append(self.counts_for_likelihood['n_11_0'], n_11_0)
     self.counts_for_likelihood['n_11_1'] = np.append(self.counts_for_likelihood['n_11_1'], n_11_1)
+    self.counts_for_likelihood['a_0'] = np.append(self.counts_for_likelihood['a_0'], a_0)
+    self.counts_for_likelihood['a_1'] = np.append(self.counts_for_likelihood['a_1'], a_1)
 
   def update_obs_history(self, a):
     """
@@ -305,6 +313,9 @@ class SIS(SpatialDisease):
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)
+
+    # Update likelihood counts
+    self.update_counts_for_likelihood(data_block, self.Y[-2, :], self.current_infected)
 
   def data_block_at_action(self, data_block_ix, action, raw=False):
     """
@@ -367,8 +378,9 @@ class SIS(SpatialDisease):
             self.neighbor_infection_and_treatment_status(l, a, y)
 
           def mb_log_lik_at_x(mb_params_infect):
-            return mb_log_lik_single(mb_params_infect, x_raw, y_next, num_treated_and_infected_neighbors,
+            lik = mb_log_lik_single(mb_params_infect, x_raw, y_next, num_treated_and_infected_neighbors,
                                      num_untreated_and_infected_neighbors)
+            return lik
 
           mb_grad = gradient.central_diff_grad(mb_log_lik_at_x, mb_params[:5])
           mb_grad = np.concatenate((mb_grad, np.zeros(2)))
@@ -406,8 +418,8 @@ def mb_log_lik_single(mb_params, x_raw, y_next, num_treated_and_infected_neighbo
   eta2p3p4 = eta2p3 + mb_params[4]
   eta2p4 = eta2 + mb_params[4]
 
-  lik = success_or_failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_0, n_1, n_00, n_01, n_11, n_10,
-                                     success=y_next)
+  lik = success_or_failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, np.array([n_00]), np.array([n_01]),
+                                     np.array([n_11]), np.array([n_10]), np.array([a]), success=y_next)
   return lik
 
 
