@@ -41,4 +41,7 @@ if __name__ == '__main__':
                 'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, **SIS_kwargs)
-  Sim.run()
+  if args.number_of_replicates == 1:
+    Sim.episode(0)
+  else:
+    Sim.run()
