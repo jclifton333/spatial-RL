@@ -16,21 +16,15 @@ from src.estimation.q_functions.model_fitters import SKLogit
 from scipy.optimize import minimize
 
 
-def fit_infection_prob_model(env, ixs, bootstrap_weights, y=None):
+def fit_infection_prob_model(env, bootstrap_weights):
   """
 
   :param env:
-  :param ixs: List of lists of indexes for train subset (used for stacking method).
   :param bootstrap_weights: (env.T, env.L) - size array of bootstrap weights, or None
-  :param y: if provided, use this as target rather than env.y
   :return:
   """
-  if ixs is None:
-    X = np.vstack(env.X_raw)
-    y = np.hstack(env.y)
-  else:
-    X = np.vstack([env.X_raw[t][ixs[t], :] for t in range(len(env.X_raw))])
-    y = np.hstack([env.y[t][ixs[t]] for t in range(len(env.y))])
+  X = np.vstack(env.X_raw)
+  y = np.hstack(env.y).astype(float)
 
   infected_ixs = np.where(X[:, 2] == 1)
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
@@ -45,8 +39,8 @@ def fit_infection_prob_model(env, ixs, bootstrap_weights, y=None):
   return np.concatenate((eta_p, eta_q))
 
 
-def fit_transition_model(env, bootstrap_weights=None, ixs=None):
-  eta = fit_infection_prob_model(env, ixs, bootstrap_weights)
+def fit_transition_model(env, bootstrap_weights=None):
+  eta = fit_infection_prob_model(env, bootstrap_weights)
   # beta = fit_state_transition_model(env)
   return eta
 
@@ -59,8 +53,7 @@ def fit_q(A_infected, y_infected, infected_weights):
 
 
 def fit_p(env, bootstrap_weights):
-  counts_for_likelihood = env.counts_from_psi()
-  objective = partial(negative_log_likelihood, counts_for_likelihood)
+  objective = partial(negative_log_likelihood, env.counts_for_likelihood)
   res = minimize(objective, x0=env.eta[:5], method='L-BFGS-B')
   eta_p = res.x
   return eta_p
