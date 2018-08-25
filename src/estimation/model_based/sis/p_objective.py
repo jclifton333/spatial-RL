@@ -8,9 +8,9 @@ from numba import njit
 
 
 @njit
-def exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_10, N_11):
+def exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00, n_01, n_10, n_11):
   """
-  Helper for computing likelihood.
+  Component of log likelihood corresponding to not-infected-at-next-step.
   """
   exp_0 = 1 + np.exp(eta0)
   exp_1 = 1 + np.exp(eta0p1)
@@ -18,56 +18,12 @@ def exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01,
   exp_01 = 1 + np.exp(eta2p4)
   exp_10 = 1 + np.exp(eta2p3)
   exp_11 = 1 + np.exp(eta2p3p4)
-  exp_list = np.array([exp_0, exp_1, exp_00, exp_01, exp_10, exp_11])
-  powers = np.array([-N_0, -N_1, -N_00, -N_01, -N_10, -N_11])
+
   prod = 1
-  for i in range(6):
-    prod = prod * exp_list[i]**powers[i]
+  for n_00_, n_01_, n_10_, n_11_ in zip(n_00, n_01, n_10, n_11):
+    prod *= np.power(exp_0, -(n_00_ + n_01_ > 0)) * np.power(exp_1, -(n_10_ + n_11_ > 0)) * np.power(exp_00, -n_00_) * \
+      np.power(exp_01, -n_01_) * np.power(exp_10, -n_10_) * np.power(exp_11, -n_11_)
   return prod
-
-
-@njit
-def success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_10, N_11):
-  """
-  Negative log lik for a single success observation.
-  """
-  prod = exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_10, N_11)
-  return np.log(1 - prod)
-
-
-@njit
-def failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_10, N_11):
-  prod = exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, N_0, N_1, N_00, N_01, N_10, N_11)
-  return np.log(prod)
-
-
-@njit
-def success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, success_weights):
-  """
-  Component of log likelihood corresponding to infected-at-next-step.
-  """
-  lik = 0
-  for i in range(success_weights.shape[1]):
-    for j in range(success_weights.shape[2]):
-      weight_0_ij = success_weights[0,i,j]
-      weight_1_ij = success_weights[1,i,j]
-      lik = lik + weight_0_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 1, 0, i, j, 0, 0) + \
-        weight_1_ij*success_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, j, i)
-  return lik
-
-
-@njit
-def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00, n_01, n_10, n_11):
-  """
-  Component of log likelihood corresponding to not-infected-at-next-step.
-  """
-  for i in range(failure_weights.shape[1]):
-    for j in range(failure_weights.shape[2]):
-      weight_0_ij = failure_weights[0,i,j]
-      weight_1_ij = failure_weights[1,i,j]
-      lik = lik + weight_0_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 1, 0, i, j, 0, 0) + \
-        weight_1_ij*failure_component_single(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, 0, 1, 0, 0, j, i)
-  return lik
 
 
 # ToDo: jitify!
@@ -81,7 +37,7 @@ def get_bootstrap_weights(all_weights, counts_for_likelihood, indices_for_likeli
   return weights
 
 
-def negative_log_likelihood(eta, counts_for_likliehood):
+def negative_log_likelihood(eta, counts_for_likelihood):
   """
 
   :param eta:
@@ -95,14 +51,15 @@ def negative_log_likelihood(eta, counts_for_likliehood):
   eta2p3p4 = eta2p3 + eta[4]
   eta2p4 = eta2 + eta[4]
 
-  n_00_1, n_01_1, n_10_1, n_11_1 = counts_for_likliehood['n_00_1'], counts_for_likliehood['n_01_1'], \
-                                   counts_for_likliehood['n_10_1'], counts_for_likliehood['n_11_1']
-  n_00_0, n_01_0, n_10_0, n_11_0 = ccounts_for_likliehood['n_00_0'], counts_for_likliehood['n_01_0'], \
-                                   counts_for_likliehood['n_10_0'], counts_for_likliehood['n_11_0']
+  n_00_1, n_01_1, n_10_1, n_11_1 = counts_for_likelihood['n_00_1'], counts_for_likelihood['n_01_1'], \
+                                   counts_for_likelihood['n_10_1'], counts_for_likelihood['n_11_1']
+  n_00_0, n_01_0, n_10_0, n_11_0 = ccounts_for_likelihood['n_00_0'], counts_for_likelihood['n_01_0'], \
+                                   counts_for_likelihood['n_10_0'], counts_for_likelihood['n_11_0']
 
-  lik_success_component = \
-    success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00_1, n_01_1, n_10_1, n_11_1)
-  lik_failure_component = \
-    failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00_0, n_01_0, n_10_0, n_11_0)
+  lik_success_component = exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, eta2p4, n_00_1, n_01_1, n_10_1, n_11_1)
+  lik_success_component = np.log(1 - lik_success_component)
+  lik_failure_component = exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, eta2p4, n_00_0, n_01_0, n_10_0, n_11_0)
+  lik_failure_component = np.log(lik_failure_component)
+
   return -lik_success_component - lik_failure_component
 
