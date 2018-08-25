@@ -183,26 +183,25 @@ class SIS(SpatialDisease):
     not_infected_ixs = np.where(y == 1)
     X, y_next = X[not_infected_ixs, :], y_next[not_infected_ixs]
 
-    next_infected = (y_next == 1)
+    next_infected_ixs = np.where(y_next == 1)
+    next_not_infected_ixs = np.where(y_next == 0)
     is_treated = np.sum(X[:, treatment_indices], axis=1)
     num_neighbor_is_treated = np.sum(X[:, treatment_indices + 8], axis=1)
     num_neighbor_is_not_treated = np.sum(X[:, no_treatment_indices + 8], axis=1)
 
-    def count(is_treated_bool, neighbor_is_treated_bool, next_infected_bool):
-      next_infected_arr = next_infected_bool * next_infected + (1 - next_infected_bool) * (1 - next_infected)
-      is_treated_arr = is_treated_bool * is_treated + (1 - is_treated_bool) * (1 - is_treated)
-      neighbor_is_treated_arr = neighbor_is_treated_bool * num_neighbor_is_treated + (1 - neighbor_is_treated_bool) * \
-        num_neighbor_is_not_treated
-      return np.sum(np.multiply(is_treated_arr, np.multiply(neighbor_is_treated_arr, next_infected_arr)))
+    n_00 = (1 - is_treated) * num_neighbor_is_not_treated
+    n_01 = (1 - is_treated) * num_neighbor_is_treated
+    n_10 = is_treated * num_neighbor_is_not_treated
+    n_11 = is_treated * num_neighbor_is_treated
 
-    n_00_0 = count(0, 0, 0)
-    n_00_1 = count(0, 0, 1)
-    n_01_0 = count(0, 1, 0)
-    n_01_1 = count(0, 1, 1)
-    n_10_0 = count(1, 0, 0)
-    n_10_1 = count(1, 0, 1)
-    n_11_0 = count(1, 1, 0)
-    n_11_1 = count(1, 1, 1)
+    n_00_0 = n_00[next_not_infected_ixs]
+    n_00_1 = n_00[next_infected_ixs]
+    n_01_0 = n_01[next_not_infected_ixs]
+    n_01_1 = n_01[next_infected_ixs]
+    n_10_0 = n_10[next_not_infected_ixs]
+    n_10_1 = n_10[next_not_infected_ixs]
+    n_11_0 = n_11[next_not_infected_ixs]
+    n_11_1 = n_11[next_infected_ixs]
 
     return {'n_00_0': n_00_0, 'n_00_1': n_00_1, 'n_01_0': n_01_0, 'n_01_1': n_01_1, 'n_10_0': n_10_0, 'n_10_1': n_10_1,
             'n_11_0': n_11_0, 'n_11_1': n_11_1}

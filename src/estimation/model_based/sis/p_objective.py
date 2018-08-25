@@ -57,11 +57,10 @@ def success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, success_weig
 
 
 @njit
-def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, failure_weights):
+def failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00, n_01, n_10, n_11):
   """
   Component of log likelihood corresponding to not-infected-at-next-step.
   """
-  lik = 0
   for i in range(failure_weights.shape[1]):
     for j in range(failure_weights.shape[2]):
       weight_0_ij = failure_weights[0,i,j]
@@ -96,18 +95,14 @@ def negative_log_likelihood(eta, counts_for_likliehood):
   eta2p3p4 = eta2p3 + eta[4]
   eta2p4 = eta2 + eta[4]
 
-  if bootstrap_weights is not None:
-    success_weights = get_bootstrap_weights(bootstrap_weights, counts_for_likelihood_next_infected,
-                                            indices_for_likelihood_next_infected)
-    failure_weights = get_bootstrap_weights(bootstrap_weights, counts_for_likelihood_next_not_infected,
-                                            indices_for_likelihood_next_not_infected)
-  else:
-    success_weights = counts_for_likelihood_next_infected
-    failure_weights = counts_for_likelihood_next_not_infected
+  n_00_1, n_01_1, n_10_1, n_11_1 = counts_for_likliehood['n_00_1'], counts_for_likliehood['n_01_1'], \
+                                   counts_for_likliehood['n_10_1'], counts_for_likliehood['n_11_1']
+  n_00_0, n_01_0, n_10_0, n_11_0 = ccounts_for_likliehood['n_00_0'], counts_for_likliehood['n_01_0'], \
+                                   counts_for_likliehood['n_10_0'], counts_for_likliehood['n_11_0']
 
-  lik_success_component = success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4,
-                                            success_weights)
-  lik_failure_component = failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4,
-                                            failure_weights)
+  lik_success_component = \
+    success_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00_1, n_01_1, n_10_1, n_11_1)
+  lik_failure_component = \
+    failure_component(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00_0, n_01_0, n_10_0, n_11_0)
   return -lik_success_component - lik_failure_component
 
