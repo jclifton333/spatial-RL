@@ -1,5 +1,5 @@
 import pdb
-from src.estimation.q_functions.rollout import rollout
+from src.estimation.q_functions.fqi import fqi
 from .fit import fit_transition_model
 from .simulate import simulate_from_SIS
 
@@ -14,7 +14,7 @@ def estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
                                      treatment_budget)
   print('estimating q function')
   # Estimate optimal q-function from simulated data
-  q_model = rollout(rollout_depth, gamma, simulation_env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,
-                    bootstrap=False)
+  q_model = fqi(rollout_depth, gamma, simulation_env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,
+                bootstrap=False)
 
   return q_model

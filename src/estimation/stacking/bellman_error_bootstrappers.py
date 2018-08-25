@@ -6,7 +6,7 @@ import pdb
 from src.estimation.model_based.sis.estimate_mb_q_fn import estimate_SIS_q_fn
 from src.estimation.stacking.compute_sample_bellman_error import compute_sample_squared_bellman_error
 from src.estimation.q_functions.regressor import AutoRegressor
-from src.estimation.q_functions.rollout import rollout
+from src.estimation.q_functions.fqi import fqi
 from keras import backend as K
 
 
@@ -30,8 +30,8 @@ def bootstrap_rollout_qfn(env, classifier, regressor, rollout_depth, gamma, trea
   for rep in range(num_bootstrap_samples):
     print(rep)
     auto_regressor = AutoRegressor(classifier, regressor)
-    q_fn = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,
-                   bootstrap=True)
+    q_fn = fqi(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer,
+               bootstrap=True)
     bootstrap_be = compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget,
                                                         argmaxer)
     be_list.append(float(bootstrap_be))

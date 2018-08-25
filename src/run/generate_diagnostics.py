@@ -18,7 +18,7 @@ from src.environments import generate_network
 from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['sis']
-VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'rollout', 'rollout', 'one_step',
+VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'fqi', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global']
 VALID_DIAGNOSTIC_NAMES = ['generate_bootstrap_dbns', 'compare_probability_estimates']

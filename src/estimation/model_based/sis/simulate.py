@@ -30,7 +30,7 @@ def simulate_from_SIS(env, eta, planning_depth, treatment_budget, n_rep=30):
   a = np.concatenate((np.zeros(simulation_env.L - treatment_budget), np.ones(treatment_budget)))
   for rep in range(n_rep):
     for t in range(planning_depth):
-      # Use myopic estimated probs as rollout (different rollout!) policy
+      # Use myopic estimated probs as fqi (different fqi!) policy
       # print('rep {} t {}'.format(rep, t))
       # a = np.zeros(L)
       # probs = simulation_env.next_infected_probabilities(L)

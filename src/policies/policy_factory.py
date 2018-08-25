@@ -1,5 +1,5 @@
 import src.policies.reference_policies as ref
-import src.policies.rollout_policies as roll
+import src.policies.q_function_policies as roll
 
 
 def policy_factory(policy_type):
@@ -14,9 +14,9 @@ def policy_factory(policy_type):
     return ref.true_probs
   elif policy_type == 'true_probs_myopic':
     return ref.true_probs_myopic
-  elif policy_type == 'rollout':
+  elif policy_type == 'fqi':
     return roll.rollout_policy
-  elif policy_type == 'network rollout':
+  elif policy_type == 'network fqi':
     return roll.network_features_rollout_policy
   elif policy_type == 'one_step':
     return roll.one_step_policy

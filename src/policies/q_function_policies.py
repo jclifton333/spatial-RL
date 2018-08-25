@@ -1,4 +1,4 @@
-from src.estimation.q_functions.rollout import rollout, rollout_variance_estimate
+from src.estimation.q_functions.fqi import fqi, rollout_variance_estimate
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
 from src.estimation.model_based.sis.estimate_mb_q_fn import estimate_SIS_q_fn
@@ -39,7 +39,7 @@ def rollout_policy(**kwargs):
 
     auto_regressor = AutoRegressor(classifier, regressor)
 
-    q_model = rollout(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
+    q_model = fqi(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
     q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
     a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
   K.clear_session()

@@ -5,7 +5,7 @@ Created on Thu May 17 00:08:33 2018
 @author: Jesse
 """
 import numpy as np
-from src.estimation.q_functions.q_max import q_max_all_states
+from src.estimation.q_functions.q_functions import q_max_all_states
 
 
 def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
@@ -15,8 +15,8 @@ def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
   return rollout_Q_features
 
 
-def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, y=None, bootstrap=True,
-            bootstrap_residuals=False):
+def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, y=None, bootstrap=True,
+        bootstrap_residuals=False):
   if y is None:
     target = np.hstack(env.y).astype(float)
   else:
@@ -48,7 +48,7 @@ def rollout(K, gamma, env, evaluation_budget, treatment_budget, regressor, argma
   return regressor.autologitPredictor
 
 
-def rollout_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget, regressor, argmaxer,
+def fqi_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget, regressor, argmaxer,
                               infection_probabilities, num_rep=100):
   """
 
@@ -67,8 +67,8 @@ def rollout_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget
   q_vals = np.zeros((0, env.T * env.L))
   for rep in range(num_rep):
     y_tilde = np.random.binomial(1, p=infection_probabilities)
-    q_tilde = rollout(K, gamma, env, evaluation_budget, treatmnet_budget, regressor, argmaxer, y=y_tilde,
-                      bootstrap=False, bootstrap_residuals=True)
+    q_tilde = fqi(K, gamma, env, evaluation_budget, treatmnet_budget, regressor, argmaxer, y=y_tilde,
+                  bootstrap=False, bootstrap_residuals=True)
     q_tilde_of_X = q_tilde(features)
     q_vals = np.vstack((q_vals, q_tilde_of_X))
   return np.mean(np.var(q_vals, axis=0))

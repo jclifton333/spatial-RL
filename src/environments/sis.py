@@ -119,19 +119,6 @@ class SIS(SpatialDisease):
     self.Phi = []  # Network-level features
     self.current_state = self.S[-1, :]
 
-    # These are for efficiently computing gradients for estimating generative model
-    self.max_num_neighbors = int(np.max(np.sum(self.adjacency_matrix, axis=0)))
-    self.counts_for_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
-    self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
-
-    # These are for figuring out which bootstrap weights correspond to the not-infected locations
-    self.indices_for_likelihood_next_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
-                                                     for j in range(self.max_num_neighbors + 1)}
-                                                 for i in range(2)}
-    self.indices_for_likelihood_next_not_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
-                                                     for j in range(self.max_num_neighbors + 1)}
-                                                 for i in range(2)}
-
   def reset(self):
     """
     Reset state and observation histories.
@@ -143,15 +130,6 @@ class SIS(SpatialDisease):
     self.num_infected_and_treated_neighbors = []
     self.Phi = []
     self.current_state = self.S[-1,:]
-    self.counts_for_likelihood_next_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
-    self.counts_for_likelihood_next_not_infected = np.zeros((2, self.max_num_neighbors + 1, self.max_num_neighbors + 1))
-    self.indices_for_likelihood_next_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
-                                                     for j in range(self.max_num_neighbors + 1)}
-                                                 for i in range(2)}
-    self.indices_for_likelihood_next_not_infected = {i: {j:{k:[] for k in range(self.max_num_neighbors + 1)}
-                                                     for j in range(self.max_num_neighbors + 1)}
-                                                 for i in range(2)}
-
 
   ##############################################################
   ##            Feature function computation                  ##
@@ -301,35 +279,6 @@ class SIS(SpatialDisease):
     num_untreated_and_infected_neighbors = num_infected_neighbors - num_treated_and_infected_neighbors
     return num_treated_and_infected_neighbors, num_untreated_and_infected_neighbors
 
-  def update_likelihood_for_location(self, l, action, last_infections, next_infections,
-                                     counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected):
-    a_l = action[l]
-    y_l = next_infections[l]
-    num_treated_and_infected_neighbors, num_untreated_and_infected_neighbors = \
-      self.neighbor_infection_and_treatment_status(l, action, last_infections)
-
-    if y_l:
-      counts_for_likelihood_next_infected[int(a_l), num_untreated_and_infected_neighbors,
-                                          num_treated_and_infected_neighbors] += 1
-      self.indices_for_likelihood_next_infected[int(a_l)][num_untreated_and_infected_neighbors][num_treated_and_infected_neighbors]\
-        .append((self.T, l))
-    else:
-      counts_for_likelihood_next_not_infected[int(a_l), num_untreated_and_infected_neighbors,
-                                              num_treated_and_infected_neighbors] += 1
-      self.indices_for_likelihood_next_not_infected[int(a_l)][num_untreated_and_infected_neighbors][num_treated_and_infected_neighbors]\
-        .append((self.T, l))
-    return counts_for_likelihood_next_infected, counts_for_likelihood_next_not_infected
-
-  def update_likelihood_information(self, action, next_infections):
-    last_infections = self.Y[-2, :]
-    for l in range(self.L):
-      is_infected = last_infections[l]
-      if not is_infected:
-        self.counts_for_likelihood_next_infected, self.counts_for_likelihood_next_not_infected = \
-          self.update_likelihood_for_location(l, action, last_infections, next_infections,
-                                              self.counts_for_likelihood_next_infected,
-                                              self.counts_for_likelihood_next_not_infected)
-
   def update_obs_history(self, a):
     """
     :param a: self.L-length array of binary actions at each state
@@ -342,7 +291,6 @@ class SIS(SpatialDisease):
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
     self.y.append(self.current_infected)
-    self.update_likelihood_information(a, self.current_infected)
 
   def data_block_at_action(self, data_block_ix, action, raw=False):
     """
