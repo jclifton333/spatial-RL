@@ -7,7 +7,7 @@ import numpy as np
 from numba import njit
 
 
-#@njit
+@njit
 def exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00, n_01, n_10, n_11, a, success):
   exp_0 = 1 + np.exp(eta0)
   exp_1 = 1 + np.exp(eta0p1)
@@ -21,7 +21,7 @@ def exp_prod(eta0, eta0p1, eta2, eta2p3, eta2p3p4, eta2p4, n_00, n_01, n_10, n_1
     n_00_, n_01_, n_10_, n_11_, a_ = n_00[i], n_01[i], n_10[i], n_11[i], a[i]
     prod = np.power(exp_0, a_-1) * np.power(exp_1, -a_) * np.power(exp_00, -n_00_) * \
       np.power(exp_01, -n_01_) * np.power(exp_10, -n_10_) * np.power(exp_11, -n_11_)
-    prod = np.max((0.001, np.min((0.999, prod))))
+    # prod = np.max((0.001, np.min((0.999, prod))))
     if success:
       lik += np.log(1 - prod)
     else:

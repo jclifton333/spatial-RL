@@ -261,7 +261,8 @@ class SIS(SpatialDisease):
     :return:
     """
     treatment_indices = np.array([2, 3, 6, 7])  # Indices corresponding to encodings where a = 1
-    no_treatment_indices = np.array([0, 1, 4, 5])
+    neighbor_is_infected_and_treated_indices = np.array([6, 7]) + 8
+    neighbor_is_infected_and_not_treated_indices = np.array([4, 5]) + 8
 
     not_infected_ixs = np.where(y == 0)
     X, y_next = data_block[not_infected_ixs], y_next[not_infected_ixs]
@@ -269,8 +270,8 @@ class SIS(SpatialDisease):
     next_infected_ixs = np.where(y_next == 1)
     next_not_infected_ixs = np.where(y_next == 0)
     is_treated = np.sum(X[:, treatment_indices], axis=1)
-    num_neighbor_is_treated = np.sum(X[:, treatment_indices + 8], axis=1)
-    num_neighbor_is_not_treated = np.sum(X[:, no_treatment_indices + 8], axis=1)
+    num_neighbor_is_treated = np.sum(X[:, neighbor_is_infected_and_treated_indices], axis=1)
+    num_neighbor_is_not_treated = np.sum(X[:, neighbor_is_infected_and_not_treated_indices], axis=1)
 
     n_00 = (1 - is_treated) * num_neighbor_is_not_treated
     n_01 = (1 - is_treated) * num_neighbor_is_treated
