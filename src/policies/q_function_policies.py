@@ -91,7 +91,8 @@ def sis_one_step_mse_averaged(**kwargs):
     return alpha_mb*q_mb(raw_data_block) + alpha_mf*q_mf(data_block, infected_indices[0], not_infected_indices[0])
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
+  # info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
+  info = {}
   info.update({'alpha_mb': alpha_mb})
   return a, info
 

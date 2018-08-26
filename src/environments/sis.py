@@ -144,26 +144,26 @@ class SIS(SpatialDisease):
   ##            Feature function computation                  ##
   ##############################################################
 
-  def psi_at_location(self, l, data_block):
-    s, a, y = data_block[l, :]
+  def psi_at_location(self, l, raw_data_block):
+    s, a, y = raw_data_block[l, :]
     psi_l = [0]*8
     encoding = int(1*s + 2*a + 4*y)
     psi_l[encoding] = 1
     psi_neighbors = [0]*8
     for lprime in self.adjacency_list[l]:
-      s, a, y = data_block[lprime, :]
+      s, a, y = raw_data_block[lprime, :]
       encoding = int(1*s + 2*a + 4*y)
       psi_neighbors[encoding] += 1
     return np.concatenate((psi_l, psi_neighbors))
 
-  def psi(self, data_block):
+  def psi(self, raw_data_block):
     """
-    :param data_block:
+    :param raw_data_block:
     :return:
     """
     psi = np.zeros((0, 16))
     for l in range(self.L):
-      psi_l = self.psi_at_location(l, data_block)
+      psi_l = self.psi_at_location(l, raw_data_block)
       psi = np.vstack((psi, psi_l))
     return psi
 
@@ -263,7 +263,7 @@ class SIS(SpatialDisease):
     treatment_indices = np.array([2, 3, 6, 7])  # Indices corresponding to encodings where a = 1
     no_treatment_indices = np.array([0, 1, 4, 5])
 
-    not_infected_ixs = np.where(y == 1)
+    not_infected_ixs = np.where(y == 0)
     X, y_next = data_block[not_infected_ixs], y_next[not_infected_ixs]
 
     next_infected_ixs = np.where(y_next == 1)
@@ -276,7 +276,6 @@ class SIS(SpatialDisease):
     n_01 = (1 - is_treated) * num_neighbor_is_treated
     n_10 = is_treated * num_neighbor_is_not_treated
     n_11 = is_treated * num_neighbor_is_treated
-    a = (n_10 + n_11 > 0).astype(float)
 
     # Need to know whether the next infection status is "success" or "failure"
     n_00_0 = n_00[next_not_infected_ixs]
@@ -287,8 +286,8 @@ class SIS(SpatialDisease):
     n_10_1 = n_10[next_infected_ixs]
     n_11_0 = n_11[next_not_infected_ixs]
     n_11_1 = n_11[next_infected_ixs]
-    a_0 = a[next_not_infected_ixs]
-    a_1 = a[next_infected_ixs]
+    a_0 = is_treated[next_not_infected_ixs].astype(float)
+    a_1 = is_treated[next_infected_ixs].astype(float)
 
     self.counts_for_likelihood['n_00_0'] = np.append(self.counts_for_likelihood['n_00_0'], n_00_0)
     self.counts_for_likelihood['n_00_1'] = np.append(self.counts_for_likelihood['n_00_1'], n_00_1)
