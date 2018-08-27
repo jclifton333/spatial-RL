@@ -68,8 +68,8 @@ def one_step_sis_convex_combo(env):
   alpha_mf = mse_optimal_convex_combo(mf_bias, mb_bias, mf_var, mb_var, mb_mf_cov)
   alpha_mb = 1 - alpha_mf
 
-  # We return yhat_mf to compute variance of higher-order backups
-  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf, yhat_mb
+  # We return yhat_mf and _mb to compute variance of higher-order backups
+  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf, yhat_mb.reshape((env.T, env.L)), simulated_params
 
 
 def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,

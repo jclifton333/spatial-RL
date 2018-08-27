@@ -1,4 +1,4 @@
-from src.estimation.q_functions.fqi import fqi, fqi_variance_estimate
+from src.estimation.q_functions.fqi import fqi
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q, q_max_all_states
 from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_SIS_q_fn
@@ -103,7 +103,7 @@ def sis_two_step_mse_averaged(**kwargs):
       kwargs['gamma'], kwargs['treatment_budget'], kwargs['argmaxer']
 
   X, X_raw = np.vstack(env.X), np.vstack(env.X_raw)
-  y = np.hstack(y)
+  y = np.hstack(env.y).astype(float)
 
   # Fit one-step
   alpha_mb, alpha_mf, q_mb_one_step, q_mf_one_step, y_mf_draws, y_mb_draws, simulated_params = \
@@ -153,7 +153,7 @@ def sis_two_step_mse_averaged(**kwargs):
   # info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
   info = {}
   info.update({'alpha_mb': alpha_mb})
-  return a, inf
+  return a, info
 
 
 # def dummy_stacked_q_policy(**kwargs):

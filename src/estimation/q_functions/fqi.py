@@ -15,8 +15,8 @@ def rollout_Q_features(data_block, rollout_Q_function_list, intercept):
   return rollout_Q_features
 
 
-def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, y=None, bootstrap=True,
-        bootstrap_residuals=False):
+def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, y=None, bootstrap=True):
+
   if y is None:
     target = np.hstack(env.y).astype(float)
   else:
@@ -36,13 +36,6 @@ def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
   for k in range(1, K + 1):
     target += gamma*q_max.flatten()
     regressor.fitRegressor(features, target, weights, False)
-
-    # For estimating variance of fitted qs
-    if k == 1 and bootstrap_residuals:
-      residuals = regressor.regressor.predict(features) - target
-      bootstrapped_residuals =
-      bootstrapped_target = target + residuals
-      regressor.fitRegressor(features, bootstrapped_target, weights, False)
 
     if k < K:
       q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor,
