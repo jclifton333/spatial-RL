@@ -40,7 +40,7 @@ def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
     # For estimating variance of fitted qs
     if k == 1 and bootstrap_residuals:
       residuals = regressor.regressor.predict(features) - target
-      bootstrapped_residuals = 
+      bootstrapped_residuals =
       bootstrapped_target = target + residuals
       regressor.fitRegressor(features, bootstrapped_target, weights, False)
 
