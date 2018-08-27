@@ -112,10 +112,12 @@ def sis_mse_averaged(**kwargs):
 
   # Fit k-steps
   for k in range(1, rollout_depth + 1):
+    q_mb = None
     # Estimate bias and variance of mb
     # Estimate variance of mf
-    mf_var = rollout_variance_estimate(k, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
-                                       infection_probabilities)
+    mf_var, q_mf = fqi_variance_estimate(k, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
+                                         infection_probabilities)
+    mb_bias = np.mean(q_mb - q_mf)
 
   return
 

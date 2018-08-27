@@ -31,6 +31,7 @@ def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
   # Fit 1-step model
   regressor.fitClassifier(features, target, weights, True, env.add_neighbor_sums)
   q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor.autologitPredictor, argmaxer, ixs)
+
   # Look ahead
   for k in range(1, K + 1):
     target += gamma*q_max.flatten()
@@ -71,7 +72,7 @@ def fqi_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget, re
                   bootstrap=False, bootstrap_residuals=True)
     q_tilde_of_X = q_tilde(features)
     q_vals = np.vstack((q_vals, q_tilde_of_X))
-  return np.mean(np.var(q_vals, axis=0))
+  return np.mean(np.var(q_vals, axis=0)), np.mean(q_vals, axis=0)
 
 
 # def network_features_rollout(env, evaluation_budget, treatment_budget, regressor):

@@ -70,6 +70,27 @@ def one_step_sis_convex_combo(env):
   return alpha_mb, alpha_mf, q_mb, q_mf
 
 
+def sis_mb_backup(env, gamma, mb_q_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,
+                  number_of_draws=10):
+
+  phat_list = [mb_q_one_step(data_block) for data_block in env.X_raw]
+  backup = np.zeros((0, env.T * env.L))
+  for draw in range(number_of_draws):
+    backups_for_draw = np.zeros(0)
+    for t in range(env.T):
+      phat_t = phat_list[t]
+      y_next = np.random.binomial(1, p=phat_t)
+      q_fn = lambda a: q_mb(np.column_stack((a, y_next)))
+      argmax = argmaxer(q_fn, evaluation_budget, treatment_budget, env)
+      q_max = q_fn(argmax)
+      backup_draw = phat_t + gamma * q_max
+      backups_for_draw = np.append(backups_for_draw, backup_draw)
+    backup = np.vstack((backup, backups_for_draw))
+  return np.mean(backup, axis=0)
+
+
+
+
 # def estimate_mb_bias_and_variance(phat, env):
 #   """
 #

@@ -39,8 +39,6 @@ def argmaxer_global(q_fn, evaluation_budget, treatment_budget, env, ixs=None):
   return a_best
 
 
-  # Generate all possible actions with treatment_budget treatments.
-
 def argmaxer_factory(choice):
   """
   :param choice: str in ['sweep', 'quad_approx']
