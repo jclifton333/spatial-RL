@@ -70,10 +70,10 @@ def one_step_sis_convex_combo(env):
   return alpha_mb, alpha_mf, q_mb, q_mf
 
 
-def sis_mb_backup(env, gamma, mb_q_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,
+def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,
                   number_of_draws=10):
 
-  phat_list = [mb_q_one_step(data_block) for data_block in env.X_raw]
+  phat_list = [q_mb_one_step(data_block) for data_block in env.X_raw]
   backup = np.zeros((0, env.T * env.L))
   for draw in range(number_of_draws):
     backups_for_draw = np.zeros(0)

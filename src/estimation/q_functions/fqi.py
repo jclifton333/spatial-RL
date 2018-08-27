@@ -40,6 +40,7 @@ def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
     # For estimating variance of fitted qs
     if k == 1 and bootstrap_residuals:
       residuals = regressor.regressor.predict(features) - target
+      bootstrapped_residuals = 
       bootstrapped_target = target + residuals
       regressor.fitRegressor(features, bootstrapped_target, weights, False)
 
@@ -49,7 +50,7 @@ def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
   return regressor.autologitPredictor
 
 
-def fqi_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget, regressor, argmaxer,
+def fqi_variance_estimate(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
                               infection_probabilities, num_rep=100):
   """
 
@@ -57,7 +58,7 @@ def fqi_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget, re
   :param gamma:
   :param env:
   :param evaluation_budget:
-  :param treatmnet_budget:
+  :param treatment_budget:
   :param regressor:
   :param argmaxer:
   :param infection_probabilities: Vector of estimated infection probabilities, for parametric bootstrapping.
@@ -68,7 +69,7 @@ def fqi_variance_estimate(K, gamma, env, evaluation_budget, treatmnet_budget, re
   q_vals = np.zeros((0, env.T * env.L))
   for rep in range(num_rep):
     y_tilde = np.random.binomial(1, p=infection_probabilities)
-    q_tilde = fqi(K, gamma, env, evaluation_budget, treatmnet_budget, regressor, argmaxer, y=y_tilde,
+    q_tilde = fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, y=y_tilde,
                   bootstrap=False, bootstrap_residuals=True)
     q_tilde_of_X = q_tilde(features)
     q_vals = np.vstack((q_vals, q_tilde_of_X))

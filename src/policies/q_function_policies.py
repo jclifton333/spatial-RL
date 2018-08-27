@@ -3,7 +3,7 @@ from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q
 from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_SIS_q_fn
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_transition_model
-from src.estimation.q_functions.mse_optimal_combination import one_step_sis_convex_combo
+import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 
 import numpy as np
@@ -77,7 +77,7 @@ def sis_model_based_one_step(**kwargs):
 def sis_one_step_mse_averaged(**kwargs):
   env = kwargs['env']
 
-  alpha_mb, alpha_mf, q_mb, q_mf = one_step_sis_convex_combo(env)
+  alpha_mb, alpha_mf, q_mb, q_mf = mse_combo.one_step_sis_convex_combo(env)
 
   # Get modified q_function
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
@@ -106,18 +106,19 @@ def sis_mse_averaged(**kwargs):
   y = np.hstack(y)
 
   # Fit one-step
-  alpha_mb, alpha_mf, q_mb, q_mf = one_step_sis_convex_combo(env)
-  infection_probabilities = alpha_mb*q_mb(X_raw) + alpha_mf*q_mf(X)
+  alpha_mb, alpha_mf, q_mb_one_step, q_mf_one_step = mse_combo.one_step_sis_convex_combo(env)
+  infection_probabilities = alpha_mb*q_mb_one_step(X_raw) + alpha_mf*q_mf_one_step(X)
   regressor.fitRegressor(X, infection_probabilities, None, False)
 
   # Fit k-steps
+  q_mb = q_mb_one_step
   for k in range(1, rollout_depth + 1):
-    q_mb = None
+    mb_backup = mse_combo.sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget)
     # Estimate bias and variance of mb
     # Estimate variance of mf
-    mf_var, q_mf = fqi_variance_estimate(k, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
-                                         infection_probabilities)
-    mb_bias = np.mean(q_mb - q_mf)
+    mf_backup_var, mf_backup = fqi_variance_estimate(k, gamma, env, evaluation_budget, treatment_budget, regressor,
+                                                     argmaxer, infection_probabilities)
+    mb_bias = np.mean(mb_backup - mf_backup)
 
   return
 
