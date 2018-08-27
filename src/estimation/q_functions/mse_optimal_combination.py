@@ -69,13 +69,14 @@ def one_step_sis_convex_combo(env):
   alpha_mb = 1 - alpha_mf
 
   # We return yhat_mf to compute variance of higher-order backups
-  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf
+  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf, yhat_mb
 
 
 def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,
-                  number_of_draws=10):
+                  number_of_draws=10, phat_list=None):
 
-  phat_list = [q_mb_one_step(data_block) for data_block in env.X_raw]
+  if phat_list is None:
+    phat_list = [q_mb_one_step(data_block) for data_block in env.X_raw]
   backup = np.zeros((0, env.T * env.L))
   for draw in range(number_of_draws):
     backups_for_draw = np.zeros(0)

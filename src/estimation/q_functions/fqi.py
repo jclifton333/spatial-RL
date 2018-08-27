@@ -50,32 +50,6 @@ def fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
   return regressor.autologitPredictor
 
 
-def fqi_variance_estimate(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer,
-                              infection_probabilities, num_rep=100):
-  """
-
-  :param K:
-  :param gamma:
-  :param env:
-  :param evaluation_budget:
-  :param treatment_budget:
-  :param regressor:
-  :param argmaxer:
-  :param infection_probabilities: Vector of estimated infection probabilities, for parametric bootstrapping.
-  :param num_rep:
-  :return:
-  """
-  features = np.vstack(env.X)
-  q_vals = np.zeros((0, env.T * env.L))
-  for rep in range(num_rep):
-    y_tilde = np.random.binomial(1, p=infection_probabilities)
-    q_tilde = fqi(K, gamma, env, evaluation_budget, treatment_budget, regressor, argmaxer, y=y_tilde,
-                  bootstrap=False, bootstrap_residuals=True)
-    q_tilde_of_X = q_tilde(features)
-    q_vals = np.vstack((q_vals, q_tilde_of_X))
-  return np.mean(np.var(q_vals, axis=0)), np.mean(q_vals, axis=0)
-
-
 # def network_features_rollout(env, evaluation_budget, treatment_budget, regressor):
 #   # target = np.sum(env.y, axis=1).astype(float)
 #   target = np.sum(env.true_infection_probs, axis=1).astype(float)

@@ -106,7 +106,8 @@ def sis_two_step_mse_averaged(**kwargs):
   y = np.hstack(y)
 
   # Fit one-step
-  alpha_mb, alpha_mf, q_mb_one_step, q_mf_one_step, y_mf_draws = mse_combo.one_step_sis_convex_combo(env)
+  alpha_mb, alpha_mf, q_mb_one_step, q_mf_one_step, y_mf_draws, y_mb_draws, simulated_params = \
+    mse_combo.one_step_sis_convex_combo(env)
   infection_probabilities = alpha_mb*q_mb_one_step(X_raw) + alpha_mf*q_mf_one_step(X)
   regressor.fitRegressor(X, infection_probabilities, None, False)
 
@@ -120,23 +121,39 @@ def sis_two_step_mse_averaged(**kwargs):
   mb_bias = np.mean(mb_backup - mf_backup)
 
   # mf variance
-  bootstrapped_backups = np.zeros((0, len(y)))
+  bootstrapped_mf_backups = np.zeros((0, len(y)))
   for y_mf in y_mf_draws:
     backup_draw = y_mf + gamma*q_max.flatten()
     regressor.fitRegressor(X, backup_draw)
     residuals = regressor.regressor.predict(X) - backup_draw
     bootstrapped_residuals = np.random.choice(residuals, len(residuals), replace=True)
     bootstrapped_target = backup_draw + bootstrapped_residuals
-    bootstrapped_backups = np.vstack((bootstrapped_backups, bootstrapped_target))
-  mf_var = np.var(np.mean(bootstrapped_backups, axis=0))
+    bootstrapped_mf_backups = np.vstack((bootstrapped_mf_backups, bootstrapped_target))
+  mf_var = np.var(np.mean(bootstrapped_mf_backups, axis=0))
 
-  # Estimate bias and variance of mb
-  # Estimate variance of mf
-  mf_backup_var, mf_backup = fqi_variance_estimate(k, gamma, env, evaluation_budget, treatment_budget, regressor,
-                                                   argmaxer, infection_probabilities)
-  mb_bias = np.mean(mb_backup - mf_backup)
+  # mb variance
+  bootstrapped_mb_backups = np.zeros((0, len(y)))
+  for y_mb_draw, simulated_param in zip(y_mb_draws, simulated_params):
+    # q_mb_one_step_draw = f(simulated_param)
+    mb_backup_draw = mse_combo.sis_mb_backup(env, gamma, q_mb_one_step_draw, q_mb_one_step_draw, argmaxer,
+                                             evaluation_budget, treatment_budget, phat_list=y_mb_draw)
+    bootstrapped_mb_backups = np.vstack((bootstrapped_mb_backups, mb_backup_draw))
+  mb_var = np.var(np.mean(bootstrapped_mb_backups, axis=0))
 
-  return
+  alpha_mf = mse_combo.mse_optimal_convex_combo(0.0, mb_bias, mf_var, mb_var, 0.0)
+  alpha_mb = 1 - alpha_mf
+
+  def qfn(a):
+    data_block = env.data_block_at_action(-1, a)
+    raw_data_block = env.data_block_at_action(-1, a, raw=True)
+    infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
+    return alpha_mb*q_mb(raw_data_block) + alpha_mf*q_mf(data_block, infected_indices[0], not_infected_indices[0])
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  # info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
+  info = {}
+  info.update({'alpha_mb': alpha_mb})
+  return a, inf
 
 
 # def dummy_stacked_q_policy(**kwargs):
