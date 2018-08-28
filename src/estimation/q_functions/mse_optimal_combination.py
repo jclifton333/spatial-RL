@@ -94,9 +94,10 @@ def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment
   sigma_hat = np.sqrt(np.sum((Sp1 - Sp1_mean_list.flatten())**2) / (len(S) - 1))
 
   # Estimate variance with parametric bootstrap
-  mb_backup_draws = np.zeros((0, env.T * env.L))
-  mf_backup_draws = np.zeros((0, env.T * env.L))
+  mb_backup_draws = np.zeros((0, (env.T - 1) * env.L))
+  mf_backup_draws = np.zeros((0, (env.T - 1) * env.L))
   for rep in range(num_parametric_bootstrap_replicates):
+    print('rep {}'.format(rep))
     # Bootstrap draw from fitted model
     Sp1_indicator_draw_list = \
       np.array([np.random.normal(loc=Sp1_mean, scale=sigma_hat) > 0 for Sp1_mean in Sp1_mean_list])
@@ -108,7 +109,8 @@ def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment
     list_of_infections_and_states = [(Sp1_indicator_draw, yp1_draw) for Sp1_indicator_draw, yp1_draw in
                                      zip(Sp1_indicator_draw_list, yp1_draw_list)]
     q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, q_mf, argmaxer,
-                                      list_of_infections_and_states=list_of_infections_and_states)
+                                      list_of_infections_and_states=list_of_infections_and_states,
+                                      condition_on_infection_status=True)
     mf_backup_draw = yp1_draw_list[:-1].flatten() + gamma * q_mf_max[1:].flatten()
 
     # Add to array
@@ -123,8 +125,8 @@ def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment
   mb_backup = sis_mb_backup(env, gamma, q_mb, q_mb, argmaxer, evaluation_budget, treatment_budget)
   q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, q_mf, argmaxer)
   mf_backup = np.hstack(env.y[:-1]) + gamma * q_mf_max[1:].flatten()
-  mb_bias = np.mean(mb_backup_draws, axis=0) - mb_backup
-  mf_bias = np.mean(mf_backup_draws, axis=0) - mf_backup
+  mb_bias = np.mean(np.mean(mb_backup_draws, axis=0) - mb_backup)
+  mf_bias = np.mean(np.mean(mf_backup_draws, axis=0) - mf_backup)
 
   # Get estimated optimal mixing weight
   alpha_mf = mse_optimal_convex_combo(mf_bias, mb_bias, mf_var, mb_var, 0.0)
@@ -138,10 +140,10 @@ def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, 
                   number_of_draws=10, phat_list=None):
   if phat_list is None:
     phat_list = [q_mb_one_step(data_block) for data_block in env.X_raw]
-  backup = np.zeros((0, env.T * env.L))
+  backup = np.zeros((0, (env.T - 1) * env.L))
   for draw in range(number_of_draws):
     backups_for_draw = np.zeros(0)
-    for t in range(env.T):
+    for t in range(env.T - 1):
       phat_t = phat_list[t]
       y_next = np.random.binomial(1, p=phat_t)
       q_fn = lambda a: q_mb(np.column_stack((np.zeros(len(a)), a, y_next)))

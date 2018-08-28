@@ -38,5 +38,7 @@ def policy_factory(policy_type):
     return roll.sis_one_step_mse_averaged
   elif policy_type == 'sis_two_step_mse_averaged':
     return roll.sis_two_step_mse_averaged
+  elif policy_type == 'sis_mb_fqi':
+    return roll.sis_mb_fqi
   else:
     raise ValueError('Argument does not match any policy.')

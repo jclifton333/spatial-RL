@@ -47,6 +47,36 @@ def rollout_policy(**kwargs):
   return a, q_model
 
 
+def sis_mb_fqi(**kwargs):
+  """
+  Currently only two-step fqi!
+
+  :param kwargs:
+  :return:
+  """
+  env, treatment_budget, evaluation_budget, argmaxer, gamma, regressor = \
+    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
+    kwargs['gamma'], kwargs['regressor']
+
+  # Compute backup
+  q_mb_one_step, _ = fit_one_step_sis_mb_q(env)
+  mb_backup = mse_combo.sis_mb_backup(env, gamma, q_mb_one_step, q_mb_one_step, argmaxer, evaluation_budget,
+                                      treatment_budget)
+
+  # Fit q-function
+  X_2 = np.vstack(env.X_2[:-1])
+  reg = regressor()
+  reg.fit(X_2, mb_backup)
+
+  # Get optimal action
+  def qfn(action):
+    return q(action, -1, env, reg.predict, neighbor_order=2)
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+
+  return a, None
+
+
 def sis_model_based_policy(**kwargs):
   env, treatment_budget, evaluation_budget, argmaxer, planning_depth, bootstrap, \
     rollout_depth, gamma, classifier, regressor = \
@@ -106,7 +136,7 @@ def sis_two_step_mse_averaged(**kwargs):
   averaged_backup, info = mse_combo.two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment_budget)
 
   # Fit q-function to backup
-  X_2 = np.vstack(env.X_2)
+  X_2 = np.vstack(env.X_2[:-1])
   reg = regressor()
   reg.fit(X_2, averaged_backup)
 
