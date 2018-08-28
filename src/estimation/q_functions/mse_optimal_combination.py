@@ -34,25 +34,26 @@ def one_step_sis_convex_combo(env):
   params = np.concatenate((mb_params, fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
   simulated_params = np.random.multivariate_normal(mean=params, cov=cov, size=100)
 
-  yhat_mb = np.zeros((0, env.T * env.L))
-  yhat_mf = np.zeros((0, env.T * env.L))
+  yhat_mb_draws = np.zeros((0, env.T * env.L))
+  yhat_mf_draws = np.zeros((0, env.T * env.L))
 
   for simulated_param in simulated_params:
     simulated_mb_params = simulated_param[:len(mb_params)]
     simulated_mf_params = simulated_param[len(mb_params):]
-    yhat_mb_ = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
-                                                    eta=simulated_mb_params) for data_block in env.X_raw])
-    yhat_mf_ = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
-                                                                      np.where(raw_data_block[:, 2] == 0),
+    yhat_mb_draw = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
+                                                        eta=simulated_mb_params) for data_block in env.X_raw])
+    yhat_mf_draw = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                          np.where(raw_data_block[:, 2] == 0),
                                                                       simulated_mf_params)[:, -1]
                           for data_block, raw_data_block in zip(env.X, env.X_raw)])
-    yhat_mb = np.vstack((yhat_mb, yhat_mb_))
-    yhat_mf = np.vstack((yhat_mf, yhat_mf_))
+    yhat_mb_draws = np.vstack((yhat_mb_draws, yhat_mb_draw))
+    yhat_mf_draws = np.vstack((yhat_mf_draws, yhat_mf_draw))
 
   # Compute variances and covariance
-  mb_var = np.mean(np.var(yhat_mb, axis=0))
-  mf_var = np.mean(np.var(yhat_mf, axis=0))
-  mb_mf_cov = np.cov(np.array([np.mean(yhat_mb, axis=1), np.mean(yhat_mf, axis=1)]))[0, 1]
+  mb_var = np.mean(np.var(yhat_mb_draws.flatten(), axis=0))
+  mf_var = np.mean(np.var(yhat_mf_draws.flatten(), axis=0))
+  # mb_mf_cov = np.cov(np.array([np.mean(yhat_mb_draws.flatten(), axis=1), np.mean(yhat_mf_draws.flatten(),
+  #                                                                                axis=1)]))[0, 1]
 
   # Compute bias
   yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
@@ -65,11 +66,12 @@ def one_step_sis_convex_combo(env):
   mf_bias = np.mean(yhat_mf - np.hstack(env.y))
 
   # Get mixing weight
-  alpha_mf = mse_optimal_convex_combo(mf_bias, mb_bias, mf_var, mb_var, mb_mf_cov)
+  alpha_mf = mse_optimal_convex_combo(mf_bias, mb_bias, mf_var, mb_var, 0.0)
   alpha_mb = 1 - alpha_mf
 
   # We return yhat_mf and _mb to compute variance of higher-order backups
-  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf, yhat_mb.reshape((env.T, env.L)), simulated_params
+  yhat_mb_draws = [yhat_mb_draw.reshape((env.T, env.L)) for yhat_mb_draw in yhat_mb_draws]
+  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf_draws, yhat_mb_draws, simulated_params
 
 
 def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,
@@ -83,7 +85,7 @@ def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, 
     for t in range(env.T):
       phat_t = phat_list[t]
       y_next = np.random.binomial(1, p=phat_t)
-      q_fn = lambda a: q_mb(np.column_stack((a, y_next)))
+      q_fn = lambda a: q_mb(np.column_stack((np.zeros(len(a)), a, y_next)))
       argmax = argmaxer(q_fn, evaluation_budget, treatment_budget, env)
       q_max = q_fn(argmax)
       backup_draw = phat_t + gamma * q_max
