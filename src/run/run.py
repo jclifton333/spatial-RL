@@ -17,7 +17,7 @@ from src.environments import generate_network
 from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['sis']
-VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'fqi', 'one_step',
+VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based', 'sis_model_based_one_step',
                       'sis_one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
