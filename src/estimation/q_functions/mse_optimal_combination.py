@@ -2,6 +2,7 @@ import pdb
 import numpy as np
 from .one_step import fit_one_step_mf_and_mb_qs, fit_one_step_predictor
 from .model_fitters import SKLogit2
+from src.estimation.q_functions.q_functions import q_max_all_states
 from sklearn.linear_model import LinearRegression
 
 
@@ -101,7 +102,7 @@ def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment
     yp1_draw_list = [np.random.binomial(1, p=phat) for phat in phat_list]
 
     # Fit 2-step mf and mb on draws
-    q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2, y_next=yp1_draw)
+    q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2, y_next=yp1_draw_list.flatten())
     mb_backup_draw = sis_mb_backup(env, gamma, q_mb, q_mb, argmaxer, evaluation_budget, treatment_budget)
     q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, fitted_mf_clf.predict, argmaxer,
                                       list_of_infections_and_states=zip(Sp1_indicator_draw_list, yp1_draw_list))
@@ -114,7 +115,19 @@ def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment
   mb_var = np.mean(np.var(mb_backup_draws, axis=0))
   mf_var = np.mean(np.var(mf_backup_draws, axis=0))
 
-  return
+  # Estimate bias
+  q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2)
+  mb_backup = sis_mb_backup(env, gamma, q_mb, q_mb, argmaxer, evaluation_budget, treatment_budget)
+  q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, fitted_mf_clf.predict, argmaxer)
+  mf_backup = np.hstack(env.y) + gamma * q_mf_max.flatten()
+  mb_bias = np.mean(mb_backup_draws, axis=0) - mb_backup
+  mf_bias = np.mena(mf_backup_draws, axis=0) - mf_backup
+
+  # Get estimated optimal mixing weight
+  alpha_mf = mse_optimal_convex_combo(mf_bias, mb_bias, mf_var, mb_var, 0.0)
+  alpha_mb = 1 - alpha_mf
+
+  return alpha_mb*mb_backup + alpha_mf*mf_backup
 
 
 
