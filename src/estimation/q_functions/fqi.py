@@ -34,7 +34,7 @@ def fqi(K, gamma, env, evaluation_budget, treatment_budget, classifier, regresso
   # Fit 1-step model
   q_one_step, _ = fit_one_step_predictor(classifier, env, None, y_next=y_next)
 
-  q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, q_one_step, argmaxer,
+  q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, q_one_step.predict_proba, argmaxer,
                                  condition_on_infection_status=True)
 
   # Look ahead

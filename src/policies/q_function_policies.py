@@ -38,9 +38,7 @@ def rollout_policy(**kwargs):
       kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
       kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer']
 
-    auto_regressor = AutoRegressor(classifier, regressor)
-
-    q_model = fqi(rollout_depth, gamma, env, evaluation_budget, treatment_budget, auto_regressor, argmaxer)
+    q_model = fqi(rollout_depth, gamma, env, evaluation_budget, treatment_budget, classifier, regressor, argmaxer)
     q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
     a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
   K.clear_session()
