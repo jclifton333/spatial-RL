@@ -112,6 +112,7 @@ class SIS(SpatialDisease):
     self.omega = omega
     self.state_covariance = self.beta[1] * np.eye(self.L)
 
+    self.X_2 = []  # For second-order neighbor features
     self.S = np.array([self.initial_state])
     self.S_indicator = self.S > 0
     self.num_infected_neighbors = []
@@ -129,6 +130,7 @@ class SIS(SpatialDisease):
     Reset state and observation histories.
     """
     super(SIS, self).reset()
+    self.X_2 = []
     self.S = np.array([self.initial_state])
     self.S_indicator = self.S > 0
     self.num_infected_neighbors = []
@@ -176,7 +178,7 @@ class SIS(SpatialDisease):
     if neighbor_order == 1:
       psi = np.zeros((0, 16))
     elif neighbor_order == 2:
-      psi = np.zeros((0, 64))
+      psi = np.zeros((0, 72))
 
     for l in range(self.L):
       psi_l = self.psi_at_location(l, raw_data_block, neighbor_order)
@@ -324,18 +326,18 @@ class SIS(SpatialDisease):
     super(SIS, self).update_obs_history(a)
     raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
     data_block_1 = self.psi(raw_data_block, neighbor_order=1)
-    if neighbor_order == 2:
-      data_block_2 = self.psi(raw_data_block, neighbor_order=2)
+    data_block_2 = self.psi(raw_data_block, neighbor_order=2)
 
     # Main features
     self.X_raw.append(raw_data_block)
-    self.X.append(data_block)
+    self.X.append(data_block_1)
+    self.X_2.append(data_block_2)
     self.y.append(self.current_infected)
 
     # Update likelihood counts
-    self.update_counts_for_likelihood(data_block, self.Y[-2, :], self.current_infected)
+    self.update_counts_for_likelihood(data_block_1, self.Y[-2, :], self.current_infected)
 
-  def data_block_at_action(self, data_block_ix, action, neighbor_order, raw=False):
+  def data_block_at_action(self, data_block_ix, action, neighbor_order=1, raw=False):
     """
     Replace action in raw data_block with given action.
     """

@@ -154,9 +154,10 @@ def sis_two_step_mse_averaged(**kwargs):
 
   # Fit to averaged backup
   averaged_backup = alpha_mf * mf_backup + alpha_mb * mb_backup
-  regressor_.fitRegressor(X, averaged_backup, None, False)
+  X_2 = np.vstack(env.X_2)
+  regressor_.fitRegressor(X_2, averaged_backup, None, False)
 
-  qfn = lambda action: q(action, -1, env, regressor_.regressor.predict)
+  qfn = lambda action: q(action, -1, env, regressor_.regressor.predict, neighbor_order=2)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   # info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
