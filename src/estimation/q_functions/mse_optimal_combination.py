@@ -75,33 +75,45 @@ def one_step_sis_convex_combo(env):
   return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf_draws, yhat_mb_draws, simulated_params
 
 
-def two_step_sis_convex_combo(env, num_parametric_bootstrap_replicates=100):
+def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment_budget,
+                              num_parametric_bootstrap_replicates=100):
   """
   Get (estimated) mse-optimal convex combo of 2-step mf and mb q functions, using parametric bootstrap to compute
   variances.
-
-  :param env:
-  :return:
   """
+
   # Fit consistent infection and state models for parametric bootstrapping
   mf_one_step_predictor, _ = fit_one_step_predictor(SKLogit2, env, None)
-  X = np.vstack(env.X)
-  infected_indices, not_infected_indices = np.where(X[:, -1] == 1)[0], np.where(X[:, -1] == 0)[0]
-  phat = mf_one_step_predictor.predict(np.vstack(env.X), infected_indices, not_infected_indices)
+  phat_list = [mf_one_step_predictor(data_block, np.where(data_block[:, -1] == 1)[0],
+                                     np.where(data_block[:, -1] == 0)[0]) for data_block in env.X]
   S, Sp1 = env.S[:-1].flatten(), env.S[1:].flatten()
   reg = LinearRegression()
   reg.fit(S, Sp1)
-  Sp1_mean = reg.predict(S)
+  Sp1_mean_list = [reg.predict(s) for s in env.S]
   sigma_hat = np.sqrt(np.sum((Sp1 - Sp1_mean)**2) / (len(S) - 1))
 
   # Estimate variance with parametric bootstrap
+  mb_backup_draws = np.zeros((0, env.T * env.L))
+  mf_backup_draws = np.zeros((0, env.T * env.L))
   for rep in range(num_parametric_bootstrap_replicates):
     # Bootstrap draw from fitted model
-    Sp1_draw = np.random.normal(loc=Sp1_mean, scale=sigma_hat)
-    Sp1_indicator = Sp1_draw > 0
-    yp1_draw = np.random.binomial(1, p=phat)
+    Sp1_indicator_draw_list = [np.random.normal(loc=Sp1_mean, scale=sigma_hat) > 0 for Sp1_mean in Sp1_mean_list]
+    yp1_draw_list = [np.random.binomial(1, p=phat) for phat in phat_list]
 
     # Fit 2-step mf and mb on draws
+    q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2, y_next=yp1_draw)
+    mb_backup_draw = sis_mb_backup(env, gamma, q_mb, q_mb, argmaxer, evaluation_budget, treatment_budget)
+    q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, fitted_mf_clf.predict, argmaxer,
+                                      list_of_infections_and_states=zip(Sp1_indicator_draw_list, yp1_draw_list))
+    mf_backup_draw = yp1_draw_list.flatten() + gamma * q_mf_max.flatten()
+
+    # Add to array
+    mb_backup_draws = np.vstack((mb_backup_draws, mb_backup_draw))
+    mf_backup_draws = np.vstack((mf_backup_draws, mf_backup_draw))
+
+  mb_var = np.mean(np.var(mb_backup_draws, axis=0))
+  mf_var = np.mean(np.var(mf_backup_draws, axis=0))
+
   return
 
 
@@ -111,7 +123,6 @@ def two_step_sis_convex_combo(env, num_parametric_bootstrap_replicates=100):
 
 def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,
                   number_of_draws=10, phat_list=None):
-
   if phat_list is None:
     phat_list = [q_mb_one_step(data_block) for data_block in env.X_raw]
   backup = np.zeros((0, env.T * env.L))

@@ -15,9 +15,12 @@ def compare_with_true_probs(env, predictor, raw):
   return
 
 
-def fit_one_step_predictor(classifier, env, weights, print_compare_with_true_probs=False):
+def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_with_true_probs=False):
   clf = classifier()
-  target = np.hstack(env.y).astype(float)
+  if y_next is None:
+    target = np.hstack(env.y).astype(float)
+  else:
+    target = y_next
   features = np.vstack(env.X)
 
   if clf.condition_on_infection:
@@ -39,9 +42,9 @@ def fit_one_step_predictor(classifier, env, weights, print_compare_with_true_pro
   return clf, predict_proba_kwargs
 
 
-def fit_one_step_sis_mb_q(env, bootstrap_weights=None):
+def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None):
   # Get model-based
-  eta = estimate_sis_parameters.fit_transition_model(env, bootstrap_weights=bootstrap_weights)
+  eta = estimate_sis_parameters.fit_transition_model(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
 
   def q_mb(data_block):
     infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,
@@ -65,7 +68,7 @@ def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=No
   q_mb, mb_params = fit_one_step_sis_mb_q(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
 
   # Get model-free
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights)
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next)
 
   def q_mf(data_block, infected_indices, not_infected_indices):
     return clf.predict_proba(data_block, infected_indices, not_infected_indices)[:, -1]
