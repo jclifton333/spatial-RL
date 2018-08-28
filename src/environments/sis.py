@@ -144,30 +144,46 @@ class SIS(SpatialDisease):
   ##            Feature function computation                  ##
   ##############################################################
 
-  def psi_at_location(self, l, raw_data_block):
+  def psi_at_location(self, l, raw_data_block, neighbor_order):
     s, a, y = raw_data_block[l, :]
     psi_l = [0]*8
     encoding = int(1*s + 2*a + 4*y)
     psi_l[encoding] = 1
-    psi_neighbors = [0]*8
+
+    if neighbor_order == 1:
+      psi_neighbors = [0]*8
+    elif neighbor_order == 2:
+      psi_neighbors = [0]*64
+
     for lprime in self.adjacency_list[l]:
       s, a, y = raw_data_block[lprime, :]
-      encoding = int(1*s + 2*a + 4*y)
-      psi_neighbors[encoding] += 1
+      first_order_encoding = int(1*s + 2*a + 4*y)
+      if neighbor_order == 2:
+        for lprime_prime in self.adjacency_list[lprime]:
+          if lprime_prime != l:
+            s_prime_prime, a_prime_prime, y_prime_prime = raw_data_block[lprime_prime, :]
+            second_order_encoding = first_order_encoding + int(8*s_prime_prime + 16*a_prime_prime + 32*y_prime_prime)
+            psi_neighbors[second_order_encoding] += 1
+        else:
+          psi_neighbors[first_order_encoding] += 1
     return np.concatenate((psi_l, psi_neighbors))
 
-  def psi(self, raw_data_block):
+  def psi(self, raw_data_block, neighbor_order):
     """
     :param raw_data_block:
     :return:
     """
-    psi = np.zeros((0, 16))
+    if neighbor_order == 1:
+      psi = np.zeros((0, 16))
+    elif neighbor_order == 2:
+      psi = np.zeros((0, 64))
+
     for l in range(self.L):
-      psi_l = self.psi_at_location(l, raw_data_block)
+      psi_l = self.psi_at_location(l, raw_data_block, neighbor_order)
       psi = np.vstack((psi, psi_l))
     return psi
 
-  def psi_at_action(self, old_raw_data_block, old_data_block, old_action, action):
+  def psi_at_action(self, old_raw_data_block, old_data_block, old_action, action, neighbor_order):
     new_data_block = copy.copy(old_data_block)
     if self.add_neighbor_sums:
       new_data_block = new_data_block[:, :int(new_data_block.shape[1] / 2)]
@@ -176,12 +192,12 @@ class SIS(SpatialDisease):
     for l in range(self.L):
       l_and_neighbors = [l] + self.adjacency_list[l]
       if self.is_any_element_in_set(l_and_neighbors, locations_with_changed_actions):
-        new_data_block[l, :] = self.psi_at_location(l, old_raw_data_block)
+        new_data_block[l, :] = self.psi_at_location(l, old_raw_data_block, neighbor_order)
     if self.add_neighbor_sums:
       new_data_block = self.psi_neighbor(new_data_block)
     return new_data_block
 
-  def psi_neighbor(self, data_block):
+  def psi_neighbor(self, data_bloc):
     """
     To psi features, concatenate another block of features which are the _sums of the neighboring psi features_.
     :param data_block:
@@ -307,7 +323,9 @@ class SIS(SpatialDisease):
     """
     super(SIS, self).update_obs_history(a)
     raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
-    data_block = self.psi(raw_data_block)
+    data_block_1 = self.psi(raw_data_block, neighbor_order=1)
+    if neighbor_order == 2:
+      data_block_2 = self.psi(raw_data_block, neighbor_order=2)
 
     # Main features
     self.X_raw.append(raw_data_block)
@@ -317,7 +335,7 @@ class SIS(SpatialDisease):
     # Update likelihood counts
     self.update_counts_for_likelihood(data_block, self.Y[-2, :], self.current_infected)
 
-  def data_block_at_action(self, data_block_ix, action, raw=False):
+  def data_block_at_action(self, data_block_ix, action, neighbor_order, raw=False):
     """
     Replace action in raw data_block with given action.
     """
@@ -326,7 +344,8 @@ class SIS(SpatialDisease):
      new_data_block = copy.copy(self.X_raw[data_block_ix])
      new_data_block[:, 1] = action
     else:
-      new_data_block = self.psi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])))
+      new_data_block = self.psi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])),
+                                neighbor_order)
     return new_data_block
 
   def raw_data_block_at_action(self, data_block_ix, action):

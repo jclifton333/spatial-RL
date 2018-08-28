@@ -15,13 +15,15 @@ ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
 class SpatialDisease(ABC):
   INITIAL_INFECT_PROP = 0.1
   
-  def __init__(self, adjacency_matrix, initial_infections=None):
+  def __init__(self, adjacency_matrix, neighbor_order=1, initial_infections=None):
     """
-    :param adjacency_matrix: 2d binary array corresponding to network for gen model 
+    :param adjacency_matrix: 2d binary array corresponding to network for gen model
+    :param neighbor_order: compute features for neighbors up to neighbor_order apart
     :param initial_infections: L-length binary array of initial infections, or None
     """
     
     self.initial_infections = initial_infections
+    self.neighbor_order = neighbor_order
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
     
@@ -45,7 +47,7 @@ class SpatialDisease(ABC):
       self.Y = np.array([self.initial_infections])
     self.A = np.zeros((0, self.L))
     self.X_raw = [] # Will hold blocks [S_t, A_t, Y_t] at each time t
-    self.X = []  # Will hold features of [S_t, A_t, Y_t] each each time t
+    self.X = {k: [] for k in range(1, neighbor_order + 1)}  # Will hold features of [S_t, A_t, Y_t] each each time t
     self.y = []  # Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = []
     
@@ -67,7 +69,7 @@ class SpatialDisease(ABC):
       self.Y = np.array([self.initial_infections])
     self.A = np.zeros((0, self.L))
     self.X_raw = []
-    self.X = [] # Will hold blocks [S_t, A_t, Y_t] each each time t
+    self.X = {k: [] for k in range(1, self.neighbor_order + 1)} # Will hold blocks [S_t, A_t, Y_t] each each time t
     self.y = [] # Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = []
     
