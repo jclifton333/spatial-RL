@@ -51,9 +51,18 @@ def fit_one_step_sis_mb_q(env, bootstrap_weights=None):
   return q_mb, eta
 
 
-def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None):
+def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None):
+  """
+
+  :param env:
+  :param classifier:
+  :param bootstrap_weights:
+  :param y_next: If provided, fit to this rather than env.y.
+  :return:
+  """
+
   # Get model-based
-  q_mb, mb_params = fit_one_step_sis_mb_q(env, bootstrap_weights=bootstrap_weights)
+  q_mb, mb_params = fit_one_step_sis_mb_q(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
 
   # Get model-free
   clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights)

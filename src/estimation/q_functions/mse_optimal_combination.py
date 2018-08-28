@@ -1,7 +1,8 @@
 import pdb
 import numpy as np
-from .one_step import fit_one_step_mf_and_mb_qs
+from .one_step import fit_one_step_mf_and_mb_qs, fit_one_step_predictor
 from .model_fitters import SKLogit2
+from sklearn.linear_model import LinearRegression
 
 
 def softhresholder(x, threshold):
@@ -72,6 +73,40 @@ def one_step_sis_convex_combo(env):
   # We return yhat_mf and _mb to compute variance of higher-order backups
   yhat_mb_draws = [yhat_mb_draw.reshape((env.T, env.L)) for yhat_mb_draw in yhat_mb_draws]
   return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf_draws, yhat_mb_draws, simulated_params
+
+
+def two_step_sis_convex_combo(env, num_parametric_bootstrap_replicates=100):
+  """
+  Get (estimated) mse-optimal convex combo of 2-step mf and mb q functions, using parametric bootstrap to compute
+  variances.
+
+  :param env:
+  :return:
+  """
+  # Fit consistent infection and state models for parametric bootstrapping
+  mf_one_step_predictor, _ = fit_one_step_predictor(SKLogit2, env, None)
+  X = np.vstack(env.X)
+  infected_indices, not_infected_indices = np.where(X[:, -1] == 1)[0], np.where(X[:, -1] == 0)[0]
+  phat = mf_one_step_predictor.predict(np.vstack(env.X), infected_indices, not_infected_indices)
+  S, Sp1 = env.S[:-1].flatten(), env.S[1:].flatten()
+  reg = LinearRegression()
+  reg.fit(S, Sp1)
+  Sp1_mean = reg.predict(S)
+  sigma_hat = np.sqrt(np.sum((Sp1 - Sp1_mean)**2) / (len(S) - 1))
+
+  # Estimate variance with parametric bootstrap
+  for rep in range(num_parametric_bootstrap_replicates):
+    # Bootstrap draw from fitted model
+    Sp1_draw = np.random.normal(loc=Sp1_mean, scale=sigma_hat)
+    Sp1_indicator = Sp1_draw > 0
+    yp1_draw = np.random.binomial(1, p=phat)
+
+    # Fit 2-step mf and mb on draws
+  return
+
+
+
+
 
 
 def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,

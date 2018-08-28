@@ -16,7 +16,7 @@ from src.estimation.q_functions.model_fitters import SKLogit
 from scipy.optimize import minimize
 
 
-def fit_infection_prob_model(env, bootstrap_weights):
+def fit_infection_prob_model(env, bootstrap_weights, y_next=None):
   """
 
   :param env:
@@ -24,7 +24,10 @@ def fit_infection_prob_model(env, bootstrap_weights):
   :return:
   """
   X = np.vstack(env.X_raw)
-  y = np.hstack(env.y).astype(float)
+  if y_next is None:
+    y = np.hstack(env.y).astype(float)
+  else:
+    y = y_next
 
   infected_ixs = np.where(X[:, 2] == 1)
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
