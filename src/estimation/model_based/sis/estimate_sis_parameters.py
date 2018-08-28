@@ -42,8 +42,8 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None):
   return np.concatenate((eta_p, eta_q))
 
 
-def fit_transition_model(env, bootstrap_weights=None):
-  eta = fit_infection_prob_model(env, bootstrap_weights)
+def fit_transition_model(env, bootstrap_weights=None, y_next=None):
+  eta = fit_infection_prob_model(env, bootstrap_weights, y_next=y_next)
   # beta = fit_state_transition_model(env)
   return eta
 

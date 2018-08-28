@@ -46,7 +46,7 @@ def one_step_sis_convex_combo(env):
                                                         eta=simulated_mb_params) for data_block in env.X_raw])
     yhat_mf_draw = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
                                                                           np.where(raw_data_block[:, 2] == 0),
-                                                                      simulated_mf_params)[:, -1]
+                                                                      simulated_mf_params)
                           for data_block, raw_data_block in zip(env.X, env.X_raw)])
     yhat_mb_draws = np.vstack((yhat_mb_draws, yhat_mb_draw))
     yhat_mf_draws = np.vstack((yhat_mf_draws, yhat_mf_draw))
@@ -62,7 +62,7 @@ def one_step_sis_convex_combo(env):
                                                  eta=mb_params) for data_block in env.X_raw])
   yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
                                                                    np.where(raw_data_block[:, 2] == 0),
-                                                                   params[len(mb_params):])[:, -1]
+                                                                   params[len(mb_params):])
                        for data_block, raw_data_block in zip(env.X, env.X_raw)])
   mb_bias = np.mean(yhat_mb - np.hstack(env.y))
   mf_bias = np.mean(yhat_mf - np.hstack(env.y))
@@ -85,28 +85,31 @@ def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment
 
   # Fit consistent infection and state models for parametric bootstrapping
   mf_one_step_predictor, _ = fit_one_step_predictor(SKLogit2, env, None)
-  phat_list = [mf_one_step_predictor(data_block, np.where(data_block[:, -1] == 1)[0],
-                                     np.where(data_block[:, -1] == 0)[0]) for data_block in env.X]
+  phat_list = [mf_one_step_predictor.predict_proba(data_block, np.where(data_block[:, -1] == 1)[0],
+                                                   np.where(data_block[:, -1] == 0)[0]) for data_block in env.X]
   S, Sp1 = env.S[:-1].flatten(), env.S[1:].flatten()
   reg = LinearRegression()
-  reg.fit(S, Sp1)
-  Sp1_mean_list = [reg.predict(s) for s in env.S]
-  sigma_hat = np.sqrt(np.sum((Sp1 - Sp1_mean)**2) / (len(S) - 1))
+  reg.fit(S.reshape(-1, 1), Sp1)
+  Sp1_mean_list = np.array([reg.predict(s.reshape(-1, 1)) for s in env.S[:-1]])
+  sigma_hat = np.sqrt(np.sum((Sp1 - Sp1_mean_list.flatten())**2) / (len(S) - 1))
 
   # Estimate variance with parametric bootstrap
   mb_backup_draws = np.zeros((0, env.T * env.L))
   mf_backup_draws = np.zeros((0, env.T * env.L))
   for rep in range(num_parametric_bootstrap_replicates):
     # Bootstrap draw from fitted model
-    Sp1_indicator_draw_list = [np.random.normal(loc=Sp1_mean, scale=sigma_hat) > 0 for Sp1_mean in Sp1_mean_list]
-    yp1_draw_list = [np.random.binomial(1, p=phat) for phat in phat_list]
+    Sp1_indicator_draw_list = \
+      np.array([np.random.normal(loc=Sp1_mean, scale=sigma_hat) > 0 for Sp1_mean in Sp1_mean_list])
+    yp1_draw_list = np.array([np.random.binomial(1, p=phat) for phat in phat_list])
 
     # Fit 2-step mf and mb on draws
     q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2, y_next=yp1_draw_list.flatten())
     mb_backup_draw = sis_mb_backup(env, gamma, q_mb, q_mb, argmaxer, evaluation_budget, treatment_budget)
-    q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, fitted_mf_clf.predict, argmaxer,
-                                      list_of_infections_and_states=zip(Sp1_indicator_draw_list, yp1_draw_list))
-    mf_backup_draw = yp1_draw_list.flatten() + gamma * q_mf_max.flatten()
+    list_of_infections_and_states = [(Sp1_indicator_draw, yp1_draw) for Sp1_indicator_draw, yp1_draw in
+                                     zip(Sp1_indicator_draw_list, yp1_draw_list)]
+    q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, q_mf, argmaxer,
+                                      list_of_infections_and_states=list_of_infections_and_states)
+    mf_backup_draw = yp1_draw_list[:-1].flatten() + gamma * q_mf_max[1:].flatten()
 
     # Add to array
     mb_backup_draws = np.vstack((mb_backup_draws, mb_backup_draw))
@@ -118,20 +121,17 @@ def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment
   # Estimate bias
   q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2)
   mb_backup = sis_mb_backup(env, gamma, q_mb, q_mb, argmaxer, evaluation_budget, treatment_budget)
-  q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, fitted_mf_clf.predict, argmaxer)
-  mf_backup = np.hstack(env.y) + gamma * q_mf_max.flatten()
+  q_mf_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, q_mf, argmaxer)
+  mf_backup = np.hstack(env.y[:-1]) + gamma * q_mf_max[1:].flatten()
   mb_bias = np.mean(mb_backup_draws, axis=0) - mb_backup
-  mf_bias = np.mena(mf_backup_draws, axis=0) - mf_backup
+  mf_bias = np.mean(mf_backup_draws, axis=0) - mf_backup
 
   # Get estimated optimal mixing weight
   alpha_mf = mse_optimal_convex_combo(mf_bias, mb_bias, mf_var, mb_var, 0.0)
   alpha_mb = 1 - alpha_mf
 
-  return alpha_mb*mb_backup + alpha_mf*mf_backup
-
-
-
-
+  info = {'alpha_mb': alpha_mb, 'mb_bias': mb_bias, 'mf_bias': mf_bias, 'mb_var': mb_var, 'mf_var': mf_var}
+  return alpha_mb*mb_backup + alpha_mf*mf_backup, info
 
 
 def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, treatment_budget,
@@ -151,8 +151,6 @@ def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, 
       backups_for_draw = np.append(backups_for_draw, backup_draw)
     backup = np.vstack((backup, backups_for_draw))
   return np.mean(backup, axis=0)
-
-
 
 
 # def estimate_mb_bias_and_variance(phat, env):

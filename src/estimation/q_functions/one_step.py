@@ -70,11 +70,11 @@ def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=No
   # Get model-free
   clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next)
 
-  def q_mf(data_block, infected_indices, not_infected_indices):
-    return clf.predict_proba(data_block, infected_indices, not_infected_indices)[:, -1]
+  def q_mf(data_block, infected_locations, not_infected_locations):
+    return clf.predict_proba(data_block, infected_locations, not_infected_locations)
 
-  print('mb loss')
-  compare_with_true_probs(env, q_mb, raw=True)
+  # print('mb loss')
+  # compare_with_true_probs(env, q_mb, raw=True)
   # print('mf loss')
   # compare_with_true_probs(env, q_mf, raw=False)
 

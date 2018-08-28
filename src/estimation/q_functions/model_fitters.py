@@ -3,7 +3,7 @@ import numpy as np
 import src.utils.gradient as gradient
 from sklearn.linear_model import Ridge, LogisticRegression
 from scipy.linalg import block_diag
-from scipy.special import expit
+from scipy.special import expit, logit
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.regularizers import L1L2
@@ -45,6 +45,21 @@ def is_y_all_1_or_0(y):
     return True
 
 
+def empirical_bayes_coef(y, p):
+  """
+  For when y is all 1 or 0.
+  :param y:
+  :param p:
+  :return:
+  """
+  y0 = y[0]
+  n = len(y)
+  expit_intercept_ = (1 + y0*n) / (2 + n)  # Smoothed estimate
+  intercept_ = logit(expit_intercept_)
+  coef_ = np.zeros(p)
+  return intercept_, coef_
+
+
 class SKLogit(object):
   def __init__(self):
     self.reg = LogisticRegression()
@@ -54,11 +69,7 @@ class SKLogit(object):
 
   def fit(self, X, y, weights):
     if is_y_all_1_or_0(y):
-      y0 = y[0]
-      n = len(y)
-      expit_intercept_ = (1 + y0*n) / (2 + n)  # Smoothed estimate
-      self.intercept_ = logit(expit_intercept_)
-      self.coef_ = np.zeros(X.shape[1])
+      self.intercept_, self.coef_ = empirical_bayes_coef(y, X.shape[1])
     else:
       self.reg.fit(X, y, sample_weight=weights)
       self.get_coef()
@@ -80,7 +91,8 @@ class SKLogit2(object):
     self.reg_inf = LogisticRegression()
     self.reg_not_inf = LogisticRegression()
     self.condition_on_infection = True
-    self.fitted_model = False
+    self.inf_model_fitted = False
+    self.not_inf_model_fitted = False
     self.inf_params = None
     self.not_inf_params = None
 
@@ -106,7 +118,12 @@ class SKLogit2(object):
 
   def fit(self, X, y, weights, infected_locations, not_infected_locations):
     if is_y_all_1_or_0(y):
-      pass
+      y0 = y[0]
+      n = len(y)
+      expit_intercept_ = (1 + y0*n) / (2 + n)  # Smoothed estimate
+      intercept_ = logit(expit_intercept_)
+      coef_ = np.zeros(X.shape[1])
+      self.inf_params = self.not_inf_params = np.concatenate((intercept_, coef_))
     else:
       if weights is not None:
         inf_weights = weights[infected_locations]
@@ -114,24 +131,42 @@ class SKLogit2(object):
       else:
         inf_weights = not_inf_weights = None
       if len(infected_locations) > 0:
-        self.reg_inf.fit(X[infected_locations], y[infected_locations], sample_weight=inf_weights)
+        if is_y_all_1_or_0(y[infected_locations]):
+          inf_intercept_, inf_coef_ = empirical_bayes_coef(y[infected_locations], X.shape[1])
+          inf_intercept_ = [inf_intercept_]
+        else:
+          self.reg_inf.fit(X[infected_locations], y[infected_locations], sample_weight=inf_weights)
+          inf_intercept_, inf_coef_ = self.reg_inf.intercept_, self.reg_inf.coef_[0]
+          self.inf_model_fitted = True
       if len(not_infected_locations) > 0:
-        self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations],
-                             sample_weight=not_inf_weights)
-      self.fitted_model = True
-      self.inf_params = np.concatenate((self.reg_inf.intercept_, self.reg_inf.coef_[0]))
-      self.not_inf_params = np.concatenate((self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]))
+        if is_y_all_1_or_0(y[not_infected_locations]):
+          not_inf_intercept_, not_inf_coef_ = empirical_bayes_coef(y[not_infected_locations], X.shape[1])
+          not_inf_intercept_ = [not_inf_intercept_]
+        else:
+          self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations],
+                               sample_weight=not_inf_weights)
+          not_inf_intercept_, not_inf_coef_ = self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]
+          self.not_inf_model_fitted = True
+      self.inf_params = np.concatenate((inf_intercept_, inf_coef_))
+      self.not_inf_params = np.concatenate((not_inf_intercept_, not_inf_coef_))
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
-    if self.fitted_model:
-      phat = np.zeros((X.shape[0], 2))
-      if len(infected_locations) > 0:
-        phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])
-      if len(not_infected_locations) > 0:
-        phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])
-      return phat
-    else:
-      return np.column_stack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
+    phat = np.zeros(X.shape[0])
+    if len(infected_locations) > 0:
+      # Currently redundant, but we should keep these separate in case reg_inf.predict_proba is refactored to be
+      # nonlinear
+      if self.inf_model_fitted:
+        phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])[:, -1]
+      else:
+        X_infected = np.column_stack((np.ones(len(infected_locations)), X[infected_locations]))
+        phat[infected_locations] = expit(np.dot(X_infected, self.inf_params))
+    if len(not_infected_locations) > 0:
+      if self.not_inf_model_fitted:
+        phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]
+      else:
+        X_not_infected = np.column_stack((np.ones(len(not_infected_locations)), X[not_infected_locations]))
+        phat[not_infected_locations] = expit(np.dot(X_not_infected, self.not_inf_params))
+    return phat
 
   @staticmethod
   def predict_proba_given_parameter(X, infected_locations, not_infected_locations, parameter):
@@ -156,7 +191,7 @@ class SKLogit2(object):
     not_inf_intercept = parameter[number_of_parameters+1]
     phat[not_infected_locations] = expit(np.dot(X[not_infected_locations, :], not_inf_coef) + not_inf_intercept)
 
-    return np.column_stack((1 - phat, phat))
+    return phat
 
 
 # #

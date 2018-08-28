@@ -98,71 +98,22 @@ def sis_one_step_mse_averaged(**kwargs):
 
 
 def sis_two_step_mse_averaged(**kwargs):
-  classifier, regressor, env, evaluation_budget, gamma, treatment_budget, argmaxer = \
-      kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
-      kwargs['gamma'], kwargs['treatment_budget'], kwargs['argmaxer']
+  regressor, env, evaluation_budget, gamma, treatment_budget, argmaxer = \
+      kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['gamma'], kwargs['treatment_budget'], \
+      kwargs['argmaxer']
 
-  X, X_raw = np.vstack(env.X), np.vstack(env.X_raw)
-  y = np.hstack(env.y).astype(float)
+  # Get mse-averaged backup
+  averaged_backup, info = mse_combo.two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment_budget)
 
-  regressor_ = AutoRegressor(classifier, regressor)
-
-  # Fit one-step
-  alpha_mb, alpha_mf, q_mb_one_step, q_mf_one_step, y_mf_draws, y_mb_draws, simulated_params = \
-    mse_combo.one_step_sis_convex_combo(env)
-  infection_probabilities = [alpha_mb*q_mb_one_step(raw_data_block) + \
-                             alpha_mf*q_mf_one_step(data_block, np.where(data_block[:, -1] == 1)[0],
-                                                    np.where(data_block[:, -1] == 0)[0])
-                             for raw_data_block, data_block in zip(env.X_raw, env.X)]
-
-  infection_probabilities = np.array(infection_probabilities).flatten()
-  regressor_.fitRegressor(X, infection_probabilities, None, False)
-
-  # Compute backups
-  mb_backup = mse_combo.sis_mb_backup(env, gamma, q_mb_one_step, q_mb_one_step, argmaxer, evaluation_budget,
-                                      treatment_budget)
-  q_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, regressor_.regressor.predict, argmaxer)
-  mf_backup = y + gamma * q_max.flatten()
-
-  # MSE combo
-  mb_bias = np.mean(mb_backup - mf_backup)
-
-  # mf variance
-  bootstrapped_mf_backups = np.zeros((0, len(y)))
-  for y_mf in y_mf_draws:
-    backup_draw = y_mf + gamma*q_max.flatten()
-    regressor_.fitRegressor(X, backup_draw, None, False)
-    residuals = regressor_.regressor.predict(X) - backup_draw
-    bootstrapped_residuals = np.random.choice(residuals, len(residuals), replace=True)
-    bootstrapped_target = backup_draw + bootstrapped_residuals
-    bootstrapped_mf_backups = np.vstack((bootstrapped_mf_backups, bootstrapped_target))
-  mf_var = np.var(np.mean(bootstrapped_mf_backups, axis=0))
-
-  # mb variance
-  bootstrapped_mb_backups = np.zeros((0, len(y)))
-  for y_mb_draw, simulated_param in zip(y_mb_draws, simulated_params):
-    def q_mb_one_step_draw(data_block):
-      return sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], simulated_param, 0.0,
-                                       env.L, env.adjacency_list)
-    mb_backup_draw = mse_combo.sis_mb_backup(env, gamma, q_mb_one_step_draw, q_mb_one_step_draw, argmaxer,
-                                             evaluation_budget, treatment_budget, phat_list=y_mb_draw)
-    bootstrapped_mb_backups = np.vstack((bootstrapped_mb_backups, mb_backup_draw))
-  mb_var = np.var(np.mean(bootstrapped_mb_backups, axis=0))
-
-  alpha_mf = mse_combo.mse_optimal_convex_combo(0.0, mb_bias, mf_var, mb_var, 0.0)
-  alpha_mb = 1 - alpha_mf
-
-  # Fit to averaged backup
-  averaged_backup = alpha_mf * mf_backup + alpha_mb * mb_backup
+  # Fit q-function to backup
   X_2 = np.vstack(env.X_2)
-  regressor_.fitRegressor(X_2, averaged_backup, None, False)
+  reg = regressor()
+  reg.fit(X_2, averaged_backup)
 
-  qfn = lambda action: q(action, -1, env, regressor_.regressor.predict, neighbor_order=2)
+  def qfn(action):
+    return q(action, -1, env, reg.predict, neighbor_order=2)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  # info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
-  info = {}
-  info.update({'alpha_mb': alpha_mb})
   return a, info
 
 
