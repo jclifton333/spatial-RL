@@ -21,10 +21,10 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, weights, env)
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights)
 
   def qfn(a):
-    return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)[:, -1]
+    return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, None
@@ -95,7 +95,7 @@ def sis_model_based_policy(**kwargs):
 def sis_model_based_one_step(**kwargs):
   env, bootstrap, argmaxer, evaluation_budget, treatment_budget = \
     kwargs['env'], kwargs['bootstrap'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
-  eta = fit_transition_model(env, bootstrap=bootstrap)
+  eta = fit_transition_model(env)
   one_step_q = partial(sis_infection_probability, y=env.current_infected, s=env.current_state, eta=eta,
                        omega=0, L=env.L, adjacency_lists=env.adjacency_list)
   a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)
@@ -105,7 +105,7 @@ def sis_model_based_one_step(**kwargs):
 def sis_one_step_mse_averaged(**kwargs):
   env = kwargs['env']
 
-  alpha_mb, alpha_mf, q_mb, q_mf, _ = mse_combo.one_step_sis_convex_combo(env)
+  alpha_mb, alpha_mf, q_mb, q_mf, _, _, _ = mse_combo.one_step_sis_convex_combo(env)
 
   # Get modified q_function
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
