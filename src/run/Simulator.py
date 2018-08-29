@@ -55,7 +55,7 @@ class Simulator(object):
 
     # Set policy arguments
     treatment_budget = np.int(np.ceil(0.05 * self.env.L))
-    self.policy_arguments = {'classifier': SKLogit2, 'regressor': RandomForestRegressor, 'env': self.env,
+    self.policy_arguments = {'classifier': SKLogit, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
@@ -103,12 +103,13 @@ class Simulator(object):
       a, info = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
       self.env.step(a)
-      print('{} info {}'.format(t, info))
+      # print('{} info {}'.format(t, info))
     t1 = time.time()
     score = np.mean(self.env.Y)
     episode_results['score'] = float(score)
     episode_results['runtime'] = float(t1 - t0)
-    print(np.mean(self.env.Y[-1,:]))
+    # print(np.mean(self.env.Y[-1,:]))
+    print(episode_results)
     return {replicate: episode_results}
 
   def run_for_profiling(self):

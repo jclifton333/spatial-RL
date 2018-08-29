@@ -7,7 +7,7 @@ class SIS_Contaminator(object):
   def __init__(self):
     self.weights = None
 
-  def set_weights(self, new_weights, n_feature):
+  def set_weights(self, new_weights):
     self.weights = new_weights
 
   def predict_proba(self, X):
@@ -15,4 +15,32 @@ class SIS_Contaminator(object):
       self.weights = np.random.normal(size=(X.shape[1] + 1))
     logit_p = np.dot(np.column_stack((X, np.ones(X.shape[0]))), self.weights)
     p = expit(logit_p)
-    return np.column_stack((1-p, p))
+    return p
+
+
+def recoding_mapping(contaminator_coef):
+  """
+  Contaminator was tuned with nodes encoded as (1*s + 2*a + 4*(1-y)), whereas nodes are now encoded as
+  (1*s + 2*a + 4*y).  This transforms a contamination model parameter with the original encoding to the new encoding.
+
+  :param contaminator_coef: length-17 contamination model parameter.
+  :return:
+  """
+  new_contaminator_coef = np.zeros(17)
+  new_encoding_action_indices = [2, 3, 10, 11]
+  old_index_to_new_index_mapping = {0: 4,
+                                    1: 5,
+                                    2: 6,
+                                    3: 7,
+                                    4: 0,
+                                    5: 1,
+                                    6: 2,
+                                    7: 3}
+  for i in range(8):
+    new_contaminator_coef[old_index_to_new_index_mapping[i]] = contaminator_coef[i]
+  for i in range(8, 16):
+    new_contaminator_coef[old_index_to_new_index_mapping[i-8] + 8] = contaminator_coef[i]
+  new_contaminator_coef[-1] = contaminator_coef[-1]
+  new_contaminator_coef[new_encoding_action_indices] = \
+    -np.abs(new_contaminator_coef[new_encoding_action_indices]) - (2.0 + np.random.random())
+  return new_contaminator_coef

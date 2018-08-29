@@ -7,7 +7,7 @@ import copy
 import numpy as np
 from src.estimation.model_based.sis.infection_model_objective import success_or_failure_component
 from .SpatialDisease import SpatialDisease
-from .sis_contaminator import SIS_Contaminator
+from .sis_contaminator import SIS_Contaminator, recoding_mapping
 from .sis_infection_probs import sis_infection_probability
 from scipy.linalg import block_diag
 import src.utils.gradient as gradient
@@ -57,16 +57,12 @@ class SIS(SpatialDisease):
   ETA = np.array([ETA_0, ETA_3, ETA_2, ETA_3, ETA_4, ETA_5, ETA_6])
 
   # Contamination model stuff
-  # CONTAMINATION_MODEL_FNAME = os.path.join(tuning_data_dir, 'initial-sample-ratios-and-losses-180729_172420.p')
-  # CONTAMINATION_MODEL_DATA = pkl.load(open(CONTAMINATION_MODEL_FNAME, 'rb'))
-  # CONTAMINATION_MODEL_PARAMETER = CONTAMINATION_MODEL_DATA[3]['contamination_model_parameter']
-  # CONTAMINATION_MODEL_PARAMETER = [CONTAMINATION_MODEL_PARAMETER[:-1].reshape(-1, 1),
-  #                                  CONTAMINATION_MODEL_PARAMETER[-1].reshape(1)]
   CONTAMINATOR = SIS_Contaminator()
   CONTAMINATION_MODEL_PARAMETER = np.array([
-    0.99, 0.32, 0.15, -0.83, -0.03, -0.07, 0.06, -0.21, 0.08, -0.14, -0.56, 0.54, 0.54, 0.95, 0.13, -0.10, -2.2
+    0.99, 0.32, 0.15, -0.83, -0.03, -0.07, 0.06, -0.21, 0.08, -0.14, -0.56, 0.54, 0.54, 0.95, 0.13, -0.5
   ])
-  CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER, 16)
+  CONTAMINATION_MODEL_PARAMETER = recoding_mapping(CONTAMINATION_MODEL_PARAMETER)
+  CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER)
 
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
                initial_infections=None, initial_state=None, eta=None, beta=None,

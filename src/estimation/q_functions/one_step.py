@@ -33,12 +33,11 @@ def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_
     clf_kwargs = {}
     predict_proba_kwargs = {}
 
-  if print_compare_with_true_probs:
-    compare_with_true_probs(env, features, clf, clf_kwargs)
-
   if weights is not None:
     weights = weights.flatten()
   clf.fit(features, target, weights, **clf_kwargs)
+  if print_compare_with_true_probs:
+    compare_with_true_probs(env, clf.predict_proba, False)
   return clf, predict_proba_kwargs
 
 

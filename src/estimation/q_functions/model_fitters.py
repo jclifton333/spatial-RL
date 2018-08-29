@@ -79,11 +79,8 @@ class SKLogit(object):
     self.coef_ = self.reg.coef_
 
   def predict_proba(self, X):
-    if self.fitted_model:
-      phat = self.reg.predict_proba(X)
-      return phat
-    else:
-      return np.column_stack((np.ones(X.shape[0]), np.zeros(X.shape[0])))
+    phat = self.reg.predict_proba(X)
+    return phat[:, -1]
 
 
 class SKLogit2(object):
