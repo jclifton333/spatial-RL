@@ -1,5 +1,6 @@
 import numpy as np
 import pdb
+import copy
 from scipy.optimize import minimize
 from numba import njit, jit
 from functools import partial
@@ -42,8 +43,10 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
 # ToDo: This turns out to be unnecessary...
 def negative_log_likelihood_wrapper(eta, A, Y, y_next, distance_matrix, product_matrix, adjacency_matrix, T, L):
   eta0 = eta[0]
-  exp_eta1 = np.exp(eta[1])
-  exp_eta2 = np.exp(eta[2])
+  eta1 = np.max((-10, np.min((10, eta[1])))) # For stability
+  eta2 = np.max((-10, np.min((10, eta[2]))))
+  exp_eta1 = np.exp(eta1)
+  exp_eta2 = np.exp(eta2)
   eta3 = eta[3]
   eta4 = eta[4]
   return negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, distance_matrix, product_matrix,
@@ -54,7 +57,13 @@ def fit_ebola_transition_model(env):
   objective = partial(negative_log_likelihood_wrapper, A=env.A, Y=env.Y, y_next=np.array(env.y),
                       distance_matrix=env.DISTANCE_MATRIX, product_matrix=env.PRODUCT_MATRIX,
                       adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L)
-  res = minimize(objective, x0=np.random.normal(size=5), method='L-BFGS-B')
+
+  # entries 1 and 2 are actually exp(eta_1), exp(eta_2)
+  x0 = copy.copy(env.ETA)
+  x0[1] = np.log(x0[1] + 0.1) 
+  x0[2] = np.log(x0[2] + 0.1)
+
+  res = minimize(objective, x0=x0, method='L-BFGS-B')
   eta_hat = res.x
   return eta_hat
 
