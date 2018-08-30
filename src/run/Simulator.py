@@ -100,6 +100,7 @@ class Simulator(object):
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     for t in range(self.time_horizon-2):
+      print('time {}'.format(t))
       a, info = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
       self.env.step(a)

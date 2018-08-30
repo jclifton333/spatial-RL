@@ -97,7 +97,7 @@ class Ebola(SpatialDisease):
       else:
 
         logit_transmission_prob = eta[0] - np.exp(eta[1]) * self.DISTANCE_MATRIX[l, l_prime] / \
-                                  (np.exp(self.PRODUCT_MATRIX[l, l_prime], np.exp(eta[2]))) + eta[3]*a[l] + \
+                                  (np.power(self.PRODUCT_MATRIX[l, l_prime], np.exp(eta[2]))) + eta[3]*a[l] + \
                                   eta[4]*a[l_prime]
         transmission_prob = expit(logit_transmission_prob)
       return transmission_prob
@@ -113,7 +113,7 @@ class Ebola(SpatialDisease):
       return 1 - not_infected_prob
 
   def infection_prob(self, a, eta=None):
-    return np.array([self.infection_prob(a, l, eta) for l in range(self.L)])
+    return np.array([self.infection_prob_at_location(a, l, eta) for l in range(self.L)])
 
   def update_obs_history(self, a):
     super(Ebola, self).update_obs_history(a)

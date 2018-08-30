@@ -38,10 +38,13 @@ if __name__ == '__main__':
   parser.add_argument('--epsilon', type=float)
   args = parser.parse_args()
 
-  SIS_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
-                'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
+  if args.env_name == 'sis':
+    env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
+                  'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
+  else:
+    env_kwargs = {}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
-                  args.argmaxer_name, args.gamma, args.evaluation_budget, **SIS_kwargs)
+                  args.argmaxer_name, args.gamma, args.evaluation_budget, **env_kwargs)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:
