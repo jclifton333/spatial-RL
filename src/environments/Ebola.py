@@ -6,6 +6,7 @@ Created on Wed May 16 23:18:41 2018
 """
 
 import numpy as np
+import copy
 from scipy.special import expit
 from src.environments.SpatialDisease import SpatialDisease
 import pickle as pkl
@@ -118,9 +119,9 @@ class Ebola(SpatialDisease):
   def update_obs_history(self, a):
     super(Ebola, self).update_obs_history(a)
     raw_data_block = np.column_stack((Ebola.SUSCEPTIBILITY, a, self.Y[-2,:]))
-    # data_block = self.featureFunction(raw_data_block)
+    data_block = self.psi(raw_data_block)
     self.X_raw.append(raw_data_block)
-    # self.X.append(data_block)
+    self.X.append(data_block)
     self.y.append(self.current_infected)
 
   def next_state(self):
@@ -134,14 +135,16 @@ class Ebola(SpatialDisease):
     self.true_infection_probs.append(next_infected_probabilities)
     self.current_infected = next_infections
 
-  def data_block_at_action(self, data_block, action):
+  def data_block_at_action(self, data_block_ix, action, raw=False):
     """
     Replace action in raw data_block with given action.
     """
-    super(Ebola, self).data_block_at_action(data_block, action)
-    assert data_block.shape[1] == 3
-    new_data_block = np.column_stack((data_block[:, 0], action, data_block[:, 2]))
-    new_data_block = self.featureFunction(new_data_block)
+    super(Ebola, self).data_block_at_action(data_block_ix, action)
+    if raw:
+      new_data_block = copy.copy(self.X_raw[data_block_ix])
+      new_data_block[:, 1] = action
+    else:
+      new_data_block = self.psi_at_action(self.X[data_block_ix], self.A[data_block_ix, :], action)
     return new_data_block
 
   # Neighbor features #
@@ -167,9 +170,21 @@ class Ebola(SpatialDisease):
       X = np.vstack((X, x_l))
     return X
 
-  def psi_at_action(self, old_raw_data_block, old_data_block, old_action, action):
-    pass
+  def psi_at_action(self, old_data_block, old_action, action):
+    new_data_block = copy.copy(old_data_block)
+    locations_with_changed_actions = set(np.where(old_action != action)[0])
 
+    for l in range(self.L):
+      # Check if action at l changed
+      if l in locations_with_changed_actions:
+        new_data_block[l, 1] = action[l]
+
+      # Check if actions at l neighbors have changed
+      for i in range(len(self.adjacency_list[l])):
+        l_prime = self.adjacency_list[l][i]
+        if l_prime in locations_with_changed_actions:
+          new_data_block[l, 3 + i*4 + 1] = action[l_prime]
+    return new_data_block
 
     
 
