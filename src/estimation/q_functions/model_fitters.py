@@ -2,6 +2,7 @@ import pdb
 import numpy as np
 import src.utils.gradient as gradient
 from sklearn.linear_model import Ridge, LogisticRegression
+from sklearn.neural_network import MLPClassifier
 from scipy.linalg import block_diag
 from scipy.special import expit, logit
 from keras.models import Sequential
@@ -85,8 +86,8 @@ class SKLogit(object):
 
 class SKLogit2(object):
   def __init__(self):
-    self.reg_inf = LogisticRegression()
-    self.reg_not_inf = LogisticRegression()
+    self.reg_inf = MLPClassifier(hidden_layer_sizes=(10,))
+    self.reg_not_inf = MLPClassifier(hidden_layer_sizes=(10,))
     self.condition_on_infection = True
     self.inf_model_fitted = False
     self.not_inf_model_fitted = False
@@ -132,20 +133,19 @@ class SKLogit2(object):
           inf_intercept_, inf_coef_ = empirical_bayes_coef(y[infected_locations], X.shape[1])
           inf_intercept_ = [inf_intercept_]
         else:
-          self.reg_inf.fit(X[infected_locations], y[infected_locations], sample_weight=inf_weights)
-          inf_intercept_, inf_coef_ = self.reg_inf.intercept_, self.reg_inf.coef_[0]
+          self.reg_inf.fit(X[infected_locations], y[infected_locations])
+          # inf_intercept_, inf_coef_ = self.reg_inf.intercept_, self.reg_inf.coef_[0]
           self.inf_model_fitted = True
       if len(not_infected_locations) > 0:
         if is_y_all_1_or_0(y[not_infected_locations]):
           not_inf_intercept_, not_inf_coef_ = empirical_bayes_coef(y[not_infected_locations], X.shape[1])
           not_inf_intercept_ = [not_inf_intercept_]
         else:
-          self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations],
-                               sample_weight=not_inf_weights)
-          not_inf_intercept_, not_inf_coef_ = self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]
+          self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations])
+          # not_inf_intercept_, not_inf_coef_ = self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]
           self.not_inf_model_fitted = True
-      self.inf_params = np.concatenate((inf_intercept_, inf_coef_))
-      self.not_inf_params = np.concatenate((not_inf_intercept_, not_inf_coef_))
+      # self.inf_params = np.concatenate((inf_intercept_, inf_coef_))
+      # self.not_inf_params = np.concatenate((not_inf_intercept_, not_inf_coef_))
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     phat = np.zeros(X.shape[0])

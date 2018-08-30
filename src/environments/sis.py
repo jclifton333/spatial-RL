@@ -230,8 +230,9 @@ class SIS(SpatialDisease):
 
   def next_infected_probabilities(self, a, eta=ETA):
     if self.contaminator is not None and self.epsilon > 0:
-      current_X_at_action = self.data_block_at_action(-1, a)
-      contaminator_probs = self.contaminator.predict_proba(current_X_at_action)[:, -1]
+      current_X_raw_at_action = np.column_stack((self.current_state > 0, a, self.current_infected))
+      current_X_at_action = self.psi(current_X_raw_at_action, neighbor_order=1)
+      contaminator_probs = self.contaminator.predict_proba(current_X_at_action)
       if self.epsilon == 1.0:
         return contaminator_probs
       else:
@@ -342,7 +343,8 @@ class SIS(SpatialDisease):
      new_data_block = copy.copy(self.X_raw[data_block_ix])
      new_data_block[:, 1] = action
     else:
-      new_data_block = self.psi(np.column_stack((self.S_indicator[data_block_ix, :], action, self.Y[data_block_ix, :])),
+      y = self.Y[data_block_ix, :]
+      new_data_block = self.psi(np.column_stack((self.S_indicator[data_block_ix, :], action, y)),
                                 neighbor_order)
     return new_data_block
 
