@@ -2,6 +2,7 @@ import pdb
 import numpy as np
 import src.utils.gradient as gradient
 from sklearn.linear_model import Ridge, LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from scipy.linalg import block_diag
 from scipy.special import expit, logit
@@ -86,8 +87,8 @@ class SKLogit(object):
 
 class SKLogit2(object):
   def __init__(self):
-    self.reg_inf = MLPClassifier(hidden_layer_sizes=(10,))
-    self.reg_not_inf = MLPClassifier(hidden_layer_sizes=(10,))
+    self.reg_inf = LogisticRegression()
+    self.reg_not_inf = LogisticRegression()
     self.condition_on_infection = True
     self.inf_model_fitted = False
     self.not_inf_model_fitted = False

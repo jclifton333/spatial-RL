@@ -8,14 +8,16 @@ def compare_with_true_probs(env, predictor, raw):
   if raw:
     phat = np.hstack([predictor(data_block) for data_block in env.X_raw])
   else:
-    phat = np.hstack([predictor(data_block) for data_block in env.X])
+      phat = np.hstack([predictor(data_block, np.where(raw_data_block[:, -1] == 1)[0], np.where(raw_data_block[:, -1] == 0)[0]) 
+                        for raw_data_block, data_block in zip(env.X_raw, env.X)])
   true_expected_counts = np.hstack(env.true_infection_probs)
-  loss = np.max(np.abs(phat - true_expected_counts))
-  print('loss {}'.format(loss))
+  max_loss = np.max(np.abs(phat - true_expected_counts))
+  mean_loss = np.mean(np.abs(phat - true_expected_counts))
+  print('mean loss {} max loss {}'.format(mean_loss, max_loss))
   return
 
 
-def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_with_true_probs=False):
+def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_with_true_probs=True):
   clf = classifier()
   if y_next is None:
     target = np.hstack(env.y).astype(float)
