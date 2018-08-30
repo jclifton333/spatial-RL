@@ -95,7 +95,6 @@ class Ebola(SpatialDisease):
       if eta is None:
         transmission_prob = Ebola.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
       else:
-
         logit_transmission_prob = eta[0] - np.exp(eta[1]) * self.DISTANCE_MATRIX[l, l_prime] / \
                                   (np.power(self.PRODUCT_MATRIX[l, l_prime], np.exp(eta[2]))) + eta[3]*a[l] + \
                                   eta[4]*a[l_prime]

@@ -21,15 +21,15 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
         prod = 1.0
         a_l = a[l]
         for l_prime in range(L):
-          # Transmissions only between neighbors
-          if adjacency_matrix[l, l_prime] == 1 or adjacency_matrix[l_prime, l] == 1:
+          # Transmissions only from infected neighbors
+          if (adjacency_matrix[l, l_prime] == 1 or adjacency_matrix[l_prime, l] == 1) and y[l_prime]:
             d_l_lprime = distance_matrix[l, l_prime]
             s_l_lprime = product_matrix[l, l_prime]
             a_l_prime = a[l_prime]
             logit_transmission_prob = eta0 - exp_eta1 * d_l_lprime / np.power(s_l_lprime, exp_eta2) + \
               eta3 * a_l + eta4 * a_l_prime
-            transmission_prob = 1.0 - 1.0 / (1.0 + np.exp(logit_transmission_prob))
-            prod *= (1 - transmission_prob)
+            one_minus_transmission_prob = 1.0 / (1.0 + np.exp(logit_transmission_prob))
+            prod *= one_minus_transmission_prob
 
         if y_next_[l]:
           log_lik += np.log(1 - prod)
@@ -54,7 +54,7 @@ def fit_ebola_transition_model(env):
   objective = partial(negative_log_likelihood_wrapper, A=env.A, Y=env.Y, y_next=np.array(env.y),
                       distance_matrix=env.DISTANCE_MATRIX, product_matrix=env.PRODUCT_MATRIX,
                       adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L)
-  res = minimize(objective, x0=env.ETA, method='L-BFGS-B')
+  res = minimize(objective, x0=np.random.normal(size=5), method='L-BFGS-B')
   eta_hat = res.x
   return eta_hat
 

@@ -99,7 +99,11 @@ def ebola_model_based_one_step(**kwargs):
   eta = fit_ebola_transition_model(env)
   one_step_q = partial(env.next_infected_probabilities, eta=eta)
   a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)
-  print(eta)
+  phat = one_step_q(a)
+  ptrue = env.next_infected_probabilities(a)
+  diff = np.abs(phat - ptrue)
+  worst_ix = np.argmax(diff)
+  print('max loss: {} mean loss: {} worst ix: {}'.format(np.max(diff), np.mean(diff), worst_ix))
   return a, None
 
 
