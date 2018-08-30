@@ -2,7 +2,8 @@ from src.estimation.q_functions.fqi import fqi
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q, q_max_all_states
 from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_SIS_q_fn
-from src.estimation.model_based.sis.estimate_sis_parameters import fit_transition_model
+from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
+from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 
@@ -92,10 +93,19 @@ def sis_model_based_policy(**kwargs):
   return a, new_q_model
 
 
+def ebola_model_based_one_step(**kwargs):
+  env, argmaxer, evaluation_budget, treatment_budget = \
+    kwargs['env'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
+  eta = fit_ebola_transition_model(env)
+  one_step_q = partial(env.infection_prob, eta=eta)
+  a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)
+  return a
+
+
 def sis_model_based_one_step(**kwargs):
   env, bootstrap, argmaxer, evaluation_budget, treatment_budget = \
     kwargs['env'], kwargs['bootstrap'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
-  eta = fit_transition_model(env)
+  eta = fit_sis_transition_model(env)
   one_step_q = partial(sis_infection_probability, y=env.current_infected, s=env.current_state, eta=eta,
                        omega=0, L=env.L, adjacency_lists=env.adjacency_list)
   a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)

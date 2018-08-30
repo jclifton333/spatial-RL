@@ -16,10 +16,11 @@ sys.path.append(pkg_dir)
 from src.environments import generate_network
 from src.run.Simulator import Simulator
 
-VALID_ENVIRONMENT_NAMES = ['sis']
+VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based', 'sis_model_based_one_step',
-                      'sis_one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi']
+                      'sis_one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi',
+                      'ebola_model_based_one_step']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 
 if __name__ == '__main__':

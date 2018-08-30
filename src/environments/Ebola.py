@@ -21,9 +21,12 @@ class Ebola(SpatialDisease):
   ADJACENCY_MATRIX = network_info['adjacency_matrix']
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
   DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
-  SUSCEPTIBILITY  = network_info['pop_array']
+  SUSCEPTIBILITY = network_info['pop_array']
   L = len(SUSCEPTIBILITY)
   OUTBREAK_TIMES = network_info['outbreak_time_array']
+
+  # Fill matrix of susceptibility products
+  PRODUCT_MATRIX = np.outer(SUSCEPTIBILITY, SUSCEPTIBILITY)
 
   # Get initial outbreaks
   OUTBREAK_TIMES[np.where(OUTBREAK_TIMES == -1)] = np.max(OUTBREAK_TIMES) + 1 # Make it easier to sort
@@ -43,6 +46,7 @@ class Ebola(SpatialDisease):
   ETA_2 = -0.0
   ETA_3 = -1.015
   ETA_4 = -1.015
+  ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
   # Compute transmission probs
   TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
   for l in range(L):
@@ -80,25 +84,36 @@ class Ebola(SpatialDisease):
     self.step(np.zeros(self.L))
     self.step(np.zeros(self.L))
 
-  def transmission_prob(self, a, l, l_prime):
+  def transmission_prob(self, a, l, l_prime, eta):
     """
     :param a: L-length binary array of treatment decisions
     :param l: index of transmitting location
     :param l_prime: index of transmitted-to location
+    :param eta: transmission prob parameters, or None; if None use self.TRANMISSION_PROBS
     """
     if self.current_infected[l]:
-      transmission_prob = Ebola.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
+      if eta is None:
+        transmission_prob = Ebola.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
+      else:
+
+        logit_transmission_prob = eta[0] - np.exp(eta[1]) * self.DISTANCE_MATRIX[l, l_prime] / \
+                                  (np.exp(self.PRODUCT_MATRIX[l, l_prime], np.exp(eta[2]))) + eta[3]*a[l] + \
+                                  eta[4]*a[l_prime]
+        transmission_prob = expit(logit_transmission_prob)
       return transmission_prob
     else:
       return 0
 
-  def infection_prob(self, a, l):
+  def infection_prob_at_location(self, a, l, eta):
     if self.current_infected[l]:
       return 1
     else:
       # not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l) for l_prime in self.adjacency_list[l]])
-      not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l) for l_prime in range(self.L)])
+      not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l, eta) for l_prime in range(self.L)])
       return 1 - not_infected_prob
+
+  def infection_prob(self, a, eta=None):
+    return np.array([self.infection_prob(a, l, eta) for l in range(self.L)])
 
   def update_obs_history(self, a):
     super(Ebola, self).update_obs_history(a)
@@ -113,7 +128,7 @@ class Ebola(SpatialDisease):
 
   def next_infections(self, a):
     super(Ebola, self).next_infections(a)
-    next_infected_probabilities = np.array([self.infection_prob(a, l) for l in range(self.L)])
+    next_infected_probabilities = self.infection_prob(a)
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.true_infection_probs.append(next_infected_probabilities)

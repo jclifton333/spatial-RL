@@ -17,7 +17,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
-from src.estimation.model_based.sis.estimate_sis_parameters import fit_transition_model
+from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
 from src.estimation.model_based.sis.simulate_from_sis import simulate_from_SIS
 from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
@@ -185,7 +185,7 @@ class Simulator(object):
         estimates_results['obs_data_loss_{}'.format(model.__name__)].append(float(loss))
 
       # Fit sis model
-      eta = fit_transition_model(self.env)
+      eta = fit_sis_transition_model(self.env)
       simulation_env = simulate_from_SIS(self.env, eta, 5,self.settings['treatment_budget'], n_rep=5)
       sis_losses = []
       for x, t in zip(self.env.X_raw, range(len(self.env.X_raw))):

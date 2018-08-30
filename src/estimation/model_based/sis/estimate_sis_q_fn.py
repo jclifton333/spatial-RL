@@ -1,6 +1,6 @@
 import pdb
 from src.estimation.q_functions.fqi import fqi
-from .estimate_sis_parameters import fit_transition_model
+from .estimate_sis_parameters import fit_sis_transition_model
 from .simulate_from_sis import simulate_from_SIS
 
 
