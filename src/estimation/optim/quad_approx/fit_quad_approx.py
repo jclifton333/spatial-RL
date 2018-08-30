@@ -39,9 +39,9 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
   return sample_qs, acts_to_evaluate
 
 
-def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interaction_lists):
+def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions):
   reg = LinearRegression()
-  X = np.array([get_neighbor_ixn_features(a, neighbor_interaction_lists[l]) for a in sample_acts])
+  X = np.array([get_neighbor_ixn_features(a, neighbor_interactions) for a in sample_acts])
   y = sample_qs[:, l_ix]
   reg.fit(X, y)
   return reg.intercept_, reg.coef_
@@ -54,10 +54,11 @@ def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, env_L, i
     ixs = range(env_L)
   for l_ix in range(len(ixs)):
     l = ixs[l_ix]
-    intercept_l, beta_l = fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interaction_lists)
     neighbor_interactions = neighbor_interaction_lists[l]
-    quadratic_parameters[neighbor_interactions[:,0], neighbor_interactions[:, 1]] += beta_l
-    intercept += intercept_l
+    if len(neighbor_interactions) > 0:
+      intercept_l, beta_l = fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions)
+      quadratic_parameters[neighbor_interactions[:, 0], neighbor_interactions[:, 1]] += beta_l
+      intercept += intercept_l
   return quadratic_parameters, intercept
 
 

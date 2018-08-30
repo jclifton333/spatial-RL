@@ -97,9 +97,10 @@ def ebola_model_based_one_step(**kwargs):
   env, argmaxer, evaluation_budget, treatment_budget = \
     kwargs['env'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
   eta = fit_ebola_transition_model(env)
-  one_step_q = partial(env.infection_prob, eta=eta)
+  one_step_q = partial(env.next_infected_probabilities, eta=eta)
   a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)
-  return a
+  print(eta)
+  return a, None
 
 
 def sis_model_based_one_step(**kwargs):

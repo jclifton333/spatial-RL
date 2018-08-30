@@ -41,7 +41,7 @@ class Ebola(SpatialDisease):
   # ETA_2 = 5
   # ETA_3 = -8.0
   # ETA_4 = -8.0
-  ETA_0 = -7.443
+  ETA_0 = -7.443 / 4.0
   ETA_1 = -0.284
   ETA_2 = -0.0
   ETA_3 = -1.015
@@ -52,8 +52,8 @@ class Ebola(SpatialDisease):
   for l in range(L):
     s_l = SUSCEPTIBILITY[l]
     for l_prime in range(L):
-      # if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
-      if True:
+      if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
+      # if True:
         """
         from https://github.com/LaberLabs/stdmMf_cpp/blob/master/src/main/ebolaStateGravityModel.cpp
         
@@ -112,7 +112,7 @@ class Ebola(SpatialDisease):
       not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l, eta) for l_prime in range(self.L)])
       return 1 - not_infected_prob
 
-  def infection_prob(self, a, eta=None):
+  def next_infected_probabilities(self, a, eta=None):
     return np.array([self.infection_prob_at_location(a, l, eta) for l in range(self.L)])
 
   def update_obs_history(self, a):
@@ -128,7 +128,7 @@ class Ebola(SpatialDisease):
 
   def next_infections(self, a):
     super(Ebola, self).next_infections(a)
-    next_infected_probabilities = self.infection_prob(a)
+    next_infected_probabilities = self.next_infected_probabilities(a)
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.true_infection_probs.append(next_infected_probabilities)
