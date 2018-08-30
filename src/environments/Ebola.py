@@ -20,7 +20,7 @@ class Ebola(SpatialDisease):
   ebola_network_data_fpath = os.path.join(this_file_pathname, 'ebola-network-data', 'ebola_network_data.p')
   network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
   ADJACENCY_MATRIX = network_info['adjacency_matrix']
-  MAX_NUMBER_OF_NEIGHBORS = np.max(np.sum(ADJACENCY_MATRIX, axis=1))
+  MAX_NUMBER_OF_NEIGHBORS = int(np.max(np.sum(ADJACENCY_MATRIX, axis=1)))
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
   DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
   SUSCEPTIBILITY = network_info['pop_array']
@@ -163,7 +163,7 @@ class Ebola(SpatialDisease):
 
   def psi(self, raw_data_block):
     # (s, a, y) for location and (s, a, y, d) for its neighbors
-    number_of_features = 3 + 4*self.MAX_NUMBER_OF_NEIGHBORS
+    number_of_features = int(3 + 4*self.MAX_NUMBER_OF_NEIGHBORS)
     X = np.zeros((0, number_of_features))
     for l in range(self.L):
       x_l = self.psi_at_location(l, raw_data_block)

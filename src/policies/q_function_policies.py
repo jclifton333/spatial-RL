@@ -6,6 +6,7 @@ from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_trans
 from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
+from src.utils.misc import random_argsort
 
 import numpy as np
 import keras.backend as K
@@ -104,6 +105,17 @@ def ebola_model_based_one_step(**kwargs):
   diff = np.abs(phat - ptrue)
   worst_ix = np.argmax(diff)
   print('max loss: {} mean loss: {} worst ix: {}'.format(np.max(diff), np.mean(diff), worst_ix))
+  return a, None
+
+
+def ebola_model_based_myopic(**kwargs):
+  env, treatment_budget = kwargs['env'], kwargs['treatment_budget']
+  eta = fit_ebola_transition_model(env)
+  one_step_q = partial(env.next_infected_probabilities, eta=eta)
+  a = np.zeros(env.L)
+  probs = one_step_q(a)
+  treat_ixs = random_argsort(-probs, treatment_budget)
+  a[treat_ixs] = 1
   return a, None
 
 
