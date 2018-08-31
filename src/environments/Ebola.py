@@ -43,10 +43,10 @@ class Ebola(SpatialDisease):
   # ETA_2 = 5
   # ETA_3 = -8.0
   # ETA_4 = -8.0
-  ETA_0 = -7.443 / 4.0
+  ETA_0 = -2.0
   ETA_1 = -0.284
   ETA_2 = -0.0
-  ETA_3 = -1.015
+  ETA_3 = -1.015 
   ETA_4 = -1.015
   ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
   # Compute transmission probs
@@ -89,18 +89,19 @@ class Ebola(SpatialDisease):
   def transmission_prob(self, a, l, l_prime, eta):
     """
     :param a: L-length binary array of treatment decisions
-    :param l: index of transmitting location
-    :param l_prime: index of transmitted-to location
+    :param l_prime: index of transmitting location
+    :param l: index of transmitted-to location
     :param eta: transmission prob parameters, or None; if None use self.TRANMISSION_PROBS
     """
-    if self.current_infected[l]:
+    if self.current_infected[l_prime]:
       if eta is None:
         transmission_prob = Ebola.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
       else:
-        logit_transmission_prob = eta[0] - np.exp(eta[1]) * self.DISTANCE_MATRIX[l, l_prime] / \
-                                  (np.power(self.PRODUCT_MATRIX[l, l_prime], np.exp(eta[2]))) + eta[3]*a[l] + \
-                                  eta[4]*a[l_prime]
-        transmission_prob = expit(logit_transmission_prob)
+        d_l_lprime = self.DISTANCE_MATRIX[l, l_prime]
+        s_l, s_lprime = self.SUSCEPTIBILITY[l], self.SUSCEPTIBILITY[l_prime]
+        log_grav_term = np.log(d_l_lprime) - np.exp(eta[2])*(np.log(s_l) + np.log(s_lprime))
+        baseline_logit = eta[0] - np.exp(eta[1] + log_grav_term)
+        transmission_prob = expit(baseline_logit + a[l]*eta[3] + a[l_prime]*a[4])
       return transmission_prob
     else:
       return 0
@@ -109,8 +110,8 @@ class Ebola(SpatialDisease):
     if self.current_infected[l]:
       return 1
     else:
-      # not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l) for l_prime in self.adjacency_list[l]])
-      not_infected_prob = np.product([1-self.transmission_prob(a, l_prime, l, eta) for l_prime in range(self.L)])
+      # not_infected_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in self.adjacency_list[l]])
+      not_infected_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in range(self.L)])
       return 1 - not_infected_prob
 
   def next_infected_probabilities(self, a, eta=None):

@@ -23,7 +23,8 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
         a_l = a[l]
         for l_prime in range(L):
           # Transmissions only from infected neighbors
-          if (adjacency_matrix[l, l_prime] == 1 or adjacency_matrix[l_prime, l] == 1) and y[l_prime]:
+          # if (adjacency_matrix[l, l_prime] == 1 or adjacency_matrix[l_prime, l] == 1) and y[l_prime]:
+          if y[l_prime]:
             d_l_lprime = distance_matrix[l, l_prime]
             s_l_lprime = product_matrix[l, l_prime]
             a_l_prime = a[l_prime]
@@ -62,6 +63,7 @@ def fit_ebola_transition_model(env):
   x0 = copy.copy(env.ETA)
   x0[1] = np.log(x0[1] + 0.1) 
   x0[2] = np.log(x0[2] + 0.1)
+  # x0 = np.random.normal(size=5)
 
   res = minimize(objective, x0=x0, method='L-BFGS-B')
   eta_hat = res.x
