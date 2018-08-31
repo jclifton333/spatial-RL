@@ -115,7 +115,19 @@ def ebola_model_based_myopic(**kwargs):
   one_step_q = partial(env.next_infected_probabilities, eta=eta)
   a = np.zeros(env.L)
   probs = one_step_q(a)
-  treat_ixs = random_argsort(-probs, treatment_budget)
+
+  # Get priority score
+  priorities_for_infected_locations = np.zeros(np.sum(env.current_infected))
+  for l in np.where(env.current_infected == 1)[0]:
+    for lprime in env.adjacency_list[l]:
+      priorities_for_infected_locations[l] += \
+        (1 - env.current_infected[lprime]) * probs[lprime] / env.DISTANCE_MATRIX[l, lprime]
+  priorities_for_infected_locations /= np.sum(priorities_for_infected_locations)
+  priority = probs
+
+  # Treat greedily acc to priority
+  priority[np.where(env.current_infected == 1)] = priorities_for_infected_locations
+  treat_ixs = random_argsort(-priority, treatment_budget)
   a[treat_ixs] = 1
   return a, None
 
