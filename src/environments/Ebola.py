@@ -45,7 +45,8 @@ class Ebola(SpatialDisease):
   # ETA_4 = -8.0
   ETA_0 = -2.0
   ETA_1 = -0.284
-  ETA_2 = -0.0
+  # ETA_2 = -0.0
+  ETA_2 = 2.0
   ETA_3 = -1.015 
   ETA_4 = -1.015
   ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
