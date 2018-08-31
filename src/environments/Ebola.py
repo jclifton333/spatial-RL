@@ -43,10 +43,9 @@ class Ebola(SpatialDisease):
   # ETA_2 = 5
   # ETA_3 = -8.0
   # ETA_4 = -8.0
-  ETA_0 = -2.0
+  ETA_0 = -7.2
   ETA_1 = -0.284
-  # ETA_2 = -0.0
-  ETA_2 = 2.0
+  ETA_2 = -0.0
   ETA_3 = -1.015 
   ETA_4 = -1.015
   ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
@@ -55,8 +54,8 @@ class Ebola(SpatialDisease):
   for l in range(L):
     s_l = SUSCEPTIBILITY[l]
     for l_prime in range(L):
-      if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
-      # if True:
+      # if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
+      if True:
         """
         from https://github.com/LaberLabs/stdmMf_cpp/blob/master/src/main/ebolaStateGravityModel.cpp
         
