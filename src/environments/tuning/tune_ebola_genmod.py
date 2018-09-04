@@ -1,0 +1,50 @@
+"""
+From draft:
+
+1. Tune \alpha such that {\alpha * \eta_0 MLE, log(\alpha) + \eta_1 MLE, \eta_2 MLE, 0, 0} gives 70% infections after
+   25 time points under no treatment
+2. Tune \beta such that {\alpha \eta_0 MLE, log(\alpha) + \eta_1 MLE, \eta_2 MLE, \beta, \beta} such that the increase
+   in infections after 25 time points under the all-treatment policy is 0.05 times that under the no-treatment policy
+"""
+
+from src.environments.Ebola import Ebola
+import numpy as np
+
+
+def alpha_loss(env, Y_25):
+  observed_infections = np.mean(np.sum(Y_25, axis=1))
+  target_infections = 0.7 * env.L
+  return np.abs(target_infections - observed_infections)
+
+
+def beta_loss(Y_25_treat_all, Y_25_treat_none, Y_0_mean):
+  observed_infections_treat_all = np.mean(np.sum(Y_25_treat_all, axis=1))
+  observed_infections_treat_one = np.mean(np.sum(Y_25_treat_none, axis=1))
+  return np.abs((observed_infections_treat_all - Y_0_mean) / (observed_infections_treat_one - Y_0_mean) - 0.05)
+
+
+def loss(env, Y_25, Y_25_treat_all, Y_25_treat_none, Y_0_mean):
+  return alpha_loss(env, Y_25) + beta_loss(Y_25_treat_all, Y_25_treat_none, Y_0_mean)
+
+
+def alpha_objective(alpha):
+  eta_alpha = np.array([Ebola.ETA_0 * alpha, np.log(alpha) + Ebola.ETA_1, Ebola.ETA_2, 0.0, 0.0])
+  env = Ebola(eta=eta_alpha)
+
+  Y_25 = np.zeros((0, env.L))
+  for i in range(100):
+    for t in range(23):
+      env.step(np.zeros(env.L))
+    Y_25 = np.vstack((Y_25, env.current_infected))
+
+  return alpha_loss(env, Y_25)
+
+
+def beta_objective(alpha, beta):
+  eta_beta = np.array([Ebola.ETA_0 * alpha, np.log(alpha) + Ebola.ETA_1, Ebola.ETA_2, beta, beta])
+  env = Ebola(eta=eta_beta)
+
+
+
+
+

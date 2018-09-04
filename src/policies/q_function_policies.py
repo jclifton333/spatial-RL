@@ -129,6 +129,7 @@ def ebola_model_based_myopic(**kwargs):
   priority[np.where(env.current_infected == 1)] = priorities_for_infected_locations
   treat_ixs = random_argsort(-priority, treatment_budget)
   a[treat_ixs] = 1
+
   return a, None
 
 
