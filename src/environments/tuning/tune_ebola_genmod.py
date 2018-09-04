@@ -9,6 +9,7 @@ From draft:
 
 from src.environments.Ebola import Ebola
 import numpy as np
+from scipy import minimize
 
 
 def alpha_loss(env, Y_25):
@@ -44,7 +45,32 @@ def beta_objective(alpha, beta):
   eta_beta = np.array([Ebola.ETA_0 * alpha, np.log(alpha) + Ebola.ETA_1, Ebola.ETA_2, beta, beta])
   env = Ebola(eta=eta_beta)
 
+  Y_0_mean = np.sum(env.Y[0, :])
+
+  # treat-none policy
+  Y_25_treat_none = np.zeros((0, env.L))
+  for i in range(100):
+    for t in range(23):
+      env.step(np.zeros(env.L))
+    Y_25_treat_none = np.vstack((Y_25_treat_none, env.current_infected))
+
+  # treat-all policy
+  Y_25_treat_all = np.zeros((0, env.L))
+  for i in range(100):
+    for t in range(23):
+      env.step(np.ones(env.L))
+    Y_25_treat_all = np.vstack((Y_25_treat_all, env.current_infected))
+
+  return beta_loss(Y_25_treat_all, Y_25_treat_none, Y_0_mean)
 
 
+def tune():
+  alpha = minimize(alpha_objective, x0=[1.0])
+  beta = minimize(lambda beta: beta_objective(alpha, beta), x0=[0.0])
+  return alpha, beta
+
+
+if __name__ == '__main__':
+  tune()
 
 
