@@ -6,10 +6,14 @@ From draft:
 2. Tune \beta such that {\alpha \eta_0 MLE, log(\alpha) + \eta_1 MLE, \eta_2 MLE, \beta, \beta} such that the increase
    in infections after 25 time points under the all-treatment policy is 0.05 times that under the no-treatment policy
 """
-
+import sys
+import os
+this_dirname = os.path.dirname(os.path.abspath(__file__))
+src_dirname = os.path.join(this_dirname, '..', '..', '..')
+sys.path.append(src_dirname)
 from src.environments.Ebola import Ebola
 import numpy as np
-from scipy import minimize
+from scipy.optimize import minimize
 
 
 def alpha_loss(env, Y_25):
@@ -65,8 +69,10 @@ def beta_objective(alpha, beta):
 
 
 def tune():
-  alpha = minimize(alpha_objective, x0=[1.0])
-  beta = minimize(lambda beta: beta_objective(alpha, beta), x0=[0.0])
+  alpha = minimize(alpha_objective, x0=[1.0]).x
+  print(alpha)
+  beta = minimize(lambda b: beta_objective(alpha, b), x0=[0.0]).x
+  print(alpha, beta)
   return alpha, beta
 
 

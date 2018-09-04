@@ -77,20 +77,20 @@ class Ebola(SpatialDisease):
     # Modify eta if one is given
     if eta is not None:
       ETA_0, ETA_1, ETA_2, ETA_3, ETA_4 = eta
-      TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
-      for l in range(L):
-      s_l = Ebola.SUSCEPTIBILITY[l]
-      for l_prime in range(L):
-        # if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
-        if True:
-          d_l_lprime = Ebola.DISTANCE_MATRIX[l, l_prime]
-          s_l_prime = Ebola.SUSCEPTIBILITY[l_prime]
-          log_grav_term = np.log(d_l_lprime) - np.exp(ETA_2)*(np.log(s_l) + np.log(s_l_prime))
-          baseline_logit = ETA_0 - np.exp(ETA_1 + log_grav_term)
-          TRANSMISSION_PROBS[l, l_prime, 0, 0] = expit(baseline_logit)
-          TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
-          TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
-          TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)
+      TRANSMISSION_PROBS = np.zeros((self.L, self.L, 2, 2))
+      for l in range(self.L):
+        s_l = Ebola.SUSCEPTIBILITY[l]
+        for l_prime in range(self.L):
+          # if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
+          if True:
+            d_l_lprime = Ebola.DISTANCE_MATRIX[l, l_prime]
+            s_l_prime = Ebola.SUSCEPTIBILITY[l_prime]
+            log_grav_term = np.log(d_l_lprime) - np.exp(ETA_2)*(np.log(s_l) + np.log(s_l_prime))
+            baseline_logit = ETA_0 - np.exp(ETA_1 + log_grav_term)
+            TRANSMISSION_PROBS[l, l_prime, 0, 0] = expit(baseline_logit)
+            TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
+            TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
+            TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)
 
     # Initial steps
     self.step(np.zeros(self.L))
