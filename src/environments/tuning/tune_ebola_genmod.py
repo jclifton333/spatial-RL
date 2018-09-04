@@ -32,7 +32,8 @@ def loss(env, Y_25, Y_25_treat_all, Y_25_treat_none, Y_0_mean):
   return alpha_loss(env, Y_25) + beta_loss(Y_25_treat_all, Y_25_treat_none, Y_0_mean)
 
 
-def alpha_objective(alpha):
+def alpha_objective(log_alpha):
+  alpha = np.exp(log_alpha)
   eta_alpha = np.array([Ebola.ETA_0 * alpha, np.log(alpha) + Ebola.ETA_1, Ebola.ETA_2, 0.0, 0.0])
   env = Ebola(eta=eta_alpha)
 
@@ -45,7 +46,8 @@ def alpha_objective(alpha):
   return alpha_loss(env, Y_25)
 
 
-def beta_objective(alpha, beta):
+def beta_objective(alpha, log_beta):
+  beta = -np.exp(log_beta)
   eta_beta = np.array([Ebola.ETA_0 * alpha, np.log(alpha) + Ebola.ETA_1, Ebola.ETA_2, beta, beta])
   env = Ebola(eta=eta_beta)
 
@@ -69,9 +71,11 @@ def beta_objective(alpha, beta):
 
 
 def tune():
-  alpha = minimize(alpha_objective, x0=[1.0]).x
+  log_alpha = minimize(alpha_objective, x0=[0.0], method='L-BFGS-B').x
+  alpha = np.exp(log_alpha)
   print(alpha)
-  beta = minimize(lambda b: beta_objective(alpha, b), x0=[0.0]).x
+  log_beta = minimize(lambda b: beta_objective(alpha, b), x0=[0.0], method='L-BFGS-B').x
+  beta = np.exp(log_beta)
   print(alpha, beta)
   return alpha, beta
 
