@@ -81,9 +81,9 @@ def tune():
 
 
 if __name__ == '__main__':
-  alpha_list = np.array([1.0, 1.5, 2.0])
-  for alpha in alpha_list:
-    loss = alpha_objective(np.log(alpha))
-    print('alpha {} loss {}'.format(alpha, loss))
-
+  # alpha_list = np.array([1.0, 1.5, 2.0])
+  # for alpha in alpha_list:
+  #   loss = alpha_objective(np.log(alpha))
+  #   print('alpha {} loss {}'.format(alpha, loss))
+  tune()
 
