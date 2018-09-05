@@ -29,6 +29,7 @@ from src.estimation.q_functions.q_functions import q_max_all_states
 from src.estimation.optim.quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
 from scipy.special import logit
 from scipy.optimize import minimize
+from sklearn.linear_model import LogisticRegression
 
 SEED = 3
 
@@ -118,5 +119,23 @@ def tune():
   return
 
 
+def fit_to_omega_contaminated_sis():
+  env = sis.SIS(L=100, omega=1.0, generate_network=generate_network.lattice)
+  # Generate some data
+  np.random.seed(SEED)
+  dummy_action = np.append(np.ones(5), np.zeros(95))
+  env.reset()
+  for t in range(10):
+    env.step(np.random.permutation(dummy_action))
+
+  # Fit logit
+  clf = LogisticRegression()
+  X = np.vstack(env.X)
+  y = np.hstack(env.y).astype(float)
+  clf.fit(X, y)
+  print(clf.coef_)
+  print(clf.intercept_)
+
+
 if __name__ == '__main__':
-  tune()
+  fit_to_omega_contaminated_sis()

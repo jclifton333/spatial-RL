@@ -59,9 +59,8 @@ class SIS(SpatialDisease):
   # Contamination model stuff
   CONTAMINATOR = SIS_Contaminator()
   CONTAMINATION_MODEL_PARAMETER = np.array([
-    0.99, 0.32, 0.15, -0.83, -0.03, -0.07, 0.06, -0.21, 0.08, -0.14, -0.56, 0.54, 0.54, 0.95, 0.13, -0.5
+    -1.33, -1.44, -0.97, 0.99, 0.70, 0.58, 1.38, -0.10, -0.19, -0.37, 0.02, 0.53, 0.64, 0.76, 1.06, -0.66
   ])
-  CONTAMINATION_MODEL_PARAMETER = recoding_mapping(CONTAMINATION_MODEL_PARAMETER)
   CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER)
 
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
@@ -162,8 +161,8 @@ class SIS(SpatialDisease):
             s_prime_prime, a_prime_prime, y_prime_prime = raw_data_block[lprime_prime, :]
             second_order_encoding = first_order_encoding + int(8*s_prime_prime + 16*a_prime_prime + 32*y_prime_prime)
             psi_neighbors[second_order_encoding] += 1
-        else:
-          psi_neighbors[first_order_encoding] += 1
+      else:
+        psi_neighbors[first_order_encoding] += 1
     return np.concatenate((psi_l, psi_neighbors))
 
   def psi(self, raw_data_block, neighbor_order):
