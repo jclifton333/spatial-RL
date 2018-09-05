@@ -38,7 +38,7 @@ def alpha_objective(log_alpha):
   env = Ebola(eta=eta_alpha)
 
   Y_25 = np.zeros((0, env.L))
-  for i in range(100):
+  for i in range(10):
     for t in range(23):
       env.step(np.zeros(env.L))
     Y_25 = np.vstack((Y_25, env.current_infected))
@@ -81,6 +81,9 @@ def tune():
 
 
 if __name__ == '__main__':
-  tune()
+  alpha_list = np.array([1.0, 1.5, 2.0])
+  for alpha in alpha_list:
+    loss = alpha_objective(np.log(alpha))
+    print('alpha {} loss {}'.format(alpha, loss))
 
 
