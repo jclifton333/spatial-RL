@@ -28,11 +28,45 @@ from src.estimation.optim.argmaxer_factory import argmaxer_random
 from src.estimation.q_functions.q_functions import q_max_all_states
 from src.estimation.optim.quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
 from scipy.special import logit
+from scipy.optimize import minimize
 
 SEED = 3
 
 
-def tune():
+def logistic(n, L, k, x0):
+  return L / (1 + np.exp(-k * (n - x0)))
+
+
+def parameterized_expit_parameter(k, x0, scale_neighbor_params):
+  """
+  logistic fn = f(n) = L / (1 + exp(-k * (n - x0));
+  neighbor_params = self_params * scale_neighbor_params
+  :param L:
+  :param k:
+  :param x0:
+  :param scale_neighbor_params:
+  :return:
+  """
+  self_param =  np.array([logistic(n, 1.0, k, x0) for n in range(8)])
+  neighbor_param = np.array([np.min((1.0, p * scale_neighbor_params)) for p in self_param])
+  old_index_to_new_index_mapping = {0: 4,
+                                    1: 5,
+                                    2: 6,
+                                    3: 7,
+                                    4: 0,
+                                    5: 1,
+                                    6: 2,
+                                    7: 3}
+  untransformed_param = np.concatenate((self_param, neighbor_param))
+  param = np.zeros(16)
+  for i in range(8):
+    param[old_index_to_new_index_mapping[i]] = untransformed_param[i]
+  for i in range(8, 16):
+    param[old_index_to_new_index_mapping[i-8] + 8] = untransformed_param[i]
+  return param
+
+
+def evaluate_parameter(k, x0, scale_neighbor_params, intercept):
   env = sis.SIS(L = 100, omega = 0.0, generate_network = generate_network.lattice)
 
   # Generate some data
@@ -42,38 +76,47 @@ def tune():
   for t in range(10):
     env.step(np.random.permutation(dummy_action))
 
-  # Tune parameter
+  # Get true probabilities for gen mod parameterized by L, k, x0, scale_neighbor_params
+  expit_parameter = parameterized_expit_parameter(k, x0, scale_neighbor_params)
+  parameter = np.append(logit(expit_parameter), [intercept])
   contaminator = SIS_Contaminator()
-  expit_parameter_0 = np.array([0.3, 0.4, 0.1, 0.2, 0.65, 0.7, 0.5, 0.6])
-  parameter_0 = logit(expit_parameter_0 / 4)
-  parameter_1 = logit(expit_parameter_0)
-  parameter = np.concatenate((parameter_0, parameter_1, [0.0]))
-  best_diff = 0.0
-  best_param = parameter
-  for i in range(20):
-    q = contaminator.predict_proba
+  contaminator.set_weights(parameter)
+  q_ = contaminator.predict_proba
+  pdb.set_trace()
 
-    # Evaluate random policy
-    random_score_list = []
-    for rep in range(10):
-      score_list, _, _ = q_max_all_states(env, 100, 5, q, argmaxer_random)
-      random_score_list.append(np.mean(score_list))
-    random_score = np.mean(random_score_list)
+  # Evaluate random policy
+  random_score_list = []
+  for rep in range(10):
+    score_list, _, _ = q_max_all_states(env, 100, 5, q_, argmaxer_random)
+    random_score_list.append(np.mean(score_list))
+  random_score = np.mean(random_score_list)
 
-    # Evaluate best policy
-    best_score_list, _, _ = q_max_all_states(env, 100, 5, q, argmaxer_quad_approx)
-    best_score = np.mean(best_score_list)
-    print('random score: {} best score: {}'.format(random_score, best_score))
+  # Evaluate true probs policy
+  best_score_list, _, _ = q_max_all_states(env, 100, 5, q_, argmaxer_quad_approx)
+  best_score = np.mean(best_score_list)
 
-    if best_score - random_score < best_diff:
-      best_diff = best_score - random_score
-      best_param = parameter
+  loss = np.abs((random_score/best_score) - 0.5)
+  return loss
 
-    # Perturb
-    parameter[:-1] = best_param[:-1] + np.random.normal(loc=0.0, scale=1, size=16)
-    contaminator.set_weights(parameter)
+
+def evaluate_parameter_wrapper(parameter_parameter):
+  L = np.exp(parameter_parameter[0])
+  k = parameter_parameter[1]
+  x0 = parameter_parameter[2]
+  scale_neighbor_params = np.exp(parameter_parameter[3])
+  intercept = parameter_parameter[4]
+  return evaluate_parameter(L, k, x0, scale_neighbor_params, intercept)
+
+
+def tune():
+  for i in range(10):
+    k = np.random.gamma(1.0, 1.0)
+    x0 = np.random.gamma(1.0, 1.0)
+    scale_neighbor_params = np.random.random()
+    intercept = -np.random.gamma(1.0, 1.0)
+    print(evaluate_parameter(k, x0, scale_neighbor_params, intercept))
   return
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   tune()
