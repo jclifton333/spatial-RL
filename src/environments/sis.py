@@ -59,7 +59,7 @@ class SIS(SpatialDisease):
   # Contamination model stuff
   CONTAMINATOR = SIS_Contaminator()
   CONTAMINATION_MODEL_PARAMETER = np.array([
-    -1.33, -1.44, -0.97, 0.99, 0.70, 0.58, 1.38, -0.10, -0.19, -0.37, 0.02, 0.53, 0.64, 0.76, 1.06, -0.66
+    -1.33, -1.44, -0.97, -0.56, 0.99, 0.70, 0.58, 1.38, -0.10, -0.19, -0.37, 0.02, 0.53, 0.64, 0.76, 1.06, -0.66
   ])
   CONTAMINATOR.set_weights(CONTAMINATION_MODEL_PARAMETER)
 
