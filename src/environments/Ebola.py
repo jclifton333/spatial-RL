@@ -9,6 +9,7 @@ import numpy as np
 import copy
 from scipy.special import expit
 from src.environments.SpatialDisease import SpatialDisease
+from src.environments.sis import SIS
 import pickle as pkl
 import os
 import pdb
@@ -20,21 +21,22 @@ class Ebola(SpatialDisease):
   ebola_network_data_fpath = os.path.join(this_file_pathname, 'ebola-network-data', 'ebola_network_data.p')
   network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
   # ADJACENCY_MATRIX = network_info['adjacency_matrix']
-  MAX_NUMBER_OF_NEIGHBORS = int(np.max(np.sum(ADJACENCY_MATRIX, axis=1)))
+
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
   DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
   SUSCEPTIBILITY = network_info['pop_array']
   L = len(SUSCEPTIBILITY)
   OUTBREAK_TIMES = network_info['outbreak_time_array']
 
-  ADJACENCY_MATRIX = np.zeros(L)
+  ADJACENCY_MATRIX = np.zeros((L, L))
   for l in range(L):
     d_l_lprime = DISTANCE_MATRIX[l, :]
     s_l_lprime = SUSCEPTIBILITY[l] * SUSCEPTIBILITY
     sorted_ratios = np.argsort(d_l_lprime / s_l_lprime)
     for lprime in sorted_ratios[1:4]:
         ADJACENCY_MATRIX[l, lprime] = 1
-        ADJACENCY_MATRIX[lprime, l] = 1
+
+  MAX_NUMBER_OF_NEIGHBORS = int(np.max(np.sum(ADJACENCY_MATRIX, axis=1)))
 
   # Fill matrix of susceptibility products
   PRODUCT_MATRIX = np.outer(SUSCEPTIBILITY, SUSCEPTIBILITY)
@@ -47,12 +49,18 @@ class Ebola(SpatialDisease):
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
 
   # Params for logit of transmission probability
-  ALPHA = 1.24
-  ETA_0 = -8 * ALPHA
-  ETA_1 = np.log(156) + np.log(ALPHA)
-  ETA_2 = 5
-  ETA_3 = -8.0
-  ETA_4 = -8.0
+  ETA_0 = SIS.ETA_2
+  ETA_1 = SIS.ETA_3
+  ETA_2 = 0.0
+  ETA_3 = SIS.ETA_3
+  ETA_4 = SIS.ETA_4
+
+  # ALPHA = 1.24
+  # ETA_0 = -8 * ALPHA
+  # ETA_1 = np.log(156) + np.log(ALPHA)
+  # ETA_2 = 5
+  # ETA_3 = -8.0
+  # ETA_4 = -8.0
   # ETA_0 = -7.2 * ALPHA
   # ETA_1 = -0.284 + np.log(ALPHA)
   # ETA_2 = -0.0
@@ -76,6 +84,7 @@ class Ebola(SpatialDisease):
         s_l_prime = SUSCEPTIBILITY[l_prime]
         log_grav_term = np.log(d_l_lprime) - np.exp(ETA_2)*(np.log(s_l) + np.log(s_l_prime))
         baseline_logit = ETA_0 - np.exp(ETA_1 + log_grav_term)
+        # baseline_logit = ETA_0
         TRANSMISSION_PROBS[l, l_prime, 0, 0] = expit(baseline_logit)
         TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
         TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
@@ -139,10 +148,11 @@ class Ebola(SpatialDisease):
     if self.current_infected[l]:
       return 1
     else:
-      # not_infected_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in self.adjacency_list[l]])
-      not_transmitted_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in range(self.L)])
-      latent_inf_prob = expit(10*(Ebola.ETA_0 + a[l] * 50*Ebola.ETA_3))
-      inf_prob = 1 - ((1 - latent_inf_prob) * not_transmitted_prob)
+      not_transmitted_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in self.adjacency_list[l]])
+      # not_transmitted_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in range(self.L)])
+      # latent_inf_prob = expit(10*(Ebola.ETA_0 + a[l] * 50*Ebola.ETA_3))
+      # inf_prob = 1 - ((1 - latent_inf_prob) * not_transmitted_prob)
+      inf_prob = 1 - not_transmitted_prob
       return inf_prob
 
   def next_infected_probabilities(self, a, eta=None):
