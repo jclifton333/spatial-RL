@@ -3,7 +3,7 @@ Functions for generating bootstrap Bellman error distributions.
 """
 
 import pdb
-from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_SIS_q_fn
+from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_sis_q_fn
 from src.estimation.stacking.compute_sample_bellman_error import compute_sample_squared_bellman_error
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.fqi import fqi
@@ -15,7 +15,7 @@ def bootstrap_SIS_mb_qfn(env, classifier, regressor, rollout_depth, gamma, plann
   be_list = []
   for rep in range(num_bootstrap_samples):
     auto_regressor = AutoRegressor(classifier, regressor)
-    q_fn = estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
+    q_fn = estimate_sis_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
                              treatment_budget, evaluation_budget, argmaxer, bootstrap=True)
     bootstrap_be = compute_sample_squared_bellman_error(q_fn, gamma, env, evaluation_budget, treatment_budget,
                                                         argmaxer)

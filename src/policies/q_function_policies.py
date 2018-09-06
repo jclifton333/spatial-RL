@@ -1,7 +1,7 @@
 from src.estimation.q_functions.fqi import fqi
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q, q_max_all_states
-from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_SIS_q_fn
+from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_sis_q_fn
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_transition_model
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
@@ -83,7 +83,7 @@ def sis_model_based_policy(**kwargs):
     kwargs['rollout_depth'], kwargs['gamma'], kwargs['classifier'], kwargs['regressor']
 
   auto_regressor = AutoRegressor(classifier, regressor)
-  new_q_model = estimate_SIS_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
+  new_q_model = estimate_sis_q_fn(env, auto_regressor, rollout_depth, gamma, planning_depth,
                                   treatment_budget, evaluation_budget, argmaxer, bootstrap)
 
   q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=new_q_model)
