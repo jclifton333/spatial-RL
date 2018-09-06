@@ -55,14 +55,14 @@ def beta_objective(alpha, log_beta):
 
   # treat-none policy
   Y_25_treat_none = np.zeros((0, env.L))
-  for i in range(100):
+  for i in range(10):
     for t in range(23):
       env.step(np.zeros(env.L))
     Y_25_treat_none = np.vstack((Y_25_treat_none, env.current_infected))
 
   # treat-all policy
   Y_25_treat_all = np.zeros((0, env.L))
-  for i in range(100):
+  for i in range(10):
     for t in range(23):
       env.step(np.ones(env.L))
     Y_25_treat_all = np.vstack((Y_25_treat_all, env.current_infected))
@@ -71,19 +71,37 @@ def beta_objective(alpha, log_beta):
 
 
 def tune():
-  log_alpha = minimize(alpha_objective, x0=[0.0], method='L-BFGS-B').x
+  res_alpha = minimize(alpha_objective, x0=[0.0], method='L-BFGS-B')
+  print('res alpha {}'.format(res_alpha))
+  log_alpha = res_alpha.x
   alpha = np.exp(log_alpha)
-  print(alpha)
-  log_beta = minimize(lambda b: beta_objective(alpha, b), x0=[0.0], method='L-BFGS-B').x
+  res_beta = minimize(lambda b: beta_objective(alpha, b), x0=[0.0], method='L-BFGS-B')
+  print('res beta {}'.format(res_beta))
+  log_beta = res_beta.x
   beta = np.exp(log_beta)
-  print(alpha, beta)
   return alpha, beta
 
 
 if __name__ == '__main__':
-  # alpha_list = np.array([1.0, 1.5, 2.0])
+  # alpha_list = np.linspace(start=0, stop=3, num=30)
+  beta_list = np.linspace(0, 10, num=100)
+  # best_alpha = alpha_list[0]
+  # best_loss = float('inf')
   # for alpha in alpha_list:
   #   loss = alpha_objective(np.log(alpha))
   #   print('alpha {} loss {}'.format(alpha, loss))
-  tune()
+  #   if loss < best_loss:
+  #     best_loss = loss
+  #     best_alpha = alpha
+  best_alpha = 1.24
+  best_loss = float('inf')
+  best_beta = beta_list[0]
+  for beta in beta_list:
+    loss = beta_objective(best_alpha, np.log(beta))
+    print('beta {} loss {}'.format(beta, loss))
+    if loss < best_loss:
+      best_loss = loss
+      best_beta = beta
+  print(best_alpha, -best_beta)
+  # tune()
 

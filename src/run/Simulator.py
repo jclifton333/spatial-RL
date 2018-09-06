@@ -54,7 +54,10 @@ class Simulator(object):
     self.runtimes = []
 
     # Set policy arguments
-    treatment_budget = np.int(np.ceil(0.05 * self.env.L))
+    if env_name == 'sis':
+        treatment_budget = np.int(np.ceil(0.05 * self.env.L))
+    elif env_name == 'Ebola':
+        treatment_budget = np.int(np.ceil(0.15 * self.env.L))
     self.policy_arguments = {'classifier': SKLogit2, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,

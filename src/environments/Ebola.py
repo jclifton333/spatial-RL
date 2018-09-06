@@ -19,13 +19,22 @@ class Ebola(SpatialDisease):
   this_file_pathname = os.path.dirname(os.path.abspath(__file__))
   ebola_network_data_fpath = os.path.join(this_file_pathname, 'ebola-network-data', 'ebola_network_data.p')
   network_info = pkl.load(open(ebola_network_data_fpath, 'rb'))
-  ADJACENCY_MATRIX = network_info['adjacency_matrix']
+  # ADJACENCY_MATRIX = network_info['adjacency_matrix']
   MAX_NUMBER_OF_NEIGHBORS = int(np.max(np.sum(ADJACENCY_MATRIX, axis=1)))
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
   DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
   SUSCEPTIBILITY = network_info['pop_array']
   L = len(SUSCEPTIBILITY)
   OUTBREAK_TIMES = network_info['outbreak_time_array']
+
+  ADJACENCY_MATRIX = np.zeros(L)
+  for l in range(L):
+    d_l_lprime = DISTANCE_MATRIX[l, :]
+    s_l_lprime = SUSCEPTIBILITY[l] * SUSCEPTIBILITY
+    sorted_ratios = np.argsort(d_l_lprime / s_l_lprime)
+    for lprime in sorted_ratios[1:4]:
+        ADJACENCY_MATRIX[l, lprime] = 1
+        ADJACENCY_MATRIX[lprime, l] = 1
 
   # Fill matrix of susceptibility products
   PRODUCT_MATRIX = np.outer(SUSCEPTIBILITY, SUSCEPTIBILITY)
@@ -38,16 +47,17 @@ class Ebola(SpatialDisease):
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
 
   # Params for logit of transmission probability
-  # ETA_0 = -3
-  # ETA_1 = np.log(156)
-  # ETA_2 = 5
-  # ETA_3 = -8.0
-  # ETA_4 = -8.0
-  ETA_0 = -7.2
-  ETA_1 = -0.284
-  ETA_2 = -0.0
-  ETA_3 = -1.015 
-  ETA_4 = -1.015
+  ALPHA = 1.24
+  ETA_0 = -8 * ALPHA
+  ETA_1 = np.log(156) + np.log(ALPHA)
+  ETA_2 = 5
+  ETA_3 = -8.0
+  ETA_4 = -8.0
+  # ETA_0 = -7.2 * ALPHA
+  # ETA_1 = -0.284 + np.log(ALPHA)
+  # ETA_2 = -0.0
+  # ETA_3 = -1.015 
+  # ETA_4 = -1.015
   ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
   # Compute transmission probs
   TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
@@ -130,8 +140,10 @@ class Ebola(SpatialDisease):
       return 1
     else:
       # not_infected_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in self.adjacency_list[l]])
-      not_infected_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in range(self.L)])
-      return 1 - not_infected_prob
+      not_transmitted_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in range(self.L)])
+      latent_inf_prob = expit(10*(Ebola.ETA_0 + a[l] * 50*Ebola.ETA_3))
+      inf_prob = 1 - ((1 - latent_inf_prob) * not_transmitted_prob)
+      return inf_prob
 
   def next_infected_probabilities(self, a, eta=None):
     return np.array([self.infection_prob_at_location(a, l, eta) for l in range(self.L)])

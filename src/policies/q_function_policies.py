@@ -104,8 +104,8 @@ def ebola_model_based_one_step(**kwargs):
   ptrue = env.next_infected_probabilities(a)
   diff = np.abs(phat - ptrue)
   worst_ix = np.argmax(diff)
-  print('eta: {}'.format(eta))
-  print('max loss: {} mean loss: {} worst ix: {}'.format(np.max(diff), np.mean(diff), worst_ix))
+  # print('eta: {}'.format(eta))
+  # print('max loss: {} mean loss: {} worst ix: {}'.format(np.max(diff), np.mean(diff), worst_ix))
   return a, None
 
 
