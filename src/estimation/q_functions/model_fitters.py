@@ -157,7 +157,10 @@ class SKLogit2(object):
         phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])[:, -1]
       else:
         X_infected = np.column_stack((np.ones(len(infected_locations)), X[infected_locations]))
-        phat[infected_locations] = expit(np.dot(X_infected, self.inf_params))
+        try:
+          phat[infected_locations] = expit(np.dot(X_infected, self.inf_params))
+        except:
+          pdb.set_trace()
     if len(not_infected_locations) > 0:
       if self.not_inf_model_fitted:
         phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]

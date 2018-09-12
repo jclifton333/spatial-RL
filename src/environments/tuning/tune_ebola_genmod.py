@@ -12,8 +12,12 @@ this_dirname = os.path.dirname(os.path.abspath(__file__))
 src_dirname = os.path.join(this_dirname, '..', '..', '..')
 sys.path.append(src_dirname)
 from src.environments.Ebola import Ebola
+from src.run.Simulator import Simulator
 import numpy as np
 from scipy.optimize import minimize
+import multiprocessing as mp
+
+NUM_REPLICATES_PER_PARAMETER_SETTING = 1
 
 
 def alpha_loss(env, Y_25):
@@ -22,7 +26,7 @@ def alpha_loss(env, Y_25):
   return np.abs(target_infections - observed_infections)
 
 
-def beta_loss(Y_25_treat_all, Y_25_treat_none, Y_0_mean):
+def beta_loss(Y_25_true_probs, Y_25_rando, Y_0_mean):
   observed_infections_treat_all = np.mean(np.sum(Y_25_treat_all, axis=1))
   observed_infections_treat_one = np.mean(np.sum(Y_25_treat_none, axis=1))
   return np.abs((observed_infections_treat_all - Y_0_mean) / (observed_infections_treat_one - Y_0_mean) - 0.05)
@@ -53,21 +57,22 @@ def beta_objective(alpha, log_beta):
 
   Y_0_mean = np.sum(env.Y[0, :])
 
-  # treat-none policy
-  Y_25_treat_none = np.zeros((0, env.L))
-  for i in range(10):
-    for t in range(23):
-      env.step(np.zeros(env.L))
-    Y_25_treat_none = np.vstack((Y_25_treat_none, env.current_infected))
+  # random policy
+  Y_25_rando = np.zeros((0, env.L))
+  rand_sim = Simulator(1, 'Ebola', 100, 1, 'random', 'quad_approx', 0.9, 100, **{})
+  for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
+    rand_sim.episode(0)
+    Y_25_rando = np.vstack((Y_25_rando, np.mean(rand_sim.env.Y, axis=0)))
 
-  # treat-all policy
-  Y_25_treat_all = np.zeros((0, env.L))
-  for i in range(10):
-    for t in range(23):
-      env.step(np.ones(env.L))
-    Y_25_treat_all = np.vstack((Y_25_treat_all, env.current_infected))
+  # true probs policy
+  true_probs_sim = Simulator(1, 'Ebola', 100, 1, 'true_probs', 'quad_approx', 0.9, 100, **{})
+  Y_25_true_probs = np.zeros((0, env.L))
+  for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
+    true_probs_sim.episode(0)
+    Y_25_true_probs = np.vstack((Y_25_true_probs, np.mean(true_probs_sim.env.Y, axis=0)))
 
-  return beta_loss(Y_25_treat_all, Y_25_treat_none, Y_0_mean)
+  # return beta_loss(true_probs_sim, Y_25_rando, Y_0_mean)
+  return Y_25_true_probs, Y_25_rando
 
 
 def tune():
@@ -84,7 +89,7 @@ def tune():
 
 if __name__ == '__main__':
   # alpha_list = np.linspace(start=0, stop=3, num=30)
-  beta_list = np.linspace(0, 10, num=100)
+  beta_list = np.linspace(0, 10, num=50)
   # best_alpha = alpha_list[0]
   # best_loss = float('inf')
   # for alpha in alpha_list:
@@ -93,15 +98,22 @@ if __name__ == '__main__':
   #   if loss < best_loss:
   #     best_loss = loss
   #     best_alpha = alpha
-  best_alpha = 1.24
-  best_loss = float('inf')
-  best_beta = beta_list[0]
-  for beta in beta_list:
-    loss = beta_objective(best_alpha, np.log(beta))
-    print('beta {} loss {}'.format(beta, loss))
-    if loss < best_loss:
-      best_loss = loss
-      best_beta = beta
-  print(best_alpha, -best_beta)
-  # tune()
+
+  def try_beta(b):
+    best_alpha = 3.0
+    y_true_probs, y_rando = beta_objective(best_alpha, np.log(beta))
+    # print('beta {} y_true_probs {} y rando'.format(beta, y_true_probs, y_rando))
+    return b, y_true_probs, y_rando
+
+  pool = mp.Pool(processes=50)
+  results = pool.map(try_beta, beta_list)
+
+  for b, y_true_probs, y_rando in results:
+    print('b: {} y_true_probs: {} y_rando: {}'.format(b, y_true_probs, y_rando))
+
+  #    if loss < best_loss:
+  #      best_loss = loss
+  #      best_beta = beta
+  #  print(best_alpha, -best_beta)
+  #  # tune()
 

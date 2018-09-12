@@ -8,11 +8,8 @@ def compare_with_true_probs(env, predictor, raw):
   if raw:
     phat = np.hstack([predictor(data_block) for data_block in env.X_raw])
   else:
-      try:
-        phat = np.hstack([predictor(data_block, np.where(raw_data_block[:, -1] == 1)[0], np.where(raw_data_block[:, -1] == 0)[0])
-                          for raw_data_block, data_block in zip(env.X_raw, env.X)])
-      except:
-        pdb.set_trace()
+      phat = np.hstack([predictor(data_block, np.where(raw_data_block[:, -1] == 1)[0], np.where(raw_data_block[:, -1] == 0)[0])
+                        for raw_data_block, data_block in zip(env.X_raw, env.X)])
   true_expected_counts = np.hstack(env.true_infection_probs)
   max_loss = np.max(np.abs(phat - true_expected_counts))
   mean_loss = np.mean(np.abs(phat - true_expected_counts))
