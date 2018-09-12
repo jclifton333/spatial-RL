@@ -53,26 +53,26 @@ def alpha_objective(log_alpha):
 def beta_objective(alpha, log_beta):
   beta = -np.exp(log_beta)
   eta_beta = np.array([Ebola.ETA_0 * alpha, np.log(alpha) + Ebola.ETA_1, Ebola.ETA_2, beta, beta])
-  env = Ebola(eta=eta_beta)
+  env_kwargs = {'eta': eta_beta}
 
-  Y_0_mean = np.sum(env.Y[0, :])
+  # Y_0_mean = np.sum(env.Y[0, :])
 
   # random policy
-  Y_25_rando = np.zeros((0, env.L))
-  rand_sim = Simulator(1, 'Ebola', 100, 1, 'random', 'quad_approx', 0.9, 100, **{})
+  rand_sim = Simulator(1, 'Ebola', 100, 1, 'random', 'quad_approx', 0.9, 100, **env_kwargs)
+  Y_25_rando = np.zeros((0, 290))
   for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
     rand_sim.episode(0)
     Y_25_rando = np.vstack((Y_25_rando, np.mean(rand_sim.env.Y, axis=0)))
 
   # true probs policy
   true_probs_sim = Simulator(1, 'Ebola', 100, 1, 'true_probs', 'quad_approx', 0.9, 100, **{})
-  Y_25_true_probs = np.zeros((0, env.L))
+  Y_25_true_probs = np.zeros((0, 290))
   for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
     true_probs_sim.episode(0)
     Y_25_true_probs = np.vstack((Y_25_true_probs, np.mean(true_probs_sim.env.Y, axis=0)))
 
   # return beta_loss(true_probs_sim, Y_25_rando, Y_0_mean)
-  return Y_25_true_probs, Y_25_rando
+  return np.mean(Y_25_true_probs), np.mean(Y_25_rando)
 
 
 def tune():
@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
   def try_beta(b):
     best_alpha = 3.0
-    y_true_probs, y_rando = beta_objective(best_alpha, np.log(beta))
+    y_true_probs, y_rando = beta_objective(best_alpha, np.log(b))
     # print('beta {} y_true_probs {} y rando'.format(beta, y_true_probs, y_rando))
     return b, y_true_probs, y_rando
 
