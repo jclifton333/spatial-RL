@@ -50,13 +50,17 @@ class Ebola(SpatialDisease):
 
   # Params for logit of transmission probability
   ALPHA = 3.0
-  BETA = -np.exp(5.0)
+  BETA = -5.0
   ETA_0 = SIS.ETA_2 * ALPHA
   ETA_1 = SIS.ETA_3 + np.log(ALPHA)
+  # ETA_0 = SIS.ETA_2
+  # ETA_1 = SIS.ETA_3
   ETA_2 = 0.0
-  ETA_3 = BETA
-  ETA_4 = BETA
+  # ETA_3 = SIS.ETA_3
+  # ETA_4 = SIS.ETA_4
+  ETA_3 = ETA_4 = BETA
 
+  # ALPHA = 1
   # ETA_0 = -8 * ALPHA
   # ETA_1 = np.log(156) + np.log(ALPHA)
   # ETA_2 = 5
@@ -66,8 +70,9 @@ class Ebola(SpatialDisease):
   # ETA_1 = -0.284 + np.log(ALPHA)
   # ETA_2 = -0.0
   # ETA_3 = -1.015 
-  # ETA_4 = -1.015
-  ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
+  # ETA_4 = -1.015    
+  ETA = np.array([ETA_0, ETA_1, ETA_2, ETA_3, ETA_4])
+  # ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
   # Compute transmission probs
   TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
   for l in range(L):

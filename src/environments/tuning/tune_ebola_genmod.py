@@ -6,6 +6,7 @@ From draft:
 2. Tune \beta such that {\alpha \eta_0 MLE, log(\alpha) + \eta_1 MLE, \eta_2 MLE, \beta, \beta} such that the increase
    in infections after 25 time points under the all-treatment policy is 0.05 times that under the no-treatment policy
 """
+import pdb
 import sys
 import os
 this_dirname = os.path.dirname(os.path.abspath(__file__))
@@ -51,25 +52,29 @@ def alpha_objective(log_alpha):
 
 
 def beta_objective(alpha, log_beta):
+  TIME_HORIZON = 25
   beta = -np.exp(log_beta)
   eta_beta = np.array([Ebola.ETA_0 * alpha, np.log(alpha) + Ebola.ETA_1, Ebola.ETA_2, beta, beta])
   env_kwargs = {'eta': eta_beta}
 
   # Y_0_mean = np.sum(env.Y[0, :])
-
   # random policy
-  rand_sim = Simulator(1, 'Ebola', 100, 1, 'random', 'quad_approx', 0.9, 100, env_kwargs)
-  Y_25_rando = np.zeros((0, 290))
+  rand_sim = Simulator(1, 'Ebola', TIME_HORIZON, 1, 'random', 'quad_approx', 0.9, 100, env_kwargs)
+  # Y_25_rando = np.zeros((0, 290))
+  Y_25_rando = []
   for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
     rand_sim.episode(0)
-    Y_25_rando = np.vstack((Y_25_rando, np.mean(rand_sim.env.Y, axis=0)))
+    Y_25_rando.append(np.mean(rand_sim.env.current_infected))
+    # Y_25_rando = np.vstack((Y_25_rando, np.mean(rand_sim.env.Y, axis=0)))
 
   # true probs policy
-  true_probs_sim = Simulator(1, 'Ebola', 100, 1, 'true_probs_myopic', 'quad_approx', 0.9, 100, env_kwargs)
-  Y_25_true_probs = np.zeros((0, 290))
+  true_probs_sim = Simulator(1, 'Ebola', TIME_HORIZON, 1, 'true_probs', 'quad_approx', 0.9, 100, env_kwargs)
+  # Y_25_true_probs = np.zeros((0, 290))
+  Y_25_true_probs = []
   for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
     true_probs_sim.episode(0)
-    Y_25_true_probs = np.vstack((Y_25_true_probs, np.mean(true_probs_sim.env.Y, axis=0)))
+    Y_25_true_probs.append(np.mean(true_probs_sim.env.current_infected))
+    # Y_25_true_probs = np.vstack((Y_25_true_probs, np.mean(true_probs_sim.env.Y, axis=0)))
 
   # return beta_loss(true_probs_sim, Y_25_rando, Y_0_mean)
   return np.mean(Y_25_true_probs), np.mean(Y_25_rando)
@@ -105,11 +110,12 @@ if __name__ == '__main__':
     # print('beta {} y_true_probs {} y rando'.format(beta, y_true_probs, y_rando))
     return b, y_true_probs, y_rando
 
-  pool = mp.Pool(processes=50)
-  results = pool.map(try_beta, beta_list)
+  try_beta(5)
+  # pool = mp.Pool(processes=50)
+  # results = pool.map(try_beta, beta_list)
 
-  for b, y_true_probs, y_rando in results:
-    print('b: {} y_true_probs: {} y_rando: {}'.format(b, y_true_probs, y_rando))
+  # for b, y_true_probs, y_rando in results:
+  #   print('b: {} y_true_probs: {} y_rando: {}'.format(b, y_true_probs, y_rando))
 
   #    if loss < best_loss:
   #      best_loss = loss
