@@ -16,10 +16,11 @@ sys.path.append(pkg_dir)
 from src.environments import generate_network
 from src.run.Simulator import Simulator
 
-VALID_ENVIRONMENT_NAMES = ['sis']
+VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based', 'sis_model_based_one_step',
-                      'sis_one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi']
+                      'sis_one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi',
+                      'ebola_model_based_one_step', 'ebola_model_based_myopic']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 
 if __name__ == '__main__':
@@ -37,10 +38,13 @@ if __name__ == '__main__':
   parser.add_argument('--epsilon', type=float)
   args = parser.parse_args()
 
-  SIS_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
-                'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
+  if args.env_name == 'sis':
+    env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
+                  'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
+  else:
+    env_kwargs = {}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
-                  args.argmaxer_name, args.gamma, args.evaluation_budget, **SIS_kwargs)
+                  args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:

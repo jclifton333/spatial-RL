@@ -17,7 +17,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
-from src.estimation.model_based.sis.estimate_sis_parameters import fit_transition_model
+from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
 from src.estimation.model_based.sis.simulate_from_sis import simulate_from_SIS
 from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
@@ -32,7 +32,7 @@ import keras.backend as K
 # ToDo: Refactor so there isn't a separate file for each type of simulation
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, **env_kwargs):
+               evaluation_budget, env_kwargs):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Ebola'
@@ -54,7 +54,10 @@ class Simulator(object):
     self.runtimes = []
 
     # Set policy arguments
-    treatment_budget = np.int(np.ceil(0.05 * self.env.L))
+    if env_name == 'sis':
+        treatment_budget = np.int(np.ceil(0.05 * self.env.L))
+    elif env_name == 'Ebola':
+        treatment_budget = np.int(np.ceil(0.15 * self.env.L))
     self.policy_arguments = {'classifier': SKLogit2, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
@@ -105,7 +108,8 @@ class Simulator(object):
       self.env.step(a)
       # print('{} info {}'.format(t, info))
     t1 = time.time()
-    score = np.mean(self.env.Y)
+    # score = np.mean(self.env.Y)
+    score = np.mean(self.env.current_infected)
     episode_results['score'] = float(score)
     episode_results['runtime'] = float(t1 - t0)
     # print(np.mean(self.env.Y[-1,:]))
@@ -185,7 +189,7 @@ class Simulator(object):
         estimates_results['obs_data_loss_{}'.format(model.__name__)].append(float(loss))
 
       # Fit sis model
-      eta = fit_transition_model(self.env)
+      eta = fit_sis_transition_model(self.env)
       simulation_env = simulate_from_SIS(self.env, eta, 5,self.settings['treatment_budget'], n_rep=5)
       sis_losses = []
       for x, t in zip(self.env.X_raw, range(len(self.env.X_raw))):

@@ -109,3 +109,5 @@ ENV/
 .mypy_cache/
 
 .pytest_cache/
+*.swo
+*.swp

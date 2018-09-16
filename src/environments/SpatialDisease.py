@@ -44,7 +44,7 @@ class SpatialDisease(ABC):
     else:
       self.Y = np.array([self.initial_infections])
     self.A = np.zeros((0, self.L))
-    self.X_raw = [] # Will hold blocks [S_t, A_t, Y_t] at each time t
+    self.X_raw = []  # Will hold blocks [S_t, A_t, Y_t] at each time t
     self.X = []
     self.y = []  # Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = []

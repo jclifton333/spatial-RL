@@ -40,5 +40,9 @@ def policy_factory(policy_type):
     return roll.sis_two_step_mse_averaged
   elif policy_type == 'sis_mb_fqi':
     return roll.sis_mb_fqi
+  elif policy_type == 'ebola_model_based_one_step':
+    return roll.ebola_model_based_one_step
+  elif policy_type == 'ebola_model_based_myopic':
+    return roll.ebola_model_based_myopic
   else:
     raise ValueError('Argument does not match any policy.')

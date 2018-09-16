@@ -1,10 +1,12 @@
 from src.estimation.q_functions.fqi import fqi
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q, q_max_all_states
-from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_sis_q_fn
-from src.estimation.model_based.sis.estimate_sis_parameters import fit_transition_model
+from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_SIS_q_fn
+from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
+from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
+from src.utils.misc import random_argsort
 
 import numpy as np
 import keras.backend as K
@@ -92,10 +94,49 @@ def sis_model_based_policy(**kwargs):
   return a, new_q_model
 
 
+def ebola_model_based_one_step(**kwargs):
+  env, argmaxer, evaluation_budget, treatment_budget = \
+    kwargs['env'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
+  eta = fit_ebola_transition_model(env)
+  one_step_q = partial(env.next_infected_probabilities, eta=eta)
+  a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)
+  phat = one_step_q(a)
+  ptrue = env.next_infected_probabilities(a)
+  diff = np.abs(phat - ptrue)
+  worst_ix = np.argmax(diff)
+  # print('eta: {}'.format(eta))
+  # print('max loss: {} mean loss: {} worst ix: {}'.format(np.max(diff), np.mean(diff), worst_ix))
+  return a, None
+
+
+def ebola_model_based_myopic(**kwargs):
+  env, treatment_budget = kwargs['env'], kwargs['treatment_budget']
+  eta = fit_ebola_transition_model(env)
+  one_step_q = partial(env.next_infected_probabilities, eta=eta)
+  a = np.zeros(env.L)
+  probs = one_step_q(a)
+
+  # Get priority score
+  priorities_for_infected_locations = np.zeros(np.sum(env.current_infected))
+  for l in np.where(env.current_infected == 1)[0]:
+    for lprime in env.adjacency_list[l]:
+      priorities_for_infected_locations[l] += \
+        (1 - env.current_infected[lprime]) * probs[lprime] / env.DISTANCE_MATRIX[l, lprime]
+  priorities_for_infected_locations /= np.sum(priorities_for_infected_locations)
+  priority = probs
+
+  # Treat greedily acc to priority
+  priority[np.where(env.current_infected == 1)] = priorities_for_infected_locations
+  treat_ixs = random_argsort(-priority, treatment_budget)
+  a[treat_ixs] = 1
+
+  return a, None
+
+
 def sis_model_based_one_step(**kwargs):
   env, bootstrap, argmaxer, evaluation_budget, treatment_budget = \
     kwargs['env'], kwargs['bootstrap'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
-  eta = fit_transition_model(env)
+  eta = fit_sis_transition_model(env)
   one_step_q = partial(sis_infection_probability, y=env.current_infected, s=env.current_state, eta=eta,
                        omega=0, L=env.L, adjacency_lists=env.adjacency_list)
   a = argmaxer(one_step_q, evaluation_budget, treatment_budget, env)

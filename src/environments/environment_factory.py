@@ -13,6 +13,6 @@ def environment_factory(environment_name, **kwargs):
     return SIS(**kwargs)
   elif environment_name == 'Ebola':
     from .Ebola import Ebola
-    return Ebola()
+    return Ebola(**kwargs)
   else:
     raise ValueError('environment_name not in {}'.format(VALID_ENVIRONMENT_NAMES))
