@@ -32,7 +32,7 @@ import keras.backend as K
 # ToDo: Refactor so there isn't a separate file for each type of simulation
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, **env_kwargs):
+               evaluation_budget, env_kwargs):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Ebola'

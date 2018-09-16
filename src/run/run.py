@@ -44,7 +44,7 @@ if __name__ == '__main__':
   else:
     env_kwargs = {}
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
-                  args.argmaxer_name, args.gamma, args.evaluation_budget, **env_kwargs)
+                  args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:

@@ -49,13 +49,14 @@ class Ebola(SpatialDisease):
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
 
   # Params for logit of transmission probability
-  ETA_0 = SIS.ETA_2
-  ETA_1 = SIS.ETA_3
+  ALPHA = 3.0
+  BETA = -np.exp(5.0)
+  ETA_0 = SIS.ETA_2 * ALPHA
+  ETA_1 = SIS.ETA_3 + np.log(ALPHA)
   ETA_2 = 0.0
-  ETA_3 = SIS.ETA_3
-  ETA_4 = SIS.ETA_4
+  ETA_3 = BETA
+  ETA_4 = BETA
 
-  # ALPHA = 1.24
   # ETA_0 = -8 * ALPHA
   # ETA_1 = np.log(156) + np.log(ALPHA)
   # ETA_2 = 5
