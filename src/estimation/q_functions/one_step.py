@@ -29,8 +29,8 @@ def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_
     X_raw = np.vstack(env.X_raw)
     clf_kwargs = {'infected_locations': np.where(X_raw[:, -1] == 1),
                   'not_infected_locations': np.where(X_raw[:, -1] == 0)}
-    predict_proba_kwargs = {'infected_locations': np.where(env.X_raw[-1][:, -1] == 1),
-                            'not_infected_locations': np.where(env.X_raw[-1][:, -1] == 0)}
+    predict_proba_kwargs = {'infected_locations': np.where(env.X_raw[-1][:, -1] == 1)[0],
+                            'not_infected_locations': np.where(env.X_raw[-1][:, -1] == 0)[0]}
   else:
     clf_kwargs = {}
     predict_proba_kwargs = {}

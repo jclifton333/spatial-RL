@@ -1,7 +1,7 @@
 from src.estimation.q_functions.fqi import fqi
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q, q_max_all_states
-from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_SIS_q_fn
+from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_sis_q_fn
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
 from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
