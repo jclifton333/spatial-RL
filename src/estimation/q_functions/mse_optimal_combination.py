@@ -175,9 +175,9 @@ def one_step_ebola_convex_combo(env):
   yhat_mb_draws = np.zeros((0, env.T * env.L))
   yhat_mf_draws = np.zeros((0, env.T * env.L))
 
-  yhat_mf = [fitted_mf_clf.predict_proba(data_block, np.where(raw_data_block[:, 2] == 1),
+  yhat_mf = np.array([fitted_mf_clf.predict_proba(data_block, np.where(raw_data_block[:, 2] == 1),
                                                                           np.where(raw_data_block[:, 2] == 0))
-                                   for data_block, raw_data_block in zip(env.X, env.X_raw)]
+                                   for data_block, raw_data_block in zip(env.X, env.X_raw)])
   yhat_mb = np.array([ebola_infection_probs(env.A[t], mb_params, env.Y[t], env.adjacency_list,
                                                    env.DISTANCE_MATRIX, env.SUSCEPTIBILITY, env.L)
                              for t in range(env.T)])
@@ -190,7 +190,7 @@ def one_step_ebola_convex_combo(env):
     mb_param_draw = fit_ebola_transition_model(env, y_next_draw)
     yhat_mb_draw = np.array([ebola_infection_probs(env.A[t], mb_param_draw, env.Y[t], env.adjacency_list,
                                                    env.DISTANCE_MATRIX, env.SUSCEPTIBILITY, env.L)
-                             for t in range(env.T)])
+                             for t in range(env.T)]).flatten()
 
     # Fit mf model to y_draw and get yhat
     y_next_draw = y_next_draw.flatten()
@@ -212,8 +212,8 @@ def one_step_ebola_convex_combo(env):
   #                                                                                axis=1)]))[0, 1]
 
   # Compute bias
-  mb_bias = np.mean(yhat_mb - np.hstack(env.y))
-  mf_bias = np.mean(yhat_mf - np.hstack(env.y))
+  mb_bias = np.mean(yhat_mb.flatten() - np.hstack(env.y))
+  mf_bias = np.mean(yhat_mf.flatten() - np.hstack(env.y))
 
   # Get mixing weight
   alpha_mf = mse_optimal_convex_combo(mf_bias, mb_bias, mf_var, mb_var, 0.0)
