@@ -3,6 +3,7 @@ import numpy as np
 from .one_step import fit_one_step_mf_and_mb_qs, fit_one_step_predictor
 from .model_fitters import SKLogit2
 from src.estimation.q_functions.q_functions import q_max_all_states
+from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
 from sklearn.linear_model import LinearRegression
 
 
@@ -154,6 +155,71 @@ def sis_mb_backup(env, gamma, q_mb_one_step, q_mb, argmaxer, evaluation_budget, 
     backup = np.vstack((backup, backups_for_draw))
   return np.mean(backup, axis=0)
 
+
+def one_step_ebola_convex_combo(env):
+  """
+  Get estimated optimal convex combination of one-step ebola mb and mf q-functions.
+  Since mf estimator is complicated/nonparametric we're going to use parametric boostrap, rather than asymptotic
+  formula, for variance.
+
+  :param env:
+  :return:
+  """
+  NUM_BOOTSTRAP_SAMPLES = 100
+
+  q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2)
+  X = np.vstack(env.X)
+  yhat_mb_draws = np.zeros((0, env.T * env.L))
+  yhat_mf_draws = np.zeros((0, env.T * env.L))
+
+  # Predict probabilities for parametric bootstrap
+  phat_for_parametric_bootstrap = [fitted_mf_clf.predict_proba(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                          np.where(raw_data_block[:, 2] == 0))
+                                   for data_block, raw_data_block in zip(env.X, env.X_raw)]
+
+  for bootstrap_rep in range(NUM_BOOTSTRAP_SAMPLES):
+    # Draw y's using parametric bootstrap
+    y_next_draw = [np.random.binomial(1, p=phat_for_parametric_bootstrap[phat_t])
+              for phat_t in phat_for_parametric_bootstrap]
+
+    # Fit mb model to y_draw
+    mb_param_draw = fit_ebola_transition_model(env, y_next_draw)
+    yhat_mb_draw = None
+
+    # Fit mf model to y_draw
+    y_next_draw = y_next_draw.ravel()
+    infected_ixs = np.where(y_next_draw == 1)[0]
+    not_infected_ixs = np.where(y_next_draw == 0)[0]
+    fitted_mf_clf_draw = SKLogit2()
+    fitted_mf_clf_draw.fit(env.X, y_next_draw, None, infected_ixs, not_infected_ixs)
+    yhat_mf_draw = None
+
+    yhat_mb_draws = np.vstack((yhat_mb_draws, yhat_mb_draw))
+    yhat_mf_draws = np.vstack((yhat_mf_draws, yhat_mf_draw))
+
+  # Compute variances and covariance
+  mb_var = np.mean(np.var(yhat_mb_draws.flatten(), axis=0))
+  mf_var = np.mean(np.var(yhat_mf_draws.flatten(), axis=0))
+  # mb_mf_cov = np.cov(np.array([np.mean(yhat_mb_draws.flatten(), axis=1), np.mean(yhat_mf_draws.flatten(),
+  #                                                                                axis=1)]))[0, 1]
+
+  # Compute bias
+  yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
+                                                 eta=mb_params) for data_block in env.X_raw])
+  yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                                   np.where(raw_data_block[:, 2] == 0),
+                                                                   params[len(mb_params):])
+                       for data_block, raw_data_block in zip(env.X, env.X_raw)])
+  mb_bias = np.mean(yhat_mb - np.hstack(env.y))
+  mf_bias = np.mean(yhat_mf - np.hstack(env.y))
+
+  # Get mixing weight
+  alpha_mf = mse_optimal_convex_combo(mf_bias, mb_bias, mf_var, mb_var, 0.0)
+  alpha_mb = 1 - alpha_mf
+
+  # We return yhat_mf and _mb to compute variance of higher-order backups
+  yhat_mb_draws = [yhat_mb_draw.reshape((env.T, env.L)) for yhat_mb_draw in yhat_mb_draws]
+  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf_draws, yhat_mb_draws, simulated_params
 
 # def estimate_mb_bias_and_variance(phat, env):
 #   """

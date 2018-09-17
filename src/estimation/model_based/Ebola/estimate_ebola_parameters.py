@@ -54,8 +54,17 @@ def negative_log_likelihood_wrapper(eta, A, Y, y_next, distance_matrix, product_
                                  adjacency_matrix, T, L)
 
 
-def fit_ebola_transition_model(env):
-  objective = partial(negative_log_likelihood_wrapper, A=env.A, Y=env.Y, y_next=np.array(env.y),
+def fit_ebola_transition_model(env, y_next=None):
+  """
+
+  :param env:
+  :param y_next: list of length-L binary vectors for infections after time t, or None;
+                 used to get parametric bootstrap estimate of ebola model sampling dbn.
+  :return:
+  """
+  if y_next is None:
+    y_next = np.array(env.y)
+  objective = partial(negative_log_likelihood_wrapper, A=env.A, Y=env.Y, y_next=y_next,
                       distance_matrix=env.DISTANCE_MATRIX, product_matrix=env.PRODUCT_MATRIX,
                       adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L)
 
