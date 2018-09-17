@@ -210,7 +210,7 @@ class Ebola(SpatialDisease):
     return x_l
 
   def psi(self, raw_data_block):
-    # (s, a, y) for location and (s, a, y, d) for its neighbors
+    # (s, a, y) for location and (s, a, y, d) for each of its neighbors
     number_of_features = int(3 + 4*self.MAX_NUMBER_OF_NEIGHBORS)
     X = np.zeros((0, number_of_features))
     for l in range(self.L):
