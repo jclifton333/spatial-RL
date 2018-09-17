@@ -47,17 +47,22 @@ def is_y_all_1_or_0(y):
     return True
 
 
+def empirical_bayes(y):
+  y0 = y[0]
+  n = len(y)
+  expit_mean_ = (1 + y0*n) / (2 + n)  # Smoothed estimate
+  mean_ = logit(expit_mean_)
+  return mean_
+
+
 def empirical_bayes_coef(y, p):
   """
-  For when y is all 1 or 0.
+  For when y is all 1 or 0 and you need a coefficient vector.
   :param y:
   :param p:
   :return:
   """
-  y0 = y[0]
-  n = len(y)
-  expit_intercept_ = (1 + y0*n) / (2 + n)  # Smoothed estimate
-  intercept_ = logit(expit_intercept_)
+  intercept_ = empirical_bayes(y)
   coef_ = np.zeros(p)
   return intercept_, coef_
 
@@ -151,19 +156,15 @@ class SKLogit2(object):
   def predict_proba(self, X, infected_locations, not_infected_locations):
     phat = np.zeros(X.shape[0])
     if len(infected_locations) > 0:
-      # Currently redundant, but we should keep these separate in case reg_inf.predict_proba is refactored to be
-      # nonlinear
       if self.inf_model_fitted:
         phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])[:, -1]
       else:
-        X_infected = np.column_stack((np.ones(len(infected_locations)), X[infected_locations]))
-        phat[infected_locations] = expit(np.dot(X_infected, self.inf_params))
+        phat[infected_locations] = empirical_bayes(y[infected_locations])
     if len(not_infected_locations) > 0:
       if self.not_inf_model_fitted:
         phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]
       else:
-        X_not_infected = np.column_stack((np.ones(len(not_infected_locations)), X[not_infected_locations]))
-        phat[not_infected_locations] = expit(np.dot(X_not_infected, self.not_inf_params))
+        phat[not_infected_locations] = empirical_bayes(y[not_infected_locations])
     return phat
 
   @staticmethod
