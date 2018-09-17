@@ -227,9 +227,9 @@ def one_step_ebola_convex_combo(env):
 
 
 def one_step_convex_combo(env):
-  if env.__name__ == 'SIS':
+  if env.__class__.__name__ == 'SIS':
     return one_step_sis_convex_combo(env)
-  elif env.__name__ == 'Ebola':
+  elif env.__class__.__name__ == 'Ebola':
     return one_step_ebola_convex_combo(env)
 
 # def estimate_mb_bias_and_variance(phat, env):

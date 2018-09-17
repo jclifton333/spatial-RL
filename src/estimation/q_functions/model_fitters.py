@@ -99,6 +99,8 @@ class SKLogit2(object):
     self.not_inf_model_fitted = False
     self.inf_params = None
     self.not_inf_params = None
+    self.inf_eb_prob = None
+    self.not_inf_eb_prob = None
 
   def log_lik_gradient(self, x, y_next, infected):
     dim = len(x)
@@ -138,6 +140,7 @@ class SKLogit2(object):
         if is_y_all_1_or_0(y[infected_locations]):
           inf_intercept_, inf_coef_ = empirical_bayes_coef(y[infected_locations], X.shape[1])
           inf_intercept_ = [inf_intercept_]
+          self.inf_eb_prob = expit(inf_intercept_[0])
         else:
           self.reg_inf.fit(X[infected_locations], y[infected_locations])
           # inf_intercept_, inf_coef_ = self.reg_inf.intercept_, self.reg_inf.coef_[0]
@@ -146,6 +149,7 @@ class SKLogit2(object):
         if is_y_all_1_or_0(y[not_infected_locations]):
           not_inf_intercept_, not_inf_coef_ = empirical_bayes_coef(y[not_infected_locations], X.shape[1])
           not_inf_intercept_ = [not_inf_intercept_]
+          self.not_inf_eb_prob = expit(not_inf_intercept_[0])
         else:
           self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations])
           # not_inf_intercept_, not_inf_coef_ = self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]
@@ -159,12 +163,12 @@ class SKLogit2(object):
       if self.inf_model_fitted:
         phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])[:, -1]
       else:
-        phat[infected_locations] = empirical_bayes(y[infected_locations])
+        phat[infected_locations] = self.inf_eb_prob
     if len(not_infected_locations) > 0:
       if self.not_inf_model_fitted:
         phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]
       else:
-        phat[not_infected_locations] = empirical_bayes(y[not_infected_locations])
+        phat[not_infected_locations] = self.not_inf_eb_prob
     return phat
 
   @staticmethod
