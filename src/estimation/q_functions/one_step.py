@@ -1,7 +1,9 @@
 import pdb
 import numpy as np
 from src.estimation.model_based.sis import estimate_sis_parameters
+from src.estimation.model_based.Ebola import estimate_ebola_parameters
 from src.environments.sis_infection_probs import sis_infection_probability
+from src.environments.ebola_infection_probs import ebola_infection_probs
 
 
 def compare_with_true_probs(env, predictor, raw):
@@ -45,7 +47,7 @@ def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_
 
 def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None):
   # Get model-based
-  eta = estimate_sis_parameters.fit_transition_model(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
+  eta = estimate_sis_parameters.fit_sis_transition_model(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
 
   def q_mb(data_block):
     infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,
@@ -55,7 +57,19 @@ def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None):
   return q_mb, eta
 
 
-def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None):
+def fit_one_step_ebola_mb_q(env, y_next=None):
+  # Get model-based
+  eta = estimate_ebola_parameters.fit_ebola_transition_model(env, y_next=y_next)
+
+  def q_mb(data_block):
+    infection_prob = ebola_infection_probs(data_block[:, 1], eta, data_block[:, 2], env.adjacency_list,
+                                           env.DISTANCE_MATRIX, env.SUSCEPTIBILITY, env.L)
+    return infection_prob
+
+  return q_mb, eta
+
+
+def fit_one_step_sis_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None):
   """
 
   :param env:
@@ -81,6 +95,32 @@ def fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=No
 
   return q_mb, q_mf, mb_params, clf
 
+
+def fit_one_step_ebola_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None):
+  """
+
+  :param env:
+  :param classifier:
+  :param bootstrap_weights:
+  :param y_next: If provided, fit to this rather than env.y.
+  :return:
+  """
+
+  # Get model-based
+  q_mb, mb_params = fit_one_step_sis_mb_q(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
+
+  # Get model-free
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next)
+
+  def q_mf(data_block, infected_locations, not_infected_locations):
+    return clf.predict_proba(data_block, infected_locations, not_infected_locations)
+
+  # print('mb loss')
+  # compare_with_true_probs(env, q_mb, raw=True)
+  # print('mf loss')
+  # compare_with_true_probs(env, q_mf, raw=False)
+
+  return q_mb, q_mf, mb_params, clf
 
 # def bootstrap_one_step_q_functions(env, classifier, B):
 #   """
