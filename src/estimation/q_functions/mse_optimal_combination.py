@@ -179,20 +179,22 @@ def one_step_ebola_convex_combo(env):
 
   for bootstrap_rep in range(NUM_BOOTSTRAP_SAMPLES):
     # Draw y's using parametric bootstrap
-    y_next_draw = [np.random.binomial(1, p=phat_for_parametric_bootstrap[phat_t])
-              for phat_t in phat_for_parametric_bootstrap]
+    y_next_draw = np.array([np.random.binomial(1, p=phat_for_parametric_bootstrap[phat_t])
+                            for phat_t in phat_for_parametric_bootstrap]).astype(float)
 
-    # Fit mb model to y_draw
+    # Fit mb model to y_draw and get yhat
     mb_param_draw = fit_ebola_transition_model(env, y_next_draw)
-    yhat_mb_draw = None
+    yhat_mb_draw = np.array([])
 
-    # Fit mf model to y_draw
-    y_next_draw = y_next_draw.ravel()
+    # Fit mf model to y_draw and get yhat
+    y_next_draw = y_next_draw.flatten()
     infected_ixs = np.where(y_next_draw == 1)[0]
     not_infected_ixs = np.where(y_next_draw == 0)[0]
     fitted_mf_clf_draw = SKLogit2()
     fitted_mf_clf_draw.fit(env.X, y_next_draw, None, infected_ixs, not_infected_ixs)
-    yhat_mf_draw = None
+    yhat_mf_draw = np.array([fitted_mf_clf_draw.predict_proba(data_block, np.where(raw_data_block[:, 2] == 1),
+                                                              np.where(raw_data_block[:, 2] == 0))
+                             for data_block, raw_data_block in zip(env.X, env.X_raw)]).flatten()
 
     yhat_mb_draws = np.vstack((yhat_mb_draws, yhat_mb_draw))
     yhat_mf_draws = np.vstack((yhat_mf_draws, yhat_mf_draw))

@@ -8,6 +8,7 @@ Created on Wed May 16 23:18:41 2018
 import numpy as np
 import copy
 from scipy.special import expit
+import src.environments.ebola_infection_probs as infection_probs
 from src.environments.SpatialDisease import SpatialDisease
 from src.environments.sis import SIS
 import pickle as pkl
@@ -141,11 +142,8 @@ class Ebola(SpatialDisease):
       if eta is None:
         transmission_prob = self.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
       else:
-        d_l_lprime = self.DISTANCE_MATRIX[l, l_prime]
-        s_l, s_lprime = self.SUSCEPTIBILITY[l], self.SUSCEPTIBILITY[l_prime]
-        log_grav_term = np.log(d_l_lprime) - np.exp(eta[2])*(np.log(s_l) + np.log(s_lprime))
-        baseline_logit = eta[0] - np.exp(eta[1] + log_grav_term)
-        transmission_prob = expit(baseline_logit + a[l]*eta[3] + a[l_prime]*a[4])
+        transmission_prob = infection_probs.transmission_prob(a, l, l_prime, eta, self.DISTANCE_MATRIX,
+                                                              self.SUSCEPTIBILITY)
       return transmission_prob
     else:
       return 0
