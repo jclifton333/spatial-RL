@@ -75,7 +75,9 @@ def one_step_sis_convex_combo(env):
 
   # We return yhat_mf and _mb to compute variance of higher-order backups
   yhat_mb_draws = [yhat_mb_draw.reshape((env.T, env.L)) for yhat_mb_draw in yhat_mb_draws]
-  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf_draws, yhat_mb_draws, simulated_params
+
+  return {'alpha_mb': alpha_mb, 'alpha_mf': alpha_mf, 'q_mb': q_mb, 'q_mf': q_mf, 'yhat_mf_draws': yhat_mf_draws,
+          'yhat_mb_draws': yhat_mb_draws, 'simulated_params': simulated_params}
 
 
 def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment_budget,
@@ -219,7 +221,16 @@ def one_step_ebola_convex_combo(env):
 
   # We return yhat_mf and _mb to compute variance of higher-order backups
   yhat_mb_draws = [yhat_mb_draw.reshape((env.T, env.L)) for yhat_mb_draw in yhat_mb_draws]
-  return alpha_mb, alpha_mf, q_mb, q_mf, yhat_mf_draws, yhat_mb_draws
+
+  return {'alpha_mb': alpha_mb, 'alpha_mf': alpha_mf, 'q_mb': q_mb, 'q_mf': q_mf, 'yhat_mf_draws': yhat_mf_draws,
+          'yhat_mb_draws': yhat_mb_draws}
+
+
+def one_step_convex_combo(env):
+  if env.__name__ == 'SIS':
+    return one_step_sis_convex_combo(env)
+  elif env.__name__ == 'Ebola':
+    return one_step_ebola_convex_combo(env)
 
 # def estimate_mb_bias_and_variance(phat, env):
 #   """

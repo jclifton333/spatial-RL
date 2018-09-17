@@ -143,10 +143,12 @@ def sis_model_based_one_step(**kwargs):
   return a, None
 
 
-def sis_one_step_mse_averaged(**kwargs):
+def one_step_mse_averaged(**kwargs):
   env = kwargs['env']
 
-  alpha_mb, alpha_mf, q_mb, q_mf, _, _, _ = mse_combo.one_step_sis_convex_combo(env)
+  res = mse_combo.one_step_convex_combo(env)
+
+  alpha_mb, alpha_mf, q_mb, q_mf = res['alpha_mb'], res['alpha_mf'], res['q_mb'], res['q_mf']
 
   # Get modified q_function
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \

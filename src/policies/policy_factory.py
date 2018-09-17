@@ -34,8 +34,8 @@ def policy_factory(policy_type):
     return roll.sis_one_step_stacked_q_policy
   elif policy_type == 'sis_one_step_be_averaged':
     return roll.sis_one_step_be_averaged_policy
-  elif policy_type == 'sis_one_step_mse_averaged':
-    return roll.sis_one_step_mse_averaged
+  elif policy_type == 'one_step_mse_averaged':
+    return roll.one_step_mse_averaged
   elif policy_type == 'sis_two_step_mse_averaged':
     return roll.sis_two_step_mse_averaged
   elif policy_type == 'sis_mb_fqi':
