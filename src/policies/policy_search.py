@@ -53,12 +53,11 @@ where G_E(x) is the projection of x onto the parameter space E (where eta lives)
 import numpy as np
 
 
-def R(s, a, eta):
+def R(s, eta):
   """
   Priority score function.
 
   :param s:
-  :param a:
   :param eta:
   :return:
   """
@@ -70,7 +69,6 @@ def update_eta(eta, alpha, zeta, z, y, y_tilde):
   second_term = z * np.dot(ones, y - y_tilde)
   new_eta = eta + alpha / (2 * zeta) * second_term
   return new_eta
-
 
 
 def U(priority_scores, m):
@@ -92,13 +90,43 @@ def decision_rule(s, priority_scores, treatment_budget, k):
   for j in range(1, k):
     w = d
     delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
-    priority_scores = R(s, w)
+    priority_scores = R(s, w, eta)
     d = U(priority_scores, delta_j) + w
 
 
-def stochastic_approximation(T, s, eta, f, g, tol):
-  pass
+def stochastic_approximation(T, s, a, eta, f, g, alpha, zeta, tol, maxiter, dimension, treatment_budget,
+                             k):
+  """
 
+  :param T:
+  :param s:
+  :param a:
+  :param eta:
+  :param f: Function to sample from conditional distribution of S.
+  :param g: Function to sample from conditional distribution of Y.
+  :param alpha:
+  :param zeta:
+  :param tol:
+  :param maxiter:
+  :param dimension:
+  :param treatment_budget:
+  :param k: number of locations to change during decision rule iterations
+  :return:
+  """
+  it = 0
+  while alpha > tol and it < maxiter:
+    z = np.random.random(size=dimension)
+    s_tpm = s
+    s_tpm_tilde = s
+    for m in range(T-1):
+      eta_plus = eta + zeta * z
+      priority_score_plus = R(s_tpm, eta_plus)
+      a_tpm = decision_rule(s_tpm, priority_score_plus, treatment_budget, k)
+      s_tpmp1 = g(s_tpm, a_tpm)
+      y_tpmm = f(s_tpm, a_tpm)
 
+      eta_minus = eta - zeta * z
+      priority_score_minus = R()
+      a_tpm_tilde = decision_rule(s_tpm_tilde, priority_score_minus, treatment_budget, k)
 
 
