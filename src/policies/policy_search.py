@@ -50,3 +50,55 @@ output eta_k
 
 where G_E(x) is the projection of x onto the parameter space E (where eta lives)
 """
+import numpy as np
+
+
+def R(s, a, eta):
+  """
+  Priority score function.
+
+  :param s:
+  :param a:
+  :param eta:
+  :return:
+  """
+  pass
+
+
+def update_eta(eta, alpha, zeta, z, y, y_tilde):
+  ones = np.ones(len(y))
+  second_term = z * np.dot(ones, y - y_tilde)
+  new_eta = eta + alpha / (2 * zeta) * second_term
+  return new_eta
+
+
+
+def U(priority_scores, m):
+  """
+
+  :param priority_scores: Corresponds to R above.
+  :param m: Integer >= 1.
+  :return:
+  """
+  priority_scores_mth_order_stat = np.arsgort(priority_scores)[m]  # ToDo: Optimize?
+  U = priority_scores >= priority_scores_mth_order_stat
+  return U
+
+
+def decision_rule(s, priority_scores, treatment_budget, k):
+  d = np.zeros(len(priority_scores))
+  floor_c_by_k = np.floor(treatment_budget / k)
+  d[np.argsort(-priority_scores)[:floor_c_by_k]] = 1
+  for j in range(1, k):
+    w = d
+    delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
+    priority_scores = R(s, w)
+    d = U(priority_scores, delta_j) + w
+
+
+def stochastic_approximation(T, s, eta, f, g, tol):
+  pass
+
+
+
+
