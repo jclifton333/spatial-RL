@@ -49,19 +49,27 @@ while alpha_k >= tol
 output eta_k
 
 where G_E(x) is the projection of x onto the parameter space E (where eta lives)
+
+ToDo: || eta || = 1, so need to project
 """
 import numpy as np
 
 
-def R(s, eta):
-  """
-  Priority score function.
+def features_for_priority_score(x):
+  # ToDo: PLACEHOLDER
+  return x
 
-  :param s:
+
+def R(x, eta):
+  """
+  Linear priority score function.
+
+  :param x:
   :param eta:
   :return:
   """
-  pass
+  priority_features = features_for_priority_score(x)
+  return np.dot(priority_features, eta)
 
 
 def update_eta(eta, alpha, zeta, z, y, y_tilde):
@@ -78,7 +86,7 @@ def U(priority_scores, m):
   :param m: Integer >= 1.
   :return:
   """
-  priority_scores_mth_order_stat = np.arsgort(priority_scores)[m]  # ToDo: Optimize?
+  priority_scores_mth_order_stat = np.argsort(priority_scores)[m]  # ToDo: Optimize?
   U = priority_scores >= priority_scores_mth_order_stat
   return U
 
@@ -92,15 +100,21 @@ def decision_rule(s, priority_scores, treatment_budget, k):
     delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
     priority_scores = R(s, w, eta)
     d = U(priority_scores, delta_j) + w
+  return d
 
 
-def stochastic_approximation(T, s, a, eta, f, g, alpha, zeta, tol, maxiter, dimension, treatment_budget,
-                             k):
+def update_alpha_and_zeta(alpha, zeta):
+  return alpha, zeta
+
+
+def stochastic_approximation(T, s, a, y, eta, f, g, alpha, zeta, tol, maxiter, dimension, treatment_budget,
+                             k, feature_function):
   """
 
   :param T:
   :param s:
   :param a:
+  :param y:
   :param eta:
   :param f: Function to sample from conditional distribution of S.
   :param g: Function to sample from conditional distribution of Y.
@@ -111,22 +125,84 @@ def stochastic_approximation(T, s, a, eta, f, g, alpha, zeta, tol, maxiter, dime
   :param dimension:
   :param treatment_budget:
   :param k: number of locations to change during decision rule iterations
+  :param feature_function:
   :return:
   """
   it = 0
   while alpha > tol and it < maxiter:
     z = np.random.random(size=dimension)
     s_tpm = s
+    y_tpm = y
+    x_tpm = feature_function(s_tpm, y_tpm)
+
     s_tpm_tilde = s
+    y_tpm_tilde = y
+    x_tpm_tilde = feature_function(s_tpm_tilde, y_tpm_tilde)
     for m in range(T-1):
       eta_plus = eta + zeta * z
-      priority_score_plus = R(s_tpm, eta_plus)
-      a_tpm = decision_rule(s_tpm, priority_score_plus, treatment_budget, k)
+      priority_score_plus = R(x_tpm, eta_plus)
+      a_tpm = decision_rule(x_tpm, priority_score_plus, treatment_budget, k)
       s_tpmp1 = g(s_tpm, a_tpm)
-      y_tpmm = f(s_tpm, a_tpm)
+      y_tpm = f(s_tpm, a_tpm)
+      x_tpm = feature_function(s_tpmp1, y_tpm)
 
       eta_minus = eta - zeta * z
-      priority_score_minus = R()
+      priority_score_minus = R(x_tpm_tilde, eta_minus)
       a_tpm_tilde = decision_rule(s_tpm_tilde, priority_score_minus, treatment_budget, k)
+      y_tpm_tilde = f(s_tpm_tilde, a_tpm_tilde)
+      s_tpmp1_tilde = g(s_tpm_tilde, a_tpm_tilde)
+      x_tpm_tilde = feature_function(s_tpmp1_tilde, y_tpm_tilde)
+
+    eta = update_eta(eta, alpha, zeta, z, y_tpm, y_tpm_tilde)
+    alpha, zeta = update_alpha_and_zeta(alpha, zeta)
+    it += 1
+
+  return eta
+
+
+"""
+Implementing priority score below. See pdf pg. 15.
+"""
+
+
+def psi(s, a, y, predict_infection_probs, lambda_, m_hat, data_depth):
+  """
+  Different from 'psi' for env-specific features!
+
+  :param s:
+  :param a:
+  :param y:
+  :param predict_infection_probs:
+  :param lambda_: LxL matrix
+  :param m_hat: corresponds to m_l,j in paper
+  :param data_depth: vector of [c^l] in paper
+  :return:
+  """
+  infected_locations = np.where(y == 1)
+  psi_1 = predict_infection_probs(s, a, y)
+
+  # Compute multiplier, not sure this is right
+  psi_1_inf = psi_1[infected_locations]
+  m_inf = m_hat(s, a)[infected_locations]
+  lambda_inf = lambda_[infected_locations]
+  multiplier = np.dot(lambda_, np.multiply(1 - psi_1_inf, m_inf, lambda_inf))
+
+  psi_2 = np.multiply(psi_1, multiplier)
+  psi_3 = np.multiply(psi_1, data_depth)
+
+  return psi_1, psi_2, psi_3
+
+
+def phi(s, a, y, lambda_, m_hat, psi_1, psi_2, data_depth):
+  not_infected_locations = np.where(y == 0)
+  lambda_not_inf = lambda_[not_infected_locations, not_infected_locations]
+  psi_1_not_inf = psi_1[not_infected_locations]
+  psi_2_not_inf = psi_2[not_infected_locations]
+
+  phi_1 = np.dot(lambda_not_inf, psi_1_not_inf)
+  phi_2 = None
+  phi_3 = None
+
+  return np.array([phi_1, phi_2, phi_3])
 
 
