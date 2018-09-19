@@ -49,15 +49,8 @@ while alpha_k >= tol
 output eta_k
 
 where G_E(x) is the projection of x onto the parameter space E (where eta lives)
-
-ToDo: || eta || = 1, so need to project
 """
 import numpy as np
-
-
-def features_for_priority_score(x):
-  # ToDo: PLACEHOLDER
-  return x
 
 
 def R(x, eta):
@@ -76,6 +69,8 @@ def update_eta(eta, alpha, zeta, z, y, y_tilde):
   ones = np.ones(len(y))
   second_term = z * np.dot(ones, y - y_tilde)
   new_eta = eta + alpha / (2 * zeta) * second_term
+  new_eta_norm = np.linalg.norm(new_eta)
+  new_eta /= new_eta_norm  # Project onto unit sphere.
   return new_eta
 
 
@@ -103,8 +98,19 @@ def decision_rule(s, priority_scores, treatment_budget, k):
   return d
 
 
-def update_alpha_and_zeta(alpha, zeta):
-  return alpha, zeta
+def update_alpha_and_zeta(alpha, zeta, j, tau=1, rho=1):
+  """
+
+  :param alpha:
+  :param zeta:
+  :param j:
+  :param tau: Tuning parameter chosen with double bootstrap (?)
+  :param rho: Tuning parameter chosen with double bootstrap (?)
+  :return:
+  """
+  new_alpha = np.power(tau / (rho + j), 1.25)
+  new_zeta = 100.0 / j
+  return new_alpha, new_zeta
 
 
 def stochastic_approximation(T, s, a, y, eta, f, g, alpha, zeta, tol, maxiter, dimension, treatment_budget,
@@ -154,7 +160,7 @@ def stochastic_approximation(T, s, a, y, eta, f, g, alpha, zeta, tol, maxiter, d
       x_tpm_tilde = feature_function(s_tpmp1_tilde, y_tpm_tilde)
 
     eta = update_eta(eta, alpha, zeta, z, y_tpm, y_tpm_tilde)
-    alpha, zeta = update_alpha_and_zeta(alpha, zeta)
+    alpha, zeta = update_alpha_and_zeta(alpha, zeta, j)
     it += 1
 
   return eta
@@ -165,44 +171,72 @@ Implementing priority score below. See pdf pg. 15.
 """
 
 
-def psi(s, a, y, predict_infection_probs, lambda_, m_hat, data_depth):
+def psi(infected_locations, predicted_infection_probs, lambda_, transmission_probabilities, data_depth):
   """
   Different from 'psi' for env-specific features!
 
-  :param s:
-  :param a:
-  :param y:
-  :param predict_infection_probs:
+  :param infected_locations:
+  :param predicted_infection_probs:
   :param lambda_: LxL matrix
-  :param m_hat: corresponds to m_l,j in paper
+  :param transmission_probabilities:
+  :param m_hat: LxL matrix of estimated transmission probabilities under estimated model
   :param data_depth: vector of [c^l] in paper
   :return:
   """
-  infected_locations = np.where(y == 1)
-  psi_1 = predict_infection_probs(s, a, y)
+  psi_1 = predicted_infection_probs
 
   # Compute multiplier, not sure this is right
   psi_1_inf = psi_1[infected_locations]
-  m_inf = m_hat(s, a)[infected_locations]
-  lambda_inf = lambda_[infected_locations]
-  multiplier = np.dot(lambda_, np.multiply(1 - psi_1_inf, m_inf, lambda_inf))
+  transmission_probabilities_inf = transmission_probabilities[:, infected_locations]
+  lambda_inf = lambda_[:, infected_locations]
+  transmission_probs_times_lambda_inf = np.multiply(transmission_probabilities_inf, lambda_inf)
+  multiplier = np.dot(transmission_probs_times_lambda_inf, 1 - psi_1_inf)
 
-  psi_2 = np.multiply(psi_1, multiplier)
+  psi_2 = np.multiply(psi_1_inf, multiplier)
   psi_3 = np.multiply(psi_1, data_depth)
 
   return psi_1, psi_2, psi_3
 
 
-def phi(s, a, y, lambda_, m_hat, psi_1, psi_2, data_depth):
-  not_infected_locations = np.where(y == 0)
-  lambda_not_inf = lambda_[not_infected_locations, not_infected_locations]
+def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth):
+  lambda_not_inf = lambda_[:, not_infected_locations]
+  transmission_probabilities_not_inf = transmission_probabilities[:, not_infected_locations]
+
   psi_1_not_inf = psi_1[not_infected_locations]
   psi_2_not_inf = psi_2[not_infected_locations]
+  data_depth_not_inf = data_depth[not_infected_locations]
 
   phi_1 = np.dot(lambda_not_inf, psi_1_not_inf)
-  phi_2 = None
-  phi_3 = None
+  phi_2 = np.dot(transmission_probabilities_not_inf, psi_2_not_inf)
+  phi_3 = np.dot(transmission_probabilities_not_inf, data_depth_not_inf)
 
   return np.array([phi_1, phi_2, phi_3])
+
+
+def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmission_prob_predictor, data_depth):
+  lambda_ = env.lambda_
+
+  # Get predicted probabilities
+  predicted_infection_probs = infection_probs_predictor(s, a, y)
+  transmission_probabilities = transmission_prob_predictor(s, a, y)
+
+  # Get infection status-specific features
+  infected_locations = np.where(y == 1)
+  not_infected_locations = np.where(y == 0)
+  psi_1, psi_2, psi_3 = psi(infected_locations, predicted_infection_probs, lambda_, transmission_probabilities,
+                            data_depth)
+  phi_ = phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth)
+
+  # Collect features
+  L = len(y)
+  priority_score_features = np.zeros((L, 3))
+  psi_inf = np.column_stack((psi_1, psi_2, psi_3))[infected_locations, :]
+  phi_inf = phi_[not_infected_locations, :]
+  priority_score_features[infected_locations, :] = psi_inf
+  priority_score_features[not_infected_locations, :] = phi_inf
+
+  return priority_score_features
+
+
 
 
