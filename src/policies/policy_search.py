@@ -53,15 +53,13 @@ where G_E(x) is the projection of x onto the parameter space E (where eta lives)
 import numpy as np
 
 
-def R(x, eta):
+def R(env, s, a, y, infection_probs_predictor, transmission_prob_predictor, data_depth, eta):
   """
   Linear priority score function.
 
-  :param x:
-  :param eta:
-  :return:
   """
-  priority_features = features_for_priority_score(x)
+  priority_features = features_for_priority_score(env, s, a, y, infection_probs_predictor, transmission_prob_predictor,
+                                                  data_depth)
   return np.dot(priority_features, eta)
 
 
@@ -113,13 +111,12 @@ def update_alpha_and_zeta(alpha, zeta, j, tau=1, rho=1):
   return new_alpha, new_zeta
 
 
-def stochastic_approximation(T, s, a, y, eta, f, g, alpha, zeta, tol, maxiter, dimension, treatment_budget,
+def stochastic_approximation(T, s, y, eta, f, g, alpha, zeta, tol, maxiter, dimension, treatment_budget,
                              k, feature_function):
   """
 
   :param T:
   :param s:
-  :param a:
   :param y:
   :param eta:
   :param f: Function to sample from conditional distribution of S.
@@ -128,7 +125,7 @@ def stochastic_approximation(T, s, a, y, eta, f, g, alpha, zeta, tol, maxiter, d
   :param zeta:
   :param tol:
   :param maxiter:
-  :param dimension:
+  :param dimension: dimension of policy parameter
   :param treatment_budget:
   :param k: number of locations to change during decision rule iterations
   :param feature_function:
@@ -178,8 +175,8 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
   :param infected_locations:
   :param predicted_infection_probs:
   :param lambda_: LxL matrix
-  :param transmission_probabilities:
-  :param m_hat: LxL matrix of estimated transmission probabilities under estimated model
+  :param transmission_proba  :param m_hat: LxL matrix of estimated transmission probabilities under estimated modelbilities:
+
   :param data_depth: vector of [c^l] in paper
   :return:
   """
@@ -238,5 +235,48 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
   return priority_score_features
 
 
+def policy_search(env, time_horizon, beta_post_mean, beta_post_var,
+                  initial_policy_parameter, initial_alpha, initial_zeta, infection_probs_predictor,
+                  transmission_probs_predictor, treatment_budget, tol=1e-3, maxiter=100,
+                  feature_function=lambda x: x, k=5):
+  """
+  Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
+  as in QL draft and the rest of this source code
+
+  :param infection_probs_predictor:
+  :param transmission_probs_predictor:
+  :param feature_function:
+  :param maxiter:
+  :param tol:
+  :param initial_zeta:
+  :param initial_alpha:
+  :param env:
+  :param time_horizon:
+  :param beta_post_mean: mean of (normal) confidence dbn for gen model parameters
+  :param beta_post_var: var of (normal) confidence dbn for gen model parameters
+  :param initial_policy_parameter:
+  :param k: number of locations to change during decision rule iterations
+  :return:
+  """
+
+  dimension = len(initial_policy_parameter)
+  beta_tilde = np.random.multivariate_normal(beta_post_mean, beta_post_var)
+
+  # Get policy parameter using stochastic approximation
+  policy_parameter = stochastic_approximation(time_horizon, env.current_state, env.current_infections,
+                                              initial_policy_parameter, f, g, initial_alpha, initial_zeta, tol, maxiter,
+                                              dimension, treatment_budget, k, feature_function)
+
+  # Get priority function features
+  # ToDo: transmission_probabilities = get_transmission_probabilities_from_estimated_model()
+  infected_locations = np.where(env.current_infections == 1)
+  predicted_infection_probs = infection_probs_predictor(env, beta_tilde)
+  transmission_probabilities = transmission_probs_predictor(env, beta_tilde)
+  features = psi(infected_locations, predicted_infection_probs, env.lambda_, transmission_probabilities, data_depth)
+
+  priority_scores = np.dot(features, policy_parameter)
+  a = np.argmax(priority_scores)
+
+  return a
 
 

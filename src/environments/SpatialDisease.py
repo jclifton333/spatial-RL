@@ -6,6 +6,7 @@ Created on Thu May 17 20:58:36 2018
 """
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import networkx as nx
 import pdb
 
 # Create ABC base class compatible with Python 2.7 and 3.x
@@ -30,6 +31,29 @@ class SpatialDisease(ABC):
     self.adjacency_list = np.array([np.array([l_prime for l_prime in range(self.L)
                                               if self.adjacency_matrix[l, l_prime] == 1])
                                    for l in range(self.L)])
+    # ToDo: implement!
+    pairwise_distance_dictionary = nx.all_pairs_shortest_path_length(nx.from_numpy_matrix(self.adjacency_matrix))
+    self.pairwise_distances = np.zeros((self.L, self.L))  # Entries are omega's in Nick's WNS paper
+    for source_index, targets in pairwise_distance_dictionary.items():
+      for target_index, length in targets.items():
+        self.pairwise_distances[source_index, target_index] = length
+        self.pairwise_distances[target_index, source_index] = length
+
+    lambda_parameter = None  # the constant λ is chosen so that 80% of the total weight is placed on the log.L
+                             # nearest neighbours of location l.
+
+    self.lambda_ = np.zeros((self.L, self.L))
+    for l in range(self.L):
+      exp_lambda_omega = np.array([np.exp(lambda_parameter * self.pairwise_distances[l, j]) for j in range(self.L)])
+      exp_lambda_omega_sum = np.sum(exp_lambda_omega)
+      for j in range(self.L):
+        lambda_l_j_numerator = exp_lambda_omega[j]
+        lambda_l_j_denominator = exp_lambda_omega_sum - lambda_l_j_numerator
+        self.lambda_[l, j] = lambda_l_j_numerator / lambda_l_j_denominator
+
+
+
+
     self.num_neighbors = [len(neighbors) for neighbors in self.adjacency_list]
     self.num_neighbors_rep = [self.num_neighbors]
     self.neighbor_interaction_lists = [np.array([[i,j] for i in self.adjacency_list[l] for j in self.adjacency_list[l]])
