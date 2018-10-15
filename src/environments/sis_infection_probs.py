@@ -50,6 +50,25 @@ def q_l(a, a_times_indicator, eta, omega):
   return q
 
 
+def sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix):
+  """
+  p_llprime when omega=0
+
+  :param a:
+  :param l:
+  :param lprime:
+  :param eta:
+  :param adjacency_matrix:
+  :return:
+  """
+  if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
+    logit_p_llprime = eta[2] + eta[3]*a[l] + eta[4]*a[lprime]
+    p_llprime = expit(logit_p_llprime)
+  else:
+    p_llprime = 0.0
+  return p_llprime
+
+
 @jit
 def one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists, omega):
   """

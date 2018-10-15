@@ -243,6 +243,7 @@ def policy_search(env, time_horizon, beta_post_mean, beta_post_var,
   Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
   as in QL draft and the rest of this source code
 
+  :param treatment_budget:
   :param infection_probs_predictor:
   :param transmission_probs_predictor:
   :param feature_function:
@@ -269,10 +270,19 @@ def policy_search(env, time_horizon, beta_post_mean, beta_post_var,
 
   # Get priority function features
   # ToDo: transmission_probabilities = get_transmission_probabilities_from_estimated_model()
+  transmission_probabilities = np.zeros((env.L, env.L))
+  a_for_transmission_probs = np.zeros(env.L)  # ToDo: Check which action is used to get transmission probs
+
+  # ToDo: distinguish between env.pairwise_distances and Ebola.DISTANCE_MATRIX !
+  for l in range(env.L):
+    for lprime in range(env.L):
+      transmission_probabilities[l, lprime] = transmission_probs_predictor(a_for_transmission_probs, l, lprime,
+                                                                           beta_tilde, env.DISTANCE_MATRIX)
+
   infected_locations = np.where(env.current_infections == 1)
   predicted_infection_probs = infection_probs_predictor(env, beta_tilde)
   transmission_probabilities = transmission_probs_predictor(env, beta_tilde)
-  features = psi(infected_locations, predicted_infection_probs, env.lambda_, transmission_probabilities, data_depth)
+  features = psi(infected_locations, predicted_infection_probs, env.lambda_, transmission_probabilities, env.data_depth)
 
   priority_scores = np.dot(features, policy_parameter)
   a = np.argmax(priority_scores)
