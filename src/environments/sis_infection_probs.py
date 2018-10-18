@@ -69,6 +69,14 @@ def sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix):
   return p_llprime
 
 
+def get_all_sis_transmission_probs_omega0(a, eta, L, adjacency_matrix):
+  transmission_probs_matrix = np.zeros((L, L))
+  for l in range(L):
+    for lprime in range(L):
+      transmission_probs_matrix[l, lprime] = sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix)
+  return transmission_probs_matrix
+
+
 @jit
 def one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists, omega):
   """

@@ -33,15 +33,15 @@ class SpatialDisease(ABC):
                                    for l in range(self.L)])
 
     network_as_nx_object = nx.from_numpy_matrix(self.adjacency_matrix)
-    pairwise_distance_dictionary = nx.all_pairs_shortest_path_length(network_as_nx_object)
+    pairwise_distance_dictionary = dict(nx.all_pairs_shortest_path_length(network_as_nx_object))
     self.pairwise_distances = np.zeros((self.L, self.L))  # Entries are omega's in Nick's WNS paper
     for source_index, targets in pairwise_distance_dictionary.items():
       for target_index, length in targets.items():
         self.pairwise_distances[source_index, target_index] = length
         self.pairwise_distances[target_index, source_index] = length
 
-    # ToDo: Implement!
-    lambda_parameter = None  # the constant λ is chosen so that 80% of the total weight is placed on the log.L
+    # ToDo: Replace placeholder!
+    lambda_parameter = 1     # the constant λ is chosen so that 80% of the total weight is placed on the log.L
                              # nearest neighbours of location l.
 
     self.lambda_ = np.zeros((self.L, self.L))
@@ -53,8 +53,8 @@ class SpatialDisease(ABC):
         lambda_l_j_denominator = exp_lambda_omega_sum - lambda_l_j_numerator
         self.lambda_[l, j] = lambda_l_j_numerator / lambda_l_j_denominator
 
-    data_depth_dictionary = nx.subgraph_centrality(network_as_nx_object)
-    self.data_depth = np.zeros(env.L)
+    data_depth_dictionary = nx.algorithms.centrality.subgraph_centrality(network_as_nx_object)
+    self.data_depth = np.zeros(self.L)
     for node_ix, subgraph_centrality in data_depth_dictionary.items():
       self.data_depth[node_ix] = subgraph_centrality
 
