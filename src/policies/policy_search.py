@@ -50,16 +50,17 @@ output eta_k
 
 where G_E(x) is the projection of x onto the parameter space E (where eta lives)
 """
+import pdb
 import numpy as np
 
 
-def R(env, s, a, y, infection_probs_predictor, transmission_prob_predictor, data_depth, eta):
+def R(env, s, a, y, infection_probs_predictor, transmission_prob_predictor, data_depth, eta, beta):
   """
   Linear priority score function.
 
   """
   priority_features = features_for_priority_score(env, s, a, y, infection_probs_predictor, transmission_prob_predictor,
-                                                  data_depth)
+                                                  data_depth, beta)
   return np.dot(priority_features, eta)
 
 
@@ -84,10 +85,11 @@ def U(priority_scores, m):
   return U
 
 
-def decision_rule(s, priority_scores, treatment_budget, k):
+def decision_rule(env, s, a, y, infection_probs_predictor, transmission_probs_predictor, eta, beta, k):
+
   d = np.zeros(len(priority_scores))
-  floor_c_by_k = np.floor(treatment_budget / k)
-  d[np.argsort(-priority_scores)[:floor_c_by_k]] = 1
+  floor_c_by_k = int(np.floor(treatment_budget / k))
+  d[np.argsort(-priority_scores)][:floor_c_by_k] = 1
   for j in range(1, k):
     w = d
     delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
@@ -142,29 +144,35 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     z = np.random.random(size=dimension)
     s_tpm = s
     y_tpm = y
-    # x_tmp = feature_function(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor,
-    #                          data_depth)
+    x_tpm = feature_function(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor,
+                             data_depth, beta)
 
     s_tpm_tilde = s
     y_tpm_tilde = y
     x_tpm_tilde = feature_function(env, s_tpm_tilde, a_dummy, y_tpm_tilde, infection_probs_predictor,
                                    transmission_prob_predictor, data_depth, beta)
 
+    s_tpmp1 = s_tpm
     for m in range(T-1):
       eta_plus = eta + zeta * z
-      priority_score_plus = R(x_tpm, eta_plus)
+      priority_score_plus = R(env, s_tpmp1, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor,
+                              data_depth, eta_plus, beta)
       a_tpm = decision_rule(x_tpm, priority_score_plus, treatment_budget, k)
       s_tpmp1 = g(s_tpm, a_tpm)
       y_tpm = f(s_tpm, a_tpm)
       x_tpm = feature_function(env, s_tpmp1, a_dummy, y_tpm, infection_probs_predictor,
                                transmission_prob_predictor, data_depth, beta)
       eta_minus = eta - zeta * z
-      priority_score_minus = R(x_tpm_tilde, eta_minus)
+      priority_score_minus = R(env, s_tpmp1, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor,
+                               data_depth, eta_minus, beta)
       a_tpm_tilde = decision_rule(s_tpm_tilde, priority_score_minus, treatment_budget, k)
       y_tpm_tilde = f(s_tpm_tilde, a_tpm_tilde)
       s_tpmp1_tilde = g(s_tpm_tilde, a_tpm_tilde)
       x_tpm_tilde = feature_function(env, s_tpmp1_tilde, a_dummy, y_tpm_tilde, infection_probs_predictor,
                                      transmission_prob_predictor, data_depth, beta)
+
+      s_tpm = s_tpmp1
+      s_tpm_tilde = s_tpmp1_tilde
     eta = update_eta(eta, alpha, zeta, z, y_tpm, y_tpm_tilde)
     alpha, zeta = update_alpha_and_zeta(alpha, zeta, j)
     it += 1
@@ -193,31 +201,31 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
   psi_1 = predicted_infection_probs
 
   # Compute multiplier, not sure this is right
-  psi_1_inf = psi_1[infected_locations]
-  transmission_probabilities_inf = transmission_probabilities[:, infected_locations]
-  lambda_inf = lambda_[:, infected_locations]
+  transmission_probabilities_inf = transmission_probabilities[:, infected_locations[0]]
+  lambda_inf = lambda_[:, infected_locations[0]]
   transmission_probs_times_lambda_inf = np.multiply(transmission_probabilities_inf, lambda_inf)
-  multiplier = np.dot(transmission_probs_times_lambda_inf, 1 - psi_1_inf)
+  multiplier = np.dot(transmission_probs_times_lambda_inf, 1 - predicted_infection_probs[infected_locations])
 
-  psi_2 = np.multiply(psi_1_inf, multiplier)
+  psi_2 = np.multiply(psi_1, multiplier)
   psi_3 = np.multiply(psi_1, data_depth)
-
   return psi_1, psi_2, psi_3
 
 
-def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth):
-  lambda_not_inf = lambda_[:, not_infected_locations]
-  transmission_probabilities_not_inf = transmission_probabilities[:, not_infected_locations]
+def phi(infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth):
+  lambda_inf = lambda_[:, infected_locations]
+  transmission_probabilities_inf = transmission_probabilities[:, infected_locations]
 
-  psi_1_not_inf = psi_1[not_infected_locations]
-  psi_2_not_inf = psi_2[not_infected_locations]
-  data_depth_not_inf = data_depth[not_infected_locations]
+  psi_1_inf = psi_1[infected_locations]
+  psi_2_inf = psi_2[infected_locations]
+  data_depth_inf = data_depth[infected_locations]
 
-  phi_1 = np.dot(lambda_not_inf, psi_1_not_inf)
-  phi_2 = np.dot(transmission_probabilities_not_inf, psi_2_not_inf)
-  phi_3 = np.dot(transmission_probabilities_not_inf, data_depth_not_inf)
+  phi_1 = np.dot(lambda_inf, psi_1_inf)
+  phi_2 = np.dot(transmission_probabilities_inf, psi_2_inf)
+  phi_3 = np.dot(transmission_probabilities_inf, data_depth_inf)
 
-  return np.array([phi_1, phi_2, phi_3])
+  phi = np.column_stack((phi_1, phi_2, phi_3))
+
+  return phi
 
 
 def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmission_prob_predictor, data_depth, beta):
@@ -225,14 +233,14 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
 
   # Get predicted probabilities
   predicted_infection_probs = infection_probs_predictor(a, s, y, beta, 0.0, env.L, env.adjacency_list)
-  transmission_probabilities = transmission_prob_predictor(s, a, y)
+  transmission_probabilities = transmission_prob_predictor(a, beta, env.L, env.adjacency_matrix)
 
   # Get infection status-specific features
   infected_locations = np.where(y == 1)
   not_infected_locations = np.where(y == 0)
   psi_1, psi_2, psi_3 = psi(infected_locations, predicted_infection_probs, lambda_, transmission_probabilities,
                             data_depth)
-  phi_ = phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth)
+  phi_ = phi(infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth)
 
   # Collect features
   priority_score_features = np.zeros((env.L, 3))
@@ -246,13 +254,12 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
 
 def policy_search(env, time_horizon, beta_post_mean, beta_post_var,
                   initial_policy_parameter, initial_alpha, initial_zeta, infection_probs_predictor,
-                  transmission_probs_predictor, treatment_budget, data_depth=1, tol=1e-3, maxiter=100,
+                  transmission_probs_predictor, treatment_budget, tol=1e-3, maxiter=100,
                   feature_function=features_for_priority_score, k=5):
   """
   Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
   as in QL draft and the rest of this source code
 
-  :param data_depth:
   :param treatment_budget:
   :param infection_probs_predictor:
   :param transmission_probs_predictor:
@@ -273,12 +280,12 @@ def policy_search(env, time_horizon, beta_post_mean, beta_post_var,
   dimension = len(initial_policy_parameter)
   beta_tilde = np.random.multivariate_normal(beta_post_mean, beta_post_var)
 
-  policy_parameter = stochastic_approximation(time_horizon, env.current_state, env.current_infected,
+  policy_parameter = stochastic_approximation(time_horizon, env.current_state, env.current_infected, beta_tilde,
                                               initial_policy_parameter, infection_probs_predictor,
                                               transmission_probs_predictor, initial_alpha, initial_zeta, tol, maxiter,
                                               dimension, treatment_budget, k, feature_function, env,
                                               infection_probs_predictor, transmission_probs_predictor,
-                                              data_depth, beta_tilde)
+                                              env.data_depth)
 
   # Get priority function features
   a_for_transmission_probs = np.zeros(env.L)  # ToDo: Check which action is used to get transmission probs
