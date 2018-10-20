@@ -50,9 +50,18 @@ output eta_k
 
 where G_E(x) is the projection of x onto the parameter space E (where eta lives)
 """
+import sys
+import os
+this_dir = os.path.dirname(os.path.abspath(__file__))
+pkg_dir = os.path.join(this_dir, '..', '..')
+sys.path.append(pkg_dir)
+
 import pdb
 import numpy as np
 import copy
+
+import src.environments.sis_infection_probs as sis_inf_probs
+from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
 
 
 def R(env, s, a, y, infection_probs_predictor, transmission_prob_predictor, data_depth, eta, beta):
@@ -272,7 +281,7 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
   return priority_score_features
 
 
-def policy_search(env, time_horizon, beta_post_mean, beta_post_var,
+def policy_search(env, time_horizon, gen_model_posterior,
                   initial_policy_parameter, initial_alpha, initial_zeta, infection_probs_predictor,
                   transmission_probs_predictor, treatment_budget, tol=1e-3, maxiter=100,
                   feature_function=features_for_priority_score, k=5):
@@ -290,15 +299,14 @@ def policy_search(env, time_horizon, beta_post_mean, beta_post_var,
   :param initial_alpha:
   :param env:
   :param time_horizon:
-  :param beta_post_mean: mean of (normal) confidence dbn for gen model parameters
-  :param beta_post_var: var of (normal) confidence dbn for gen model parameters
+  :param gen_model_posterior: function that returns draws from conf dbn over gen model parameter
   :param initial_policy_parameter:
   :param k: number of locations to change during decision rule iterations
   :return:
   """
 
   dimension = len(initial_policy_parameter)
-  beta_tilde = np.random.multivariate_normal(beta_post_mean, beta_post_var)
+  beta_tilde = gen_model_posterior()
 
   policy_parameter = stochastic_approximation(time_horizon, env.current_state, env.current_infected, beta_tilde,
                                               initial_policy_parameter, infection_probs_predictor,
@@ -327,3 +335,25 @@ def policy_search(env, time_horizon, beta_post_mean, beta_post_var,
   return a
 
 
+def policy_search_policy(**kwargs):
+  # ToDo: Currently specific to SIS!
+
+  env, T, treatment_budget, gen_model_posterior =\
+    kwargs['env'], kwargs['T'], kwargs['treatment_budget'], kwargs['gen_model_posterior']
+
+  beta_mean = fit_infection_prob_model(env, None)
+  beta_cov = env.mb_covariance(beta_mean)
+
+  def gen_model_posterior():
+    beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
+    return beta_tilde
+
+  # Settings
+  initial_policy_parameter = np.zeros(3)
+  initial_alpha = initial_zeta = 1.0
+
+  a = policy_search(env, T, gen_model_posterior,
+                    initial_policy_parameter, initial_alpha, initial_zeta, sis_inf_probs.sis_infection_probability,
+                    sis_inf_probs.get_all_sis_transmission_probs_omega0, treatment_budget, tol=1e-3, maxiter=100,
+                    feature_function=features_for_priority_score, k=5)
+  return a

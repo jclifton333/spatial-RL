@@ -358,6 +358,57 @@ class SIS(SpatialDisease):
     new_raw_data_block[:, 1] = action
     return new_raw_data_block
 
+  def mb_covariance(self, mb_params):
+    """
+    Compute covariance of mb estimator, assuming omega=0.
+
+    :param mb_params:
+    :return:
+    """
+    dim = len(mb_params)
+    grad_outer = np.zeros((dim, dim))
+    hess = np.zeros((dim, dim))
+
+    for t in range(self.T):
+      data_block, raw_data_block = self.X[t], self.X_raw[t]
+      a, y = raw_data_block[:, 1], raw_data_block[:, 2]
+      for l in range(self.L):
+        x_raw, x, y_next = raw_data_block[l, :], data_block[l, :], self.y[t][l]
+
+        # MB gradient
+        if raw_data_block[l, 2]:
+          # Compute gradient of  recovery model
+          recovery_features = np.concatenate(([1.0], [a[l]]))
+          mb_grad = gradient.logit_gradient(recovery_features, y_next, mb_params[-2:])
+          mb_grad = np.concatenate((np.zeros(mb_dim - 2), mb_grad))
+          mb_hess = gradient.logit_hessian(recovery_features, mb_params[-2:])
+          mb_hess = block_diag(np.zeros((dim - 2, dim - 2)), mb_hess)
+
+        else:
+          # Compute gradient of infection model
+          num_treated_and_infected_neighbors, num_untreated_and_infected_neighbors = \
+            self.neighbor_infection_and_treatment_status(l, a, y)
+
+          def mb_log_lik_at_x(mb_params_infect):
+            lik = mb_log_lik_single(mb_params_infect, x_raw, y_next, num_treated_and_infected_neighbors,
+                                    num_untreated_and_infected_neighbors)
+            return lik
+
+          mb_grad = gradient.central_diff_grad(mb_log_lik_at_x, mb_params[:5])
+          mb_grad = np.concatenate((mb_grad, np.zeros(2)))
+          mb_hess = gradient.central_diff_hess(mb_log_lik_at_x, mb_params[:5])
+          mb_hess = block_diag(mb_hess, np.zeros((2, 2)))
+
+        # Get gradient and hess for stacked (MB, MF) estimating equation
+        grad_outer_lt = np.outer(mb_grad, mb_grad)
+
+        grad_outer += grad_outer_lt
+        hess += mb_hess
+
+    hess_inv = np.linalg.inv(hess + 0.1 * np.eye(dim))
+    cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
+    return cov
+
   def joint_mf_and_mb_covariance(self, mb_params, fitted_mf_clf):
     """
     Compute covariance of mf and mb estimators, where mb_params are maximum likelihood estimate of sis model with
