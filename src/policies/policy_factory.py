@@ -1,5 +1,6 @@
 import src.policies.reference_policies as ref
 import src.policies.q_function_policies as roll
+import src.policies.policy_search as ps
 
 
 def policy_factory(policy_type):
@@ -44,5 +45,7 @@ def policy_factory(policy_type):
     return roll.ebola_model_based_one_step
   elif policy_type == 'ebola_model_based_myopic':
     return roll.ebola_model_based_myopic
+  elif policy_type == 'policy_search':
+    return ps.policy_search_policy
   else:
     raise ValueError('Argument does not match any policy.')

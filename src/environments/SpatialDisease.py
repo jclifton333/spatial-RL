@@ -40,19 +40,6 @@ class SpatialDisease(ABC):
         self.pairwise_distances[source_index, target_index] = length
         self.pairwise_distances[target_index, source_index] = length
 
-    # ToDo: Replace placeholder!
-    lambda_parameter = 1     # the constant λ is chosen so that 80% of the total weight is placed on the log.L
-                             # nearest neighbours of location l.
-
-    self.lambda_ = np.zeros((self.L, self.L))
-    for l in range(self.L):
-      exp_lambda_omega = np.array([np.exp(lambda_parameter * self.pairwise_distances[l, j]) for j in range(self.L)])
-      exp_lambda_omega_sum = np.sum(exp_lambda_omega)
-      for j in range(self.L):
-        lambda_l_j_numerator = exp_lambda_omega[j]
-        lambda_l_j_denominator = exp_lambda_omega_sum - lambda_l_j_numerator
-        self.lambda_[l, j] = lambda_l_j_numerator / lambda_l_j_denominator
-
     data_depth_dictionary = nx.algorithms.centrality.subgraph_centrality(network_as_nx_object)
     self.data_depth = np.zeros(self.L)
     for node_ix, subgraph_centrality in data_depth_dictionary.items():

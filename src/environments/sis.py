@@ -97,6 +97,7 @@ class SIS(SpatialDisease):
       self.adjacency_matrix = generate_network(L)
     else:
       self.adjacency_matrix = adjacency_matrix
+    self.lambda_ = self.adjacency_matrix
     SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections)
 
     if initial_state is None:
@@ -380,7 +381,7 @@ class SIS(SpatialDisease):
           # Compute gradient of  recovery model
           recovery_features = np.concatenate(([1.0], [a[l]]))
           mb_grad = gradient.logit_gradient(recovery_features, y_next, mb_params[-2:])
-          mb_grad = np.concatenate((np.zeros(mb_dim - 2), mb_grad))
+          mb_grad = np.concatenate((np.zeros(dim - 2), mb_grad))
           mb_hess = gradient.logit_hessian(recovery_features, mb_params[-2:])
           mb_hess = block_diag(np.zeros((dim - 2, dim - 2)), mb_hess)
 
