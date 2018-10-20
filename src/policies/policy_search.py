@@ -110,7 +110,7 @@ def decision_rule(env, s, a, y, infection_probs_predictor, transmission_probs_pr
   return d
 
 
-def update_alpha_and_zeta(alpha, zeta, j, tau=1, rho=1):
+def update_alpha_and_zeta(alpha, zeta, j, rho, tau):
   """
 
   :param alpha:
@@ -125,36 +125,13 @@ def update_alpha_and_zeta(alpha, zeta, j, tau=1, rho=1):
   return new_alpha, new_zeta
 
 
-def tune_stochastic_approximation(s, gen_model_posterior, infection_probs_predictor):
-  # See supplementary materials of RSS paper (ctrl + f ''tuning procedure'')
-  B = 100
-  T = 15  # Different T from time horizon!  Trying to be consistent with supplementary materials.
-  RHO_GRID = np.linspace(0.1, 5, num=10)  # ToDo: How to choose these?
-  TAU_GRID = np.linspace(0.1, 5, num=10)
-  DELTA = [(rho, tau) for rho in RHO_GRID for tau in TAU_GRID]
-
-  qhat_deltas = []
-  for rho, tau in DELTA:
-    qhat_delta = 0.0
-    for b in range(B):
-      beta_tilde = gen_model_posterior()
-      # Initialize state and history
-      s_b = s
-      h_b = s_b
-      for r in range(T):
-        # ToDo: finish implementing
-        pass
-
-  best_qhat_ix = np.argmax(qhat_deltas)
-  best_params = DELTA[best_qhat_ix]
-  return best_params
-
-
 def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter, dimension, treatment_budget,
                              k, feature_function, env, infection_probs_predictor, transmission_prob_predictor,
-                             data_depth):
+                             data_depth, rho, tau):
   """
 
+  :param tau: stepsize hyperparameters
+  :param rho: stepsize hyperparameters
   :param data_depth:
   :param transmission_prob_predictor:
   :param infection_probs_predictor:
@@ -226,7 +203,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     new_eta = update_eta(eta, alpha, zeta, z, y_tpm, y_tpm_tilde)
     diff = np.linalg.norm(eta - new_eta) / np.max((0.001, np.linalg.norm(eta)))
     eta = copy.copy(new_eta)
-    alpha, zeta = update_alpha_and_zeta(alpha, zeta, it)
+    alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
     it += 1
     # print('it: {}\nalpha: {}\nzeta: {}\neta: {}'.format(it, alpha, zeta, eta))
 
@@ -308,12 +285,14 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
 
 def policy_search(env, time_horizon, gen_model_posterior,
                   initial_policy_parameter, initial_alpha, initial_zeta, infection_probs_predictor,
-                  transmission_probs_predictor, treatment_budget, tol=1e-3, maxiter=100,
+                  transmission_probs_predictor, treatment_budget, rho, tau, tol=1e-3, maxiter=100,
                   feature_function=features_for_priority_score, k=5):
   """
   Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
   as in QL draft and the rest of this source code
 
+  :param tau: SA stepsize hyperparameter
+  :param rho: SA stepsize hyperparameter
   :param treatment_budget:
   :param infection_probs_predictor:
   :param transmission_probs_predictor:
@@ -338,7 +317,7 @@ def policy_search(env, time_horizon, gen_model_posterior,
                                               transmission_probs_predictor, initial_alpha, initial_zeta, tol, maxiter,
                                               dimension, treatment_budget, k, feature_function, env,
                                               infection_probs_predictor, transmission_probs_predictor,
-                                              env.data_depth)
+                                              env.data_depth, rho, tau)
 
   # Get priority function features
   a_for_transmission_probs = np.zeros(env.L)  # ToDo: Check which action is used to get transmission probs
@@ -364,7 +343,8 @@ def policy_search(env, time_horizon, gen_model_posterior,
 def policy_search_policy(**kwargs):
   # ToDo: Currently specific to SIS!
 
-  env, T, treatment_budget = kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget']
+  env, T, treatment_budget, rho, tau = kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget'], \
+                                       kwargs['rho'], kwargs['tau']
 
   beta_mean = fit_infection_prob_model(env, None)
   beta_cov = env.mb_covariance(beta_mean)
@@ -379,6 +359,6 @@ def policy_search_policy(**kwargs):
 
   a = policy_search(env, T, gen_model_posterior,
                     initial_policy_parameter, initial_alpha, initial_zeta, sis_inf_probs.sis_infection_probability,
-                    sis_inf_probs.get_all_sis_transmission_probs_omega0, treatment_budget, tol=1e-3, maxiter=100,
-                    feature_function=features_for_priority_score, k=5)
+                    sis_inf_probs.get_all_sis_transmission_probs_omega0, treatment_budget, rho, tau, tol=1e-3,
+                    maxiter=100, feature_function=features_for_priority_score, k=5)
   return a, None
