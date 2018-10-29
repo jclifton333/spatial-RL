@@ -205,6 +205,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     eta = copy.copy(new_eta)
     alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
     it += 1
+    pdb.set_trace()
     # print('it: {}\nalpha: {}\nzeta: {}\neta: {}'.format(it, alpha, zeta, eta))
 
   return eta
@@ -276,10 +277,9 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
   # Collect features
   priority_score_features = np.zeros((env.L, 3))
   psi_not_inf = np.column_stack((psi_1, psi_2, psi_3))[not_infected_locations, :]
-  phi_inf = phi_[not_infected_locations, :]
-  priority_score_features[infected_locations, :] = psi_not_inf
-  priority_score_features[not_infected_locations, :] = phi_inf
-  pdb.set_trace()
+  phi_inf = phi_[infected_locations, :]
+  priority_score_features[not_infected_locations, :] = psi_not_inf
+  priority_score_features[infected_locations, :] = phi_inf
 
   return priority_score_features
 

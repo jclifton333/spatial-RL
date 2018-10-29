@@ -245,15 +245,19 @@ class SIS(SpatialDisease):
     self.Y = np.vstack((self.Y, y))
     self.current_infected = y
 
-  def next_infections(self, a):
+  def next_infections(self, a, eta=None):
     """
     Updates the vector indicating infections (self.current_infected).
     Computes probability of infection at each state, then generates corresponding
     Bernoullis.
+    :param eta:
     :param a: self.L-length binary array of actions at each state
     """
     super(SIS, self).next_infections(a)
-    next_infected_probabilities = self.next_infected_probabilities(a)
+    if eta is None:
+      next_infected_probabilities = self.next_infected_probabilities(a, eta=self.ETA)
+    else:
+      next_infected_probabilities = self.next_infected_probabilities(a, eta=eta)
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.true_infection_probs.append(next_infected_probabilities)
     self.add_infections(next_infections)

@@ -67,7 +67,7 @@ class SpatialDisease(ABC):
     # Current network status
     self.current_infected = self.Y[-1,:]
     self.T = 0
-    
+
   def reset(self):
     """
     Reset state and observation histories.
@@ -99,16 +99,17 @@ class SpatialDisease(ABC):
     pass
   
   @abstractmethod
-  def next_infections(self, a):
+  def next_infections(self, a, eta=None):
     pass
   
-  def step(self, a): 
+  def step(self, a, eta=None):
     """
     Move model forward according to action a. 
-    :param a: self.L-length array of binary actions at each state 
+    :param a: self.L-length array of binary actions at each state
+    :param eta:
     """
     self.A = np.vstack((self.A, a))
-    self.next_infections(a)
+    self.next_infections(a, eta)
     self.next_state()
     self.update_obs_history(a)
     self.T += 1
