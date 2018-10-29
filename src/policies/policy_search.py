@@ -338,7 +338,7 @@ def policy_search(env, time_horizon, gen_model_posterior,
                               infection_probs_predictor, transmission_probs_predictor, env.data_depth, beta_tilde)
 
   priority_scores = np.dot(features, policy_parameter)
-  a_ix = np.argmax(priority_scores)
+  a_ix = np.argsort(-priority_scores)[:treatment_budget]
   a = np.zeros(env.L)
   a[a_ix] = 1
   return a
