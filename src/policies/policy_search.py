@@ -100,13 +100,14 @@ def decision_rule(env, s, a, y, infection_probs_predictor, transmission_probs_pr
 
   d = np.zeros(len(priority_scores))
   floor_c_by_k = int(np.floor(treatment_budget / k))
-  d[np.argsort(-priority_scores)][:floor_c_by_k] = 1
+  d[np.argsort(-priority_scores)[:floor_c_by_k]] = 1
   for j in range(1, k):
     w = d
     delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
-    priority_scores = R(env, s, a, y, infection_probs_predictor, transmission_probs_predictor, env.data_depth,
+    priority_scores = R(env, s, w, y, infection_probs_predictor, transmission_probs_predictor, env.data_depth,
                         eta, beta)
     d = U(priority_scores, delta_j) + w
+  pdb.set_trace()
   return d
 
 
