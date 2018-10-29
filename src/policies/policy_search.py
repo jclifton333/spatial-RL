@@ -99,15 +99,18 @@ def decision_rule(env, s, a, y, infection_probs_predictor, transmission_probs_pr
                   priority_scores):
 
   d = np.zeros(len(priority_scores))
-  floor_c_by_k = int(np.floor(treatment_budget / k))
-  d[np.argsort(-priority_scores)[:floor_c_by_k]] = 1
-  for j in range(1, k):
-    w = d
-    delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
-    priority_scores = R(env, s, w, y, infection_probs_predictor, transmission_probs_predictor, env.data_depth,
-                        eta, beta)
-    d = U(priority_scores, delta_j) + w
-  pdb.set_trace()
+  if k == 1:
+    d[np.argsort(-priority_scores)[:treatment_budget]] = 1
+  # ToDo: Make sure this is working as intended...
+  else:
+    floor_c_by_k = int(np.floor(treatment_budget / k))
+    d[np.argsort(-priority_scores)[:floor_c_by_k]] = 1
+    for j in range(1, k):
+      w = d
+      delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
+      priority_scores = R(env, s, w, y, infection_probs_predictor, transmission_probs_predictor, env.data_depth,
+                          eta, beta)
+      d = U(priority_scores, delta_j) + w
   return d
 
 
@@ -176,9 +179,9 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     for m in range(T-1):
       # Plus perturbation
       eta_plus = eta + zeta * z
-      priority_score_plus = R(env, s_tpmp1, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor,
+      priority_score_plus = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor,
                               data_depth, eta_plus, beta)
-      a_tpm = decision_rule(env, s_tpmp1, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor, eta,
+      a_tpm = decision_rule(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor, eta,
                             beta, k, treatment_budget, priority_score_plus)
       infection_probs = infection_probs_predictor(a_tpm, y_tpm, s_tpm, beta, 0.0, env.L, env.adjacency_list)
       y_tpm = np.random.binomial(n=1, p=infection_probs)
@@ -187,9 +190,9 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
 
       # Minus perturbation
       eta_minus = eta - zeta * z
-      priority_score_minus = R(env, s_tpmp1, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor,
+      priority_score_minus = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_prob_predictor,
                                data_depth, eta_minus, beta)
-      a_tpm_tilde = decision_rule(env, s_tpmp1_tilde, a_dummy, y_tpm_tilde, infection_probs_predictor,
+      a_tpm_tilde = decision_rule(env, s_tpm_tilde, a_dummy, y_tpm_tilde, infection_probs_predictor,
                                   transmission_prob_predictor, eta, beta, k, treatment_budget, priority_score_minus)
       infection_probs_tilde = infection_probs_predictor(a_tpm_tilde, y_tpm_tilde, s_tpm_tilde, beta, 0.0, env.L,
                                                         env.adjacency_list)
@@ -206,7 +209,6 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     eta = copy.copy(new_eta)
     alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
     it += 1
-    pdb.set_trace()
     # print('it: {}\nalpha: {}\nzeta: {}\neta: {}'.format(it, alpha, zeta, eta))
 
   return eta
@@ -288,7 +290,7 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
 def policy_search(env, time_horizon, gen_model_posterior,
                   initial_policy_parameter, initial_alpha, initial_zeta, infection_probs_predictor,
                   transmission_probs_predictor, treatment_budget, rho, tau, tol=1e-3, maxiter=100,
-                  feature_function=features_for_priority_score, k=5):
+                  feature_function=features_for_priority_score, k=1):
   """
   Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
   as in QL draft and the rest of this source code
