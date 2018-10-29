@@ -1,5 +1,6 @@
 import sys
 import os
+import copy
 this_dir = os.path.dirname(os.path.abspath(__file__))
 pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
@@ -26,21 +27,28 @@ def tune_stochastic_approximation(gen_model_prior):
   treatment_budget = np.int(np.floor(0.05 * env.L))
   dummy_action = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
 
+  # Initial steps to get informative prior
+  env.reset()
+  for r in range(T):
+    env.step(np.random.permutation(dummy_action))
+
+  # Tuning
   qhat_deltas = []
   for rho, tau in DELTA:
     qhat_delta = 0.0
     for b in range(B):
       # Initialize environment
-      env.reset()
-      env.step(np.random.permutation(dummy_action))
-      env.step(np.random.permutation(dummy_action))
+      # env.reset()
+      # env.step(np.random.permutation(dummy_action))
+      # env.step(np.random.permutation(dummy_action))
+      sim_env = copy.deepcopy(env)
       gen_model_parameter = gen_model_prior()
       for r in range(T):
-        policy_kwargs = {'env': env, 'planning_depth': T, 'treatment_budget': treatment_budget,
+        policy_kwargs = {'env': sim_env, 'planning_depth': T, 'treatment_budget': treatment_budget,
                          'rho': rho, 'tau': tau}
         a, _ = ps.policy_search_policy(**policy_kwargs)
-        env.step(a, gen_model_parameter)
-      qhat_delta += np.mean(env.Y)
+        sim_env.step(a, gen_model_parameter)
+      qhat_delta += np.mean(sim_env.Y)
       print(b)
     print('rho: {} tau: {} qhat: {}'.format(rho, tau, qhat_delta))
     qhat_deltas.append(qhat_delta)

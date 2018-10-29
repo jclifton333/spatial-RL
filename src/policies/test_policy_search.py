@@ -27,8 +27,11 @@ def test_sis():
   infection_probs_predictor = sis_infection_probability
   transmission_probs_predictor = get_all_sis_transmission_probs_omega0
 
-  a = ps.policy_search(env, time_horizon, eta_mean, eta_cov, initial_policy_parameter, initial_alpha, initial_zeta,
-                       infection_probs_predictor, transmission_probs_predictor, treatment_budget)
+  def gen_model_posterior():
+    return np.random.multivariate_normal(eta_mean, eta_cov)
+
+  a = ps.policy_search(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
+                       infection_probs_predictor, transmission_probs_predictor, treatment_budget, 1, 1)
 
   return a
 

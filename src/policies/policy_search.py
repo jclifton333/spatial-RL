@@ -242,17 +242,17 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
   return psi_1, psi_2, psi_3
 
 
-def phi(infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth):
-  lambda_inf = lambda_[:, infected_locations]
-  transmission_probabilities_inf = transmission_probabilities[:, infected_locations]
+def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth):
+  lambda_inf = lambda_[:, not_infected_locations]
+  transmission_probabilities_not_inf = transmission_probabilities[:, not_infected_locations]
 
-  psi_1_inf = psi_1[infected_locations]
-  psi_2_inf = psi_2[infected_locations]
-  data_depth_inf = data_depth[infected_locations]
+  psi_1_not_inf = psi_1[not_infected_locations]
+  psi_2_not_inf = psi_2[not_infected_locations]
+  data_depth_not_inf = data_depth[not_infected_locations]
 
-  phi_1 = np.dot(lambda_inf, psi_1_inf)
-  phi_2 = np.dot(transmission_probabilities_inf, psi_2_inf)
-  phi_3 = np.dot(transmission_probabilities_inf, data_depth_inf)
+  phi_1 = np.dot(lambda_inf, psi_1_not_inf)
+  phi_2 = np.dot(transmission_probabilities_not_inf, psi_2_not_inf)
+  phi_3 = np.dot(transmission_probabilities_not_inf, data_depth_not_inf)
 
   phi = np.column_stack((phi_1, phi_2, phi_3))
 
@@ -263,7 +263,7 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
   lambda_ = env.lambda_
 
   # Get predicted probabilities
-  predicted_infection_probs = infection_probs_predictor(a, s, y, beta, 0.0, env.L, env.adjacency_list)
+  predicted_infection_probs = infection_probs_predictor(a, y, s, beta, 0.0, env.L, env.adjacency_list)
   transmission_probabilities = transmission_prob_predictor(a, beta, env.L, env.adjacency_matrix)
 
   # Get infection status-specific features
@@ -271,14 +271,15 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
   not_infected_locations = np.where(y == 0)
   psi_1, psi_2, psi_3 = psi(infected_locations, predicted_infection_probs, lambda_, transmission_probabilities,
                             data_depth)
-  phi_ = phi(infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth)
+  phi_ = phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth)
 
   # Collect features
   priority_score_features = np.zeros((env.L, 3))
-  psi_inf = np.column_stack((psi_1, psi_2, psi_3))[infected_locations, :]
+  psi_not_inf = np.column_stack((psi_1, psi_2, psi_3))[not_infected_locations, :]
   phi_inf = phi_[not_infected_locations, :]
-  priority_score_features[infected_locations, :] = psi_inf
+  priority_score_features[infected_locations, :] = psi_not_inf
   priority_score_features[not_infected_locations, :] = phi_inf
+  pdb.set_trace()
 
   return priority_score_features
 
