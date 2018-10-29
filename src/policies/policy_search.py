@@ -210,7 +210,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
     it += 1
     # print('it: {}\nalpha: {}\nzeta: {}\neta: {}'.format(it, alpha, zeta, eta))
-
+  print('number of iterations: {}'.format(it))
   return eta
 
 
@@ -364,5 +364,5 @@ def policy_search_policy(**kwargs):
   a = policy_search(env, T, gen_model_posterior,
                     initial_policy_parameter, initial_alpha, initial_zeta, sis_inf_probs.sis_infection_probability,
                     sis_inf_probs.get_all_sis_transmission_probs_omega0, treatment_budget, rho, tau, tol=1e-3,
-                    maxiter=100, feature_function=features_for_priority_score, k=5)
+                    maxiter=100, feature_function=features_for_priority_score, k=1)
   return a, None

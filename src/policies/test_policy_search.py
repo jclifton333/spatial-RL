@@ -21,7 +21,7 @@ def test_sis():
   eta_mean = np.zeros(7)
   eta_cov = np.eye(7)
   initial_policy_parameter = np.ones(3)
-  time_horizon = 10
+  time_horizon = 25
   initial_alpha = initial_zeta = 1
   treatment_budget = 5
   infection_probs_predictor = sis_infection_probability
