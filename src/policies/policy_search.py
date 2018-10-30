@@ -176,6 +176,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     s_tpmp1 = s_tpm
     s_tpmp1_tilde = s_tpm
 
+    alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
     for m in range(T-1):
       # Plus perturbation
       eta_plus = eta + zeta * z
@@ -207,7 +208,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     new_eta = update_eta(eta, alpha, zeta, z, y_tpm, y_tpm_tilde)
     diff = np.linalg.norm(eta - new_eta) / np.max((0.001, np.linalg.norm(eta)))
     eta = copy.copy(new_eta)
-    alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
+
     it += 1
     # print('it: {}\nalpha: {}\nzeta: {}\neta: {}'.format(it, alpha, zeta, eta))
   # print('number of iterations: {}'.format(it))
