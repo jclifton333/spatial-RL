@@ -2,8 +2,9 @@ import numpy as np
 from scipy.special import expit
 
 
-def ebola_infection_probs(a, eta, current_infected, adjacency_list, distance_matrix, susceptibility, L):
-  return np.array([infection_prob_at_location(a, l, eta, current_infected, adjacency_list, distance_matrix,
+def ebola_infection_probs(a, y, eta, L, adjacency_lists, **kwargs):
+  distance_matrix, susceptibility = kwargs['distance_matrix'], kwargs['susceptibility']
+  return np.array([infection_prob_at_location(a, l, eta, y, adjacency_lists, distance_matrix,
                                               susceptibility) for l in range(L)])
 
 
