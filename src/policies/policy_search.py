@@ -161,6 +161,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
   it = 0
   a_dummy = np.zeros(env.L)  # ToDo: Figure out what this should be!  (input to feature function)
   diff = float('inf')
+  alpha, zeta = update_alpha_and_zeta(alpha, zeta, 0, rho, tau)
   while alpha > tol and it < maxiter and diff > DIFF_TOL:
     z = np.random.random(size=dimension)
     s_tpm = s
@@ -176,7 +177,6 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     s_tpmp1 = s_tpm
     s_tpmp1_tilde = s_tpm
 
-    alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
     for m in range(T-1):
       # Plus perturbation
       eta_plus = eta + zeta * z
@@ -210,6 +210,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     eta = copy.copy(new_eta)
 
     it += 1
+    alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
     # print('it: {}\nalpha: {}\nzeta: {}\neta: {}'.format(it, alpha, zeta, eta))
   # print('number of iterations: {}'.format(it))
   return eta
@@ -359,7 +360,7 @@ def policy_search_policy(**kwargs):
 
   # Settings
   initial_policy_parameter = np.zeros(3)
-  initial_alpha = initial_zeta = 1.0
+  initial_alpha = initial_zeta = None
 
   # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random policy;
   # ToDo: may be improved...
