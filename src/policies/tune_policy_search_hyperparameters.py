@@ -33,7 +33,7 @@ def tune_stochastic_approximation_with_bayesopt(gen_model_prior):
     env.step(np.random.permutation(dummy_action))
 
   def objective(rho, tau):
-    score = 0.0
+    scores = []
     for b in range(B):
       # Initialize environment
       # env.reset()
@@ -46,8 +46,8 @@ def tune_stochastic_approximation_with_bayesopt(gen_model_prior):
                          'rho': rho, 'tau': tau}
         a, _ = ps.policy_search_policy(**policy_kwargs)
         sim_env.step(a, gen_model_parameter)
-      mean_ = np.mean(sim_env.Y)
-      score += mean_
+      scores.append(np.mean(sim_env.Y))
+    score = -np.mean(scores)
     return score
 
   bounds = {'rho': RHO_BOUNDS, 'tau': TAU_BOUNDS}
@@ -109,4 +109,5 @@ def sis_gen_model_prior():
 
 
 if __name__ == '__main__':
-  tune_stochastic_approximation(sis_gen_model_prior)
+  # tune_stochastic_approximation(sis_gen_model_prior)
+  tune_stochastic_approximation_with_bayesopt(sis_gen_model_prior)

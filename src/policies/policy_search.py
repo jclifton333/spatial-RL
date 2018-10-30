@@ -210,7 +210,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
     alpha, zeta = update_alpha_and_zeta(alpha, zeta, it, rho, tau)
     it += 1
     # print('it: {}\nalpha: {}\nzeta: {}\neta: {}'.format(it, alpha, zeta, eta))
-  print('number of iterations: {}'.format(it))
+  # print('number of iterations: {}'.format(it))
   return eta
 
 
@@ -347,8 +347,7 @@ def policy_search(env, time_horizon, gen_model_posterior,
 def policy_search_policy(**kwargs):
   # ToDo: Currently specific to SIS!
 
-  env, T, treatment_budget, rho, tau = kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget'], \
-                                       kwargs['rho'], kwargs['tau']
+  env, T, treatment_budget = kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget']
 
   beta_mean = fit_infection_prob_model(env, None)
   beta_cov = env.mb_covariance(beta_mean)
@@ -360,6 +359,11 @@ def policy_search_policy(**kwargs):
   # Settings
   initial_policy_parameter = np.zeros(3)
   initial_alpha = initial_zeta = 1.0
+
+  # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random policy;
+  # ToDo: may be improved...
+  rho = 3.20
+  tau = 0.76
 
   a = policy_search(env, T, gen_model_posterior,
                     initial_policy_parameter, initial_alpha, initial_zeta, sis_inf_probs.sis_infection_probability,
