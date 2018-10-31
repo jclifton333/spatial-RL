@@ -64,14 +64,15 @@ import src.environments.sis_infection_probs as sis_inf_probs
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
 
 
-def R(env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_prob_predictor, data_depth, eta,
-      beta):
+def R(env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_prob_predictor,
+      transmission_probs_kwargs, data_depth, eta, beta):
   """
   Linear priority score function.
 
   """
   priority_features = features_for_priority_score(env, s, a, y, infection_probs_predictor, infection_probs_kwargs,
-                                                  transmission_prob_predictor, data_depth, beta)
+                                                  transmission_prob_predictor, transmission_probs_kwargs, data_depth,
+                                                  beta)
   return np.dot(priority_features, eta)
 
 
@@ -96,8 +97,8 @@ def U(priority_scores, m):
   return U
 
 
-def decision_rule(env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor, eta,
-                  beta, k, treatment_budget, priority_scores):
+def decision_rule(env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
+                  transmission_probs_kwargs, eta, beta, k, treatment_budget, priority_scores):
 
   d = np.zeros(len(priority_scores))
   if k == 1:
@@ -110,7 +111,7 @@ def decision_rule(env, s, a, y, infection_probs_predictor, infection_probs_kwarg
       w = d
       delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
       priority_scores = R(env, s, w, y, infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
-                          env.data_depth, eta, beta)
+                          transmission_probs_kwargs, env.data_depth, eta, beta)
       d = U(priority_scores, delta_j) + w
   return d
 
@@ -199,7 +200,7 @@ def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter
                                   infection_probs_kwargs, transmission_prob_predictor, eta, beta, k, treatment_budget,
                                   priority_score_minus)
       infection_probs_tilde = infection_probs_predictor(a_tpm_tilde, y_tpm_tilde, beta, env.L, env.adjacency_list,
-                                                        **infection_probs_kwargs)
+                                                        infection_probs_kwargs)
       y_tpm_tilde = np.random.binomial(n=1, p=infection_probs_tilde)
       # x_tpm_tilde = feature_function(env, s_tpmp1_tilde, a_dummy, y_tpm_tilde, infection_probs_predictor,
       #                                transmission_prob_predictor, data_depth, beta)
@@ -268,13 +269,13 @@ def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_
   return phi
 
 
-def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmission_prob_predictor, data_depth, beta,
-                                infection_probs_kwargs):
+def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmission_prob_predictor,
+                                infection_probs_kwargs, transmission_probs_kwargs, data_depth, beta):
   lambda_ = env.lambda_
 
   # Get predicted probabilities
-  predicted_infection_probs = infection_probs_predictor(a, y, beta,env.L, env.adjacency_list, **infection_probs_kwargs)
-  transmission_probabilities = transmission_prob_predictor(a, beta, env.L, env.adjacency_matrix)
+  predicted_infection_probs = infection_probs_predictor(a, y, beta, env.L, env.adjacency_list, **infection_probs_kwargs)
+  transmission_probabilities = transmission_prob_predictor(a, beta, env.L, **transmission_probs_kwargs)
 
   # Get infection status-specific features
   infected_locations = np.where(y == 1)
@@ -320,15 +321,17 @@ def policy_search(env, time_horizon, gen_model_posterior,
   """
   if env.__class__.__name__ == 'sis':
     infection_probs_kwargs = {'s': None, 'omega': 0.0}
+    transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
   elif env.__class__.__name__ == 'Ebola':
     infection_probs_kwargs = {'distance_matrix': env.distance_matrix, 'susceptibility': env.susceptibility}
+    transmission_probs_kwargs = {'distance_matrix': env.distance_matrix, 'susceptibility': env.susceptibility}
 
   dimension = len(initial_policy_parameter)
   beta_tilde = gen_model_posterior()
 
   policy_parameter = stochastic_approximation(time_horizon, env.current_state, env.current_infected, beta_tilde,
                                               initial_policy_parameter, infection_probs_predictor, infection_probs_kwargs,
-                                              transmission_probs_predictor, initial_alpha, initial_zeta, tol, maxiter,
+                                              transmission_probs_predictor, transmission_probs_kwargs, initial_alpha, initial_zeta, tol, maxiter,
                                               dimension, treatment_budget, k, feature_function, env,
                                               infection_probs_predictor, transmission_probs_predictor,
                                               env.data_depth, rho, tau)

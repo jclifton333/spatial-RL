@@ -70,7 +70,8 @@ def sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix):
   return p_llprime
 
 
-def get_all_sis_transmission_probs_omega0(a, eta, L, adjacency_matrix):
+def get_all_sis_transmission_probs_omega0(a, eta, L, **kwargs):
+  adjacency_matrix = kwargs['adjacency_matrix']
   transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
     for lprime in range(L):

@@ -17,6 +17,15 @@ def transmission_prob(a, l, l_prime, eta, distance_matrix, susceptibility):
   return transmission_prob_
 
 
+def get_all_ebola_transmission_probs(a, eta, L, **kwargs):
+  distance_matrix, susceptibility = kwargs['distance_matrix'], kwargs['susceptibility']
+  transmission_probs_matrix = np.zeros((L, L))
+  for l in range(L):
+    for lprime in range(L):
+      transmission_probs_matrix[l, lprime] = transmission_prob(a, l, lprime, eta, distance_matrix, susceptibility)
+  return transmission_probs_matrix
+
+
 def infection_prob_at_location(a, l, eta, current_infected, adjacency_list, distance_matrix, susceptibility):
   if current_infected[l]:
     return 1
