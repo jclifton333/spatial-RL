@@ -7,6 +7,32 @@ from functools import partial
 
 
 @njit
+def log_lik_single(a, y_next_, l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, adjacency_matrix, distance_matrix,
+                   product_matrix):
+  # Log likelihood at location l at time t
+  prod = 1.0
+  a_l = a[l]
+  for l_prime in range(L):
+    # Transmissions only from infected neighbors
+    if (adjacency_matrix[l, l_prime] == 1 or adjacency_matrix[l_prime, l] == 1) and y[l_prime]:
+      # if y[l_prime]:
+      d_l_lprime = distance_matrix[l, l_prime]
+      s_l_lprime = product_matrix[l, l_prime]
+      a_l_prime = a[l_prime]
+      logit_transmission_prob = eta0 - exp_eta1 * d_l_lprime / np.power(s_l_lprime, exp_eta2) + \
+                                eta3 * a_l + eta4 * a_l_prime
+      one_minus_transmission_prob = 1.0 / (1.0 + np.exp(logit_transmission_prob))
+      prod *= one_minus_transmission_prob
+
+  if y_next_[l]:
+    log_lik = np.log(1 - prod)
+  else:
+    log_lik = np.log(prod)
+
+  return log_lik
+
+
+@njit
 def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, distance_matrix, product_matrix,
                             adjacency_matrix, T, L):
   log_lik = 0
@@ -17,27 +43,10 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
 
     for l in range(L):
       if not y[l]:  # Only model uninfected locations; infected locations never recover
+        log_lik_at_l = log_lik_single(a, y_next_, l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, adjacency_matrix,
+                                      distance_matrix, product_matrix)
 
-        # Log likelihood at location l at time t
-        prod = 1.0
-        a_l = a[l]
-        for l_prime in range(L):
-          # Transmissions only from infected neighbors
-          if (adjacency_matrix[l, l_prime] == 1 or adjacency_matrix[l_prime, l] == 1) and y[l_prime]:
-          # if y[l_prime]:
-            d_l_lprime = distance_matrix[l, l_prime]
-            s_l_lprime = product_matrix[l, l_prime]
-            a_l_prime = a[l_prime]
-            logit_transmission_prob = eta0 - exp_eta1 * d_l_lprime / np.power(s_l_lprime, exp_eta2) + \
-              eta3 * a_l + eta4 * a_l_prime
-            one_minus_transmission_prob = 1.0 / (1.0 + np.exp(logit_transmission_prob))
-            prod *= one_minus_transmission_prob
-
-        if y_next_[l]:
-          log_lik += np.log(1 - prod)
-        else:
-          log_lik += np.log(prod)
-
+        log_lik += log_lik_at_l
   return -log_lik
 
 

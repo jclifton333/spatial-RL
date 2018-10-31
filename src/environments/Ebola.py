@@ -11,6 +11,8 @@ from scipy.special import expit
 import src.environments.ebola_infection_probs as infection_probs
 from src.environments.SpatialDisease import SpatialDisease
 from src.environments.sis import SIS
+from src.estimation.model_based.Ebola.estimate_ebola_parameters import log_lik_single
+import src.utils.gradient as gradient
 import pickle as pkl
 import os
 import pdb
@@ -254,13 +256,16 @@ class Ebola(SpatialDisease):
 
         # gradient
         if raw_data_block[l, 2]:
-          # Compute gradient of recovery model
-          # ToDo: implement
+          # No recovery
           pass
         else:
-          # Compute gradient of infection model
-          # ToDo: implement
-          pass
+          def mb_log_lik_at_x(mb_params_):
+            lik = mb_log_lik_single(a, y_next, l, self.L, mb_params_, self.adjacency_matrix, self.DISTANCE_MATRIX,
+                                    self.PRODUCT_MATRIX)
+            return lik
+
+          mb_grad = gradient.central_diff_grad(mb_log_lik_at_x, mb_params)
+          mb_hess = gradient.central_diff_hess(mb_log_lik_at_x, mb_params)
 
         grad_outer_lt = np.outer(mb_grad, mb_grad)
         grad_outer += grad_outer_lt
@@ -271,5 +276,9 @@ class Ebola(SpatialDisease):
     return cov
 
     
-
+def mb_log_lik_single(a, y_next_, l, L, eta, adjacency_matrix, distance_matrix, product_matrix):
+  eta0, exp_eta1, exp_eta2, eta3, eta4 = \
+    eta[0], np.exp(eta[1]), np.exp(eta[2]), eta[3], eta[4]
+  return log_lik_single(a, y_next_, l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, adjacency_matrix, distance_matrix,
+                        product_matrix)
 
