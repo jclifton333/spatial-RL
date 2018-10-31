@@ -62,6 +62,7 @@ import copy
 
 import src.environments.sis_infection_probs as sis_inf_probs
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
+from bayes_opt import BayesianOptimization
 
 
 def R(env, s, a, y, infection_probs_predictor, transmission_prob_predictor, data_depth, eta, beta):
@@ -129,9 +130,43 @@ def update_alpha_and_zeta(alpha, zeta, j, rho, tau):
   return new_alpha, new_zeta
 
 
-def stochastic_approximation(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter, dimension, treatment_budget,
-                             k, feature_function, env, infection_probs_predictor, transmission_prob_predictor,
-                             data_depth, rho, tau):
+def gp_opt_for_policy_search(T, s, y, beta, eta, f, g, treatment_budget, k, env, infection_probs_predictor,
+                             transmission_probs_predictor, data_depth, n_rep_per_gp_opt_iteration=10):
+
+  # Objective is mean score over n_rep_per_gp_opt_iteration MC replicates
+  def objective(eta):
+    scores = []
+
+    for _ in range(n_rep_per_gp_opt_iteration):
+      s_tpm = s
+      y_tpm = y
+      a_dummy = np.zeros(env.L)
+
+      for m in range(T-1):
+         # Plus perturbation
+         priority_score = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_probs_predictor,
+                            data_depth, eta, beta)
+         a_tpm = decision_rule(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_probs_predictor, eta,
+                               beta, k, treatment_budget, priority_score)
+         infection_probs = infection_probs_predictor(a_tpm, y_tpm, s_tpm, beta, 0.0, env.L, env.adjacency_list)
+         y_tpm = np.random.binomial(n=1, p=infection_probs)
+
+      scores.append(np.mean(y_tpm))
+    return np.mean(scores)
+
+  ETA_BOUNDS = (-np.power(1, -1/3), np.power(1, -1/3))
+  bounds = {'eta1': ETA_BOUNDS, 'eta2': ETA_BOUNDS, 'eta3': ETA_BOUNDS}
+  bo = BayesianOptimization(objective, bounds)
+  bo.maximize(init_points=5, n_iter=5, alpha=1e-4)
+  best_param = bo.res['max']['max_params']
+  best_params = [best_param['eta1'], best_param['eta2'], best_param['eta3']]
+
+  return best_params
+
+
+def stochastic_approximation_for_policy_search(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter, dimension,
+                                               treatment_budget, k, feature_function, env, infection_probs_predictor,
+                                               transmission_prob_predictor, data_depth, rho, tau):
   """
 
   :param tau: stepsize hyperparameters
@@ -318,7 +353,7 @@ def policy_search(env, time_horizon, gen_model_posterior,
   dimension = len(initial_policy_parameter)
   beta_tilde = gen_model_posterior()
 
-  policy_parameter = stochastic_approximation(time_horizon, env.current_state, env.current_infected, beta_tilde,
+  policy_parameter = stochastic_approximation_for_policy_search(time_horizon, env.current_state, env.current_infected, beta_tilde,
                                               initial_policy_parameter, infection_probs_predictor,
                                               transmission_probs_predictor, initial_alpha, initial_zeta, tol, maxiter,
                                               dimension, treatment_budget, k, feature_function, env,
@@ -361,13 +396,14 @@ def policy_search_policy(**kwargs):
   # Settings
   initial_policy_parameter = np.zeros(3)
   initial_alpha = initial_zeta = None
+  remaining_time_horizon = T - env.T
 
   # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random policy;
   # ToDo: may be improved...
   rho = 3.20
   tau = 0.76
 
-  a = policy_search(env, T, gen_model_posterior,
+  a = policy_search(env, remaining_time_horizon, gen_model_posterior,
                     initial_policy_parameter, initial_alpha, initial_zeta, sis_inf_probs.sis_infection_probability,
                     sis_inf_probs.get_all_sis_transmission_probs_omega0, treatment_budget, rho, tau, tol=1e-3,
                     maxiter=100, feature_function=features_for_priority_score, k=1)
