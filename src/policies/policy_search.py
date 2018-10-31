@@ -419,4 +419,4 @@ def policy_search_policy(**kwargs):
                                       initial_policy_parameter, initial_alpha, initial_zeta, sis_inf_probs.sis_infection_probability,
                                       sis_inf_probs.get_all_sis_transmission_probs_omega0, treatment_budget, rho, tau, tol=1e-3,
                                       maxiter=100, feature_function=features_for_priority_score, k=1)
-  return a, {'policy_parameter': policy_parameter}
+  return a, {'initial_policy_parameter': policy_parameter}
