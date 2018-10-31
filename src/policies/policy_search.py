@@ -130,11 +130,12 @@ def update_alpha_and_zeta(alpha, zeta, j, rho, tau):
   return new_alpha, new_zeta
 
 
-def gp_opt_for_policy_search(T, s, y, beta, eta, f, g, treatment_budget, k, env, infection_probs_predictor,
+def gp_opt_for_policy_search(T, s, y, beta, eta, treatment_budget, k, env, infection_probs_predictor,
                              transmission_probs_predictor, data_depth, n_rep_per_gp_opt_iteration=10):
 
   # Objective is mean score over n_rep_per_gp_opt_iteration MC replicates
-  def objective(eta):
+  def objective(eta1, eta2, eta3):
+    eta = np.array([eta1, eta2, eta3])
     scores = []
 
     for _ in range(n_rep_per_gp_opt_iteration):
@@ -154,10 +155,10 @@ def gp_opt_for_policy_search(T, s, y, beta, eta, f, g, treatment_budget, k, env,
       scores.append(np.mean(y_tpm))
     return np.mean(scores)
 
-  ETA_BOUNDS = (-np.power(1, -1/3), np.power(1, -1/3))
+  ETA_BOUNDS = (0.0, np.power(1, -1/3))
   bounds = {'eta1': ETA_BOUNDS, 'eta2': ETA_BOUNDS, 'eta3': ETA_BOUNDS}
   bo = BayesianOptimization(objective, bounds)
-  bo.maximize(init_points=5, n_iter=5, alpha=1e-4)
+  bo.maximize(init_points=10, n_iter=10, alpha=1e-4)
   best_param = bo.res['max']['max_params']
   best_params = [best_param['eta1'], best_param['eta2'], best_param['eta3']]
 
@@ -327,7 +328,7 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
 def policy_search(env, time_horizon, gen_model_posterior,
                   initial_policy_parameter, initial_alpha, initial_zeta, infection_probs_predictor,
                   transmission_probs_predictor, treatment_budget, rho, tau, tol=1e-3, maxiter=100,
-                  feature_function=features_for_priority_score, k=1):
+                  feature_function=features_for_priority_score, k=1, method='bayes_opt'):
   """
   Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
   as in QL draft and the rest of this source code
@@ -347,18 +348,25 @@ def policy_search(env, time_horizon, gen_model_posterior,
   :param gen_model_posterior: function that returns draws from conf dbn over gen model parameter
   :param initial_policy_parameter:
   :param k: number of locations to change during decision rule iterations
+  :param method: either 'bayes_opt' or 'stochastic_approximation'
   :return:
   """
 
   dimension = len(initial_policy_parameter)
   beta_tilde = gen_model_posterior()
 
-  policy_parameter = stochastic_approximation_for_policy_search(time_horizon, env.current_state, env.current_infected, beta_tilde,
-                                              initial_policy_parameter, infection_probs_predictor,
-                                              transmission_probs_predictor, initial_alpha, initial_zeta, tol, maxiter,
-                                              dimension, treatment_budget, k, feature_function, env,
-                                              infection_probs_predictor, transmission_probs_predictor,
-                                              env.data_depth, rho, tau)
+  if method == 'stochastic_approximation':
+    policy_parameter = stochastic_approximation_for_policy_search(time_horizon, env.current_state, env.current_infected, beta_tilde,
+                                                                  initial_policy_parameter, infection_probs_predictor,
+                                                                  transmission_probs_predictor, initial_alpha, initial_zeta, tol, maxiter,
+                                                                  dimension, treatment_budget, k, feature_function, env,
+                                                                  infection_probs_predictor, transmission_probs_predictor,
+                                                                  env.data_depth, rho, tau)
+  elif method == 'bayes_opt':
+    policy_parameter = gp_opt_for_policy_search(time_horizon, env.current_state, env.current_infected, beta_tilde,
+                                                initial_policy_parameter, treatment_budget, k, env,
+                                                infection_probs_predictor, transmission_probs_predictor, env.data_depth,
+                                                n_rep_per_gp_opt_iteration=10)
 
   # Get priority function features
   a_for_transmission_probs = np.zeros(env.L)  # ToDo: Check which action is used to get transmission probs
