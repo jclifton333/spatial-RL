@@ -107,8 +107,8 @@ class Simulator(object):
       self.policy_arguments['planning_depth'] = self.time_horizon - t
 
       # For policy search
-      if 'initial_policy_parameter' in info.keys():
-        self.policy_arguments['initial_policy_parameter'] = info['initial_policy_parameter']
+      # if 'initial_policy_parameter' in info.keys():
+      #   self.policy_arguments['initial_policy_parameter'] = info['initial_policy_parameter']
 
       self.env.step(a)
       print('{} info {}'.format(t, info))
