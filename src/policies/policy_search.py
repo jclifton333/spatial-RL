@@ -62,6 +62,7 @@ import copy
 
 import src.environments.sis_infection_probs as sis_inf_probs
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
+from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
 
 
 def R(env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_prob_predictor,
@@ -363,8 +364,11 @@ def policy_search_policy(**kwargs):
 
   env, T, treatment_budget = kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget']
 
-  beta_mean = fit_infection_prob_model(env, None)
-  beta_cov = env.mb_covariance(beta_mean)
+  if env.__class__.__name__ == "sis":
+    beta_mean = fit_infection_prob_model(env, None)
+    beta_cov = env.mb_covariance(beta_mean)
+  elif env.__class__.__name__ == "Ebola":
+    beta_mean = fit_ebola_transition_model(env)
 
   def gen_model_posterior():
     beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)

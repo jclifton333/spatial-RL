@@ -173,9 +173,12 @@ class Ebola(SpatialDisease):
   def next_state(self):
     super(Ebola, self).next_state()
 
-  def next_infections(self, a):
+  def next_infections(self, a, eta=None):
     super(Ebola, self).next_infections(a)
-    next_infected_probabilities = self.next_infected_probabilities(a)
+    if eta is None:
+      next_infected_probabilities = self.next_infected_probabilities(a, eta=self.ETA)
+    else:
+      next_infected_probabilities = self.next_infected_probabilities(a, eta=eta)
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.true_infection_probs.append(next_infected_probabilities)
@@ -231,6 +234,41 @@ class Ebola(SpatialDisease):
         if l_prime in locations_with_changed_actions:
           new_data_block[l, 3 + i*4 + 1] = action[l_prime]
     return new_data_block
+
+  def mb_covariance(self, mb_params):
+    """
+    Compute covariance of mb estimator.
+
+    :param mb_params:
+    :return:
+    """
+    dim = len(mb_params)
+    grad_outer= np.zeros((dim, dim))
+    hess = np.zeros((dim, dim))
+
+    for t in range(self.T):
+      data_block, raw_data_block = self.X[t], self.X_raw[t]
+      a, y = raw_data_block[:, 1], raw_data_block[:, 2]
+      for l in range(self.L):
+        x_raw, x, y_next = raw_data_block[l, :], data_block[l, :], self.y[t][l]
+
+        # gradient
+        if raw_data_block[l, 2]:
+          # Compute gradient of recovery model
+          # ToDo: implement
+          pass
+        else:
+          # Compute gradient of infection model
+          # ToDo: implement
+          pass
+
+        grad_outer_lt = np.outer(mb_grad, mb_grad)
+        grad_outer += grad_outer_lt
+        hess += mb_hess
+
+    hess_inv = np.linalg.inv(hess + 0.1 * np.eye(dim))
+    cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
+    return cov
 
     
 

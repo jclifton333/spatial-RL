@@ -404,7 +404,6 @@ class SIS(SpatialDisease):
           mb_hess = gradient.central_diff_hess(mb_log_lik_at_x, mb_params[:5])
           mb_hess = block_diag(mb_hess, np.zeros((2, 2)))
 
-        # Get gradient and hess for stacked (MB, MF) estimating equation
         grad_outer_lt = np.outer(mb_grad, mb_grad)
 
         grad_outer += grad_outer_lt
