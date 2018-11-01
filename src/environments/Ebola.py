@@ -101,6 +101,7 @@ class Ebola(SpatialDisease):
 
   def __init__(self, eta=None):
     SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, initial_infections=Ebola.INITIAL_INFECTIONS)
+    self.current_state = self.SUSCEPTIBILITY
 
     # Modify eta if one is given
     if eta is not None:
@@ -251,8 +252,9 @@ class Ebola(SpatialDisease):
     for t in range(self.T):
       data_block, raw_data_block = self.X[t], self.X_raw[t]
       a, y = raw_data_block[:, 1], raw_data_block[:, 2]
+      y_next = self.y[t]
       for l in range(self.L):
-        x_raw, x, y_next = raw_data_block[l, :], data_block[l, :], self.y[t][l]
+        x_raw, x = raw_data_block[l, :], data_block[l, :]
 
         # gradient
         if raw_data_block[l, 2]:
@@ -260,25 +262,25 @@ class Ebola(SpatialDisease):
           pass
         else:
           def mb_log_lik_at_x(mb_params_):
-            lik = mb_log_lik_single(a, y_next, l, self.L, mb_params_, self.adjacency_matrix, self.DISTANCE_MATRIX,
+            lik = mb_log_lik_single(a, y, y_next, l, self.L, mb_params_, self.ADJACENCY_MATRIX, self.DISTANCE_MATRIX,
                                     self.PRODUCT_MATRIX)
             return lik
 
           mb_grad = gradient.central_diff_grad(mb_log_lik_at_x, mb_params)
           mb_hess = gradient.central_diff_hess(mb_log_lik_at_x, mb_params)
 
-        grad_outer_lt = np.outer(mb_grad, mb_grad)
-        grad_outer += grad_outer_lt
-        hess += mb_hess
+          grad_outer_lt = np.outer(mb_grad, mb_grad)
+          grad_outer += grad_outer_lt
+          hess += mb_hess
 
     hess_inv = np.linalg.inv(hess + 0.1 * np.eye(dim))
     cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
     return cov
 
     
-def mb_log_lik_single(a, y_next_, l, L, eta, adjacency_matrix, distance_matrix, product_matrix):
+def mb_log_lik_single(a, y, y_next_, l, L, eta, adjacency_matrix, distance_matrix, product_matrix):
   eta0, exp_eta1, exp_eta2, eta3, eta4 = \
     eta[0], np.exp(eta[1]), np.exp(eta[2]), eta[3], eta[4]
-  return log_lik_single(a, y_next_, l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, adjacency_matrix, distance_matrix,
-                        product_matrix)
+  return log_lik_single(a, np.array(y), np.array(y_next_), l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, adjacency_matrix,
+                        distance_matrix, product_matrix)
 
