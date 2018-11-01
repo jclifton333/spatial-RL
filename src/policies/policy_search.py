@@ -61,6 +61,7 @@ import numpy as np
 import copy
 
 import src.environments.sis_infection_probs as sis_inf_probs
+import src.environments.ebola_infection_probs as ebola_inf_probs
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
 from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
 
@@ -200,7 +201,7 @@ def stochastic_approximation(T, s, y, beta, eta, alpha, zeta, tol, maxiter, dime
                                   infection_probs_kwargs, transmission_prob_predictor, transmission_probs_kwargs, eta,
                                   beta, k, treatment_budget, priority_score_minus)
       infection_probs_tilde = infection_probs_predictor(a_tpm_tilde, y_tpm_tilde, beta, env.L, env.adjacency_list,
-                                                        infection_probs_kwargs)
+                                                        **infection_probs_kwargs)
       y_tpm_tilde = np.random.binomial(n=1, p=infection_probs_tilde)
       # x_tpm_tilde = feature_function(env, s_tpmp1_tilde, a_dummy, y_tpm_tilde, infection_probs_predictor,
       #                                transmission_prob_predictor, data_depth, beta)
@@ -269,8 +270,8 @@ def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_
   return phi
 
 
-def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmission_prob_predictor,
-                                infection_probs_kwargs, transmission_probs_kwargs, data_depth, beta):
+def features_for_priority_score(env, s, a, y, infection_probs_predictor, infection_probs_kwargs,
+                                transmission_prob_predictor, transmission_probs_kwargs, data_depth, beta):
   lambda_ = env.lambda_
 
   # Get predicted probabilities
@@ -294,10 +295,8 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, transmi
   return priority_score_features
 
 
-def policy_search(env, time_horizon, gen_model_posterior,
-                  initial_policy_parameter, initial_alpha, initial_zeta, infection_probs_predictor,
-                  transmission_probs_predictor, treatment_budget, rho, tau, tol=1e-3, maxiter=100,
-                  feature_function=features_for_priority_score, k=1):
+def policy_search(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
+                  treatment_budget, rho, tau, tol=1e-3, maxiter=100, feature_function=features_for_priority_score, k=1):
   """
   Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
   as in QL draft and the rest of this source code
@@ -319,12 +318,16 @@ def policy_search(env, time_horizon, gen_model_posterior,
   :param k: number of locations to change during decision rule iterations
   :return:
   """
-  if env.__class__.__name__ == 'sis':
-    infection_probs_kwargs = {'s': None, 'omega': 0.0}
+  if env.__class__.__name__ == 'SIS':
+    infection_probs_kwargs = {'s': np.zeros(env.L), 'omega': 0.0}
     transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
+    infection_probs_predictor = sis_inf_probs.sis_infection_probability
+    transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
   elif env.__class__.__name__ == 'Ebola':
     infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
     transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
+    infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
+    transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
 
   dimension = len(initial_policy_parameter)
   beta_tilde = gen_model_posterior()
@@ -346,9 +349,10 @@ def policy_search(env, time_horizon, gen_model_posterior,
   # predicted_infection_probs = infection_probs_predictor(a_for_transmission_probs, env.current_infected,
   #                                                       env.current_state, beta_tilde, 0.0, env.L,
   #                                                       env.adjacency_list)
+
   features = feature_function(env, env.current_state, a_for_transmission_probs, env.current_infected,
                               infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
-                              env.data_depth, beta_tilde)
+                              transmission_probs_kwargs, env.data_depth, beta_tilde)
 
   priority_scores = np.dot(features, policy_parameter)
   a_ix = np.argsort(-priority_scores)[:treatment_budget]
@@ -362,7 +366,7 @@ def policy_search_policy(**kwargs):
 
   env, T, treatment_budget = kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget']
 
-  if env.__class__.__name__ == "sis":
+  if env.__class__.__name__ == "SIS":
     beta_mean = fit_infection_prob_model(env, None)
     beta_cov = env.mb_covariance(beta_mean)
   elif env.__class__.__name__ == "Ebola":
@@ -382,8 +386,8 @@ def policy_search_policy(**kwargs):
   rho = 3.20
   tau = 0.76
 
-  a = policy_search(env, T, gen_model_posterior,
-                    initial_policy_parameter, initial_alpha, initial_zeta, sis_inf_probs.sis_infection_probability,
-                    sis_inf_probs.get_all_sis_transmission_probs_omega0, treatment_budget, rho, tau, tol=1e-3,
-                    maxiter=100, feature_function=features_for_priority_score, k=1)
+  a = policy_search(env, T, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
+                    treatment_budget, rho, tau, tol=1e-3, maxiter=100, feature_function=features_for_priority_score,
+                    k=1)
+
   return a, None

@@ -102,6 +102,7 @@ class Ebola(SpatialDisease):
   def __init__(self, eta=None):
     SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, initial_infections=Ebola.INITIAL_INFECTIONS)
     self.current_state = self.SUSCEPTIBILITY
+    self.lambda_ = self.adjacency_matrix
 
     # Modify eta if one is given
     if eta is not None:

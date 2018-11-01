@@ -226,7 +226,7 @@ class SIS(SpatialDisease):
     return next_state
 
   def infection_probability(self, a, y, s, eta=ETA):
-    return sis_infection_probability(a, y, s, eta, self.omega, self.L, self.adjacency_list)
+    return sis_infection_probability(a, y, eta, self.L, self.adjacency_list, **{'omega': self.omega, 's': s})
 
   def next_infected_probabilities(self, a, eta=ETA):
     if self.contaminator is not None and self.epsilon > 0:
