@@ -226,7 +226,7 @@ class SIS(SpatialDisease):
     return next_state
 
   def infection_probability(self, a, y, s, eta=ETA):
-    return sis_infection_probability(a, y, s, eta, self.omega, self.L, self.adjacency_list)
+    return sis_infection_probability(a, y, eta, self.L, self.adjacency_list, **{'omega': self.omega, 's': s})
 
   def next_infected_probabilities(self, a, eta=ETA):
     if self.contaminator is not None and self.epsilon > 0:
@@ -404,7 +404,6 @@ class SIS(SpatialDisease):
           mb_hess = gradient.central_diff_hess(mb_log_lik_at_x, mb_params[:5])
           mb_hess = block_diag(mb_hess, np.zeros((2, 2)))
 
-        # Get gradient and hess for stacked (MB, MF) estimating equation
         grad_outer_lt = np.outer(mb_grad, mb_grad)
 
         grad_outer += grad_outer_lt

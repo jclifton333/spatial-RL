@@ -11,6 +11,8 @@ from scipy.special import expit
 import src.environments.ebola_infection_probs as infection_probs
 from src.environments.SpatialDisease import SpatialDisease
 from src.environments.sis import SIS
+from src.estimation.model_based.Ebola.estimate_ebola_parameters import log_lik_single
+import src.utils.gradient as gradient
 import pickle as pkl
 import os
 import pdb
@@ -99,6 +101,8 @@ class Ebola(SpatialDisease):
 
   def __init__(self, eta=None):
     SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, initial_infections=Ebola.INITIAL_INFECTIONS)
+    self.current_state = self.SUSCEPTIBILITY
+    self.lambda_ = self.adjacency_matrix
 
     # Modify eta if one is given
     if eta is not None:
@@ -173,9 +177,12 @@ class Ebola(SpatialDisease):
   def next_state(self):
     super(Ebola, self).next_state()
 
-  def next_infections(self, a):
+  def next_infections(self, a, eta=None):
     super(Ebola, self).next_infections(a)
-    next_infected_probabilities = self.next_infected_probabilities(a)
+    if eta is None:
+      next_infected_probabilities = self.next_infected_probabilities(a, eta=self.ETA)
+    else:
+      next_infected_probabilities = self.next_infected_probabilities(a, eta=eta)
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
     self.Y = np.vstack((self.Y, next_infections))
     self.true_infection_probs.append(next_infected_probabilities)
@@ -232,6 +239,49 @@ class Ebola(SpatialDisease):
           new_data_block[l, 3 + i*4 + 1] = action[l_prime]
     return new_data_block
 
-    
+  def mb_covariance(self, mb_params):
+    """
+    Compute covariance of mb estimator.
 
+    :param mb_params:
+    :return:
+    """
+    dim = len(mb_params)
+    grad_outer= np.zeros((dim, dim))
+    hess = np.zeros((dim, dim))
+
+    for t in range(self.T):
+      data_block, raw_data_block = self.X[t], self.X_raw[t]
+      a, y = raw_data_block[:, 1], raw_data_block[:, 2]
+      y_next = self.y[t]
+      for l in range(self.L):
+        x_raw, x = raw_data_block[l, :], data_block[l, :]
+
+        # gradient
+        if raw_data_block[l, 2]:
+          # No recovery
+          pass
+        else:
+          def mb_log_lik_at_x(mb_params_):
+            lik = mb_log_lik_single(a, y, y_next, l, self.L, mb_params_, self.ADJACENCY_MATRIX, self.DISTANCE_MATRIX,
+                                    self.PRODUCT_MATRIX)
+            return lik
+
+          mb_grad = gradient.central_diff_grad(mb_log_lik_at_x, mb_params)
+          mb_hess = gradient.central_diff_hess(mb_log_lik_at_x, mb_params)
+
+          grad_outer_lt = np.outer(mb_grad, mb_grad)
+          grad_outer += grad_outer_lt
+          hess += mb_hess
+
+    hess_inv = np.linalg.inv(hess + 0.1 * np.eye(dim))
+    cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
+    return cov
+
+    
+def mb_log_lik_single(a, y, y_next_, l, L, eta, adjacency_matrix, distance_matrix, product_matrix):
+  eta0, exp_eta1, exp_eta2, eta3, eta4 = \
+    eta[0], np.exp(eta[1]), np.exp(eta[2]), eta[3], eta[4]
+  return log_lik_single(a, np.array(y), np.array(y_next_), l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, adjacency_matrix,
+                        distance_matrix, product_matrix)
 

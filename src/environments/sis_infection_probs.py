@@ -12,18 +12,19 @@ def expit(logit_p):
   return 1 - 1 / (1 + np.exp(logit_p))
 
 
-def sis_infection_probability(a, y, s, eta, omega, L, adjacency_lists):
+def sis_infection_probability(a, y, eta, L, adjacency_lists, **kwargs):
   """
 
   :param a:
   :param y:
-  :param s:
   :param eta: Transition probability parameter
-  :param omega: shield state mixing parameter
   :param L: Number of locations
   :param adjacency_lists: List of adjacency lists
+  :param kwargs: dict containing value of omega and s
+
   :return:
   """
+  omega, s = kwargs['omega'], kwargs['s']
   z = np.random.binomial(1, omega)
   indicator = (z * s <= 0)
   a_times_indicator = np.multiply(a, indicator)
@@ -69,7 +70,8 @@ def sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix):
   return p_llprime
 
 
-def get_all_sis_transmission_probs_omega0(a, eta, L, adjacency_matrix):
+def get_all_sis_transmission_probs_omega0(a, eta, L, **kwargs):
+  adjacency_matrix = kwargs['adjacency_matrix']
   transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
     for lprime in range(L):
