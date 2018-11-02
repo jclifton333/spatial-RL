@@ -50,8 +50,8 @@ def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None):
   eta = estimate_sis_parameters.fit_sis_transition_model(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
 
   def q_mb(data_block):
-    infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0], eta, 0.0, env.L,
-                                               env.adjacency_list)
+    infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], eta, env.L, env.adjacency_list,
+                                               **{'s': data_block[:, 0], 'omega': 0.0})
     return infection_prob
 
   return q_mb, eta

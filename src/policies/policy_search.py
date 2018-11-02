@@ -431,8 +431,8 @@ def policy_search_policy(**kwargs):
   initial_alpha = initial_zeta = None
   remaining_time_horizon = T - env.T
 
-  # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random policy;
-  # ToDo: may be improved...
+  # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random
+  # ToDo: policy; may be improved...
   rho = 3.20
   tau = 0.76
 

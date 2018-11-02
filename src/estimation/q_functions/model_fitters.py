@@ -92,8 +92,10 @@ class SKLogit(object):
 
 class SKLogit2(object):
   def __init__(self):
-    self.reg_inf = RandomForestClassifier(200)
-    self.reg_not_inf = RandomForestClassifier(200)
+    # self.reg_inf = RandomForestClassifier(200)
+    # self.reg_not_inf = RandomForestClassifier(200)
+    self.reg_inf = LogisticRegression()
+    self.reg_not_inf = LogisticRegression()
     self.condition_on_infection = True
     self.inf_model_fitted = False
     self.not_inf_model_fitted = False
@@ -143,7 +145,7 @@ class SKLogit2(object):
           self.inf_eb_prob = expit(inf_intercept_[0])
         else:
           self.reg_inf.fit(X[infected_locations], y[infected_locations])
-          # inf_intercept_, inf_coef_ = self.reg_inf.intercept_, self.reg_inf.coef_[0]
+          inf_intercept_, inf_coef_ = self.reg_inf.intercept_, self.reg_inf.coef_[0]
           self.inf_model_fitted = True
       if len(not_infected_locations) > 0:
         if is_y_all_1_or_0(y[not_infected_locations]):
@@ -152,10 +154,10 @@ class SKLogit2(object):
           self.not_inf_eb_prob = expit(not_inf_intercept_[0])
         else:
           self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations])
-          # not_inf_intercept_, not_inf_coef_ = self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]
+          not_inf_intercept_, not_inf_coef_ = self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]
           self.not_inf_model_fitted = True
-      # self.inf_params = np.concatenate((inf_intercept_, inf_coef_))
-      # self.not_inf_params = np.concatenate((not_inf_intercept_, not_inf_coef_))
+      self.inf_params = np.concatenate((inf_intercept_, inf_coef_))
+      self.not_inf_params = np.concatenate((not_inf_intercept_, not_inf_coef_))
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     phat = np.zeros(X.shape[0])

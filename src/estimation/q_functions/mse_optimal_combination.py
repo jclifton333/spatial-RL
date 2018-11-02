@@ -32,7 +32,10 @@ def one_step_sis_convex_combo(env):
 
   print('eta hat: {}\neta: {}'.format(mb_params, env.ETA))
   # Compute covariances
-  cov = env.joint_mf_and_mb_covariance(mb_params, fitted_mf_clf)
+  try:
+    cov = env.joint_mf_and_mb_covariance(mb_params, fitted_mf_clf)
+  except:
+    pdb.set_trace()
 
   # Simulate from estimated sampling dbns
   params = np.concatenate((mb_params, fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
