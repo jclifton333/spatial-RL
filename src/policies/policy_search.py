@@ -436,9 +436,8 @@ def policy_search_policy(**kwargs):
   rho = 3.20
   tau = 0.76
 
-  a, policy_parameter = policy_search(env, remaining_time_horizon, gen_model_posterior,
-                                      initial_policy_parameter, initial_alpha, initial_zeta, sis_inf_probs.sis_infection_probability,
-                                      sis_inf_probs.get_all_sis_transmission_probs_omega0, treatment_budget, rho, tau, tol=1e-3,
+  a, policy_parameter = policy_search(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
+                                      initial_alpha, initial_zeta, treatment_budget, rho, tau, tol=1e-3,
                                       maxiter=100, feature_function=features_for_priority_score, k=1)
   return a, {'initial_policy_parameter': policy_parameter}
 
