@@ -173,7 +173,7 @@ def one_step_mse_averaged(**kwargs):
 def sis_one_step_equal_averaged(**kwargs):
   env = kwargs['env']
 
-  q_mb, q_mf = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
+  q_mb, q_mf, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
 
   # Get modified q_function
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \

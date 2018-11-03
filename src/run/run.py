@@ -20,7 +20,8 @@ VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based', 'sis_model_based_one_step',
                       'one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi',
-                      'ebola_model_based_one_step', 'ebola_model_based_myopic', 'policy_search']
+                      'ebola_model_based_one_step', 'ebola_model_based_myopic', 'policy_search',
+                      'sis_one_step_equal_averaged']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 
 if __name__ == '__main__':

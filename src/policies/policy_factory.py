@@ -47,5 +47,7 @@ def policy_factory(policy_type):
     return roll.ebola_model_based_myopic
   elif policy_type == 'policy_search':
     return ps.policy_search_policy
+  elif policy_type == 'sis_one_step_equal_averaged':
+    return roll.sis_one_step_equal_averaged
   else:
     raise ValueError('Argument does not match any policy.')
