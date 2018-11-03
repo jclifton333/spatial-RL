@@ -169,6 +169,29 @@ def one_step_mse_averaged(**kwargs):
   return a, info
 
 
+def sis_one_step_equal_averaged(**kwargs):
+  env = kwargs['env']
+
+  q_mb, q_mf = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
+
+  # Get modified q_function
+  regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
+    kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
+    kwargs['bootstrap']
+
+  def qfn(a):
+    data_block = env.data_block_at_action(-1, a)
+    raw_data_block = env.data_block_at_action(-1, a, raw=True)
+    infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
+    return 0.5 * q_mb(raw_data_block) + 0.5 * q_mf(data_block, infected_indices[0], not_infected_indices[0])
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  # info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
+  info = {}
+  info.update({'alpha_mb': alpha_mb})
+  return a, info
+
+
 def sis_two_step_mse_averaged(**kwargs):
   regressor, env, evaluation_budget, gamma, treatment_budget, argmaxer = \
       kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['gamma'], kwargs['treatment_budget'], \
