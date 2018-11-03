@@ -135,7 +135,8 @@ def update_alpha_and_zeta(alpha, zeta, j, rho, tau):
 
 
 def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, infection_probs_predictor,
-                             transmission_probs_predictor, data_depth, n_rep_per_gp_opt_iteration=10):
+                             infection_probs_kwargs, transmission_probs_predictor, transmission_probs_kwargs,
+                             data_depth, n_rep_per_gp_opt_iteration=10):
 
   # Objective is mean score over n_rep_per_gp_opt_iteration MC replicates
   def objective(eta1, eta2, eta3):
@@ -149,11 +150,15 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
 
       for m in range(T-1):
          # Plus perturbation
-         priority_score = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_probs_predictor,
-                            data_depth, eta, beta)
-         a_tpm = decision_rule(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, transmission_probs_predictor, eta,
+         priority_score = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
+                            transmission_probs_predictor, transmission_probs_kwargs, data_depth, eta, beta)
+         # env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_prob_predictor,
+         # transmission_probs_kwargs, data_depth, eta, bet
+         a_tpm = decision_rule(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
+                               transmission_probs_predictor, transmission_probs_kwargs, eta,
                                beta, k, treatment_budget, priority_score)
-         infection_probs = infection_probs_predictor(a_tpm, y_tpm, s_tpm, beta, 0.0, env.L, env.adjacency_list)
+         infection_probs = infection_probs_predictor(a_tpm, y_tpm, beta, env.L, env.adjacency_list,
+                                                     **{'s': s_tpm, 'omega': 0.0})
          y_tpm = np.random.binomial(n=1, p=infection_probs)
 
       scores.append(np.mean(y_tpm))
@@ -164,7 +169,7 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
   bounds = {'eta1': ETA_BOUNDS, 'eta2': ETA_BOUNDS, 'eta3': ETA_BOUNDS}
   bo = BayesianOptimization(objective, bounds)
   bo.explore(explore_)
-  bo.maximize(init_points=10, n_iter=10, alpha=1e-4)
+  bo.maximize(init_points=5, n_iter=5, alpha=1e-4)
   best_param = bo.res['max']['max_params']
   best_params = [best_param['eta1'], best_param['eta2'], best_param['eta3']]
 
@@ -173,7 +178,8 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
 
 def stochastic_approximation_for_policy_search(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter, dimension,
                                                treatment_budget, k, feature_function, env, infection_probs_predictor,
-                                               transmission_prob_predictor, data_depth, rho, tau):
+                                               infection_probs_kwargs, transmission_prob_predictor,
+                                               transmission_probs_kwargs, data_depth, rho, tau):
   """
 
   :param tau: stepsize hyperparameters
@@ -374,15 +380,17 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
 
   if method == 'stochastic_approximation':
     policy_parameter = stochastic_approximation_for_policy_search(time_horizon, env.current_state, env.current_infected, beta_tilde,
-                                                                  initial_policy_parameter, infection_probs_predictor,
-                                                                  transmission_probs_predictor, initial_alpha, initial_zeta, tol, maxiter,
+                                                                  initial_policy_parameter,
+                                                                  initial_alpha, initial_zeta, tol, maxiter,
                                                                   dimension, treatment_budget, k, feature_function, env,
-                                                                  infection_probs_predictor, transmission_probs_predictor,
-                                                                  env.data_depth, rho, tau)
+                                                                  infection_probs_predictor, infection_probs_kwargs,
+                                                                  transmission_probs_predictor,
+                                                                  transmission_probs_kwargs, env.data_depth, rho, tau)
   elif method == 'bayes_opt':
     policy_parameter = gp_opt_for_policy_search(time_horizon, env.current_state, env.current_infected, beta_tilde,
                                                 initial_policy_parameter, treatment_budget, k, env,
-                                                infection_probs_predictor, transmission_probs_predictor, env.data_depth,
+                                                infection_probs_predictor, infection_probs_kwargs,
+                                                transmission_probs_predictor, transmission_probs_kwargs, env.data_depth,
                                                 n_rep_per_gp_opt_iteration=10)
 
   # Get priority function features
