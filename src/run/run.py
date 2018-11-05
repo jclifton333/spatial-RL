@@ -23,6 +23,7 @@ VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 
                       'ebola_model_based_one_step', 'ebola_model_based_myopic', 'policy_search',
                       'sis_one_step_equal_averaged']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
+VALID_NETWORK_NAMES = ['lattice', 'barabasi', 'nearestneighbor']
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -37,10 +38,14 @@ if __name__ == '__main__':
   parser.add_argument('--gamma', type=float)
   parser.add_argument('--evaluation_budget', type=int)
   parser.add_argument('--epsilon', type=float)
+  parser.add_argument('--network', type=str, choices=VALID_NETWORK_NAMES)
   args = parser.parse_args()
 
+  network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
+                  'nearestneighbor': generate_network.random_nearest_neighbor}
+
   if args.env_name == 'sis':
-    env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
+    env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': network_dict[args.network],
                   'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
   else:
     env_kwargs = {}
