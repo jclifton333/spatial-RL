@@ -32,7 +32,7 @@ import keras.backend as K
 # ToDo: Refactor so there isn't a separate file for each type of simulation
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, env_kwargs):
+               evaluation_budget, env_kwargs, network_name):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Ebola'
@@ -75,7 +75,7 @@ class Simulator(object):
                           'number_of_replicates': self.number_of_replicates})
 
     # Get filename base for saving results
-    to_join = [env_name, policy_name, argmaxer_name, str(self.env.L)]
+    to_join = [env_name, policy_name, argmaxer_name, str(self.env.L), network_name]
     if 'epsilon' in env_kwargs.keys():
       to_join.append(str(env_kwargs['epsilon']))
     self.basename = '_'.join(to_join)
