@@ -158,7 +158,7 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
                                transmission_probs_predictor, transmission_probs_kwargs, eta,
                                beta, k, treatment_budget, priority_score)
          infection_probs = infection_probs_predictor(a_tpm, y_tpm, beta, env.L, env.adjacency_list,
-                                                     **{'s': s_tpm, 'omega': 0.0})
+                                                     **infection_probs_kwargs)
          y_tpm = np.random.binomial(n=1, p=infection_probs)
 
       scores.append(np.mean(y_tpm))
