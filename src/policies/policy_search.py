@@ -147,21 +147,20 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
       s_tpm = s
       y_tpm = y
       a_dummy = np.zeros(env.L)
-
       for m in range(T-1):
-         # Plus perturbation
-         priority_score = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
-                            transmission_probs_predictor, transmission_probs_kwargs, data_depth, eta, beta)
-         # env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_prob_predictor,
-         # transmission_probs_kwargs, data_depth, eta, bet
-         a_tpm = decision_rule(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
-                               transmission_probs_predictor, transmission_probs_kwargs, eta,
-                               beta, k, treatment_budget, priority_score)
-         infection_probs = infection_probs_predictor(a_tpm, y_tpm, beta, env.L, env.adjacency_list,
-                                                     **infection_probs_kwargs)
-         y_tpm = np.random.binomial(n=1, p=infection_probs)
-
-      scores.append(np.mean(y_tpm))
+        print(m)
+        # Plus perturbation
+        priority_score = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
+                           transmission_probs_predictor, transmission_probs_kwargs, data_depth, eta, beta)
+        # env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_prob_predictor,
+        # transmission_probs_kwargs, data_depth, eta, bet
+        a_tpm = decision_rule(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
+                              transmission_probs_predictor, transmission_probs_kwargs, eta,
+                              beta, k, treatment_budget, priority_score)
+        infection_probs = infection_probs_predictor(a_tpm, y_tpm, beta, env.L, env.adjacency_list,
+                                                    **infection_probs_kwargs)
+        y_tpm = np.random.binomial(n=1, p=infection_probs)
+        scores.append(np.mean(y_tpm))
     return np.mean(scores)
 
   ETA_BOUNDS = (0.0, np.power(1, -1/3))
@@ -169,7 +168,7 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
   bounds = {'eta1': ETA_BOUNDS, 'eta2': ETA_BOUNDS, 'eta3': ETA_BOUNDS}
   bo = BayesianOptimization(objective, bounds)
   bo.explore(explore_)
-  bo.maximize(init_points=5, n_iter=5, alpha=1e-4)
+  bo.maximize(init_points=10, n_iter=10, alpha=1e-4)
   best_param = bo.res['max']['max_params']
   best_params = [best_param['eta1'], best_param['eta2'], best_param['eta3']]
 
@@ -371,7 +370,8 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
     transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
   elif env.__class__.__name__ == 'Ebola':
     infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
-    transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
+    transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
+                                 'adjacency_matrix': env.ADJACENCY_MATRIX}
     infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
     transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
 

@@ -1,5 +1,18 @@
 import numpy as np
 from scipy.special import expit
+from numba import njit
+
+
+@njit
+def expit2(x):
+  """
+  To use with njit.
+
+  :param x:
+  :return:
+  """
+  exp_ = np.exp(-x)
+  return 1.0 - 1.0 / (1 + exp_)
 
 
 def ebola_infection_probs(a, y, eta, L, adjacency_lists, **kwargs):
@@ -17,12 +30,32 @@ def transmission_prob(a, l, l_prime, eta, distance_matrix, susceptibility):
   return transmission_prob_
 
 
-def get_all_ebola_transmission_probs(a, eta, L, **kwargs):
-  distance_matrix, susceptibility = kwargs['distance_matrix'], kwargs['susceptibility']
+@njit
+def get_all_ebola_transmission_probs_njit(a, eta, L, distance_matrix, susceptibility, adjacency_matrix):
   transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
     for lprime in range(L):
-      transmission_probs_matrix[l, lprime] = transmission_prob(a, l, lprime, eta, distance_matrix, susceptibility)
+      if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
+        d_l_lprime = distance_matrix[l, lprime]
+        s_l, s_lprime = susceptibility[l], susceptibility[lprime]
+        log_grav_term = np.log(d_l_lprime) - np.exp(eta[2]) * (np.log(s_l) + np.log(s_lprime))
+        baseline_logit = eta[0] - np.exp(eta[1] + log_grav_term)
+        transmission_prob_ = expit2(baseline_logit + a[l] * eta[3] + a[lprime] * a[4])
+        transmission_probs_matrix[l, lprime] = transmission_prob_
+  return transmission_probs_matrix
+
+
+def get_all_ebola_transmission_probs(a, eta, L, **kwargs):
+  distance_matrix, susceptibility, adjacency_matrix = \
+    kwargs['distance_matrix'], kwargs['susceptibility'], kwargs['adjacency_matrix']
+  # transmission_probs_matrix = np.zeros((L, L))
+  # for l in range(L):
+  #   for lprime in range(L):
+  #     if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
+  #       transmission_probs_matrix[l, lprime] = \
+  #         transmission_prob(a, l, lprime, eta, distance_matrix, susceptibility)
+  transmission_probs_matrix = get_all_ebola_transmission_probs_njit(a, eta, L, distance_matrix, susceptibility,
+                                                                    adjacency_matrix)
   return transmission_probs_matrix
 
 
