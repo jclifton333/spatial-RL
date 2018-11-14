@@ -161,6 +161,8 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
                                                     **infection_probs_kwargs)
         y_tpm = np.random.binomial(n=1, p=infection_probs)
         scores.append(np.mean(y_tpm))
+      if np.isnan(np.mean(scores)):
+        pdb.set_trace()
     return np.mean(scores)
 
   ETA_BOUNDS = (0.0, np.power(1, -1/3))
@@ -222,7 +224,7 @@ def stochastic_approximation_for_policy_search(T, s, y, beta, eta, f, g, alpha, 
     s_tpmp1 = s_tpm
     s_tpmp1_tilde = s_tpm
 
-    for m in range(T-1):
+    for m in range(T):
       # Plus perturbation
       eta_plus = eta + zeta * z
       priority_score_plus = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
