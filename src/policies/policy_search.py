@@ -419,9 +419,8 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
 
 
 def policy_search_policy(**kwargs):
-  # ToDo: Currently specific to SIS!
 
-  env, T, treatment_budget, initial_policy_parameter = \
+  env, remaining_time_horizon, treatment_budget, initial_policy_parameter = \
     kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget'], kwargs['initial_policy_parameter']
 
   if env.__class__.__name__ == "SIS":
@@ -439,7 +438,7 @@ def policy_search_policy(**kwargs):
   if initial_policy_parameter is None:
     initial_policy_parameter = np.ones(3) * 0.5
   initial_alpha = initial_zeta = None
-  remaining_time_horizon = T - env.T
+  # remaining_time_horizon = T - env.T
 
   # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random
   # ToDo: policy; may be improved...

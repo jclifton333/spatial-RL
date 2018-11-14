@@ -151,7 +151,7 @@ class Simulator(object):
 
     for t in range(self.time_horizon - 2):
       a, _ = self.random_policy(**self.policy_arguments)
-      self.policy_arguments['planning_depth'] = self.time_horizon - t
+      self.policy_arguments['planning_depth'] = self.time_horizon - 2 - t
       self.env.step(a)
       if t in times_to_evaluate:
         mb_be, mf_be = self.generate_bootstrap_distributions(num_bootstrap_samples)
