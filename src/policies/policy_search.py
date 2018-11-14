@@ -147,7 +147,7 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
       s_tpm = s
       y_tpm = y
       a_dummy = np.zeros(env.L)
-      for m in range(T-1):
+      for m in range(T):
         # print(m)
         # Plus perturbation
         priority_score = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
