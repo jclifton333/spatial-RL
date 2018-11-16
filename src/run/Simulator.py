@@ -29,7 +29,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 import keras.backend as K
 
-# ToDo: Refactor so there isn't a separate file for each type of simulation
+
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
                evaluation_budget, env_kwargs, network_name):
@@ -61,7 +61,7 @@ class Simulator(object):
     self.policy_arguments = {'classifier': SKLogit2, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
-                              'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
+                              'divide_evenly': True, 'argmaxer': self.argmaxer, 'q_model': None,
                               'bootstrap': True, 'initial_policy_parameter': None}
 
     # Get settings dict for log
@@ -88,10 +88,12 @@ class Simulator(object):
 
     # Save results
     results_dict = {k: v for d in results_list for k, v in d.items()}
-    list_of_scores = [v['score'] for v in results_dict.values()] 
-    results_dict['mean'] = float(np.mean(list_of_scores))
-    results_dict['se'] = float(np.std(list_of_scores) / np.sqrt(len(list_of_scores)))
+    list_of_scores = [v['score'] for v in results_dict.values()]
+    mean, se = float(np.mean(list_of_scores)), float(np.std(list_of_scores) / np.sqrt(len(list_of_scores)))
+    results_dict['mean'] = mean
+    results_dict['se'] = se
     self.save_results(results_dict)
+    print('mean: {} se: {}'.format(mean, se))
     return
 
   def episode(self, replicate):
@@ -100,8 +102,8 @@ class Simulator(object):
     t0 = time.time()
     self.env.reset()
     # Initial steps
-    self.env.step(self.random_policy(**self.policy_arguments)[0])
-    self.env.step(self.random_policy(**self.policy_arguments)[0])
+    # self.env.step(self.random_policy(**self.policy_arguments)[0])
+    # self.env.step(self.random_policy(**self.policy_arguments)[0])
     for t in range(self.time_horizon-2):
       a, info = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t

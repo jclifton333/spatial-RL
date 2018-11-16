@@ -46,7 +46,8 @@ class Ebola(SpatialDisease):
 
   # Get initial outbreaks
   OUTBREAK_TIMES[np.where(OUTBREAK_TIMES == -1)] = np.max(OUTBREAK_TIMES) + 1 # Make it easier to sort
-  NUMBER_OF_INITIAL_OUTBREAKS = 25
+  # NUMBER_OF_INITIAL_OUTBREAKS = 25
+  NUMBER_OF_INITIAL_OUTBREAKS = int(np.floor(0.25 * L))
   OUTBREAK_INDICES = np.argsort(OUTBREAK_TIMES)[:NUMBER_OF_INITIAL_OUTBREAKS]
   INITIAL_INFECTIONS = np.zeros(L)
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
