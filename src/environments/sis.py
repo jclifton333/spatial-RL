@@ -279,46 +279,27 @@ class SIS(SpatialDisease):
     :param y_next: next infections after data_block
     :return:
     """
-    treatment_indices = np.array([2, 3, 6, 7])  # Indices corresponding to encodings where a = 1
-    neighbor_is_infected_and_treated_indices = np.array([6, 7]) + 8
-    neighbor_is_infected_and_not_treated_indices = np.array([4, 5]) + 8
-
-    not_infected_ixs = np.where(y == 0)
-    X, y_next = data_block[not_infected_ixs], y_next[not_infected_ixs]
-
-    next_infected_ixs = np.where(y_next == 1)
-    next_not_infected_ixs = np.where(y_next == 0)
-    is_treated = np.sum(X[:, treatment_indices], axis=1)
-    num_neighbor_is_treated = np.sum(X[:, neighbor_is_infected_and_treated_indices], axis=1)
-    num_neighbor_is_not_treated = np.sum(X[:, neighbor_is_infected_and_not_treated_indices], axis=1)
-
-    n_00 = (1 - is_treated) * num_neighbor_is_not_treated
-    n_01 = (1 - is_treated) * num_neighbor_is_treated
-    n_10 = is_treated * num_neighbor_is_not_treated
-    n_11 = is_treated * num_neighbor_is_treated
-
-    # Need to know whether the next infection status is "success" or "failure"
-    n_00_0 = n_00[next_not_infected_ixs]
-    n_00_1 = n_00[next_infected_ixs]
-    n_01_0 = n_01[next_not_infected_ixs]
-    n_01_1 = n_01[next_infected_ixs]
-    n_10_0 = n_10[next_not_infected_ixs]
-    n_10_1 = n_10[next_infected_ixs]
-    n_11_0 = n_11[next_not_infected_ixs]
-    n_11_1 = n_11[next_infected_ixs]
-    a_0 = is_treated[next_not_infected_ixs].astype(float)
-    a_1 = is_treated[next_infected_ixs].astype(float)
-
-    self.counts_for_likelihood['n_00_0'] = np.append(self.counts_for_likelihood['n_00_0'], n_00_0)
-    self.counts_for_likelihood['n_00_1'] = np.append(self.counts_for_likelihood['n_00_1'], n_00_1)
-    self.counts_for_likelihood['n_01_0'] = np.append(self.counts_for_likelihood['n_01_0'], n_01_0)
-    self.counts_for_likelihood['n_01_1'] = np.append(self.counts_for_likelihood['n_01_1'], n_01_1)
-    self.counts_for_likelihood['n_10_0'] = np.append(self.counts_for_likelihood['n_10_0'], n_10_0)
-    self.counts_for_likelihood['n_10_1'] = np.append(self.counts_for_likelihood['n_10_1'], n_10_1)
-    self.counts_for_likelihood['n_11_0'] = np.append(self.counts_for_likelihood['n_11_0'], n_11_0)
-    self.counts_for_likelihood['n_11_1'] = np.append(self.counts_for_likelihood['n_11_1'], n_11_1)
-    self.counts_for_likelihood['a_0'] = np.append(self.counts_for_likelihood['a_0'], a_0)
-    self.counts_for_likelihood['a_1'] = np.append(self.counts_for_likelihood['a_1'], a_1)
+    new_counts_for_likelihood = counts_for_likelihood_at_data_block(data_block, y, y_next)
+    self.counts_for_likelihood['n_00_0'] = np.append(self.counts_for_likelihood['n_00_0'],
+                                                     new_counts_for_likelihood['n_00_0'])
+    self.counts_for_likelihood['n_00_1'] = np.append(self.counts_for_likelihood['n_00_1'],
+                                                     new_counts_for_likelihood['n_00_1'])
+    self.counts_for_likelihood['n_01_0'] = np.append(self.counts_for_likelihood['n_01_0'],
+                                                     new_counts_for_likelihood['n_01_0'])
+    self.counts_for_likelihood['n_01_1'] = np.append(self.counts_for_likelihood['n_01_1'],
+                                                     new_counts_for_likelihood['n_01_1'])
+    self.counts_for_likelihood['n_10_0'] = np.append(self.counts_for_likelihood['n_10_0'],
+                                                     new_counts_for_likelihood['n_10_0'])
+    self.counts_for_likelihood['n_10_1'] = np.append(self.counts_for_likelihood['n_10_1'],
+                                                     new_counts_for_likelihood['n_10_1'])
+    self.counts_for_likelihood['n_11_0'] = np.append(self.counts_for_likelihood['n_11_0'],
+                                                     new_counts_for_likelihood['n_11_0'])
+    self.counts_for_likelihood['n_11_1'] = np.append(self.counts_for_likelihood['n_11_1'],
+                                                     new_counts_for_likelihood['n_11_1'])
+    self.counts_for_likelihood['a_0'] = np.append(self.counts_for_likelihood['a_0'],
+                                                  new_counts_for_likelihood['a_0'])
+    self.counts_for_likelihood['a_1'] = np.append(self.counts_for_likelihood['a_1'],
+                                                  new_counts_for_likelihood['a_1'])
 
   def update_obs_history(self, a):
     """
@@ -478,6 +459,7 @@ class SIS(SpatialDisease):
     return cov
 
 
+## Helpers ##
 def mb_log_lik_single(mb_params, x_raw, y_next, num_treated_and_infected_neighbors,
                       num_untreated_and_infected_neighbors):
   a = x_raw[1]
@@ -496,5 +478,38 @@ def mb_log_lik_single(mb_params, x_raw, y_next, num_treated_and_infected_neighbo
   return lik
 
 
+def counts_for_likelihood_at_data_block(data_block, y, y_next):
+  treatment_indices = np.array([2, 3, 6, 7])  # Indices corresponding to encodings where a = 1
+  neighbor_is_infected_and_treated_indices = np.array([6, 7]) + 8
+  neighbor_is_infected_and_not_treated_indices = np.array([4, 5]) + 8
+
+  not_infected_ixs = np.where(y == 0)
+  X, y_next = data_block[not_infected_ixs], y_next[not_infected_ixs]
+
+  next_infected_ixs = np.where(y_next == 1)
+  next_not_infected_ixs = np.where(y_next == 0)
+  is_treated = np.sum(X[:, treatment_indices], axis=1)
+  num_neighbor_is_treated = np.sum(X[:, neighbor_is_infected_and_treated_indices], axis=1)
+  num_neighbor_is_not_treated = np.sum(X[:, neighbor_is_infected_and_not_treated_indices], axis=1)
+
+  n_00 = (1 - is_treated) * num_neighbor_is_not_treated
+  n_01 = (1 - is_treated) * num_neighbor_is_treated
+  n_10 = is_treated * num_neighbor_is_not_treated
+  n_11 = is_treated * num_neighbor_is_treated
+
+  # Need to know whether the next infection status is "success" or "failure"
+  n_00_0 = n_00[next_not_infected_ixs]
+  n_00_1 = n_00[next_infected_ixs]
+  n_01_0 = n_01[next_not_infected_ixs]
+  n_01_1 = n_01[next_infected_ixs]
+  n_10_0 = n_10[next_not_infected_ixs]
+  n_10_1 = n_10[next_infected_ixs]
+  n_11_0 = n_11[next_not_infected_ixs]
+  n_11_1 = n_11[next_infected_ixs]
+  a_0 = is_treated[next_not_infected_ixs].astype(float)
+  a_1 = is_treated[next_infected_ixs].astype(float)
+
+  return {'n_00_0': n_00_0, 'n_00_1': n_00_1, 'n_01_0': n_01_0, 'n_01_1': n_01_1, 'n_10_0': n_10_0, 'n_10_1': n_10_1,
+          'n_11_0': n_11_0, 'n_11_1': n_11_1, 'a_0': a_0, 'a_1': a_1}
 
 

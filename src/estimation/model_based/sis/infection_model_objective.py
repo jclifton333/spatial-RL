@@ -65,3 +65,5 @@ def negative_log_likelihood(eta, counts_for_likelihood):
                                  success=0)
   return -lik_success_component - lik_failure_component
 
+
+
