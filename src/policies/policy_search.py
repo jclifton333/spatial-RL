@@ -160,9 +160,7 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
         infection_probs = infection_probs_predictor(a_tpm, y_tpm, beta, env.L, env.adjacency_list,
                                                     **infection_probs_kwargs)
         y_tpm = np.random.binomial(n=1, p=infection_probs)
-        scores.append(np.mean(y_tpm))
-      if np.isnan(np.mean(scores)):
-        pdb.set_trace()
+        scores.append(-np.mean(y_tpm))
     return np.mean(scores)
 
   ETA_BOUNDS = (0.0, np.power(1, -1/3))

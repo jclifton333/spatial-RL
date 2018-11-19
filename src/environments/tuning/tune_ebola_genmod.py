@@ -59,7 +59,7 @@ def beta_objective(alpha, log_beta):
 
   # Y_0_mean = np.sum(env.Y[0, :])
   # random policy
-  rand_sim = Simulator(1, 'Ebola', TIME_HORIZON, 1, 'random', 'quad_approx', 0.9, 100, env_kwargs)
+  rand_sim = Simulator(1, 'Ebola', TIME_HORIZON, 1, 'random', 'quad_approx', 0.9, 100, env_kwargs, '')
   # Y_25_rando = np.zeros((0, 290))
   Y_25_rando = []
   for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
@@ -67,8 +67,8 @@ def beta_objective(alpha, log_beta):
     Y_25_rando.append(np.mean(rand_sim.env.current_infected))
     # Y_25_rando = np.vstack((Y_25_rando, np.mean(rand_sim.env.Y, axis=0)))
 
-  # true probs policy
-  true_probs_sim = Simulator(1, 'Ebola', TIME_HORIZON, 1, 'true_probs', 'quad_approx', 0.9, 100, env_kwargs)
+  # true probs myopic policy
+  true_probs_sim = Simulator(1, 'Ebola', TIME_HORIZON, 1, 'true_probs_myopic', 'quad_approx', 0.9, 100, env_kwargs, '')
   # Y_25_true_probs = np.zeros((0, 290))
   Y_25_true_probs = []
   for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
@@ -105,14 +105,19 @@ if __name__ == '__main__':
   #     best_alpha = alpha
 
   def try_beta(b):
+    np.random.seed(int(100 * b))
     best_alpha = 3.0
     y_true_probs, y_rando = beta_objective(best_alpha, np.log(b))
     # print('beta {} y_true_probs {} y rando'.format(beta, y_true_probs, y_rando))
     return b, y_true_probs, y_rando
 
-  try_beta(5)
-  # pool = mp.Pool(processes=50)
-  # results = pool.map(try_beta, beta_list)
+  # try_beta(5)
+  # pool = mp.Pool(processes=2)
+  results = []
+  for i, beta in enumerate(beta_list):
+    print('{}\n\n'.format(i))
+    results.append(try_beta(beta))
+  print(results)
 
   # for b, y_true_probs, y_rando in results:
   #   print('b: {} y_true_probs: {} y_rando: {}'.format(b, y_true_probs, y_rando))
@@ -120,6 +125,6 @@ if __name__ == '__main__':
   #    if loss < best_loss:
   #      best_loss = loss
   #      best_beta = beta
-  #  print(best_alpha, -best_beta)
-  #  # tune()
+  # print(best_alpha, -best_beta)
+  # tune()
 

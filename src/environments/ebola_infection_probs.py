@@ -35,12 +35,12 @@ def get_all_ebola_transmission_probs_njit(a, eta, L, distance_matrix, susceptibi
   transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
     for lprime in range(L):
-      if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
+      if adjacency_matrix[l, lprime]:
         d_l_lprime = distance_matrix[l, lprime]
         s_l, s_lprime = susceptibility[l], susceptibility[lprime]
         log_grav_term = np.log(d_l_lprime) - np.exp(eta[2]) * (np.log(s_l) + np.log(s_lprime))
         baseline_logit = eta[0] - np.exp(eta[1] + log_grav_term)
-        transmission_prob_ = expit2(baseline_logit + a[l] * eta[3] + a[lprime] * a[4])
+        transmission_prob_ = expit2(baseline_logit + a[l] * eta[3] + a[lprime] * eta[4])
         transmission_probs_matrix[l, lprime] = transmission_prob_
   return transmission_probs_matrix
 

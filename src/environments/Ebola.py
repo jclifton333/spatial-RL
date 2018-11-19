@@ -27,7 +27,7 @@ class Ebola(SpatialDisease):
 
   # DISTANCE_MATRIX  = network_info['haversine_distance_matrix']
   DISTANCE_MATRIX = network_info['euclidean_distance_matrix']
-  SUSCEPTIBILITY = network_info['pop_array']
+  SUSCEPTIBILITY = network_info['pop_array'] / 10000
   L = len(SUSCEPTIBILITY)
   OUTBREAK_TIMES = network_info['outbreak_time_array']
 
@@ -46,8 +46,8 @@ class Ebola(SpatialDisease):
 
   # Get initial outbreaks
   OUTBREAK_TIMES[np.where(OUTBREAK_TIMES == -1)] = np.max(OUTBREAK_TIMES) + 1 # Make it easier to sort
-  # NUMBER_OF_INITIAL_OUTBREAKS = 25
-  NUMBER_OF_INITIAL_OUTBREAKS = int(np.floor(0.25 * L))
+  NUMBER_OF_INITIAL_OUTBREAKS = 25
+  # NUMBER_OF_INITIAL_OUTBREAKS = int(np.floor(0.25 * L))
   OUTBREAK_INDICES = np.argsort(OUTBREAK_TIMES)[:NUMBER_OF_INITIAL_OUTBREAKS]
   INITIAL_INFECTIONS = np.zeros(L)
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
@@ -82,8 +82,8 @@ class Ebola(SpatialDisease):
   for l in range(L):
     s_l = SUSCEPTIBILITY[l]
     for l_prime in range(L):
-      # if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
-      if True:
+      if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
+      # if True:
         """
         from https://github.com/LaberLabs/stdmMf_cpp/blob/master/src/main/ebolaStateGravityModel.cpp
         
@@ -104,7 +104,6 @@ class Ebola(SpatialDisease):
     SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, initial_infections=Ebola.INITIAL_INFECTIONS)
     self.current_state = self.SUSCEPTIBILITY
     self.lambda_ = self.adjacency_matrix
-
     # Modify eta if one is given
     if eta is not None:
       ETA_0, ETA_1, ETA_2, ETA_3, ETA_4 = eta
@@ -181,7 +180,7 @@ class Ebola(SpatialDisease):
   def next_infections(self, a, eta=None):
     super(Ebola, self).next_infections(a)
     if eta is None:
-      next_infected_probabilities = self.next_infected_probabilities(a, eta=self.ETA)
+      next_infected_probabilities = self.next_infected_probabilities(a)
     else:
       next_infected_probabilities = self.next_infected_probabilities(a, eta=eta)
     next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
