@@ -280,26 +280,7 @@ class SIS(SpatialDisease):
     :return:
     """
     new_counts_for_likelihood = counts_for_likelihood_at_data_block(data_block, y, y_next)
-    self.counts_for_likelihood['n_00_0'] = np.append(self.counts_for_likelihood['n_00_0'],
-                                                     new_counts_for_likelihood['n_00_0'])
-    self.counts_for_likelihood['n_00_1'] = np.append(self.counts_for_likelihood['n_00_1'],
-                                                     new_counts_for_likelihood['n_00_1'])
-    self.counts_for_likelihood['n_01_0'] = np.append(self.counts_for_likelihood['n_01_0'],
-                                                     new_counts_for_likelihood['n_01_0'])
-    self.counts_for_likelihood['n_01_1'] = np.append(self.counts_for_likelihood['n_01_1'],
-                                                     new_counts_for_likelihood['n_01_1'])
-    self.counts_for_likelihood['n_10_0'] = np.append(self.counts_for_likelihood['n_10_0'],
-                                                     new_counts_for_likelihood['n_10_0'])
-    self.counts_for_likelihood['n_10_1'] = np.append(self.counts_for_likelihood['n_10_1'],
-                                                     new_counts_for_likelihood['n_10_1'])
-    self.counts_for_likelihood['n_11_0'] = np.append(self.counts_for_likelihood['n_11_0'],
-                                                     new_counts_for_likelihood['n_11_0'])
-    self.counts_for_likelihood['n_11_1'] = np.append(self.counts_for_likelihood['n_11_1'],
-                                                     new_counts_for_likelihood['n_11_1'])
-    self.counts_for_likelihood['a_0'] = np.append(self.counts_for_likelihood['a_0'],
-                                                  new_counts_for_likelihood['a_0'])
-    self.counts_for_likelihood['a_1'] = np.append(self.counts_for_likelihood['a_1'],
-                                                  new_counts_for_likelihood['a_1'])
+    self.counts_for_likelihood = update_counts_for_likelihood_(self.counts_for_likelihood, data_block, y, y_next)
 
   def update_obs_history(self, a):
     """
@@ -478,12 +459,23 @@ def mb_log_lik_single(mb_params, x_raw, y_next, num_treated_and_infected_neighbo
   return lik
 
 
-def counts_for_likelihood_at_data_block(data_block, y, y_next):
+def counts_for_likelihood_at_data_block(data_block, y, y_next, indices=None):
+  """
+
+  :param data_block:
+  :param y:
+  :param y_next:
+  :param indices: Indices at which to compute counts; used for cross-validation train/test split.
+  :return:
+  """
+  if indices is None:
+    indices = [l for l in range(data_block.shape[0])]
+
   treatment_indices = np.array([2, 3, 6, 7])  # Indices corresponding to encodings where a = 1
   neighbor_is_infected_and_treated_indices = np.array([6, 7]) + 8
   neighbor_is_infected_and_not_treated_indices = np.array([4, 5]) + 8
 
-  not_infected_ixs = np.where(y == 0)
+  not_infected_ixs = np.intersect1d(np.where(y == 0)[0], indices)
   X, y_next = data_block[not_infected_ixs], y_next[not_infected_ixs]
 
   next_infected_ixs = np.where(y_next == 1)
@@ -513,3 +505,26 @@ def counts_for_likelihood_at_data_block(data_block, y, y_next):
           'n_11_0': n_11_0, 'n_11_1': n_11_1, 'a_0': a_0, 'a_1': a_1}
 
 
+def update_counts_for_likelihood_(counts_for_likelihood, data_block, y, y_next, indices=None):
+  new_counts_for_likelihood = counts_for_likelihood_at_data_block(data_block, y, y_next, indices=indices)
+  counts_for_likelihood['n_00_0'] = np.append(counts_for_likelihood['n_00_0'],
+                                                   new_counts_for_likelihood['n_00_0'])
+  counts_for_likelihood['n_00_1'] = np.append(counts_for_likelihood['n_00_1'],
+                                                   new_counts_for_likelihood['n_00_1'])
+  counts_for_likelihood['n_01_0'] = np.append(counts_for_likelihood['n_01_0'],
+                                                   new_counts_for_likelihood['n_01_0'])
+  counts_for_likelihood['n_01_1'] = np.append(counts_for_likelihood['n_01_1'],
+                                                   new_counts_for_likelihood['n_01_1'])
+  counts_for_likelihood['n_10_0'] = np.append(counts_for_likelihood['n_10_0'],
+                                                   new_counts_for_likelihood['n_10_0'])
+  counts_for_likelihood['n_10_1'] = np.append(counts_for_likelihood['n_10_1'],
+                                                   new_counts_for_likelihood['n_10_1'])
+  counts_for_likelihood['n_11_0'] = np.append(counts_for_likelihood['n_11_0'],
+                                                   new_counts_for_likelihood['n_11_0'])
+  counts_for_likelihood['n_11_1'] = np.append(counts_for_likelihood['n_11_1'],
+                                                   new_counts_for_likelihood['n_11_1'])
+  counts_for_likelihood['a_0'] = np.append(counts_for_likelihood['a_0'],
+                                                new_counts_for_likelihood['a_0'])
+  counts_for_likelihood['a_1'] = np.append(counts_for_likelihood['a_1'],
+                                                new_counts_for_likelihood['a_1'])
+  return counts_for_likelihood
