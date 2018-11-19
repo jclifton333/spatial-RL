@@ -34,7 +34,7 @@ def log_lik_single(a, y, y_next_, l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, ad
 
 @njit
 def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, distance_matrix, product_matrix,
-                            adjacency_matrix, T, L):
+                            adjacency_matrix, T, L, indices=None):
   log_lik = 0
   for t in range(T):
     a = A[t, :]
@@ -42,7 +42,7 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
     y_next_ = y_next[t, :]
 
     for l in range(L):
-      if not y[l]:  # Only model uninfected locations; infected locations never recover
+      if not y[l] and (l in indices or indices is None):  # Only model uninfected locations; infected locations never recover
         # log_lik_at_l = log_lik_single(a, y_next_, l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, adjacency_matrix,
         #                               distance_matrix, product_matrix)
         # Log likelihood at location l at time t
@@ -70,7 +70,8 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
 
 
 # ToDo: This turns out to be unnecessary...
-def negative_log_likelihood_wrapper(eta, A, Y, y_next, distance_matrix, product_matrix, adjacency_matrix, T, L):
+def negative_log_likelihood_wrapper(eta, A, Y, y_next, distance_matrix, product_matrix, adjacency_matrix, T, L,
+                                    indices=None):
   eta0 = eta[0]
   eta1 = np.max((-10, np.min((10, eta[1]))))  # For stability
   eta2 = np.max((-10, np.min((10, eta[2]))))
@@ -82,19 +83,20 @@ def negative_log_likelihood_wrapper(eta, A, Y, y_next, distance_matrix, product_
                                  adjacency_matrix, T, L)
 
 
-def fit_ebola_transition_model(env, y_next=None):
+def fit_ebola_transition_model(env, y_next=None, indices=None):
   """
 
   :param env:
   :param y_next: list of length-L binary vectors for infections after time t, or None;
                  used to get parametric bootstrap estimate of ebola model sampling dbn.
+  :param indices:
   :return:
   """
   if y_next is None:
     y_next = np.array(env.y)
   objective = partial(negative_log_likelihood_wrapper, A=env.A, Y=env.Y, y_next=y_next,
                       distance_matrix=env.DISTANCE_MATRIX, product_matrix=env.PRODUCT_MATRIX,
-                      adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L)
+                      adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L, indices=indices)
 
   # entries 1 and 2 are actually exp(eta_1), exp(eta_2)
   x0 = copy.copy(env.ETA)

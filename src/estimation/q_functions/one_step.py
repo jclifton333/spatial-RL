@@ -19,16 +19,23 @@ def compare_with_true_probs(env, predictor, raw):
   return
 
 
-def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_with_true_probs=True):
+def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_with_true_probs=True, indices=None):
   clf = classifier()
-  if y_next is None:
-    target = np.hstack(env.y).astype(float)
+  if indices is None:
+    if y_next is None:
+      target = np.hstack(env.y).astype(float)
+    else:
+      target = y_next
+    features = np.vstack(env.X)
   else:
-    target = y_next
-  features = np.vstack(env.X)
+    target = np.hstack([y_[ixs_at_t] for ixs_at_t, y_ in zip(indices, env.y)])
+    features = np.vstack([x[ixs_at_t, :] for ixs_at_t, x in zip(indices, env.X)])
 
   if clf.condition_on_infection:
-    X_raw = np.vstack(env.X_raw)
+    if indices is None:
+      X_raw = np.vstack(env.X_raw)
+    else:
+      X_raw = np.vstack([x_raw[ixs_at_t, :] for ixs_at_t, x_raw in zip(indices, env.X_raw)])
     clf_kwargs = {'infected_locations': np.where(X_raw[:, -1] == 1),
                   'not_infected_locations': np.where(X_raw[:, -1] == 0)}
     predict_proba_kwargs = {'infected_locations': np.where(env.X_raw[-1][:, -1] == 1)[0],
@@ -45,9 +52,10 @@ def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_
   return clf, predict_proba_kwargs
 
 
-def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None):
+def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None, indices=None):
   # Get model-based
-  eta = estimate_sis_parameters.fit_sis_transition_model(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
+  eta = estimate_sis_parameters.fit_sis_transition_model(env, bootstrap_weights=bootstrap_weights, y_next=y_next,
+                                                         indices=indices)
 
   def q_mb(data_block):
     infection_prob = sis_infection_probability(data_block[:, 1], data_block[:, 2], eta, env.L, env.adjacency_list,
@@ -57,9 +65,9 @@ def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None):
   return q_mb, eta
 
 
-def fit_one_step_ebola_mb_q(env, y_next=None):
+def fit_one_step_ebola_mb_q(env, y_next=None, indices=None):
   # Get model-based
-  eta = estimate_ebola_parameters.fit_ebola_transition_model(env, y_next=y_next)
+  eta = estimate_ebola_parameters.fit_ebola_transition_model(env, y_next=y_next, indices=indices)
 
   def q_mb(data_block):
     infection_prob = ebola_infection_probs(data_block[:, 1], eta, data_block[:, 2], env.adjacency_list,
@@ -69,21 +77,22 @@ def fit_one_step_ebola_mb_q(env, y_next=None):
   return q_mb, eta
 
 
-def fit_one_step_sis_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None):
+def fit_one_step_sis_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None, indices=None):
   """
 
   :param env:
   :param classifier:
   :param bootstrap_weights:
   :param y_next: If provided, fit to this rather than env.y.
+  :param indices: list of lists of location indices for train/test split, or None
   :return:
   """
 
   # Get model-based
-  q_mb, mb_params = fit_one_step_sis_mb_q(env, bootstrap_weights=bootstrap_weights, y_next=y_next)
+  q_mb, mb_params = fit_one_step_sis_mb_q(env, bootstrap_weights=bootstrap_weights, y_next=y_next, indices=indices)
 
   # Get model-free
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next)
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next, indices=indices)
 
   def q_mf(data_block, infected_locations, not_infected_locations):
     return clf.predict_proba(data_block, infected_locations, not_infected_locations)
@@ -96,21 +105,22 @@ def fit_one_step_sis_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_nex
   return q_mb, q_mf, mb_params, clf
 
 
-def fit_one_step_ebola_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None):
+def fit_one_step_ebola_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None, indices=indices):
   """
 
   :param env:
   :param classifier:
   :param bootstrap_weights:
   :param y_next: If provided, fit to this rather than env.y.
+  :param indices: list of lists of location indices for train/test split, or None
   :return:
   """
 
   # Get model-based
-  q_mb, mb_params = fit_one_step_ebola_mb_q(env, y_next=y_next)
+  q_mb, mb_params = fit_one_step_ebola_mb_q(env, y_next=y_next, indices=indices)
 
   # Get model-free
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next)
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next, indices=indices)
 
   def q_mf(data_block, infected_locations, not_infected_locations):
     return clf.predict_proba(data_block, infected_locations, not_infected_locations)
@@ -122,61 +132,3 @@ def fit_one_step_ebola_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_n
 
   return q_mb, q_mf, mb_params, clf
 
-# def bootstrap_one_step_q_functions(env, classifier, B):
-#   """
-#   Return dict of 2 B-length lists of bootstrapped one-step model-based and model-free q functions and corresponding
-#   list of B bootstrap weight arrays.
-#   """
-#
-#   q_mf_list, q_mb_list, bootstrap_weight_list = [], [], []
-#   for b in range(B):
-#     bootstrap_weights = np.random.exponential(size=(env.T, env.L))
-#     q_mb, q_mf, mb_params = fit_one_step_mf_and_mb_qs(env, classifier, bootstrap_weights=bootstrap_weights)
-#     q_mf_list.append(q_mf)
-#     q_mb_list.append(q_mb)
-#     bootstrap_weight_list.append(bootstrap_weights)
-#   return {'q_mf_list': q_mf_list, 'q_mb_list': q_mb_list, 'bootstrap_weight_list': bootstrap_weight_list}
-#
-#
-# def bellman_error(env, q_fn, evaluation_budget, treatment_budget, argmaxer, gamma, use_raw_features=False):
-#   r = np.hstack(np.array([np.sum(y) for y in env.y[1:]]))
-#   if use_raw_features:
-#     q = np.hstack(np.array([np.sum(q_fn(data_block)) for data_block in env.X_raw[:-1]]))
-#   else:
-#     q = np.hstack(np.array([np.sum(q_fn(data_block)) for data_block in env.X[:-1]]))
-#   qp1_max, _, _ = q_max_all_states(env, evaluation_budget, treatment_budget, q_fn, argmaxer, raw=use_raw_features)
-#   qp1_max = np.sum(qp1_max[1:, :], axis=1)
-#   td = r + gamma * qp1_max - q
-#   return np.linalg.norm(td)
-
-
-# def estimate_cov_and_mb_bias(phat, env, classifier):
-#   """
-#
-#   :param phat:
-#   :param env:
-#   :param classifier: This should be a flexible model.
-#   :return:
-#   """
-#   NUMBER_OF_BOOTSTRAP_SAMPLES = 100
-#
-#   clf = classifier()
-#   X, y = np.vstack(env.X), np.hstack(env.y).astype(float)
-#   clf.fit(X, y)
-#   phat_parametric = clf.predict_proba(X)[:, -1]
-#   phat_parametric_mean = np.mean(phat)
-#   correlation = 0.0
-#
-#   # Bias estimate
-#   mb_bias = phat - phat_parametric
-#
-#   # Parametric bootstrap correlation estimate
-#   # for b in range(NUMBER_OF_BOOTSTRAP_SAMPLES):
-#   #   y_b = np.random.binomial(1, p=phat_parametric)
-#   #   clf_b = classifier()
-#   #   clf_b.fit(X, y_b)
-#  #   phat_b = clf.predict_proba(X)
-#   #   correlation += ((np.mean(phat_b) - phat_parametric_mean)*(np.mean(y_b) - phat_parametric_mean)
-#   #                   - correlation) / (b + 1)
-#
-#   return softhresholder(np.mean(mb_bias), 0.05), 0.0
