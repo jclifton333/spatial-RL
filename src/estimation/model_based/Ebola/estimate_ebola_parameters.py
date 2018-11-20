@@ -34,7 +34,7 @@ def log_lik_single(a, y, y_next_, l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, ad
 
 @njit
 def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, distance_matrix, product_matrix,
-                            adjacency_matrix, T, L, indices=None):
+                            adjacency_matrix, T, L, bootstrap_weights, indices_mask):
   log_lik = 0
   for t in range(T):
     a = A[t, :]
@@ -42,7 +42,7 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
     y_next_ = y_next[t, :]
 
     for l in range(L):
-      if not y[l] and (l in indices or indices is None):  # Only model uninfected locations; infected locations never recover
+      if indices_mask[t, l] and not y[l]:  # Only model uninfected locations; infected locations never recover
         # log_lik_at_l = log_lik_single(a, y_next_, l, L, eta0, exp_eta1, exp_eta2, eta3, eta4, adjacency_matrix,
         #                               distance_matrix, product_matrix)
         # Log likelihood at location l at time t
@@ -64,14 +64,14 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
           log_lik_at_l = np.log(1 - prod)
         else:
           log_lik_at_l = np.log(prod)
-        log_lik += log_lik_at_l
+        log_lik += log_lik_at_l * bootstrap_weights[t, l]
 
   return -log_lik
 
 
 # ToDo: This turns out to be unnecessary...
 def negative_log_likelihood_wrapper(eta, A, Y, y_next, distance_matrix, product_matrix, adjacency_matrix, T, L,
-                                    indices=None):
+                                    bootstrap_weights, indices):
   eta0 = eta[0]
   eta1 = np.max((-10, np.min((10, eta[1]))))  # For stability
   eta2 = np.max((-10, np.min((10, eta[2]))))
@@ -80,10 +80,10 @@ def negative_log_likelihood_wrapper(eta, A, Y, y_next, distance_matrix, product_
   eta3 = eta[3]
   eta4 = eta[4]
   return negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, distance_matrix, product_matrix,
-                                 adjacency_matrix, T, L)
+                                 adjacency_matrix, T, L, bootstrap_weights, indices)
 
 
-def fit_ebola_transition_model(env, y_next=None, indices=None):
+def fit_ebola_transition_model(env, y_next=None, indices=None, bootstrap=False):
   """
 
   :param env:
@@ -94,9 +94,20 @@ def fit_ebola_transition_model(env, y_next=None, indices=None):
   """
   if y_next is None:
     y_next = np.array(env.y)
+  if bootstrap:
+    bootstrap_weights = np.random.exponential(scale=1.0, size=(env.T, env.L))
+  else:
+    bootstrap_weights = np.ones((env.T, env.L))
+
+  if indices is None:
+    indices_mask = np.ones((env.T, env.L))
+  else:
+    indices_mask = np.array([[np.float(l in indices[t]) for l in range(env.L)] for t in range(env.T)])
+
   objective = partial(negative_log_likelihood_wrapper, A=env.A, Y=env.Y, y_next=y_next,
                       distance_matrix=env.DISTANCE_MATRIX, product_matrix=env.PRODUCT_MATRIX,
-                      adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L, indices=indices)
+                      adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L, bootstrap_weights=bootstrap_weights,
+                      indices=indices_mask)
 
   # entries 1 and 2 are actually exp(eta_1), exp(eta_2)
   x0 = copy.copy(env.ETA)

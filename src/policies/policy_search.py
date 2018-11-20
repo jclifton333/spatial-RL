@@ -424,13 +424,16 @@ def policy_search_policy(**kwargs):
   if env.__class__.__name__ == "SIS":
     beta_mean = fit_infection_prob_model(env, None)
     beta_cov = env.mb_covariance(beta_mean)
-  elif env.__class__.__name__ == "Ebola":
-    beta_mean = fit_ebola_transition_model(env)
-    beta_cov = env.mb_covariance(beta_mean)
 
-  def gen_model_posterior():
-    beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
-    return beta_tilde
+    def gen_model_posterior():
+      beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
+      return beta_tilde
+  elif env.__class__.__name__ == "Ebola":
+    # beta_mean = fit_ebola_transition_model(env)
+    # beta_cov = env.mb_covariance(beta_mean)
+    def gen_model_posterior():
+      beta_tilde = fit_ebola_transition_model(env, bootstrap=True)
+      return beta_tilde
 
   # Settings
   if initial_policy_parameter is None:
