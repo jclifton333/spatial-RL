@@ -105,7 +105,7 @@ def fit_one_step_sis_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_nex
   return q_mb, q_mf, mb_params, clf
 
 
-def fit_one_step_ebola_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None, indices=indices):
+def fit_one_step_ebola_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None, indices=None):
   """
 
   :param env:

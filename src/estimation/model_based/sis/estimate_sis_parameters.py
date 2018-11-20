@@ -32,7 +32,7 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
       y = y_next
   else:
     X = np.vstack([x_raw[indices_at_t, :] for indices_at_t, x_raw in zip(indices, env.X_raw)])
-    y = np.vstack([y_[indices_at_t, :] for indices_at_t, y_ in zip(indices, env.y)])
+    y = np.hstack([y_[indices_at_t] for indices_at_t, y_ in zip(indices, env.y)])
 
   infected_ixs = np.where(X[:, 2] == 1)
   A_infected, y_infected = X[infected_ixs, 1], y[infected_ixs]
@@ -42,13 +42,13 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
     bootstrap_weights = None
     infected_weights = None
 
-  eta_q = fit_q(A_infected.T, y_infected, infected_weights, indices)
+  eta_q = fit_q(A_infected.T, y_infected, infected_weights)
   eta_p = fit_p(env, bootstrap_weights, indices)
   return np.concatenate((eta_p, eta_q))
 
 
-def fit_sis_transition_model(env, bootstrap_weights=None, y_next=None):
-  eta = fit_infection_prob_model(env, bootstrap_weights, y_next=y_next)
+def fit_sis_transition_model(env, bootstrap_weights=None, y_next=None, indices=None):
+  eta = fit_infection_prob_model(env, bootstrap_weights, y_next=y_next, indices=indices)
   # beta = fit_state_transition_model(env)
   return eta
 
@@ -82,7 +82,7 @@ def collect_counts_for_likelihood(env, indices):
   counts_for_likelihood_names = ['n_00_0', 'n_01_0', 'n_10_0', 'n_11_0', 'n_00_1', 'n_01_1', 'n_10_1', 'n_11_1',
                                  'a_0', 'a_1']
   counts_for_likelihood = {count_name: [] for count_name in counts_for_likelihood_names}
-  for t, data_block, indices_at_t in enumerate(zip(env.X, indices)):
+  for t, (data_block, indices_at_t) in enumerate(zip(env.X, indices)):
     counts_for_likelihood = update_counts_for_likelihood_(counts_for_likelihood, data_block, env.Y[t],
                                                           env.y[t], indices_at_t)
   return counts_for_likelihood

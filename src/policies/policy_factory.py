@@ -49,5 +49,7 @@ def policy_factory(policy_type):
     return ps.policy_search_policy
   elif policy_type == 'sis_one_step_equal_averaged':
     return roll.sis_one_step_equal_averaged
+  elif policy_type == 'one_step_stacked':
+    return roll.one_step_stacked
   else:
     raise ValueError('Argument does not match any policy.')

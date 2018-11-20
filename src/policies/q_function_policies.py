@@ -196,10 +196,11 @@ def one_step_stacked(**kwargs):
   for fold in range(N_SPLITS):
     train_test_split = train_test_splits[fold]
     q_mb_fold, q_mf_fold, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
-    for t, x_raw, x in enumerate(zip(env.X_raw, env.X)):
+    for t, (x_raw, x) in enumerate(zip(env.X_raw, env.X)):
       test_ixs = train_test_split[t][1]
-      yhat_mb = np.append(yhat_mb, q_mb_fold(x_raw[test_ixs, :]))
-      yhat_mf = np.append(yhat_mf, q_mf_fold(x[test_ixs, :], np.where(x_raw[:, -1] == 1), np.where(x_raw[:, -1] == 0)))
+      yhat_mb = np.append(yhat_mb, q_mb_fold(x_raw)[test_ixs])
+      yhat_mf = np.append(yhat_mf, q_mf_fold(x[test_ixs, :], np.where(x_raw[test_ixs, -1] == 1),
+                                             np.where(x_raw[test_ixs, -1] == 0)))
       y = np.append(y, env.y[t][test_ixs])
 
   # Get optimal combination weight
