@@ -161,12 +161,12 @@ class SKLogit2(object):
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     phat = np.zeros(X.shape[0])
-    if len(infected_locations) > 0:
+    if len(phat[infected_locations]) > 0:
       if self.inf_model_fitted:
         phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])[:, -1]
       else:
         phat[infected_locations] = self.inf_eb_prob
-    if len(not_infected_locations) > 0:
+    if len(phat[not_infected_locations]) > 0:
       if self.not_inf_model_fitted:
         phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]
       else:
