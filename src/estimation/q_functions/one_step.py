@@ -70,8 +70,9 @@ def fit_one_step_ebola_mb_q(env, y_next=None, indices=None):
   eta = estimate_ebola_parameters.fit_ebola_transition_model(env, y_next=y_next, indices=indices)
 
   def q_mb(data_block):
-    infection_prob = ebola_infection_probs(data_block[:, 1], eta, data_block[:, 2], env.adjacency_list,
-                                           env.DISTANCE_MATRIX, env.SUSCEPTIBILITY, env.L)
+    infection_prob = ebola_infection_probs(data_block[:, 1], data_block[:, 2], eta, env.L, env.adjacency_list,
+                                           **{'distance_matrix': env.DISTANCE_MATRIX,
+                                              'susceptibility': env.SUSCEPTIBILITY})
     return infection_prob
 
   return q_mb, eta

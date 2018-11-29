@@ -195,7 +195,10 @@ def one_step_stacked(**kwargs):
   y = np.zeros(0)
   for fold in range(N_SPLITS):
     train_test_split = train_test_splits[fold]
-    q_mb_fold, q_mf_fold, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
+    if env.__class__.__name__ == 'SIS':
+      q_mb, q_mf, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
+    elif env.__class__.__name__ == 'Ebola':
+      q_mb_fold, q_mf_fold, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
     for t, (x_raw, x) in enumerate(zip(env.X_raw[:-1], env.X[:-1])):
       test_ixs = train_test_split[1][t]
       yhat_mb = np.append(yhat_mb, q_mb_fold(x_raw)[test_ixs])
@@ -208,7 +211,11 @@ def one_step_stacked(**kwargs):
   alpha_mb = np.min((1.0, np.max((0.0, alpha_mb))))
 
   # Stack q functions
-  q_mb, q_mf, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
+  if env.__class__.__name__ == 'SIS':
+    q_mb, q_mf, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
+  elif env.__class__.__name__ == 'Ebola':
+    q_mb, q_mf, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2)
+
   def qfn(a):
     data_block = env.data_block_at_action(-1, a)
     raw_data_block = env.data_block_at_action(-1, a, raw=True)

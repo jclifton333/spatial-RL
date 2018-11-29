@@ -1,0 +1,11 @@
+results:
+  0: {runtime: 255.62131595611572, score: 0.2793103448275862}
+  1: {runtime: 247.8865146636963, score: 0.31724137931034485}
+  2: {runtime: 267.3437936306, score: 0.2827586206896552}
+  3: {runtime: 266.06386709213257, score: 0.2827586206896552}
+  mean: 0.29051724137931034
+  se: 0.007746638256729067
+settings: {L: 290, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: SKLogit2,
+  divide_evenly: true, env_name: Ebola, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 4,
+  planning_depth: 25, policy_name: true_probs, regressor: RandomForestRegressor, rollout_depth: 1,
+  time_horizon: 25, treatment_budget: 44}
