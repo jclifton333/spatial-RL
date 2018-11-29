@@ -80,7 +80,6 @@ def fit_one_step_ebola_mb_q(env, y_next=None, indices=None):
 
 def fit_one_step_sis_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_next=None, indices=None):
   """
-
   :param env:
   :param classifier:
   :param bootstrap_weights:

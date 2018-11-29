@@ -82,7 +82,8 @@ class Simulator(object):
 
   def run(self):
     # Multiprocess simulation replicates
-    num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
+    # num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
+    num_processes = self.number_of_replicates
     pool = mp.Pool(processes=num_processes)
     results_list = pool.map(self.episode, range(self.number_of_replicates))
 
