@@ -91,7 +91,10 @@ class Simulator(object):
     for rep in range(self.number_of_replicates):
       iterim_results_list.append(pool.apply_async(self.episode, args=(rep,)))
     for res in iterim_results_list:
-      results_list.append(res.get(timeout=240))
+      try:
+        results_list.append(res.get(timeout=1000))
+      except TimeoutError:
+        continue
     pool.close()
     pool.join()
 
