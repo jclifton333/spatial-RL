@@ -85,7 +85,17 @@ class Simulator(object):
     # num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
     num_processes = self.number_of_replicates
     pool = mp.Pool(processes=num_processes)
-    results_list = pool.map(self.episode, range(self.number_of_replicates))
+    results_list = []
+
+    def log_result(result):
+      results_list.append(result)
+
+    for rep in range(self.number_of_replicates):
+      pool.apply_async(self.episode, args=(rep,), callback=log_result)
+    pool.close()
+    pool.join()
+
+    # results_list = pool.map(self.episode, range(self.number_of_replicates))
 
     # Save results
     results_dict = {k: v for d in results_list for k, v in d.items()}
@@ -234,7 +244,9 @@ class Simulator(object):
 
     num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
     pool = mp.Pool(processes=num_processes)
-    results_list = pool.map(self.probability_episode_wrapper, range(self.number_of_replicates))
+    for rep in range(self.number_of_replicates):
+     pool.apply_async(self.probability_episode_wrapper, args=(rep,))
+    results_list = results_.get(timeout=240)
 
     # Save results
     results_dict = {k: v for d in results_list for k, v in d.items()}
