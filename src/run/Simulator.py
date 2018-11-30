@@ -263,7 +263,9 @@ class Simulator(object):
     # Multiprocess simulation replicates
     num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 3)))
     pool = mp.Pool(processes=num_processes)
-    results_list = pool.map(self.bootstrap_distribution_episode_wrapper, range(self.number_of_replicates))
+    # results_list = pool.map(self.bootstrap_distribution_episode_wrapper, range(self.number_of_replicates))
+    results1 = pool.apply_async(self.bootstrap_distribution_episode_wrapper, args=range(self.number_of_replicates))
+    results_list = results1.get(timeout=240)
 
     # Save results
     results_dict = {k: v for d in results_list for k, v in d.items()}
