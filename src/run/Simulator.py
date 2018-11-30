@@ -85,13 +85,13 @@ class Simulator(object):
     # num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
     num_processes = self.number_of_replicates
     pool = mp.Pool(processes=num_processes)
+    iterim_results_list = []
     results_list = []
 
-    def log_result(result):
-      results_list.append(result)
-
     for rep in range(self.number_of_replicates):
-      pool.apply_async(self.episode, args=(rep,), callback=log_result)
+      iterim_results_list.append(pool.apply_async(self.episode, args=(rep,)))
+    for res in iterim_results_list:
+      results_list.append(res.get(timeout=240))
     pool.close()
     pool.join()
 
