@@ -88,24 +88,31 @@ def argmin_2d(arr):
 def random_nearest_neighbor(size):
   # Described in RSS-Supplement
   k = 3
-  C = np.random.uniform(size=(size, 2))
-  E = np.array([[np.linalg.norm(C[l, :] - C[lprime, :]) for lprime in range(size)]
+  max_tries = 100
+  for num_tries in range(max_tries):
+    omega_tilde = np.zeros((size, size))
+    C = np.random.uniform(size=(size, 2))
+    E = np.array([[np.linalg.norm(C[l, :] - C[lprime, :]) for lprime in range(size)]
                 for l in range(size)])
-  omega_tilde = np.zeros((size, size))
-  for l in range(size):
-    E_l = E[l, :]
-    E_l_upper = order_stat(E_l, k + 1)
-    Nk_l = np.where(E_l <= E_l_upper)
-    omega_tilde[l, Nk_l] = 1
-  omega_tilde_nx = nx.from_numpy_matrix(omega_tilde)
-  B = nx.connected_components(omega_tilde_nx)
-  while len(list(B)) > 1:
+    for l in range(size):
+      E_l = E[l, :]
+      E_l_upper = order_stat(E_l, k + 1)
+      Nk_l = np.where(E_l <= E_l_upper)
+      omega_tilde[l, Nk_l] = 1
+    omega_tilde_nx = nx.from_numpy_matrix(omega_tilde)
+    B = list(nx.connected_components(omega_tilde_nx))
+    if len(B) > 1:
+      break
+    else:
+      continue
+
+  while len(B) > 1:
     best_pair = None
     best_dist = float('inf')
-    for i in range(len(list(B))):
-      for j in range(i + 1, len(list(B))):
-        B_i = B[i]
-        B_j = B[j]
+    for i in range(len(B)):
+      for j in range(i + 1, len(B)):
+        B_i = [x for x in B[i]]
+        B_j = [x for x in B[j]]
         distances = np.array([[E[l, lprime] for l in B_i]
                               for lprime in B_j])
         min_dist = np.min(distances)
@@ -118,6 +125,6 @@ def random_nearest_neighbor(size):
     except:
       pdb.set_trace()
 
-    B = nx.connected_components(omega_tilde_nx)
+    B = list(nx.connected_components(omega_tilde_nx))
   return nx.adjacency_matrix(omega_tilde_nx).todense()
 

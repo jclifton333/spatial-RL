@@ -32,7 +32,7 @@ import keras.backend as K
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, env_kwargs, network_name):
+               evaluation_budget, env_kwargs, network_name, bootstrap):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Ebola'
@@ -62,7 +62,7 @@ class Simulator(object):
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
-                              'bootstrap': True, 'initial_policy_parameter': None}
+                              'bootstrap': bootstrap, 'initial_policy_parameter': None}
 
     # Get settings dict for log
     self.settings = {'classifier': self.policy_arguments['classifier'].__name__,
@@ -85,20 +85,20 @@ class Simulator(object):
     # num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
     num_processes = self.number_of_replicates
     pool = mp.Pool(processes=num_processes)
-    iterim_results_list = []
-    results_list = []
+    # iterim_results_list = []
+    # results_list = []
 
-    for rep in range(self.number_of_replicates):
-      iterim_results_list.append(pool.apply_async(self.episode, args=(rep,)))
-    for res in iterim_results_list:
-      try:
-        results_list.append(res.get(timeout=1000))
-      except TimeoutError:
-        continue
-    pool.close()
-    pool.join()
+    # for rep in range(self.number_of_replicates):
+    #   iterim_results_list.append(pool.apply_async(self.episode, args=(rep,)))
+    # for res in iterim_results_list:
+    #   try:
+    #     results_list.append(res.get(timeout=1000))
+    #   except TimeoutError:
+    #     continue
+    # pool.close()
+    # pool.join()
 
-    # results_list = pool.map(self.episode, range(self.number_of_replicates))
+    results_list = pool.map(self.episode, range(self.number_of_replicates))
 
     # Save results
     results_dict = {k: v for d in results_list for k, v in d.items()}
@@ -115,6 +115,7 @@ class Simulator(object):
     episode_results = {'score': None, 'runtime': None}
     t0 = time.time()
     self.env.reset()
+
     # Initial steps
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     self.env.step(self.random_policy(**self.policy_arguments)[0])
