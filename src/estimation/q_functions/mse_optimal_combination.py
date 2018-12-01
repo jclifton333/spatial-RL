@@ -178,18 +178,22 @@ def one_step_ebola_convex_combo(env):
   yhat_mf = np.array([fitted_mf_clf.predict_proba(data_block, np.where(raw_data_block[:, 2] == 1),
                                                                           np.where(raw_data_block[:, 2] == 0))
                                    for data_block, raw_data_block in zip(env.X, env.X_raw)])
-  yhat_mb = np.array([ebola_infection_probs(env.A[t], mb_params, env.Y[t], env.adjacency_list,
-                                                   env.DISTANCE_MATRIX, env.SUSCEPTIBILITY, env.L)
+  # yhat_mb = np.array([ebola_infection_probs(env.A[t], mb_params, env.Y[t], env.adjacency_list,
+  #                                                  env.DISTANCE_MATRIX, env.SUSCEPTIBILITY, env.L)
+  #                            for t in range(env.T)])
+  yhat_mb = np.array([ebola_infection_probs(env.A[t], env.Y[t], mb_params, env.L, env.adjacency_list,
+                                                   **{'distance_matrix':env.DISTANCE_MATRIX,
+                                                      'susceptibility':env.SUSCEPTIBILITY})
                              for t in range(env.T)])
-
   for bootstrap_rep in range(NUM_BOOTSTRAP_SAMPLES):
     # Draw y's using parametric bootstrap
     y_next_draw = np.array([np.random.binomial(1, p=phat_t) for phat_t in yhat_mf]).astype(float)
 
     # Fit mb model to y_draw and get yhat
     mb_param_draw = fit_ebola_transition_model(env, y_next_draw)
-    yhat_mb_draw = np.array([ebola_infection_probs(env.A[t], mb_param_draw, env.Y[t], env.adjacency_list,
-                                                   env.DISTANCE_MATRIX, env.SUSCEPTIBILITY, env.L)
+    yhat_mb_draw = np.array([ebola_infection_probs(env.A[t], env.Y[t], mb_param_draw, env.L, env.adjacency_list,
+                                                   **{'distance_matrix':env.DISTANCE_MATRIX,
+                                                      'susceptibility':env.SUSCEPTIBILITY})
                              for t in range(env.T)]).flatten()
 
     # Fit mf model to y_draw and get yhat
