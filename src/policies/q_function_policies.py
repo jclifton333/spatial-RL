@@ -105,8 +105,20 @@ def ebola_model_based_one_step(**kwargs):
   ptrue = env.next_infected_probabilities(a)
   diff = np.abs(phat - ptrue)
   worst_ix = np.argmax(diff)
-  # print('eta: {}'.format(eta))
-  print('max loss: {} mean loss: {} worst ix: {}'.format(np.max(diff), np.mean(diff), worst_ix))
+  print('eta: {}\ntrue eta: {}'.format(eta, env.ETA))
+  # print('max loss: {} mean loss: {} worst ix: {}'.format(np.max(diff), np.mean(diff), worst_ix))
+  return a, None
+
+
+def sis_model_based_myopic(**kwargs):
+  env, treatment_budget = kwargs['env'], kwargs['treatment_budget']
+  eta = fit_sis_transition_model(env)
+  one_step_q = partial(env.next_infected_probabilities, eta=eta)
+  a = np.zeros(env.L)
+  probs = one_step_q(a)
+
+  treat_ixs = random_argsort(-probs, treatment_budget)
+  a[treat_ixs] = 1
   return a, None
 
 
@@ -118,7 +130,7 @@ def ebola_model_based_myopic(**kwargs):
   probs = one_step_q(a)
 
   # Get priority score
-  priorities_for_infected_locations = np.zeros(np.sum(env.current_infected))
+  priorities_for_infected_locations = np.zeros(env.L)
   for l in np.where(env.current_infected == 1)[0]:
     for lprime in env.adjacency_list[l]:
       priorities_for_infected_locations[l] += \
@@ -127,7 +139,8 @@ def ebola_model_based_myopic(**kwargs):
   priority = probs
 
   # Treat greedily acc to priority
-  priority[np.where(env.current_infected == 1)] = priorities_for_infected_locations
+  priority[np.where(env.current_infected == 1)] = \
+    priorities_for_infected_locations[np.where(env.current_infected == 1)]
   treat_ixs = random_argsort(-priority, treatment_budget)
   a[treat_ixs] = 1
 
