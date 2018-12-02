@@ -55,8 +55,10 @@ def negative_log_likelihood(eta0, exp_eta1, exp_eta2, eta3, eta4, A, Y, y_next, 
             d_l_lprime = distance_matrix[l, l_prime]
             s_l_lprime = product_matrix[l, l_prime]
             a_l_prime = a[l_prime]
-            logit_transmission_prob = eta0 - exp_eta1 * d_l_lprime / np.power(s_l_lprime, exp_eta2) + \
-                                      eta3 * a_l + eta4 * a_l_prime
+            log_grav_term = np.log(d_l_lprime) - exp_eta2 * np.log(s_l_lprime)
+            logit_transmission_prob = eta0 - exp_eta1 * np.exp(log_grav_term) + eta3*a_l + eta4*a_l_prime
+            # logit_transmission_prob = eta0 - exp_eta1 * d_l_lprime / np.power(s_l_lprime, exp_eta2) + \
+            #                           eta3 * a_l + eta4 * a_l_prime
             one_minus_transmission_prob = 1.0 / (1.0 + np.exp(logit_transmission_prob))
             prod *= one_minus_transmission_prob
 
@@ -109,10 +111,9 @@ def fit_ebola_transition_model(env, y_next=None, indices=None, bootstrap=False):
                       adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L, bootstrap_weights=bootstrap_weights,
                       indices=indices_mask)
 
-  # entries 1 and 2 are actually exp(eta_1), exp(eta_2)
   x0 = copy.copy(env.ETA)
-  x0[1] = np.log(x0[1] + 0.1) 
-  x0[2] = np.log(x0[2] + 0.1)
+  # x0[1] = np.log(x0[1] + 0.001)
+  # x0[2] = np.log(x0[2] + 0.001)
   # x0 = np.random.normal(size=5)
 
   res = minimize(objective, x0=x0, method='L-BFGS-B')
