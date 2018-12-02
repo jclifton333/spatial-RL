@@ -93,7 +93,7 @@ class Simulator(object):
     for res in iterim_results_list:
       try:
         results_list.append(res.get(timeout=1000))
-      except TimeoutError:
+      except mp.context.TimeoutError:
         pass
     pool.close()
     pool.join()
