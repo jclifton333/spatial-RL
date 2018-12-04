@@ -117,7 +117,7 @@ def sis_model_based_myopic(**kwargs):
   a = np.zeros(env.L)
   probs = one_step_q(a)
 
-  treat_ixs = random_argsort(-probs, treatment_budget)
+  treat_ixs = random_argsort(probs, treatment_budget)
   a[treat_ixs] = 1
   return a, None
 
