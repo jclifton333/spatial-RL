@@ -97,6 +97,7 @@ class SIS(SpatialDisease):
       self.adjacency_matrix = generate_network(L)
     else:
       self.adjacency_matrix = adjacency_matrix
+
     self.lambda_ = self.adjacency_matrix
     SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections)
 

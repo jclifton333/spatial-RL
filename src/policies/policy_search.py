@@ -62,6 +62,7 @@ import copy
 
 import src.environments.sis_infection_probs as sis_inf_probs
 import src.environments.ebola_infection_probs as ebola_inf_probs
+from numba import njit
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
 from bayes_opt import BayesianOptimization
 from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
@@ -88,6 +89,7 @@ def update_eta(eta, alpha, zeta, z, y, y_tilde):
   return new_eta
 
 
+@njit
 def U(priority_scores, m):
   """
 
@@ -269,6 +271,7 @@ Implementing priority score below. See pdf pg. 15.
 """
 
 
+@njit
 def psi(infected_locations, predicted_infection_probs, lambda_, transmission_probabilities, data_depth):
   """
   Different from 'psi' for env-specific features!
@@ -296,6 +299,7 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
   return psi_1, psi_2, psi_3
 
 
+@njit
 def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth):
   lambda_inf = lambda_[:, not_infected_locations]
   transmission_probabilities_not_inf = transmission_probabilities[:, not_infected_locations]
@@ -326,7 +330,7 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, infecti
   not_infected_locations = np.where(y == 0)
   psi_1, psi_2, psi_3 = psi(infected_locations, predicted_infection_probs, lambda_, transmission_probabilities,
                             data_depth)
-  phi_ = phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth)
+  phi_ = phi(not_infected_locations[0], lambda_, transmission_probabilities, psi_1, psi_2, data_depth)
 
   # Collect features
   priority_score_features = np.zeros((env.L, 3))
