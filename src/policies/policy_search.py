@@ -97,7 +97,9 @@ def U(priority_scores, m):
   :param m: Integer >= 1.
   :return:
   """
-  priority_scores_mth_order_stat = np.argsort(priority_scores)[int(m)]  # ToDo: Optimize?
+  # priority_scores_mth_order_stat = np.argsort(priority_scores)[int(m)]  # ToDo: Optimize?
+  m = int(m)
+  priority_scores_mth_order_stat = np.partition(-1*priority_scores.flatten(), -m)[-m]
   U = priority_scores >= priority_scores_mth_order_stat
   return U
 
@@ -293,9 +295,13 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
   transmission_probs_times_lambda_inf = np.multiply(transmission_probabilities_inf, lambda_inf)
   multiplier = np.dot(transmission_probs_times_lambda_inf, 1 - predicted_infection_probs[infected_locations])
 
-  psi_2 = np.multiply(psi_1, multiplier)
-  psi_3 = np.multiply(psi_1, data_depth)
-
+  # psi_2 = np.multiply(psi_1, multiplier)
+  # psi_3 = np.multiply(psi_1, data_depth)
+  psi_2 = np.zeros(0)
+  psi_3 = np.zeros(0)
+  for i in range(len(psi_1)):
+    psi_2 = np.append(psi_2, psi_1[i]*multiplier[i])
+    psi_3 = np.append(psi_3, psi_1[i]*data_depth[i])
   return psi_1, psi_2, psi_3
 
 
@@ -309,9 +315,18 @@ def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_
   data_depth_not_inf = data_depth[not_infected_locations]
 
   phi_1 = np.dot(lambda_inf, psi_1_not_inf)
-  phi_2 = np.dot(transmission_probabilities_not_inf, psi_2_not_inf)
-  phi_3 = np.dot(transmission_probabilities_not_inf, data_depth_not_inf)
-
+  # phi_2 = np.dot(transmission_probabilities_not_inf, psi_2_not_inf)
+  # phi_3 = np.dot(transmission_probabilities_not_inf, data_depth_not_inf)
+  phi_2 = np.zeros(0)
+  phi_3 = np.zeros(0)
+  for i in range(transmission_probabilities_not_inf.shape[0]):
+    phi_2_i = 0.0
+    phi_3_i = 0.0
+    for j in range(transmission_probabilities_not_inf.shape[1]):
+      phi_2_i += transmission_probabilities_not_inf[i, j]*psi_2_not_inf[j]
+      phi_3_i += transmission_probabilities_not_inf[i, j]*data_depth_not_inf[j]
+    phi_2 = np.append(phi_2, phi_2_i)
+    phi_3 = np.append(phi_3, phi_3_i)
   phi = np.column_stack((phi_1, phi_2, phi_3))
 
   return phi
