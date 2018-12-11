@@ -118,7 +118,6 @@ def sis_model_based_myopic(**kwargs):
   probs = one_step_q(a)
 
   treat_ixs = random_argsort(probs, treatment_budget)
-  pdb.set_trace()
   a[treat_ixs] = 1
   return a, None
 

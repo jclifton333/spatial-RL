@@ -89,7 +89,7 @@ def update_eta(eta, alpha, zeta, z, y, y_tilde):
   return new_eta
 
 
-@njit
+# @njit
 def U(priority_scores, m):
   """
 
@@ -271,7 +271,7 @@ Implementing priority score below. See pdf pg. 15.
 """
 
 
-@njit
+# @njit
 def psi(infected_locations, predicted_infection_probs, lambda_, transmission_probabilities, data_depth):
   """
   Different from 'psi' for env-specific features!
@@ -299,7 +299,7 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
   return psi_1, psi_2, psi_3
 
 
-@njit
+# @njit
 def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth):
   lambda_inf = lambda_[:, not_infected_locations]
   transmission_probabilities_not_inf = transmission_probabilities[:, not_infected_locations]
