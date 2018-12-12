@@ -98,8 +98,8 @@ def U(priority_scores, m):
   :return:
   """
   # priority_scores_mth_order_stat = np.argsort(priority_scores)[int(m)]  # ToDo: Optimize?
-  m = int(m)
-  priority_scores_mth_order_stat = np.partition(-1*priority_scores.flatten(), -m)[-m]
+  m = int(m-1)
+  priority_scores_mth_order_stat = np.partition(priority_scores.flatten(), m)[m]
   U = priority_scores >= priority_scores_mth_order_stat
   return U
 
@@ -114,9 +114,10 @@ def decision_rule(env, s, a, y, infection_probs_predictor, infection_probs_kwarg
   else:
     floor_c_by_k = int(np.floor(treatment_budget / k))
     d[np.argsort(-priority_scores)[:floor_c_by_k]] = 1
+    deltas = [np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k) for j in range(1, k)]
     for j in range(1, k):
       w = d
-      delta_j = np.floor(j * treatment_budget / k) - np.floor((j - 1) * treatment_budget / k)
+      delta_j = deltas[j-1]
       priority_scores = R(env, s, w, y, infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
                           transmission_probs_kwargs, env.data_depth, eta, beta)
       d = U(priority_scores, delta_j) + w
@@ -179,7 +180,7 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
   return best_params
 
 
-def stochastic_approximation_for_policy_search(T, s, y, beta, eta, f, g, alpha, zeta, tol, maxiter, dimension,
+def stochastic_approximation_for_policy_search(T, s, y, beta, eta, alpha, zeta, tol, maxiter, dimension,
                                                treatment_budget, k, feature_function, env, infection_probs_predictor,
                                                infection_probs_kwargs, transmission_prob_predictor,
                                                transmission_probs_kwargs, data_depth, rho, tau):
@@ -288,6 +289,7 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
   :return:
   """
   psi_1 = predicted_infection_probs
+  len_psi_1 = len(psi_1)
 
   # Compute multiplier, not sure this is right
   transmission_probabilities_inf = transmission_probabilities[:, infected_locations[0]]
@@ -297,11 +299,12 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
 
   # psi_2 = np.multiply(psi_1, multiplier)
   # psi_3 = np.multiply(psi_1, data_depth)
-  psi_2 = np.zeros(0)
-  psi_3 = np.zeros(0)
-  for i in range(len(psi_1)):
-    psi_2 = np.append(psi_2, psi_1[i]*multiplier[i])
-    psi_3 = np.append(psi_3, psi_1[i]*data_depth[i])
+
+  psi_2 = np.zeros(len_psi_1)
+  psi_3 = np.zeros(len_psi_1)
+  for i in range(len_psi_1):
+    psi_2[i] = psi_1[i]*multiplier[i]
+    psi_3[i] = psi_1[i]*data_depth[i]
   return psi_1, psi_2, psi_3
 
 
@@ -317,16 +320,13 @@ def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_
   phi_1 = np.dot(lambda_inf, psi_1_not_inf)
   # phi_2 = np.dot(transmission_probabilities_not_inf, psi_2_not_inf)
   # phi_3 = np.dot(transmission_probabilities_not_inf, data_depth_not_inf)
-  phi_2 = np.zeros(0)
-  phi_3 = np.zeros(0)
-  for i in range(transmission_probabilities_not_inf.shape[0]):
-    phi_2_i = 0.0
-    phi_3_i = 0.0
+  len_not_inf = transmission_probabilities_not_inf.shape[0]
+  phi_2 = np.zeros(len_not_inf)
+  phi_3 = np.zeros(len_not_inf)
+  for i in range(len_not_inf):
     for j in range(transmission_probabilities_not_inf.shape[1]):
-      phi_2_i += transmission_probabilities_not_inf[i, j]*psi_2_not_inf[j]
-      phi_3_i += transmission_probabilities_not_inf[i, j]*data_depth_not_inf[j]
-    phi_2 = np.append(phi_2, phi_2_i)
-    phi_3 = np.append(phi_3, phi_3_i)
+      phi_2[i] += transmission_probabilities_not_inf[i, j]*psi_2_not_inf[j]
+      phi_3[i] += transmission_probabilities_not_inf[i, j]*data_depth_not_inf[j]
   phi = np.column_stack((phi_1, phi_2, phi_3))
 
   return phi
@@ -464,9 +464,9 @@ def policy_search_policy(**kwargs):
   # ToDo: policy; may be improved...
   rho = 3.20
   tau = 0.76
-
   a, policy_parameter = policy_search(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
                                       initial_alpha, initial_zeta, treatment_budget, rho, tau, tol=1e-3,
-                                      maxiter=100, feature_function=features_for_priority_score, k=1)
+                                      maxiter=100, feature_function=features_for_priority_score, k=1,
+                                      method='stochastic_approximation')
   return a, {'initial_policy_parameter': policy_parameter}
 
