@@ -124,7 +124,25 @@ class SKLogit2(object):
       not_inf_hess = gradient.logit_hessian(x,  self.not_inf_params)
     return block_diag(inf_hess, not_inf_hess)
 
-  def fit(self, X, y, weights, infected_locations, not_infected_locations):
+  def covariance(self, X, y, infected_locations):
+    n, p = X.shape[1]
+    grad_outer = np.zeros((2*p, 2*p))
+    hess = np.zeros((2*p, 2*p))
+    for i, x, y_ in enumerate(zip(X, y)):
+      infected = i in infected_locations
+      grad = self.log_lik_gradient(x, y_, infected)
+      hess_i = self.log_lik_hess(x, infected)
+      if infected:
+        grad_outer[:p, :p] += np.outer(grad, grad)
+        hess[:p, :p] += hess_i
+      else:
+        grad_outer[p:, p:] += np.outer(grad, grad)
+        hess[p:, p:] += hess_i
+    hess_inv = np.linalg.inv(hess + 0.1*np.eye(2*p))
+    cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(n)
+    return cov
+
+  def fit(self, X, y, weights, truncate, infected_locations, not_infected_locations):
     if is_y_all_1_or_0(y):
       y0 = y[0]
       n = len(y)
@@ -158,6 +176,9 @@ class SKLogit2(object):
           self.not_inf_model_fitted = True
       self.inf_params = np.concatenate((inf_intercept_, inf_coef_))
       self.not_inf_params = np.concatenate((not_inf_intercept_, not_inf_coef_))
+    if truncate:
+      cov = self.covariance(X, y, infected_locations)
+
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     phat = np.zeros(X.shape[0])

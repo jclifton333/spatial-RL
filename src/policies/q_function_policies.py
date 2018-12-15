@@ -15,16 +15,16 @@ from functools import partial
 
 
 def one_step_policy(**kwargs):
-  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
+  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, truncate = \
     kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
-    kwargs['bootstrap']
+    kwargs['bootstrap'], kwargs['truncate']
 
   if bootstrap:
     weights = np.random.exponential(size=len(env.X)*env.L)
   else:
     weights = None
 
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights)
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights, truncate)
 
   def qfn(a):
     return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)

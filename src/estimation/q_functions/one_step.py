@@ -19,7 +19,8 @@ def compare_with_true_probs(env, predictor, raw):
   return
 
 
-def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_with_true_probs=True, indices=None):
+def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None, print_compare_with_true_probs=True,
+                           indices=None):
   clf = classifier()
   if indices is None:
     if y_next is None:
@@ -46,7 +47,8 @@ def fit_one_step_predictor(classifier, env, weights, y_next=None, print_compare_
 
   if weights is not None:
     weights = weights.flatten()
-  clf.fit(features, target, weights, **clf_kwargs)
+  clf.fit(features, target, weights, truncate, **clf_kwargs)
+
   if print_compare_with_true_probs:
     compare_with_true_probs(env, clf.predict_proba, False)
   return clf, predict_proba_kwargs
