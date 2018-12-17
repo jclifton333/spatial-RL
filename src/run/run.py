@@ -40,7 +40,7 @@ if __name__ == '__main__':
   parser.add_argument('--epsilon', type=float)
   parser.add_argument('--network', type=str, choices=VALID_NETWORK_NAMES)
   parser.add_argument('--ts', type=str, choices=['True', 'False'])
-  parser.add_argument('seed', type=int)
+  parser.add_argument('--seed', type=int)
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
