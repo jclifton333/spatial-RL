@@ -467,6 +467,6 @@ def policy_search_policy(**kwargs):
   a, policy_parameter = policy_search(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
                                       initial_alpha, initial_zeta, treatment_budget, rho, tau, tol=1e-3,
                                       maxiter=100, feature_function=features_for_priority_score, k=1,
-                                      method='stochastic_approximation')
+                                      method='bayes_opt')
   return a, {'initial_policy_parameter': policy_parameter}
 
