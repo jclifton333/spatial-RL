@@ -33,7 +33,7 @@ import keras.backend as K
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, env_kwargs, network_name, bootstrap):
+               evaluation_budget, env_kwargs, network_name, bootstrap, seed):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Ebola'
@@ -53,6 +53,7 @@ class Simulator(object):
     self.number_of_replicates = number_of_replicates
     self.scores = []
     self.runtimes = []
+    self.seed = seed
 
     # Set policy arguments
     if env_name == 'sis':
@@ -84,6 +85,7 @@ class Simulator(object):
   def run(self):
     # Multiprocess simulation replicates
     # num_processes = int(np.min((self.number_of_replicates, mp.cpu_count() / 2)))
+    np.random.seed(self.seed)
     num_processes = self.number_of_replicates
     pool = mp.Pool(processes=num_processes)
     # iterim_results_list = []

@@ -40,6 +40,7 @@ if __name__ == '__main__':
   parser.add_argument('--epsilon', type=float)
   parser.add_argument('--network', type=str, choices=VALID_NETWORK_NAMES)
   parser.add_argument('--ts', type=str, choices=['True', 'False'])
+  parser.add_argument('--seed', type=int)
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
@@ -54,7 +55,7 @@ if __name__ == '__main__':
     network_name = 'Ebola'
   ts = (args.ts == 'True')
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
-                  args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts)
+                  args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:
