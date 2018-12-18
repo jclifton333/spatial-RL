@@ -45,9 +45,10 @@ class Continuous(SpatialDisease):
     s_2 = np.random.multivariate_normal(s_1, covariance_matrices[:, :, 1])
     s_3 = np.random.multivariate_normal(s_2, covariance_matrices[:, :, 2])
     s_4 = np.random.multivariate_normal(s_3, covariance_matrices[:, :, 3])
-    z = s_1 - np.min(s_1)
+    self.z = s_1 - np.min(s_1)
     self.product_matrix = np.outer(z, z)
     self.x = np.column_stack((s_1, s_2, s_3, s_4))
+    self.set_transmission_probs()
     self.current_infected = np.random.binomial(1, 0.01, L)
     self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, self.current_infected))
     SpatialDisease.__init__(self, adjacency_matrix)
@@ -63,9 +64,9 @@ class Continuous(SpatialDisease):
         baseline_logit = self.THETA_0 + np.dot(self.THETA_1, x_l) + np.dot(self.THETA_2, x_lprime) - \
           self.THETA_5 * d_l_lprime / np.power(z_l_lprime, self.THETA_6)
         self.transmission_probs[l, lprime, 0, 0] = expit(baseline_logit)
-        self.transmission_probs[l, lprime, 1, 0] = expit(baseline_logit - THETA_3)
-        self.transmission_probs[l, lprime, 0, 1] = expit(baseline_logit - THETA_4)
-        self.transmission_probs[l, lprime, 1, 1] = expit(baseline_logit - THETA_3 - THETA_4)
+        self.transmission_probs[l, lprime, 1, 0] = expit(baseline_logit - Continuous.THETA_3)
+        self.transmission_probs[l, lprime, 0, 1] = expit(baseline_logit - Continuous.THETA_4)
+        self.transmission_probs[l, lprime, 1, 1] = expit(baseline_logit - Continuous.THETA_3 - Continuous.THETA_4)
 
   def covariate_covariance(self, l, lprime):
     covs_for_each_dimension = []
@@ -84,6 +85,12 @@ class Continuous(SpatialDisease):
     if self.current_infected[lprime]:
       if eta is None:
         transmission_prob = self.transmission_probs[l, lprime, a[l], a[lprime]]
+      else:
+        transmission_prob = infection_probs.continuous_transmission_probs(l, lprime, a, eta, self.distance_matrix,
+                                                                          self.z, self.x)
+      return transmission_prob
+    else:
+      return 0.0
 
   def next_state(self):
     pass
