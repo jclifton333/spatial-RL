@@ -31,25 +31,27 @@ def transmission_prob(a, l, l_prime, eta, distance_matrix, susceptibility):
 
 
 @njit
-def get_all_ebola_transmission_probs_njit(a, eta, L, distance_matrix, susceptibility, adjacency_matrix):
+def get_all_ebola_transmission_probs_njit(a, eta, L, distance_matrix, adjacency_matrix, product_matrix):
   transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
-    for lprime in range(L):
+    for lprime in range(l, L):
       if adjacency_matrix[l, lprime]:
         d_l_lprime = distance_matrix[l, lprime]
-        s_l, s_lprime = susceptibility[l], susceptibility[lprime]
-        log_grav_term = np.log(d_l_lprime) - np.exp(eta[2]) * (np.log(s_l) + np.log(s_lprime))
+        log_grav_term = np.log(d_l_lprime) - np.exp(eta[2]) * np.log(product_matrix[l, lprime])
         baseline_logit = eta[0] - np.exp(eta[1] + log_grav_term)
-        transmission_prob_ = expit2(baseline_logit + a[l] * eta[3] + a[lprime] * eta[4])
-        transmission_probs_matrix[l, lprime] = transmission_prob_
+        transmission_prob_l_lprime = expit2(baseline_logit + a[l] * eta[3] + a[lprime] * eta[4])
+        transmission_prob_lprime_l = expit2(baseline_logit + a[lprime] * eta[3] + a[l] * eta[4])
+        transmission_probs_matrix[l, lprime] = transmission_prob_l_lprime
+        transmission_probs_matrix[lprime, l] = transmission_prob_lprime_l
   return transmission_probs_matrix
 
 
 @njit
-def get_all_continuous_tranmission_probs_njit(a, eta, L, distance_matrix, z, x, adjacency_matrix):
+def get_all_gravity_tranmission_probs_with_covariate_njit(a, eta, L, distance_matrix, adjacency_matrix, product_matrix,
+                                                          x, eta_x_l, eta_x_lprime):
   """
-  Equation 2 of white nose paper. eta in our notation =
-  [theta_0, theta_1 (vector), theta_2 (vector), theta_3, theta_4, theta_5, theta_6]
+  Equation 2 of white nose paper,  eta in our notation is different than theta in their notation...
+
 
   :param a:
   :param x:
@@ -61,40 +63,55 @@ def get_all_continuous_tranmission_probs_njit(a, eta, L, distance_matrix, z, x, 
   :return:
   """
   transmission_probs_matrix = np.zeros((L, L))
-  theta_0 = eta[0]
-  theta_1 = eta[1:5]
-  theta_2 = eta[5:9]
-  theta_3 = eta[9]
-  theta_4 = eta[10]
-  theta_5 = eta[11]
-  theta_6 = eta[12]
 
   for l in range(L):
-    for lprime in range(L):
+    x_l = x[l, :]
+    for lprime in range(l + 1, L):
       if adjacency_matrix[l, lprime]:
         d_l_lprime = distance_matrix[l, lprime]
-        x_l = x[l, :]
+        product_l_lprime = product_matrix[l, lprime]
         x_lprime = x[lprime, :]
-        logit = theta_0 + np.dot(theta_1, x_l) + np.dot(theta_2, x_lprime) - theta_3*a[l] - theta_4*a[lprime] - \
-          theta_5 * d_l_lprime / np.power(z[l] * z[lprime], theta_6)
-        transmission_probs_matrix[l, lprime] = expit2(logit)
+        logit_l_lprime = eta[0] + theta[1]*d_l_lprime / np.power(product_l_lprime, eta[2]) - a[l]*eta[3] - \
+                         a[lprime]*eta[4] + np.dot(eta_x_l, x_l) + np.dot(eta_x_lprime, x_lprime)
+        logit_lprime_l = eta[0] + theta[1]*d_l_lprime / np.power(product_l_lprime, eta[2]) - a[lprime]*eta[3] - \
+                         a[l]*eta[4] + np.dot(eta_x_l, x_lprime) + np.dot(eta_x_lprime, x_l)
+        transmission_probs_matrix[l, lprime] = expit2(logit_l_lprime)
+        transmission_probs_matrix[l, lprime] = expit2(logit_lprime_l)
   return transmission_probs_matrix
 
 
-def continuous_transmission_probs(l, lprime, a, eta, L, distance_matrix, z, x):
-  theta_0 = eta[0]
-  theta_1 = eta[1:5]
-  theta_2 = eta[5:9]
-  theta_3 = eta[9]
-  theta_4 = eta[10]
-  theta_5 = eta[11]
-  theta_6 = eta[12]
+def get_all_gravity_transmission_probs(a, eta, L, distance_matrix, adjacency_matrix, product_matrix, x, eta_x_l,
+                                       eta_x_lprime):
+  if x is None:
+    return get_all_gravity_transmission_probs_without_covariate_njit(a, eta, L, distance_matrix, adjacency_matrix,
+                                                                     product_matrix)
+  else:
+    return get_all_gravity_transmission_probs_with_covariate_njit(a, eta, L, distance_matrix, adjacency_matrix,
+                                                                  product_matrix, x, eta_x_l, eta_x_lprime)
+
+
+def gravity_transmission_probs(l, lprime, a, eta, L, distance_matrix, product_matrix, x, eta_x_l, eta_x_lprime):
+  """
+
+  :param l:
+  :param lprime:
+  :param a:
+  :param eta:
+  :param L:
+  :param distance_matrix:
+  :param product_matrix:
+  :param x: Array of covariates, or None
+  :param eta_x_l: coefficients for x_l, or None
+  :param eta_x_lprime: coefficients for x_lprime, or None
+  :return:
+  """
 
   d_l_lprime = distance_matrix[l, lprime]
-  x_l = x[l, :]
-  x_lprime = x[lprime, :]
-  logit = theta_0 + np.dot(theta_1, x_l) + np.dot(theta_2, x_lprime) - theta_3*a[l] - theta_4*a[lprime] - \
-    theta_5 * d_l_lprime / np.power(z[l] * z[lprime], theta_6)
+  product_l_lprime = product_matrix[l, lprime]
+  logit = eta[0] + theta[1]*d_l_lprime / np.power(product_l_lprime, eta[2]) - a[l]*eta[3] - a[lprime]*eta[4]
+  if x is not None:
+    x_l, x_lprime = x[l, :], x[lprime, :]
+    logit += np.dot(eta_x_l, x_l) + np.dot(eta_x_lprime, x_lprime)
   return expit2(logit)
 
 

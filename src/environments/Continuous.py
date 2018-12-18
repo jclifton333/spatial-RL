@@ -31,6 +31,7 @@ class Continuous(Gravity):
       ])
       for x_lprime in self.location_coordinates])
     self.distance_matrix /= np.std(self.distance_matrix)
+    lambda_ = distance_matrix  # TODO: This is a placeholder!  Lambda should be something else (see paper).
 
     # Generate static covariates
     # From paper: For each location l, we generate four static covariates by using a mean 0 Gaussian process
@@ -50,11 +51,11 @@ class Continuous(Gravity):
     self.z = s_1 - np.min(s_1)
     product_matrix = np.outer(z, z)
     covariate_matrix = np.column_stack((s_1, s_2, s_3, s_4))
-    self.current_infected = np.random.binomial(1, 0.01, L)
+    initial_infections = np.random.binomial(1, 0.01, L)
     self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, self.current_infected))
     Gravity.__init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix,
                      np.array([Continuous.THETA_0, Continuous.THETA_1, Continuous.THETA_2, Continuous.THETA_3]),
-                     Continuous.THETA_x_l, Continuous.THETA_x_lprime)
+                     Continuous.THETA_x_l, Continuous.THETA_x_lprime, lambda_, initial_infections)
 
   def covariate_covariance(self, l, lprime):
     covs_for_each_dimension = []
