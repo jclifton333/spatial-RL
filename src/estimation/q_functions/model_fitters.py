@@ -178,7 +178,10 @@ class SKLogit2(object):
       self.not_inf_params = np.concatenate((not_inf_intercept_, not_inf_coef_))
     if truncate:
       cov = self.covariance(X, y, infected_locations)
-
+      p = X.shape[1]
+      new_params = np.random.multivariate_normal(np.concatenate((self.inf_params, self.not_inf_params)), cov=cov)
+      self.inf_params = new_params[:p]
+      self.not_inf_params = new_params[p:]
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     phat = np.zeros(X.shape[0])
@@ -189,7 +192,9 @@ class SKLogit2(object):
         phat[infected_locations] = self.inf_eb_prob
     if len(phat[not_infected_locations]) > 0:
       if self.not_inf_model_fitted:
-        phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]
+        # phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]
+        logit_probs = np.dot(X, self.inf_params)
+
       else:
         phat[not_infected_locations] = self.not_inf_eb_prob
     return phat
