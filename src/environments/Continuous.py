@@ -5,11 +5,18 @@ locations are points in [0,1]^2.
 This is still just the gravity model, though.
 """
 import numpy as np
+from scipy.special import expit
 import src.environments.SpatialDisease import SpatialDisease
+import src.environments.gravity_infection_probs as infection_probs
 
 
 class Continuous(SpatialDisease):
+  # ToDo: These are placeholders!
   COVARIANCE_KERNEL_PARAMETERS = np.ones(4)
+  THETA_0 = 0.0
+  THETA_1 = np.ones(4)
+  THETA_2 = np.ones(4)
+  THETA_3 = THETA_4 = THETA_5 = THETA_6 = 1.0
 
   def __init__(self, L):
     adjacency_matrix = np.ones((L, L))  # Fully connected
@@ -31,18 +38,34 @@ class Continuous(SpatialDisease):
       self.covariate_covariance(l, lprime) for l in range(L)
     ]) for lprime in range(L)])
 
+    # Compute transmission_probs
+
     # ToDo: Make sure this is what is meant by autoregressive...
     s_1 = np.random.multivariate_normal(np.zeros(L), covariance_matrices[:, :, 0])
     s_2 = np.random.multivariate_normal(s_1, covariance_matrices[:, :, 1])
     s_3 = np.random.multivariate_normal(s_2, covariance_matrices[:, :, 2])
     s_4 = np.random.multivariate_normal(s_3, covariance_matrices[:, :, 3])
     z = s_1 - np.min(s_1)
-    y = np.random.binomial(1, 0.01, L)
-    self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, y))
-
-
-
+    self.product_matrix = np.outer(z, z)
+    self.x = np.column_stack((s_1, s_2, s_3, s_4))
+    self.current_infected = np.random.binomial(1, 0.01, L)
+    self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, self.current_infected))
     SpatialDisease.__init__(self, adjacency_matrix)
+
+  def set_transmission_probs(self):
+    self.transmission_probs = np.zeros((self.L, self.L, 2, 2))
+    for l in range(self.L):
+      x_l = self.x[l, :]
+      for lprime in range(self.L):
+        x_lprime = self.x[lprime, :]
+        d_l_lprime = self.distance_matrix[l, lprime]
+        z_l_lprime = self.product_matrix[l, lprime]
+        baseline_logit = self.THETA_0 + np.dot(self.THETA_1, x_l) + np.dot(self.THETA_2, x_lprime) - \
+          self.THETA_5 * d_l_lprime / np.power(z_l_lprime, self.THETA_6)
+        self.transmission_probs[l, lprime, 0, 0] = expit(baseline_logit)
+        self.transmission_probs[l, lprime, 1, 0] = expit(baseline_logit - THETA_3)
+        self.transmission_probs[l, lprime, 0, 1] = expit(baseline_logit - THETA_4)
+        self.transmission_probs[l, lprime, 1, 1] = expit(baseline_logit - THETA_3 - THETA_4)
 
   def covariate_covariance(self, l, lprime):
     covs_for_each_dimension = []
@@ -54,7 +77,13 @@ class Continuous(SpatialDisease):
       )
     return np.array(covs_for_each_dimension)
 
-  def generate_raw_covariates(self):
+  def reset(self):
+    super(Continuous, self).reset()
+
+  def transmission_prob(self, a, l, lprime, eta):
+    if self.current_infected[lprime]:
+      if eta is None:
+        transmission_prob = self.transmission_probs[l, lprime, a[l], a[lprime]]
 
   def next_state(self):
     pass

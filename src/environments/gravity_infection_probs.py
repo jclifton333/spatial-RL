@@ -73,7 +73,7 @@ def get_all_continuous_tranmission_probs_njit(a, eta, L, distance_matrix, x, adj
   for l in range(L):
     for lprime in range(L):
       if adjacency_matrix[l, lprime]:
-        d_l_lprime = distance_matrix[l, l_prime]
+        d_l_lprime = distance_matrix[l, lprime]
         x_l = x[l, :]
         x_lprime = x[lprime, :]
         logit = theta_0 + np.dot(theta_1, x_l) + np.dot(theta_2, x_lprime) - theta_3*a[l] - theta_4*a[lprime] - \
