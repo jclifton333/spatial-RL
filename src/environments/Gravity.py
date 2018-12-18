@@ -22,11 +22,42 @@ class Gravity(SpatialDisease):
 
   where (x_l, x_lprime) are optional covariates (Ebola doesn't have any).
   """
-  def __init__(self, distance_matrix, product_matrix, covariate_matrix):
+  def __init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix):
+    """
+
+    :param distance_matrix:
+    :param product_matrix:
+    :param adjacency_matrix:
+    :param covariate_matrix: L x (covariate dimension) array, or None (as in Ebola)
+    """
     self.distance_matrix = distance_matrix
     self.product_matrix = product_matrix
     self.covariate_matrix = covariate_matrix
+    self.include_covariates = (covariate_matrix is not None)
+    self.adjacency_matrix = adjacency_matrix
     self.L = distance_matrix.shape[0]
+
+  def precompute_transmission_probs(self):
+    """
+    Pre-compute transmission probabilities, since they depend only on actions and fixed covariates.
+
+    :return:
+    """
+    self.transmission_probs = np.zeros((self.L, self.L))
+    for l in range(self.L):
+      for lprime in range(self.L):
+        if self.adjacency_matrix[l, lprime] + self.adjacency_matrix[lprime, l] > 0:
+          d_l_lprime = self.distance_matirx[l, lprime]
+          product_l_lprime = self.distance_matrix[l, lprime]
+          baseline_logit = self.theta_0 + self.theta_5 * d_l_lprime / np.power(product_l_lprime, self.theta_6)
+          if self.include_covariates:
+            x_l = self.covariate_matrix[l, :]
+            x_lprime = self.covariate_matrix[lprime, :]
+            baseline_logit += np.dot(self.theta_x_l, x_l) + np.dot(self.theta_x_lprime, x_lprime)
+          self.transmission_probs[l, lprime, 0, 0] = expit(baseline_logit)
+          self.transmission_probs[l, lprime, 1, 0] = expit(baseline_logit - self.theta_3)
+          self.transmission_probs[l, lprime, 0, 1] = expit(baseline_logit - self.theta_4)
+          self.transmission_probs[l, lprime, 1, 1] = expit(baseline_logit - self.theta_3 - self.theta_4)
 
   def transmission_prob(self, a, l, lprime, eta):
     if self.current_infected[lprime]:

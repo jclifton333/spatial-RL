@@ -6,7 +6,7 @@ This is still just the gravity model, though.
 """
 import numpy as np
 from scipy.special import expit
-import src.environments.SpatialDisease import SpatialDisease
+import src.environments.Gravity import Gravity
 import src.environments.gravity_infection_probs as infection_probs
 
 # ToDo: Make Gravity superclass from which Continuous, Ebola inherit!
@@ -23,11 +23,11 @@ class Continuous(SpatialDisease):
 
     # Generate locations and pairwise distances
     self.location_coordinates = np.random.random(size=(L, L))
-    self.distance_matrix = np.array([
+    distance_matrix = np.array([
       np.array([
         np.linalg.norm(x_l - x_lprime) for x_l in self.location_coordinates
       ])
-    for x_lprime in self.location_coordinates])
+      for x_lprime in self.location_coordinates])
     self.distance_matrix /= np.std(self.distance_matrix)
 
     # Generate static covariates
@@ -46,12 +46,12 @@ class Continuous(SpatialDisease):
     s_3 = np.random.multivariate_normal(s_2, covariance_matrices[:, :, 2])
     s_4 = np.random.multivariate_normal(s_3, covariance_matrices[:, :, 3])
     self.z = s_1 - np.min(s_1)
-    self.product_matrix = np.outer(z, z)
-    self.x = np.column_stack((s_1, s_2, s_3, s_4))
+    product_matrix = np.outer(z, z)
+    covariate_matrix = np.column_stack((s_1, s_2, s_3, s_4))
     self.set_transmission_probs()
     self.current_infected = np.random.binomial(1, 0.01, L)
     self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, self.current_infected))
-    SpatialDisease.__init__(self, adjacency_matrix)
+    Gravity.__init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix)
 
   def set_transmission_probs(self):
     self.transmission_probs = np.zeros((self.L, self.L, 2, 2))
