@@ -21,6 +21,7 @@ class Continuous(SpatialDisease):
         np.linalg.norm(x_l - x_lprime) for x_l in self.location_coordinates
       ])
     for x_lprime in self.location_coordinates])
+    self.distance_matrix /= np.std(self.distance_matrix)
 
     # Generate static covariates
     # From paper: For each location l, we generate four static covariates by using a mean 0 Gaussian process
