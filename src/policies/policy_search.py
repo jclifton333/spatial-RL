@@ -61,7 +61,7 @@ import numpy as np
 import copy
 
 import src.environments.sis_infection_probs as sis_inf_probs
-import src.environments.ebola_infection_probs as ebola_inf_probs
+import src.environments.gravity_infection_probs as ebola_inf_probs
 from numba import njit
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
 from bayes_opt import BayesianOptimization

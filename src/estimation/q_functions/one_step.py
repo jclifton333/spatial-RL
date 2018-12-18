@@ -3,7 +3,7 @@ import numpy as np
 from src.estimation.model_based.sis import estimate_sis_parameters
 from src.estimation.model_based.Ebola import estimate_ebola_parameters
 from src.environments.sis_infection_probs import sis_infection_probability
-from src.environments.ebola_infection_probs import ebola_infection_probs
+from src.environments.gravity_infection_probs import ebola_infection_probs
 
 
 def compare_with_true_probs(env, predictor, raw):

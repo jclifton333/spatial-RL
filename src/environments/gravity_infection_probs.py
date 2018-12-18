@@ -45,6 +45,43 @@ def get_all_ebola_transmission_probs_njit(a, eta, L, distance_matrix, susceptibi
   return transmission_probs_matrix
 
 
+@njit
+def get_all_continuous_tranmission_probs_njit(a, eta, L, distance_matrix, x, adjacency_matrix):
+  """
+  Equation 2 of white nose paper. eta in our notation =
+  [theta_0, theta_1 (vector), theta_2 (vector), theta_3, theta_4, theta_5, theta_6]
+
+  :param a:
+  :param x:
+  :param l:
+  :param l_prime:
+  :param eta:
+  :param L:
+  :param kwargs:
+  :return:
+  """
+  transmission_probs_matrix = np.zeros((L, L))
+  distance_matrix, z = kwargs['distance_matrix'], kwargs['z']
+  theta_0 = eta[0]
+  theta_1 = eta[1:5]
+  theta_2 = eta[5:9]
+  theta_3 = eta[9]
+  theta_4 = eta[10]
+  theta_5 = eta[11]
+  theta_6 = eta[12]
+
+  for l in range(L):
+    for lprime in range(L):
+      if adjacency_matrix[l, lprime]:
+        d_l_lprime = distance_matrix[l, l_prime]
+        x_l = x[l, :]
+        x_lprime = x[lprime, :]
+        logit = theta_0 + np.dot(theta_1, x_l) + np.dot(theta_2, x_lprime) - theta_3*a[l] - theta_4*a[lprime] - \
+          theta_5 * d_l_lprime / np.power(z[l] * z[lprime], theta_6)
+        transmission_probs_matrix[l, lprime] = expit2(logit)
+  return transmission_probs_matrix
+
+
 def get_all_ebola_transmission_probs(a, eta, L, **kwargs):
   distance_matrix, susceptibility, adjacency_matrix = \
     kwargs['distance_matrix'], kwargs['susceptibility'], kwargs['adjacency_matrix']

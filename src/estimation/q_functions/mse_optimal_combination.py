@@ -2,7 +2,7 @@ import pdb
 import numpy as np
 import src.estimation.q_functions.one_step as one_step
 from .model_fitters import SKLogit2
-from src.environments.ebola_infection_probs import ebola_infection_probs
+from src.environments.gravity_infection_probs import ebola_infection_probs
 from src.estimation.q_functions.q_functions import q_max_all_states
 from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
 from sklearn.linear_model import LinearRegression

@@ -8,7 +8,7 @@ Created on Wed May 16 23:18:41 2018
 import numpy as np
 import copy
 from scipy.special import expit
-import src.environments.ebola_infection_probs as infection_probs
+import src.environments.gravity_infection_probs as infection_probs
 from src.environments.SpatialDisease import SpatialDisease
 from src.environments.sis import SIS
 from src.estimation.model_based.Ebola.estimate_ebola_parameters import log_lik_single
