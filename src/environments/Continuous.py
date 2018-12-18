@@ -9,7 +9,7 @@ from scipy.special import expit
 import src.environments.SpatialDisease import SpatialDisease
 import src.environments.gravity_infection_probs as infection_probs
 
-
+# ToDo: Make Gravity superclass from which Continuous, Ebola inherit!
 class Continuous(SpatialDisease):
   # ToDo: These are placeholders!
   COVARIANCE_KERNEL_PARAMETERS = np.ones(4)
@@ -91,6 +91,15 @@ class Continuous(SpatialDisease):
       return transmission_prob
     else:
       return 0.0
+
+  def infection_prob_at_location(self, a, l, eta):
+    if self.current_infected[l]:
+      return 1.0
+    else:
+      not_transmitted_prob = np.product(
+        [1 - self.transmission_prob(a, l, l_prime, eta) for l_prime in self.adjacency_list[l]])
+      inf_prob = 1 - not_transmitted_prob
+      return inf_prob
 
   def next_state(self):
     pass
