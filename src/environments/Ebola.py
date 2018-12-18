@@ -78,130 +78,13 @@ class Ebola(SpatialDisease):
   ETA = np.array([ETA_0, ETA_1, ETA_2, ETA_3, ETA_4])
   # ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
   # Compute transmission probs
-  TRANSMISSION_PROBS = np.zeros((L, L, 2, 2))
-  for l in range(L):
-    s_l = SUSCEPTIBILITY[l]
-    for l_prime in range(L):
-      if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
-      # if True:
-        """
-        from https://github.com/LaberLabs/stdmMf_cpp/blob/master/src/main/ebolaStateGravityModel.cpp
-        
-        log_grav_term = log(dist(a, b)) - exp(beta_2)*( log(pop(a)) + log(pop(b)))
-        logit_prob = beta_0 - exp(beta_1)*log_grav_term
-        """
-        d_l_lprime = DISTANCE_MATRIX[l, l_prime]
-        s_l_prime = SUSCEPTIBILITY[l_prime]
-        log_grav_term = np.log(d_l_lprime) - np.exp(ETA_2)*(np.log(s_l) + np.log(s_l_prime))
-        baseline_logit = ETA_0 - np.exp(ETA_1 + log_grav_term)
-        # baseline_logit = ETA_0
-        TRANSMISSION_PROBS[l, l_prime, 0, 0] = expit(baseline_logit)
-        TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
-        TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
-        TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)
 
   def __init__(self, eta=None):
-    SpatialDisease.__init__(self, Ebola.ADJACENCY_MATRIX, initial_infections=Ebola.INITIAL_INFECTIONS)
-    self.current_state = self.SUSCEPTIBILITY
-    self.lambda_ = self.adjacency_matrix
-    # Modify eta if one is given
-    if eta is not None:
-      ETA_0, ETA_1, ETA_2, ETA_3, ETA_4 = eta
-      self.TRANSMISSION_PROBS = np.zeros((self.L, self.L, 2, 2))
-      for l in range(self.L):
-        s_l = Ebola.SUSCEPTIBILITY[l]
-        for l_prime in range(self.L):
-          # if ADJACENCY_MATRIX[l, l_prime] == 1 or ADJACENCY_MATRIX[l_prime, l] == 1:
-          if True:
-            d_l_lprime = Ebola.DISTANCE_MATRIX[l, l_prime]
-            s_l_prime = Ebola.SUSCEPTIBILITY[l_prime]
-            log_grav_term = np.log(d_l_lprime) - np.exp(ETA_2)*(np.log(s_l) + np.log(s_l_prime))
-            baseline_logit = ETA_0 - np.exp(ETA_1 + log_grav_term)
-            self.TRANSMISSION_PROBS[l, l_prime, 0, 0] = expit(baseline_logit)
-            self.TRANSMISSION_PROBS[l, l_prime, 1, 0] = expit(baseline_logit + ETA_3)
-            self.TRANSMISSION_PROBS[l, l_prime, 0, 1] = expit(baseline_logit + ETA_4)
-            self.TRANSMISSION_PROBS[l, l_prime, 1, 1] = expit(baseline_logit + ETA_3 + ETA_4)
-
-    # Initial steps
-    self.step(np.zeros(self.L))
-    self.step(np.zeros(self.L))
-
-  def train_test_split(self):
-    pass
-
-  def reset(self):
-    super(Ebola, self).reset()
-    # Initial steps
-    self.step(np.zeros(self.L))
-    self.step(np.zeros(self.L))
-
-  def transmission_prob(self, a, l, l_prime, eta):
-    """
-    :param a: L-length binary array of treatment decisions
-    :param l_prime: index of transmitting location
-    :param l: index of transmitted-to location
-    :param eta: transmission prob parameters, or None; if None use self.TRANMISSION_PROBS
-    """
-    if self.current_infected[l_prime]:
-      if eta is None:
-        transmission_prob = self.TRANSMISSION_PROBS[l, l_prime, int(a[l]), int(a[l_prime])]
-      else:
-        transmission_prob = infection_probs.transmission_prob(a, l, l_prime, eta, self.DISTANCE_MATRIX,
-                                                              self.SUSCEPTIBILITY)
-      return transmission_prob
-    else:
-      return 0
-
-  def infection_prob_at_location(self, a, l, eta):
-    if self.current_infected[l]:
-      return 1
-    else:
-      not_transmitted_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in self.adjacency_list[l]])
-      # not_transmitted_prob = np.product([1-self.transmission_prob(a, l, l_prime, eta) for l_prime in range(self.L)])
-      # latent_inf_prob = expit(10*(Ebola.ETA_0 + a[l] * 50*Ebola.ETA_3))
-      # inf_prob = 1 - ((1 - latent_inf_prob) * not_transmitted_prob)
-      inf_prob = 1 - not_transmitted_prob
-      return inf_prob
-
-  def next_infected_probabilities(self, a, eta=None):
-    return np.array([self.infection_prob_at_location(a, l, eta) for l in range(self.L)])
-
-  def update_obs_history(self, a):
-    super(Ebola, self).update_obs_history(a)
-    raw_data_block = np.column_stack((Ebola.SUSCEPTIBILITY, a, self.Y[-2,:]))
-    data_block = self.psi(raw_data_block)
-    self.X_raw.append(raw_data_block)
-    self.X.append(data_block)
-    self.y.append(self.current_infected)
-
-  def next_state(self):
-    super(Ebola, self).next_state()
-
-  def next_infections(self, a, eta=None):
-    super(Ebola, self).next_infections(a)
-    if eta is None:
-      next_infected_probabilities = self.next_infected_probabilities(a)
-    else:
-      next_infected_probabilities = self.next_infected_probabilities(a, eta=eta)
-    next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
-    self.Y = np.vstack((self.Y, next_infections))
-    self.true_infection_probs.append(next_infected_probabilities)
-    self.current_infected = next_infections
-
-  def data_block_at_action(self, data_block_ix, action, raw=False):
-    """
-    Replace action in raw data_block with given action.
-    """
-    super(Ebola, self).data_block_at_action(data_block_ix, action)
-    if raw:
-      new_data_block = copy.copy(self.X_raw[data_block_ix])
-      new_data_block[:, 1] = action
-    else:
-      new_data_block = self.psi_at_action(self.X[data_block_ix], self.A[data_block_ix, :], action)
-    return new_data_block
+    Gravity.__init__(self, Ebola.DISTANCE_MATRIX, Ebola.ADJACENCY_MATRIX, EBOLA.PRODUCT_MATRIX, None,
+                     Ebola.ETA, None, None, Ebola.ADJACENCY_MATRIX, initial_infections=Ebola.INITIAL_INFECTIONS)
 
   # Neighbor features #
-  def psi_at_location(self, l, raw_data_block):
+  def feature_function_at_location(self, l, raw_data_block):
     x_l = raw_data_block[l, :]
     neighbors = self.adjacency_list[l]
     num_neighbors = len(neighbors)
@@ -214,7 +97,7 @@ class Ebola(SpatialDisease):
         x_l = np.concatenate((x_l, x_lprime, [self.DISTANCE_MATRIX[l, l_prime] + self.DISTANCE_MATRIX[l_prime, l]]))
     return x_l
 
-  def psi(self, raw_data_block):
+  def feature_function(self, raw_data_block):
     # (s, a, y) for location and (s, a, y, d) for each of its neighbors
     number_of_features = int(3 + 4*self.MAX_NUMBER_OF_NEIGHBORS)
     X = np.zeros((0, number_of_features))
@@ -223,7 +106,7 @@ class Ebola(SpatialDisease):
       X = np.vstack((X, x_l))
     return X
 
-  def psi_at_action(self, old_data_block, old_action, action):
+  def feature_function_at_action(self, old_data_block, old_action, action):
     new_data_block = copy.copy(old_data_block)
     locations_with_changed_actions = set(np.where(old_action != action)[0])
 
