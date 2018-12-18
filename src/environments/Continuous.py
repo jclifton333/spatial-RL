@@ -1,6 +1,8 @@
 """
 Spread of disease in continuous space (pdf pg 13 of white nose paper);
 locations are points in [0,1]^2.
+
+This is still just the gravity model, though.
 """
 import numpy as np
 import src.environments.SpatialDisease import SpatialDisease
@@ -11,8 +13,14 @@ class Continuous(SpatialDisease):
 
   def __init__(self, L):
     adjacency_matrix = np.ones((L, L))  # Fully connected
-    # Generate locations
+
+    # Generate locations and pairwise distances
     self.location_coordinates = np.random.random(size=(L, L))
+    self.distance_matrix = np.array([
+      np.array([
+        np.linalg.norm(x_l - x_lprime) for x_l in self.location_coordinates
+      ])
+    for x_lprime in self.location_coordinates])
 
     # Generate static covariates
     # From paper: For each location l, we generate four static covariates by using a mean 0 Gaussian process
@@ -27,11 +35,13 @@ class Continuous(SpatialDisease):
     s_2 = np.random.multivariate_normal(s_1, covariance_matrices[:, :, 1])
     s_3 = np.random.multivariate_normal(s_2, covariance_matrices[:, :, 2])
     s_4 = np.random.multivariate_normal(s_3, covariance_matrices[:, :, 3])
-    self.S = np.column_stack((s_1, s_2, s_3, s_4))
+    z = s_1 - np.min(s_1)
+    y = np.random.binomial(1, 0.01, L)
+    self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, y))
+
+
 
     SpatialDisease.__init__(self, adjacency_matrix)
-
-
 
   def covariate_covariance(self, l, lprime):
     covs_for_each_dimension = []
