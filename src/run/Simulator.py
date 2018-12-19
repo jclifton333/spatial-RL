@@ -56,7 +56,7 @@ class Simulator(object):
     self.seed = seed
 
     # Set policy arguments
-    if env_name == 'sis':
+    if env_name in ['sis', 'ContinuousGrav']:
         treatment_budget = np.int(np.ceil(0.05 * self.env.L))
     elif env_name == 'Ebola':
         treatment_budget = np.int(np.ceil(0.15 * self.env.L))

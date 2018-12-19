@@ -6,7 +6,7 @@ This is still just the gravity model, though.
 """
 import numpy as np
 from scipy.special import expit
-import src.environments.Gravity import Gravity
+from src.environments.Gravity import Gravity
 import src.environments.gravity_infection_probs as infection_probs
 
 
@@ -30,7 +30,7 @@ class ContinuousGrav(Gravity):
         np.linalg.norm(x_l - x_lprime) for x_l in self.location_coordinates
       ])
       for x_lprime in self.location_coordinates])
-    self.distance_matrix /= np.std(self.distance_matrix)
+    distance_matrix /= np.std(distance_matrix)
     lambda_ = distance_matrix  # TODO: This is a placeholder!  Lambda should be something else (see paper).
 
     # Generate static covariates
@@ -48,13 +48,14 @@ class ContinuousGrav(Gravity):
     s_2 = np.random.multivariate_normal(s_1, covariance_matrices[:, :, 1])
     s_3 = np.random.multivariate_normal(s_2, covariance_matrices[:, :, 2])
     s_4 = np.random.multivariate_normal(s_3, covariance_matrices[:, :, 3])
-    self.z = s_1 - np.min(s_1)
+    z = s_1 - np.min(s_1)
     product_matrix = np.outer(z, z)
     covariate_matrix = np.column_stack((s_1, s_2, s_3, s_4))
     initial_infections = np.random.binomial(1, 0.01, L)
-    self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, self.current_infected))
+    self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, initial_infections))
     Gravity.__init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix,
-                     np.array([ContinuousGrav.THETA_0, ContinuousGrav.THETA_1, ContinuousGrav.THETA_2, ContinuousGrav.THETA_3]),
+                     np.array([ContinuousGrav.THETA_0, ContinuousGrav.THETA_1, ContinuousGrav.THETA_2,
+                               ContinuousGrav.THETA_3, ContinuousGrav.THETA_4]),
                      ContinuousGrav.THETA_x_l, ContinuousGrav.THETA_x_lprime, lambda_, initial_infections)
 
   def covariate_covariance(self, l, lprime):
@@ -69,5 +70,14 @@ class ContinuousGrav(Gravity):
 
   def reset(self):
     super(ContinuousGrav, self).reset()
+
+  def feature_function(self, raw_data_block):
+    pass
+
+  def feature_function_at_action(self, old_data_block, old_action, action):
+    pass
+
+  def feature_function_at_location(self, l, raw_data_block):
+    pass
 
 
