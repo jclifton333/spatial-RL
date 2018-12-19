@@ -34,19 +34,39 @@ def one_step_policy(**kwargs):
   return a, None
 
 
-def rollout_policy(**kwargs):
-  if kwargs['rollout_depth'] == 0:
-    a, q_model = one_step_policy(**kwargs)
-  else:
-    classifier, regressor, env, evaluation_budget, gamma, rollout_depth, treatment_budget, argmaxer = \
-      kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], \
-      kwargs['gamma'], kwargs['rollout_depth'], kwargs['treatment_budget'], kwargs['argmaxer']
+def two_step(**kwargs):
+  classifier, regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, truncate = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['argmaxer'], kwargs['bootstrap'], kwargs['truncate']
 
-    q_model = fqi(rollout_depth, gamma, env, evaluation_budget, treatment_budget, classifier, regressor, argmaxer)
-    q_hat = partial(q, data_block_ix=-1, env=env, predictive_model=q_model)
-    a = argmaxer(q_hat, evaluation_budget, treatment_budget, env)
-  K.clear_session()
-  return a, q_model
+  if bootstrap:
+    weights = np.random.exponential(size=len(env.X)*env.L)
+  else:
+    weights = None
+
+  # One step
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights, truncate)
+  def qfn_at_block(block_index, a):
+    return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
+
+  # Back up once
+  backup = []
+  for t in range(env.T):
+    qfn_at_block_t = lambda a: qfn_at_block(t, a)
+    a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
+    q_max = qfn_at_block_t(a_max)
+    backup_at_t = env.Y[t, :] + q_max
+    backup.append(backup_at_x)
+
+  # Fit backup-up q function
+  reg = regressor()
+  regressor.fit(np.vstack(env.X), np.hstack(backup))
+
+  def qfn(a):
+    return reg.predict(env.data_block_at_action(-1, a))
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  return a, None
 
 
 def sis_mb_fqi(**kwargs):

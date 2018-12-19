@@ -54,20 +54,20 @@ class ContinuousGrav(Gravity):
     initial_infections = np.random.binomial(1, 0.01, L)
     self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, self.current_infected))
     Gravity.__init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix,
-                     np.array([Continuous.THETA_0, Continuous.THETA_1, Continuous.THETA_2, Continuous.THETA_3]),
-                     Continuous.THETA_x_l, Continuous.THETA_x_lprime, lambda_, initial_infections)
+                     np.array([ContinuousGrav.THETA_0, ContinuousGrav.THETA_1, ContinuousGrav.THETA_2, ContinuousGrav.THETA_3]),
+                     ContinuousGrav.THETA_x_l, ContinuousGrav.THETA_x_lprime, lambda_, initial_infections)
 
   def covariate_covariance(self, l, lprime):
     covs_for_each_dimension = []
     x_l, x_lprime = self.location_coordinates[l, :], self.location_coordinates[lprime, :]
     squared_dist = np.dot(x_l - x_lprime, x_l - x_lprime)
-    for parameter in Continuous.COVARIANCE_KERNEL_PARAMETERS:
+    for parameter in ContinuousGrav.COVARIANCE_KERNEL_PARAMETERS:
       covs_for_each_dimension.append(
         np.exp(-parameter * squared_dist / 2)
       )
     return np.array(covs_for_each_dimension)
 
   def reset(self):
-    super(Continuous, self).reset()
+    super(ContinuousGrav, self).reset()
 
 
