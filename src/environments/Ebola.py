@@ -18,7 +18,7 @@ import os
 import pdb
 
 
-class Ebola(SpatialDisease):
+class Ebola(Gravity):
   # Load network information
   this_file_pathname = os.path.dirname(os.path.abspath(__file__))
   ebola_network_data_fpath = os.path.join(this_file_pathname, 'ebola-network-data', 'ebola_network_data.p')
@@ -80,8 +80,9 @@ class Ebola(SpatialDisease):
   # Compute transmission probs
 
   def __init__(self, eta=None):
-    Gravity.__init__(self, Ebola.DISTANCE_MATRIX, Ebola.ADJACENCY_MATRIX, EBOLA.PRODUCT_MATRIX, None,
-                     Ebola.ETA, None, None, Ebola.ADJACENCY_MATRIX, initial_infections=Ebola.INITIAL_INFECTIONS)
+    super(Ebola, self).__init__(Ebola.DISTANCE_MATRIX, Ebola.PRODUCT_MATRIX, Ebola.ADJACENCY_MATRIX,
+                                Ebola.SUSCEPTIBILITY, Ebola.ETA, None, None, Ebola.ADJACENCY_MATRIX,
+                                initial_infections=Ebola.INITIAL_INFECTIONS)
 
   # Neighbor features #
   def feature_function_at_location(self, l, raw_data_block):

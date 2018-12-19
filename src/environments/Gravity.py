@@ -7,8 +7,9 @@ This is still just the gravity model, though.
 """
 import numpy as np
 from abc import abstractmethod
+import pdb
 from scipy.special import expit
-import src.environments.SpatialDisease import SpatialDisease
+from src.environments.SpatialDisease import SpatialDisease
 import src.environments.gravity_infection_probs as infection_probs
 
 
@@ -39,7 +40,7 @@ class Gravity(SpatialDisease):
     self.distance_matrix = distance_matrix
     self.product_matrix = product_matrix
     self.covariate_matrix = covariate_matrix
-    self.include_covariates = (covariate_matrix is not None)
+    self.include_covariates = (theta_x_l is not None)
     self.theta = theta
     self.theta_x_l = theta_x_l
     self.theta_x_lprime = theta_x_lprime
@@ -57,11 +58,11 @@ class Gravity(SpatialDisease):
 
     :return:
     """
-    self.transmission_probs = np.zeros((self.L, self.L))
+    self.transmission_probs = np.zeros((self.L, self.L, 2, 2))
     for l in range(self.L):
       for lprime in range(self.L):
         if self.adjacency_matrix[l, lprime] + self.adjacency_matrix[lprime, l] > 0:
-          d_l_lprime = self.distance_matirx[l, lprime]
+          d_l_lprime = self.distance_matrix[l, lprime]
           product_l_lprime = self.distance_matrix[l, lprime]
           baseline_logit = self.theta[0] + self.theta[1] * d_l_lprime / np.power(product_l_lprime, self.theta[2])
           if self.include_covariates:

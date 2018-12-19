@@ -11,7 +11,7 @@ def environment_factory(environment_name, **kwargs):
   if environment_name == 'sis':
     from .sis import SIS
     return SIS(**kwargs)
-  elif environment_name == 'Gravity':
+  elif environment_name == 'Ebola':
     from .Ebola import Ebola
     return Ebola(**kwargs)
   else:
