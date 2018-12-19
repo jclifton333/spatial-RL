@@ -58,7 +58,7 @@ class Simulator(object):
     # Set policy arguments
     if env_name == 'sis':
         treatment_budget = np.int(np.ceil(0.05 * self.env.L))
-    elif env_name == 'Gravity':
+    elif env_name == 'Ebola':
         treatment_budget = np.int(np.ceil(0.15 * self.env.L))
     self.policy_arguments = {'classifier': SKLogit2, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,

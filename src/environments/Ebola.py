@@ -103,7 +103,7 @@ class Ebola(Gravity):
     number_of_features = int(3 + 4*self.MAX_NUMBER_OF_NEIGHBORS)
     X = np.zeros((0, number_of_features))
     for l in range(self.L):
-      x_l = self.psi_at_location(l, raw_data_block)
+      x_l = self.feature_function_at_location(l, raw_data_block)
       X = np.vstack((X, x_l))
     return X
 

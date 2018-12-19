@@ -85,7 +85,7 @@ def get_all_gravity_transmission_probs(a, eta, L, **kwargs):
                                                                   product_matrix, x, eta_x_l, eta_x_lprime)
 
 
-def gravity_transmission_probs(l, lprime, a, eta, L, distance_matrix, product_matrix, x, eta_x_l, eta_x_lprime):
+def gravity_transmission_probs(a, l, lprime, eta, L, distance_matrix, product_matrix, x, eta_x_l, eta_x_lprime):
   """
 
   :param l:
@@ -101,9 +101,10 @@ def gravity_transmission_probs(l, lprime, a, eta, L, distance_matrix, product_ma
   :return:
   """
 
+  l, lprime = int(l), int(lprime)
   d_l_lprime = distance_matrix[l, lprime]
   product_l_lprime = product_matrix[l, lprime]
-  logit = eta[0] + theta[1]*d_l_lprime / np.power(product_l_lprime, eta[2]) - a[l]*eta[3] - a[lprime]*eta[4]
+  logit = eta[0] + eta[1]*d_l_lprime / np.power(product_l_lprime, eta[2]) - a[l]*eta[3] - a[lprime]*eta[4]
   if x is not None:
     x_l, x_lprime = x[l, :], x[lprime, :]
     logit += np.dot(eta_x_l, x_l) + np.dot(eta_x_lprime, x_lprime)
