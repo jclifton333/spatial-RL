@@ -59,7 +59,7 @@ def beta_objective(alpha, log_beta):
 
   # Y_0_mean = np.sum(env.Y[0, :])
   # random policy
-  rand_sim = Simulator(1, 'Ebola', TIME_HORIZON, 1, 'random', 'quad_approx', 0.9, 100, env_kwargs, '')
+  rand_sim = Simulator(1, 'Gravity', TIME_HORIZON, 1, 'random', 'quad_approx', 0.9, 100, env_kwargs, '')
   # Y_25_rando = np.zeros((0, 290))
   Y_25_rando = []
   for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):
@@ -68,7 +68,7 @@ def beta_objective(alpha, log_beta):
     # Y_25_rando = np.vstack((Y_25_rando, np.mean(rand_sim.env.Y, axis=0)))
 
   # true probs myopic policy
-  true_probs_sim = Simulator(1, 'Ebola', TIME_HORIZON, 1, 'true_probs_myopic', 'quad_approx', 0.9, 100, env_kwargs, '')
+  true_probs_sim = Simulator(1, 'Gravity', TIME_HORIZON, 1, 'true_probs_myopic', 'quad_approx', 0.9, 100, env_kwargs, '')
   # Y_25_true_probs = np.zeros((0, 290))
   Y_25_true_probs = []
   for i in range(NUM_REPLICATES_PER_PARAMETER_SETTING):

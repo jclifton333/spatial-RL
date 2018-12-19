@@ -4,7 +4,7 @@ import src.estimation.q_functions.one_step as one_step
 from .model_fitters import SKLogit2
 from src.environments.gravity_infection_probs import ebola_infection_probs
 from src.estimation.q_functions.q_functions import q_max_all_states
-from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
+from src.estimation.model_based.Gravity.estimate_ebola_parameters import fit_ebola_transition_model
 from sklearn.linear_model import LinearRegression
 
 
@@ -233,7 +233,7 @@ def one_step_ebola_convex_combo(env):
 def one_step_convex_combo(env):
   if env.__class__.__name__ == 'SIS':
     return one_step_sis_convex_combo(env)
-  elif env.__class__.__name__ == 'Ebola':
+  elif env.__class__.__name__ == 'Gravity':
     return one_step_ebola_convex_combo(env)
 
 # def estimate_mb_bias_and_variance(phat, env):

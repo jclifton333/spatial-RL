@@ -16,7 +16,7 @@ sys.path.append(pkg_dir)
 from src.environments import generate_network
 from src.run.Simulator import Simulator
 
-VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola']
+VALID_ENVIRONMENT_NAMES = ['sis', 'Gravity']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based', 'sis_model_based_one_step',
                       'one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi',
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     network_name = args.network
   else:
     env_kwargs = {}
-    network_name = 'Ebola'
+    network_name = 'Gravity'
   ts = (args.ts == 'True')
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed)

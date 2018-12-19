@@ -16,7 +16,7 @@ import pdb
 this_fpath = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(this_fpath)
 
-L = 290 #290 locations in Ebola sim
+L = 290 #290 locations in Gravity sim
 
 def haversine(lon1, lat1, lon2, lat2):
   lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])

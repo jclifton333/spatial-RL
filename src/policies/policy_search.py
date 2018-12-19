@@ -65,7 +65,7 @@ import src.environments.gravity_infection_probs as ebola_inf_probs
 from numba import njit
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
 from bayes_opt import BayesianOptimization
-from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
+from src.estimation.model_based.Gravity.estimate_ebola_parameters import fit_ebola_transition_model
 
 
 def R(env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_prob_predictor,
@@ -387,7 +387,7 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
     transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
     infection_probs_predictor = sis_inf_probs.sis_infection_probability
     transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
-  elif env.__class__.__name__ == 'Ebola':
+  elif env.__class__.__name__ == 'Gravity':
     infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
     transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
                                  'adjacency_matrix': env.ADJACENCY_MATRIX}
@@ -415,7 +415,7 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
   # Get priority function features
   a_for_transmission_probs = np.zeros(env.L)  # ToDo: Check which action is used to get transmission probs
 
-  # ToDo: distinguish between env.pairwise_distances and Ebola.DISTANCE_MATRIX !
+  # ToDo: distinguish between env.pairwise_distances and Gravity.DISTANCE_MATRIX !
   # transmission_probabilities = transmission_probs_predictor(a_for_transmission_probs, beta_tilde, env.L,
   #                                                           env.adjacency_matrix)
 
@@ -447,7 +447,7 @@ def policy_search_policy(**kwargs):
     def gen_model_posterior():
       beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
       return beta_tilde
-  elif env.__class__.__name__ == "Ebola":
+  elif env.__class__.__name__ == "Gravity":
     # beta_mean = fit_ebola_transition_model(env)
     # beta_cov = env.mb_covariance(beta_mean)
     def gen_model_posterior():

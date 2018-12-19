@@ -3,7 +3,7 @@ from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q, q_max_all_states
 from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_sis_q_fn
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
-from src.estimation.model_based.Ebola.estimate_ebola_parameters import fit_ebola_transition_model
+from src.estimation.model_based.Gravity.estimate_ebola_parameters import fit_ebola_transition_model
 from src.estimation.q_functions.model_fitters import SKLogit2
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
@@ -211,7 +211,7 @@ def one_step_stacked(**kwargs):
     if env.__class__.__name__ == 'SIS':
       q_mb_fold, q_mf_fold, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
 
-    elif env.__class__.__name__ == 'Ebola':
+    elif env.__class__.__name__ == 'Gravity':
       q_mb_fold, q_mf_fold, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
     for t, (x_raw, x) in enumerate(zip(env.X_raw[:-1], env.X[:-1])):
       test_ixs = train_test_split[1][t]
@@ -227,7 +227,7 @@ def one_step_stacked(**kwargs):
   # Stack q functions
   if env.__class__.__name__ == 'SIS':
     q_mb, q_mf, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
-  elif env.__class__.__name__ == 'Ebola':
+  elif env.__class__.__name__ == 'Gravity':
     q_mb, q_mf, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2)
 
   def qfn(a):
@@ -247,7 +247,7 @@ def sis_one_step_equal_averaged(**kwargs):
   
   if env.__class__.__name__ == 'SIS':
     q_mb, q_mf, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
-  elif env.__class__.__name__ == 'Ebola':
+  elif env.__class__.__name__ == 'Gravity':
     q_mb, q_mf, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2)
 
   # Get modified q_function

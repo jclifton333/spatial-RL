@@ -10,7 +10,7 @@ import src.environments.Gravity import Gravity
 import src.environments.gravity_infection_probs as infection_probs
 
 
-class Continuous(Gravity):
+class ContinuousGrav(Gravity):
   # ToDo: These are placeholders!
   # The thetas are NOT numbered the same as in Nick's paper, because the Gravity class separates theta's associated
   # with x's and the other elements of theta.

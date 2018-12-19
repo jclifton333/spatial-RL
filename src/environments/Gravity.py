@@ -6,6 +6,7 @@ locations are points in [0,1]^2.
 This is still just the gravity model, though.
 """
 import numpy as np
+from abc import abstractmethod
 from scipy.special import expit
 import src.environments.SpatialDisease import SpatialDisease
 import src.environments.gravity_infection_probs as infection_probs
@@ -13,14 +14,14 @@ import src.environments.gravity_infection_probs as infection_probs
 
 class Gravity(SpatialDisease):
   """
-  Class for gravity disease models.  Ebola and the generic Continuous class will inherit from this.
+  Class for gravity disease models.  Gravity and the generic Continuous class will inherit from this.
 
   Transmission probabilities in gravity model are of the form
 
   logit(p_l_lprime) = \theta_0 + <\theta_1 | x_l> + <\theta_2 | x_lprime> - \theta_3*a_l - \theta_4*a_l
     - \theta_5 * d_l_lprime / (product_l_lprime)**\theta_6
 
-  where (x_l, x_lprime) are optional covariates (Ebola doesn't have any).
+  where (x_l, x_lprime) are optional covariates (Gravity doesn't have any).
   """
   def __init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix, theta,
                theta_x_l, theta_x_lprime, lambda_, initial_infections=None):
@@ -29,7 +30,7 @@ class Gravity(SpatialDisease):
     :param distance_matrix:
     :param product_matrix:
     :param adjacency_matrix:
-    :param covariate_matrix: L x (covariate dimension) array, or None (as in Ebola)
+    :param covariate_matrix: L x (covariate dimension) array, or None (as in Gravity)
     :param lambda_: array of weights used in policy search
     """
     SpatialDisease.__init__(self, adjacency_matrix, initial_infections=initial_infections)
@@ -97,12 +98,15 @@ class Gravity(SpatialDisease):
       self.infection_prob_at_location(a, l, eta) for l in range(self.L)
     ])
 
+  @abstractmethod
   def feature_function(self, raw_data_block):
     pass
 
+  @abstractmethod
   def feature_function_at_action(self, old_data_block, old_action, action):
     pass
 
+  @abstractmethod
   def feature_function_at_location(self, l, raw_data_block):
     pass
 

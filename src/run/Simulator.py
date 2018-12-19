@@ -36,7 +36,7 @@ class Simulator(object):
                evaluation_budget, env_kwargs, network_name, bootstrap, seed):
     """
     :param lookahead_depth:
-    :param env_name: 'sis' or 'Ebola'
+    :param env_name: 'sis' or 'Gravity'
     :param time_horizon: duration of simulation rep
     :param number_of_replicates: number of replicates
     :param policy_name: string to be passed to policy_factory
@@ -58,7 +58,7 @@ class Simulator(object):
     # Set policy arguments
     if env_name == 'sis':
         treatment_budget = np.int(np.ceil(0.05 * self.env.L))
-    elif env_name == 'Ebola':
+    elif env_name == 'Gravity':
         treatment_budget = np.int(np.ceil(0.15 * self.env.L))
     self.policy_arguments = {'classifier': SKLogit2, 'regressor': RandomForestRegressor, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,

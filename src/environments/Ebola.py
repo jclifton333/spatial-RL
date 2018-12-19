@@ -11,7 +11,7 @@ from scipy.special import expit
 import src.environments.gravity_infection_probs as infection_probs
 from src.environments.Gravity import Gravity
 from src.environments.sis import SIS
-from src.estimation.model_based.Ebola.estimate_ebola_parameters import log_lik_single
+from src.estimation.model_based.Gravity.estimate_ebola_parameters import log_lik_single
 import src.utils.gradient as gradient
 import pickle as pkl
 import os
