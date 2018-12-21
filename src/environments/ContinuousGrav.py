@@ -48,32 +48,34 @@ class ContinuousGrav(Gravity):
     ]) for lprime in range(L)])
 
     # Compute transmission_probs
-
-    # ToDo: Make sure this is what is meant by autoregressive...
-    s_1 = np.random.multivariate_normal(np.zeros(L), covariance_matrices[:, :, 0])
-    s_2 = np.random.multivariate_normal(s_1, covariance_matrices[:, :, 1])
-    s_3 = np.random.multivariate_normal(s_2, covariance_matrices[:, :, 2])
-    s_4 = np.random.multivariate_normal(s_3, covariance_matrices[:, :, 3])
-    z = s_1 - np.min(s_1)
+    cov = self.covariate_covariance()
+    x = np.random.multivariate_normal(np.zeros(cov.shape[0]), cov)
+    x = x.reshape((self.L, ContinuousGrav.P))
+    z = np.floor(x[:, 0] - np.min(x[:, 0]))
     product_matrix = np.outer(z, z)
-    covariate_matrix = np.column_stack((s_1, s_2, s_3, s_4))
     initial_infections = np.random.binomial(1, 0.01, L)
-    self.current_state = np.column_stack((s_1, s_2, s_3, s_4, z, initial_infections))
+    self.current_state = np.column_stack((x, z, initial_infections))
     Gravity.__init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix,
                      np.array([ContinuousGrav.THETA_0, ContinuousGrav.THETA_1, ContinuousGrav.THETA_2,
                                ContinuousGrav.THETA_3, ContinuousGrav.THETA_4]),
                      ContinuousGrav.THETA_x_l, ContinuousGrav.THETA_x_lprime, lambda_, initial_infections)
 
-  def covariate_covariance(self, l, lprime):
-    covs_for_each_dimension = []
-    x_l, x_lprime = self.location_coordinates[l, :], self.location_coordinates[lprime, :]
-    squared_dist = np.dot(x_l - x_lprime, x_l - x_lprime)
-    for i in range(ContinuousGrav.P):
-      for j in range(ContinuousGrav.P):
-        covs_for_each_dimension.append(
-          np.exp(-ContinuousGrav.TAU*squared_dist - ContinuousGrav.ETA*np.abs(i - j))
-        )
-    return np.array(covs_for_each_dimension)
+  def covariate_covariance(self):
+    covariance = np.zeros((self.L*ContinuousGrav.P, self.L*ContinuousGrav.P))
+    for l in range(self.L):
+      for lprime in range(l, self.L):
+        x_l, x_lprime = self.location_coordinates[l, :], self.location_coordinates[lprime, :]
+        squared_dist = np.dot(x_l - x_lprime, x_l - x_lprime)
+        for r in range(ContinuousGrav.P):
+          for s in range(r, ContinuousGrav.P):
+            cov_l_lprime_r_s = np.exp(-ContinuousGrav.TAU*squared_dist - ContinuousGrav.ETA*np.abs(r-s))
+            covariance[int(l*ContinuousGrav.P+r), int(lprime*ContinuousGrav.P+s)] = cov_l_lprime_r_s
+            covariance[int(l*ContinuousGrav.P+s), int(lprime*ContinuousGrav.P+r)] = cov_l_lprime_r_s
+            covariance[int(lprime*ContinuousGrav.P+r), int(l*ContinuousGrav.P+s)] = cov_l_lprime_r_s
+            covariance[int(lprime*ContinuousGrav.P+s), int(l*ContinuousGrav.P+r)] = cov_l_lprime_r_s
+    return covariance
+
+
 
   def reset(self):
     super(ContinuousGrav, self).reset()
