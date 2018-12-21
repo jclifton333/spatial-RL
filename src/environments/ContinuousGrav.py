@@ -14,11 +14,17 @@ class ContinuousGrav(Gravity):
   # ToDo: These are placeholders!
   # The thetas are NOT numbered the same as in Nick's paper, because the Gravity class separates theta's associated
   # with x's and the other elements of theta.
-  COVARIANCE_KERNEL_PARAMETERS = np.ones(4)
   THETA_0 = 0.0
   THETA_1 = THETA_2 = THETA_3 = THETA_4 = 1.0
   THETA_x_l = np.ones(4)
   THETA_x_lprime = np.ones(4)
+
+  # Covariate covariance kernel parameters
+  # ToDo: Placeholders
+  P = 4
+  RHO = 10.0
+  TAU = np.log(10.0)
+  ETA = np.log(4.0)
 
   def __init__(self, L):
     adjacency_matrix = np.ones((L, L))  # Fully connected
@@ -30,7 +36,7 @@ class ContinuousGrav(Gravity):
         np.linalg.norm(x_l - x_lprime) for x_l in self.location_coordinates
       ])
       for x_lprime in self.location_coordinates])
-    distance_matrix /= np.std(distance_matrix)
+    distance_matrix = (distance_matrix - np.mean(distance_matrix)) / np.std(distance_matrix)
     lambda_ = distance_matrix  # TODO: This is a placeholder!  Lambda should be something else (see paper).
 
     # Generate static covariates
@@ -62,10 +68,11 @@ class ContinuousGrav(Gravity):
     covs_for_each_dimension = []
     x_l, x_lprime = self.location_coordinates[l, :], self.location_coordinates[lprime, :]
     squared_dist = np.dot(x_l - x_lprime, x_l - x_lprime)
-    for parameter in ContinuousGrav.COVARIANCE_KERNEL_PARAMETERS:
-      covs_for_each_dimension.append(
-        np.exp(-parameter * squared_dist / 2)
-      )
+    for i in range(ContinuousGrav.P):
+      for j in range(ContinuousGrav.P):
+        covs_for_each_dimension.append(
+          np.exp(-ContinuousGrav.TAU*squared_dist - ContinuousGrav.ETA*np.abs(i - j))
+        )
     return np.array(covs_for_each_dimension)
 
   def reset(self):
