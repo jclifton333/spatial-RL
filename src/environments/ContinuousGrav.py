@@ -68,14 +68,13 @@ class ContinuousGrav(Gravity):
         squared_dist = np.dot(x_l - x_lprime, x_l - x_lprime)
         for r in range(ContinuousGrav.P):
           for s in range(r, ContinuousGrav.P):
-            cov_l_lprime_r_s = np.exp(-ContinuousGrav.TAU*squared_dist - ContinuousGrav.ETA*np.abs(r-s))
+            cov_l_lprime_r_s = ContinuousGrav.RHO*np.exp(-ContinuousGrav.TAU*squared_dist -
+                                                         ContinuousGrav.ETA*np.abs(r-s))
             covariance[int(l*ContinuousGrav.P+r), int(lprime*ContinuousGrav.P+s)] = cov_l_lprime_r_s
             covariance[int(l*ContinuousGrav.P+s), int(lprime*ContinuousGrav.P+r)] = cov_l_lprime_r_s
             covariance[int(lprime*ContinuousGrav.P+r), int(l*ContinuousGrav.P+s)] = cov_l_lprime_r_s
             covariance[int(lprime*ContinuousGrav.P+s), int(l*ContinuousGrav.P+r)] = cov_l_lprime_r_s
     return covariance
-
-
 
   def reset(self):
     super(ContinuousGrav, self).reset()

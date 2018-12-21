@@ -94,6 +94,14 @@ def argmin_2d(arr):
 def random_nearest_neighbor(size):
   # Described in RSS-Supplement
   k = 3
+  C = np.random.random(size=(size2))
+  E = np.array([
+    np.array([np.linalg.norm(C[i, :] - C[j, :]) j in range(size)])
+    for i in range(size)])
+  N_k = [[lprime for lprime in range(size) if E[l, lprime] <= -np.sort(-E[l, :])[k]]
+         for l in range(size)]
+
+
   max_tries = 100
   for num_tries in range(max_tries):
     omega_tilde = np.zeros((size, size))
