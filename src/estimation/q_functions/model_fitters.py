@@ -193,8 +193,8 @@ class SKLogit2(object):
     if len(phat[not_infected_locations]) > 0:
       if self.not_inf_model_fitted:
         # phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]
-        logit_probs = np.dot(X, self.inf_params)
-
+        logit_probs = np.dot(X[not_infected_locations, :], self.inf_params[1:]) + self.inf_params[0]
+        phat[not_infected_locations] = expit(logit_probs)
       else:
         phat[not_infected_locations] = self.not_inf_eb_prob
     return phat

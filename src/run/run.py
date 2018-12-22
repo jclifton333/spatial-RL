@@ -17,7 +17,7 @@ from src.environments import generate_network
 from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola', 'ContinuousGrav']
-VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step',
+VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step', 'two_step',
                       'treat_all', 'SIS_stacked', 'SIS_model_based', 'sis_model_based_one_step',
                       'one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi',
                       'gravity_model_based_one_step', 'gravity_model_based_myopic', 'policy_search',

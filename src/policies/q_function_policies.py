@@ -35,9 +35,9 @@ def one_step_policy(**kwargs):
 
 
 def two_step(**kwargs):
-  classifier, regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, truncate = \
+  classifier, regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
     kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
-    kwargs['argmaxer'], kwargs['bootstrap'], kwargs['truncate']
+    kwargs['argmaxer'], kwargs['bootstrap']
 
   if bootstrap:
     weights = np.random.exponential(size=len(env.X)*env.L)
@@ -45,7 +45,7 @@ def two_step(**kwargs):
     weights = None
 
   # One step
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights, truncate)
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights)
   def qfn_at_block(block_index, a):
     return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
 
@@ -56,11 +56,11 @@ def two_step(**kwargs):
     a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
     q_max = qfn_at_block_t(a_max)
     backup_at_t = env.Y[t, :] + q_max
-    backup.append(backup_at_x)
+    backup.append(backup_at_t)
 
   # Fit backup-up q function
   reg = regressor()
-  regressor.fit(np.vstack(env.X), np.hstack(backup))
+  reg.fit(np.vstack(env.X), np.hstack(backup))
 
   def qfn(a):
     return reg.predict(env.data_block_at_action(-1, a))

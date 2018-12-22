@@ -94,32 +94,18 @@ def argmin_2d(arr):
 def random_nearest_neighbor(size):
   # Described in RSS-Supplement
   k = 3
-  C = np.random.random(size=(size2))
+  C = np.random.random(size=(size, 2))
   E = np.array([
-    np.array([np.linalg.norm(C[i, :] - C[j, :]) j in range(size)])
+    np.array([np.linalg.norm(C[i, :] - C[j, :]) for j in range(size)])
     for i in range(size)])
-  N_k = [[lprime for lprime in range(size) if E[l, lprime] <= -np.sort(-E[l, :])[k]]
+  N_k = [[lprime for lprime in range(size) if E[l, lprime] <= np.sort(E[l, :])[k]]
          for l in range(size)]
+  omega_tilde = np.array([
+    np.array([lprime in N_k[l] for lprime in range(size)])
+    for l in range(size)])
 
-
-  max_tries = 100
-  for num_tries in range(max_tries):
-    omega_tilde = np.zeros((size, size))
-    C = np.random.uniform(size=(size, 2))
-    E = np.array([[np.linalg.norm(C[l, :] - C[lprime, :]) for lprime in range(size)]
-                for l in range(size)])
-    for l in range(size):
-      E_l = E[l, :]
-      E_l_upper = order_stat(E_l, k + 1)
-      Nk_l = np.where(E_l <= E_l_upper)
-      omega_tilde[l, Nk_l] = 1
-    omega_tilde_nx = nx.from_numpy_matrix(omega_tilde)
-    B = list(nx.connected_components(omega_tilde_nx))
-    if len(B) > 1:
-      break
-    else:
-      continue
-
+  omega_tilde = nx.from_numpy_matrix(omega_tilde)
+  B = list(nx.connected_components(omega_tilde))
   while len(B) > 1:
     best_pair = None
     best_dist = float('inf')
@@ -134,11 +120,13 @@ def random_nearest_neighbor(size):
           best_pair_ixs = argmin_2d(distances)
           best_pair = B_i[best_pair_ixs[1]], B_j[best_pair_ixs[0]]
           best_dist = min_dist
-    try:
-      omega_tilde_nx.add_edge(best_pair[0], best_pair[1])
-    except:
-      pdb.set_trace()
+    omega_tilde.add_edge(best_pair[0], best_pair[1])
+    B = list(nx.connected_components(omega_tilde))
+  return nx.adjacency_matrix(omega_tilde).todense()
 
-    B = list(nx.connected_components(omega_tilde_nx))
-  return nx.adjacency_matrix(omega_tilde_nx).todense()
+
+if __name__ == "__main__":
+  for i in range(100):
+    print(i)
+    m = random_nearest_neighbor(100)
 

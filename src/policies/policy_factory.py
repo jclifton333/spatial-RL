@@ -21,6 +21,8 @@ def policy_factory(policy_type):
     return roll.network_features_rollout_policy
   elif policy_type == 'one_step':
     return roll.one_step_policy
+  elif policy_type == 'two_step':
+    return roll.two_step
   elif policy_type == 'treat_all':
     return ref.treat_all
   elif policy_type == 'dummy_stacked':
