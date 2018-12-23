@@ -60,7 +60,7 @@ def two_step(**kwargs):
 
   # Fit backup-up q function
   reg = regressor()
-  reg.fit(np.vstack(env.X), np.hstack(backup))
+  reg.fit(np.vstack(env.X[:-1]), np.hstack(backup))
 
   def qfn(a):
     return reg.predict(env.data_block_at_action(-1, a))
