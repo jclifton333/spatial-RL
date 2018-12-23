@@ -64,7 +64,7 @@ class Simulator(object):
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
-                              'bootstrap': bootstrap, 'initial_policy_parameter': None}
+                              'bootstrap': bootstrap, 'initial_policy_parameter': None, 'q_fn': None}
 
     # Get settings dict for log
     self.settings = {'classifier': self.policy_arguments['classifier'].__name__,
@@ -127,6 +127,11 @@ class Simulator(object):
     for t in range(self.time_horizon-2):
       a, info = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
+
+      # For pre-fit q_fn
+      if info is not None:
+        if 'q_fn' in info.keys():
+          self.policy_arguments['q_fn'] = info['q_fn']
 
       # For policy search
       # if 'initial_policy_parameter' in info.keys():
