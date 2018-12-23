@@ -51,11 +51,11 @@ def two_step(**kwargs):
 
   # Back up once
   backup = []
-  for t in range(env.T):
+  for t in range(env.T-1):
     qfn_at_block_t = lambda a: qfn_at_block(t, a)
     a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
     q_max = qfn_at_block_t(a_max)
-    backup_at_t = env.Y[t, :] + q_max
+    backup_at_t = env.y[t] + q_max
     backup.append(backup_at_t)
 
   # Fit backup-up q function
