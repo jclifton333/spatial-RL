@@ -18,8 +18,8 @@ from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola', 'ContinuousGrav']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step', 'two_step',
-                      'treat_all', 'SIS_stacked', 'SIS_model_based', 'sis_model_based_one_step',
-                      'one_step_mse_averaged', 'sis_two_step_mse_averaged', 'sis_mb_fqi',
+                      'treat_all', 'sis_model_based_one_step', 'sis_two_step_mb',
+                      'one_step_mse_averaged', 'sis_two_step_mse_averaged',
                       'gravity_model_based_one_step', 'gravity_model_based_myopic', 'policy_search',
                       'sis_one_step_equal_averaged', 'one_step_stacked', 'sis_model_based_myopic']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
