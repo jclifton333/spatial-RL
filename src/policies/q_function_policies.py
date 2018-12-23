@@ -16,9 +16,9 @@ from functools import partial
 
 
 def one_step_policy(**kwargs):
-  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, truncate = \
+  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
     kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
-    kwargs['bootstrap'], kwargs['truncate']
+    kwargs['bootstrap']
 
   if bootstrap:
     weights = np.random.exponential(size=len(env.X)*env.L)
