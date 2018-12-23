@@ -6,6 +6,7 @@ import pickle as pkl
 from ..environments.environment_factory import environment_factory
 from ..environments.generate_network import lattice
 from ..estimation.q_functions.one_step import fit_one_step_predictor
+from ..estimation.q_functions.model_fitters import SKLogit2
 
 
 def generate_two_step_sis_data():
@@ -16,6 +17,7 @@ def generate_two_step_sis_data():
 
   X_first_order = []
   X_second_order = []
+  X_raw = []
   y = []
   for _ in range(number_of_episodes):
     treatment_budget = int(np.floor(0.05 * L))
@@ -29,13 +31,11 @@ def generate_two_step_sis_data():
     for t in range(time_horizon - 2):
       env.step(np.random.permutation(dummy_action))
     y.append(np.hstack(env.y))
+    X_raw.append(np.vstack(env.X_raw))
     X_first_order.append(np.vstack(env.X))
     X_second_order.append(np.vstack(env.X_2))
 
-  X_first_order = np.vstack(X_first_order)
-  X_second_order = np.vstack(X_second_order)
-  y = np.hstack(y)
-  data = {'X_first_order': X_first_order, 'X_second_order': X_second_order, 'y': y}
+  data = {'X_first_order': X_first_order, 'X_second_order': X_second_order, 'y': y, 'X_raw': X_raw}
   fname = './data_for_prefit_policies/two-step-sis.p'
   pkl.dump(data, open(fname, 'wb'))
 
@@ -43,15 +43,26 @@ def generate_two_step_sis_data():
 
 
 def two_step_sis_prefit(**kwargs):
-  classifier, regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, q_fn = \
-    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+  regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, q_fn = \
+    kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
     kwargs['argmaxer'], kwargs['bootstrap'], kwargs['q_fn']
 
   if q_fn is None:  # Haven't fit yet
+    # Load pre-saved data
+    data = pkl.load(open('./data_for_prefix_policies/two-step-sis.p', 'rb'))
+    X_raw, X, X_2, y = data['X_raw'], data['X_first_order'], data['X_second_order'], data['y']
+
+    infected_locations = np.where(X_raw[:, -1] == 1)
+    not_infected_locations = np.where(X_raw[:, -1] == 0)
+
     # One step
-    clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights)
+    clf = SKLogit2()
+    clf.fit(np.vstack(X), np.hstack(y), None, False, infected_locations, not_infected_locations)
+
     def qfn_at_block(block_index, a):
-      return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
+      infected_locations = np.where(env.X_raw[block_index][:, -1] == 1)
+      not_infected_locations = np.where(env.X_raw[block_index][:, -1] == 0)
+      return clf.predict_proba(env.data_block_at_action(block_index, a), infected_locations, not_infected_locations)
 
     # Back up once
     backup = []
