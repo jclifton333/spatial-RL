@@ -25,7 +25,7 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights, truncate)
+  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights)
 
   def qfn(a):
     return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
