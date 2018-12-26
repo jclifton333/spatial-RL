@@ -20,7 +20,7 @@ def policy_factory(policy_type):
   elif policy_type == 'two_step':
     return roll.two_step
   elif policy_type == 'two_step_higher_order':
-    roll.two_step_higher_order
+    return roll.two_step_higher_order
   elif policy_type == 'treat_all':
     return ref.treat_all
   elif policy_type == 'sis_stacked':
