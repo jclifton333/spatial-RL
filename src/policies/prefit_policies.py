@@ -4,6 +4,14 @@ Fit Q-function on (large) batch data and roll out without updating.
 import numpy as np
 import pickle as pkl
 from sklearn.ensemble import RandomForestRegressor
+
+# So stupid relative imports work
+import os
+import sys
+this_dir = os.path.dirname(os.path.abspath(__file__))
+pkg_dir = os.path.join('..', '..', this_dir)
+sys.path.append(pkg_dir)
+
 from ..environments.environment_factory import environment_factory
 from ..environments.generate_network import lattice
 from ..estimation.q_functions.one_step import fit_one_step_predictor
@@ -20,9 +28,10 @@ def generate_two_step_sis_data():
   X_second_order = []
   X_raw = []
   y = []
-  for _ in range(number_of_episodes):
+  for ep in range(number_of_episodes):
+    print('episode {}'.format(ep))
     treatment_budget = int(np.floor(0.05 * L))
-    env = environment_factory('sis', **{'L': L, 'omega': 0.0 , 'generate_network': lattice})
+    env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': lattice})
     env.reset()
 
     # Initial steps
@@ -88,3 +97,7 @@ def two_step_sis_prefit(**kwargs):
 
   a = argmaxer(lambda a: q_fn(a, env), evaluation_budget, treatment_budget, env)
   return a, {'q_fn': q_fn}
+
+
+if __name__ == "__main__":
+  generate_two_step_sis_data()
