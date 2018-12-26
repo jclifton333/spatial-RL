@@ -21,7 +21,8 @@ VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 
                       'treat_all', 'sis_model_based_one_step', 'sis_two_step_mb',
                       'one_step_mse_averaged', 'sis_two_step_mse_averaged',
                       'gravity_model_based_one_step', 'gravity_model_based_myopic', 'policy_search',
-                      'sis_one_step_equal_averaged', 'one_step_stacked', 'sis_model_based_myopic']
+                      'sis_one_step_equal_averaged', 'one_step_stacked', 'sis_model_based_myopic',
+                      'two_step_higher_order']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 VALID_NETWORK_NAMES = ['lattice', 'barabasi', 'nearestneighbor']
 
