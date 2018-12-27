@@ -196,17 +196,6 @@ class SIS(SpatialDisease):
       new_data_block = self.psi_neighbor(new_data_block)
     return new_data_block
 
-  def psi_neighbor(self, data_bloc):
-    """
-    To psi features, concatenate another block of features which are the _sums of the neighboring psi features_.
-    :param data_block:
-    :return:
-    """
-    neighbor_data_block = np.zeros(data_block.shape)
-    for l in range(self.L):
-      neighbor_data_block[l] = np.sum(data_block[self.adjacency_list[l],:], axis=0)
-    return np.column_stack((data_block, neighbor_data_block))
-
   ##############################################################
   ##            End path-based feature function stuff         ##
   ##############################################################

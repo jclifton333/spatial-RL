@@ -14,6 +14,7 @@ pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
 from src.environments import generate_network
+from src.policies.prefit_policies import generate_two_step_sis_data
 from src.run.Simulator import Simulator
 
 VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola', 'ContinuousGrav']
@@ -58,6 +59,12 @@ if __name__ == '__main__':
     env_kwargs = {'L': args.L}
     network_name = 'ContinuousGrav'
   ts = (args.ts == 'True')
+
+  # Generate data if using a prefit policy
+  # ToDo: Currently only implemented for two-step mf sis
+  if 'prefit' in args.policy_name:
+    generate_two_step_sis_data(args.L, args.time_horizon)
+
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed)
   if args.number_of_replicates == 1:

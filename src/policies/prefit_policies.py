@@ -18,7 +18,7 @@ import pickle as pkl
 from sklearn.ensemble import RandomForestRegressor
 
 
-def generate_two_step_sis_data(L, time_horizon, number_of_data_points=1e4):
+def generate_two_step_sis_data(L, time_horizon, number_of_data_points=1e6):
   # Check if data for these settings has already been generated
   data_dir = os.path.join(this_dir, 'data_for_prefit_policies')
   already_generated = False
@@ -52,8 +52,9 @@ def generate_two_step_sis_data(L, time_horizon, number_of_data_points=1e4):
       X_second_order += env.X_2
 
     data = {'X_first_order': X_first_order, 'X_second_order': X_second_order, 'y': y, 'X_raw': X_raw}
-    fname = './data_for_prefit_policies/two-step-sis-time_horizon={}-L={}.p'.format(time_horizon, L)
+    fname = os.path.join(data_dir, 'two-step-sis-time_horizon={}-L={}.p'.format(time_horizon, L))
     pkl.dump(data, open(fname, 'wb'))
+
   return
 
 
@@ -63,8 +64,6 @@ def two_step_sis_prefit(**kwargs):
     kwargs['q_fn'], kwargs['planning_depth']
 
   if q_fn is None:  # Haven't fit yet
-    generate_two_step_sis_data(env.L, time_horizon)
-
     # Load pre-saved data
     path_to_saved_data = \
       os.path.join(this_dir, 'data_for_prefit_policies/two-step-sis-time_horizon={}-L={}.p'.format(time_horizon, env.L))
@@ -94,12 +93,12 @@ def two_step_sis_prefit(**kwargs):
       qfn_at_block_t = lambda a: qfn_at_block(t, a)
       a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
       q_max = qfn_at_block_t(a_max)
-      backup_at_t = env.y[t] + q_max
+      backup_at_t = y[t] + q_max
       backup.append(backup_at_t)
 
     # Fit backup-up q function
-    reg = RandomForestRegressor(n_estimators=200)
-    reg.fit(X_2, np.hstack(backup))
+    reg = RandomForestRegressor(n_estimators=500)
+    reg.fit(np.vstack(X_2), np.hstack(backup))
 
     def q_fn(a, env):
       return reg.predict(env.data_block_at_action(-1, a, neighbor_order=2))
@@ -107,6 +106,3 @@ def two_step_sis_prefit(**kwargs):
   a = argmaxer(lambda a: q_fn(a, env), evaluation_budget, treatment_budget, env)
   return a, {'q_fn': q_fn}
 
-
-if __name__ == "__main__":
-  generate_two_step_sis_data()

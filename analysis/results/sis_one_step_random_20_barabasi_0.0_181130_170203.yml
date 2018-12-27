@@ -1,0 +1,9 @@
+results:
+  0: {runtime: 2.554874897003174, score: 0.5}
+  1: {runtime: 2.497957944869995, score: 0.1}
+  mean: 0.3
+  se: 0.1414213562373095
+settings: {L: 20, argmaxer: random, argmaxer_name: random, classifier: SKLogit2, divide_evenly: false,
+  env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 2, planning_depth: 25,
+  policy_name: one_step, regressor: RandomForestRegressor, rollout_depth: 1, time_horizon: 25,
+  treatment_budget: 1}
