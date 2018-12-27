@@ -1,6 +1,7 @@
 import src.policies.reference_policies as ref
 import src.policies.q_function_policies as roll
 import src.policies.policy_search as ps
+import src.policies.prefit_policies as prefit
 
 
 def policy_factory(policy_type):
@@ -45,5 +46,7 @@ def policy_factory(policy_type):
     return roll.sis_one_step_equal_averaged
   elif policy_type == 'one_step_stacked':
     return roll.one_step_stacked
+  elif policy_type == 'two_step_sis_prefit':
+    return prefit.two_step_sis_prefit
   else:
     raise ValueError('Argument does not match any policy.')
