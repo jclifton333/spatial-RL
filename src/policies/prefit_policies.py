@@ -52,21 +52,22 @@ def generate_two_step_sis_data(L, time_horizon, number_of_data_points=1e4):
       X_second_order += env.X_2
 
     data = {'X_first_order': X_first_order, 'X_second_order': X_second_order, 'y': y, 'X_raw': X_raw}
-    fname = './data_for_prefit_policies/two-step-sis.p'
+    fname = './data_for_prefit_policies/two-step-sis-time_horizon={}-L={}.p'.format(time_horizon, L)
     pkl.dump(data, open(fname, 'wb'))
   return
 
 
 def two_step_sis_prefit(**kwargs):
-  env, evaluation_budget, treatment_budget, argmaxer, bootstrap, q_fn = \
+  env, evaluation_budget, treatment_budget, argmaxer, bootstrap, q_fn, time_horizon = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['bootstrap'], \
-    kwargs['q_fn']
+    kwargs['q_fn'], kwargs['planning_depth']
 
   if q_fn is None:  # Haven't fit yet
-    generate_two_step_sis_data()
+    generate_two_step_sis_data(env.L, time_horizon)
 
     # Load pre-saved data
-    path_to_saved_data = os.path.join(this_dir, 'data_for_prefit_policies/two-step-sis.p')
+    path_to_saved_data = \
+      os.path.join(this_dir, 'data_for_prefit_policies/two-step-sis-time_horizon={}-L={}.p'.format(time_horizon, env.L))
     data = pkl.load(open(path_to_saved_data, 'rb'))
     X_raw, X, X_2, y = data['X_raw'], data['X_first_order'], data['X_second_order'], data['y']
 
@@ -81,10 +82,7 @@ def two_step_sis_prefit(**kwargs):
       infected_locations_ = np.where(X_raw[block_index][:, -1] == 1)
       not_infected_locations_ = np.where(X_raw[block_index][:, -1] == 0)
       X_raw_ix = X_raw[block_index]
-      try:
-        X_raw_at_action = np.column_stack((X_raw_ix[:, 0], a, X_raw_ix[:, 2]))
-      except:
-        pdb.set_trace()
+      X_raw_at_action = np.column_stack((X_raw_ix[:, 0], a, X_raw_ix[:, 2]))
       data_block_at_action = env.psi(X_raw_at_action, neighbor_order=1)
       return clf.predict_proba(data_block_at_action, infected_locations_, not_infected_locations_)
 
