@@ -18,7 +18,7 @@ import pickle as pkl
 from sklearn.ensemble import RandomForestRegressor
 
 
-def generate_two_step_sis_data(L, time_horizon, number_of_data_points=1e6):
+def generate_two_step_sis_data(L, time_horizon, number_of_data_points=1e5):
   # Check if data for these settings has already been generated
   data_dir = os.path.join(this_dir, 'data_for_prefit_policies')
   already_generated = False
@@ -97,7 +97,7 @@ def two_step_sis_prefit(**kwargs):
       backup.append(backup_at_t)
 
     # Fit backup-up q function
-    reg = RandomForestRegressor(n_estimators=500)
+    reg = RandomForestRegressor(n_estimators=200)
     reg.fit(np.vstack(X_2), np.hstack(backup))
 
     def q_fn(a, env):
