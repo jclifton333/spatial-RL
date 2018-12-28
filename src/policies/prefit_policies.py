@@ -10,7 +10,7 @@ sys.path.append(pkg_dir)
 import pdb
 
 from src.environments.environment_factory import environment_factory
-from src.environments.generate_network import lattice
+import src.environments.generate_network as generate_network
 from src.estimation.q_functions.one_step import fit_one_step_predictor
 from src.estimation.q_functions.model_fitters import SKLogit2
 import numpy as np
@@ -18,16 +18,18 @@ import pickle as pkl
 from sklearn.ensemble import RandomForestRegressor
 
 
-def generate_two_step_sis_data(L, time_horizon, number_of_data_points=1e6):
+def generate_two_step_sis_data(L, time_horizon, network, number_of_data_points):
   # Check if data for these settings has already been generated
   data_dir = os.path.join(this_dir, 'data_for_prefit_policies')
   already_generated = False
   for fname in os.listdir(data_dir):
     if 'two-step-sis' in fname:
-      if 'time_horizon={}'.format(time_horizon) in fname and 'L={}'.format(L) in fname:
+      if 'time_horizon={}'.format(time_horizon) in fname and 'L={}'.format(L) in fname and network in fname:
         already_generated = True
 
   if not already_generated:
+    network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
+                    'nearestneighbor': generate_network.random_nearest_neighbor}
     number_of_episodes = int(np.floor(number_of_data_points / (L * time_horizon)))
 
     X_first_order = []
@@ -37,7 +39,7 @@ def generate_two_step_sis_data(L, time_horizon, number_of_data_points=1e6):
     for ep in range(number_of_episodes):
       print('episode {}'.format(ep))
       treatment_budget = int(np.floor(0.05 * L))
-      env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': lattice})
+      env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': network_dict[network]})
       env.reset()
 
       # Initial steps
@@ -97,7 +99,7 @@ def two_step_sis_prefit(**kwargs):
       backup.append(backup_at_t)
 
     # Fit backup-up q function
-    reg = RandomForestRegressor(n_estimators=500)
+    reg = RandomForestRegressor(n_estimators=100, oob_score=True)
     reg.fit(np.vstack(X_2), np.hstack(backup))
 
     def q_fn(a, env):

@@ -43,6 +43,7 @@ if __name__ == '__main__':
   parser.add_argument('--network', type=str, choices=VALID_NETWORK_NAMES)
   parser.add_argument('--ts', type=str, choices=['True', 'False'])
   parser.add_argument('--seed', type=int)
+  parser.add_argument('--num_prefit_data', type=float)
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
@@ -63,7 +64,7 @@ if __name__ == '__main__':
   # Generate data if using a prefit policy
   # ToDo: Currently only implemented for two-step mf sis
   if 'prefit' in args.policy_name:
-    generate_two_step_sis_data(args.L, args.time_horizon)
+    generate_two_step_sis_data(args.L, args.time_horizon, args.network, args.num_prefit_data)
 
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed)
