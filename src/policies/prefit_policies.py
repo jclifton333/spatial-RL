@@ -99,7 +99,7 @@ def two_step_sis_prefit(**kwargs):
       backup.append(backup_at_t)
 
     # Fit backup-up q function
-    reg = RandomForestRegressor(n_estimators=100, oob_score=True)
+    reg = RandomForestRegressor(n_estimators=200)
     reg.fit(np.vstack(X_2), np.hstack(backup))
 
     def q_fn(a, env):
