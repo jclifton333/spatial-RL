@@ -74,7 +74,9 @@ def fit_one_step_ebola_mb_q(env, y_next=None, indices=None):
   def q_mb(data_block):
     infection_prob = ebola_infection_probs(data_block[:, 1], data_block[:, 2], eta, env.L, env.adjacency_list,
                                            **{'distance_matrix': env.DISTANCE_MATRIX,
-                                              'susceptibility': env.SUSCEPTIBILITY})
+                                              'product_matrix': env.PRODUCT_MATRIX,
+                                              'adjacency_matrix': env.ADJACENCY_MATRIX, 'x': None, 'eta_x_l': None,
+                                              'eta_x_lprime': None})
     return infection_prob
 
   return q_mb, eta

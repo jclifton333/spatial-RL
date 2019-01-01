@@ -16,9 +16,11 @@ def expit2(x):
 
 
 def ebola_infection_probs(a, y, eta, L, adjacency_lists, **kwargs):
-  distance_matrix, susceptibility = kwargs['distance_matrix'], kwargs['susceptibility']
+  distance_matrix, adjacency_matrix, product_matrix, x, eta_x_l, eta_x_lprime = \
+    kwargs['distance_matrix'], kwargs['adjacency_matrix'], kwargs['product_matrix'], kwargs['x'], kwargs['eta_x_l'], \
+    kwargs['eta_x_lprime']
   return np.array([infection_prob_at_location(a, l, eta, y, adjacency_lists, distance_matrix,
-                                              susceptibility) for l in range(L)])
+                                              product_matrix, x, eta_x_l, eta_x_lprime) for l in range(L)])
 
 
 @njit
@@ -85,14 +87,13 @@ def get_all_gravity_transmission_probs(a, eta, L, **kwargs):
                                                                   product_matrix, x, eta_x_l, eta_x_lprime)
 
 
-def gravity_transmission_probs(a, l, lprime, eta, L, distance_matrix, product_matrix, x, eta_x_l, eta_x_lprime):
+def gravity_transmission_probs(a, l, lprime, eta, distance_matrix, product_matrix, x, eta_x_l, eta_x_lprime):
   """
 
   :param l:
   :param lprime:
   :param a:
   :param eta:
-  :param L:
   :param distance_matrix:
   :param product_matrix:
   :param x: Array of covariates, or None
@@ -111,7 +112,8 @@ def gravity_transmission_probs(a, l, lprime, eta, L, distance_matrix, product_ma
   return expit2(logit)
 
 
-def infection_prob_at_location(a, l, eta, current_infected, adjacency_list, distance_matrix, product_matrix):
+def infection_prob_at_location(a, l, eta, current_infected, adjacency_list, distance_matrix, product_matrix, x,
+                               eta_x_l, eta_x_lprime):
   if current_infected[l]:
     return 1
   else:

@@ -30,8 +30,8 @@ def policy_factory(policy_type):
     return roll.one_step_mse_averaged
   elif policy_type == 'sis_two_step_mse_averaged':
     return roll.sis_two_step_mse_averaged
-  elif policy_type == 'sis_two_step_mb':
-    return roll.sis_two_step_mb
+  elif policy_type == 'two_step_mb':
+    return roll.two_step_mb
   elif policy_type == 'sis_mb_fqi':
     return roll.sis_mb_fqi
   elif policy_type == 'gravity_model_based_one_step':

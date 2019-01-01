@@ -34,7 +34,7 @@ def one_step_policy(**kwargs):
   return a, None
 
 
-def sis_two_step_mb(**kwargs):
+def two_step_mb(**kwargs):
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
     kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
     kwargs['argmaxer'], kwargs['bootstrap']
@@ -45,18 +45,21 @@ def sis_two_step_mb(**kwargs):
     weights = None
 
   # One step
-  qfn_at_block, predict_proba_kwargs = fit_one_step_sis_mb_q(env, bootstrap_weights=weights)
+  if env.__class__.__name__ == 'sis':
+    qfn_at_block_, predict_proba_kwargs = fit_one_step_sis_mb_q(env, bootstrap_weights=weights)
+  elif env.__class__.__name__ == 'Ebola':
+    q_fn_at_block_, _ = fit_one_step_ebola_mb_q(env)
 
   def q_fn(raw_data_block, a):
     raw_data_block_at_action = np.column_stack((raw_data_block[:, 0], a, raw_data_block[:, 2]))
-    return qfn_at_block(raw_data_block_at_action)
+    return qfn_at_block_(raw_data_block_at_action)
 
   # Back up once
   backup = []
   for t in range(env.T-1):
-    qfn_at_block_t = lambda a: q_fn(env.X_raw[t], a)
-    a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
-    q_max = qfn_at_block_t(a_max)
+    q_fn_at_block_t = lambda a: q_fn_at_block_(np.column_stack((env.X_raw[t][:, 0], a, env.X_raw[t][:, 2])))
+    a_max = argmaxer(q_fn_at_block_t, evaluation_budget, treatment_budget, env)
+    q_max = q_fn_at_block_t(a_max)
     backup_at_t = env.y[t] + q_max
     backup.append(backup_at_t)
 
@@ -64,10 +67,10 @@ def sis_two_step_mb(**kwargs):
   reg = regressor()
   reg.fit(np.vstack(env.X[:-1]), np.hstack(backup))
 
-  def qfn(a):
+  def backedup_up_qfn(a):
     return reg.predict(env.data_block_at_action(-1, a))
 
-  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  a = argmaxer(backedup_up_qfn, evaluation_budget, treatment_budget, env)
   return a, None
 
 
