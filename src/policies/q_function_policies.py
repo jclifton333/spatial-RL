@@ -106,6 +106,110 @@ def two_step(**kwargs):
   return a, None
 
 
+def two_step_stacked(**kwargs):
+  N_SPLITS = 10
+  TRAIN_PROPORTION = 0.8
+
+  regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
+    kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
+    kwargs['bootstrap']
+
+  # Train-test splits
+  train_test_splits = []  # List of tuples (training_ixs, test_ixs), where each of these is a list of lists of indices
+  for fold in range(N_SPLITS):
+    training_ixs_for_fold = []
+    test_ixs_for_fold = []
+    for t in range(env.T):
+      train_test_mask = np.random.binomial(1, TRAIN_PROPORTION, size=env.L)
+      training_ixs_for_fold.append(np.where(train_test_mask == 1)[0])
+      test_ixs_for_fold.append(np.where(train_test_mask == 0)[0])
+    train_test_splits.append((training_ixs_for_fold, test_ixs_for_fold))
+
+  # Fit models on training splits
+  yhat_mb = np.zeros(0)
+  yhat_mf = np.zeros(0)
+  y = np.zeros(0)
+  for fold in range(N_SPLITS):
+    train_test_split = train_test_splits[fold]
+
+    # Fit rewards
+    if env.__class__.__name__ == 'SIS':
+      q_mb_fold, q_mf_fold, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
+
+    elif env.__class__.__name__ == 'Ebola':
+      q_mb_fold, q_mf_fold, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
+
+    def q_mb_at_block(t, a):
+      return q_mb_fold(env.data_block_at_action(t, a, raw=True))
+
+    def q_mf_at_block(t, a):
+      X_raw_t = env.X_raw[t]
+      infected_ixs = np.where(X_raw_t[:, -1] == 1)
+      not_infected_ixs = np.where(X_raw_t[:, -1] == 0)
+      return q_mf_fold(env.data_block_at_action(t, a), infected_ixs, not_infected_ixs)
+
+    # Back up once
+    backup_mb = []
+    backup_mf = []
+    for t in range(env.T-1):
+      train_ixs = train_test_split[0][t]
+      q_mf_block_t = lambda a: q_mf_fold(t, a)
+      q_mb_block_t = lambda a: q_mb_fold(t, a)
+      a_max_mf = argmaxer(q_mf_block_t, evaluation_budget, treatment_budget, env)
+      a_max_mb = argmaxer(q_mb_block_t, evaluation_budget, treatment_budget, env)
+      q_max_mf = q_mf_at_block(a_max_mf)[train_ixs]
+      q_max_mb = q_mb_at_block(a_max_mb)[train_ixs]
+
+      backup_at_t_mf = env.y[t][train_ixs] + q_max_mf
+      backup_at_t_mb = q_mb_fold(env.X_raw[t])[train_ixs] + q_max_mb
+      backup_mf.append(backup_at_t_mf)
+      backup_mb.append(backup_at_t_mb)
+
+    # Fit backed-up q fns
+    reg_mf = regressor()
+    reg_mb = regressor()
+    X_train = np.vstack([x[train_test_split[0][t]] for (t, x) in enumerate(env.X)])
+    reg_mf.fit(X_train, backup_mf)
+    reg_mb.fit(X_train, backup_mb)
+
+    # Get backup values on test set
+    X_test = np.vstack([x[train_test_split[1][t]] for (t, x) in enumerate(env.X)])
+    reg_mf.predict(X_test)
+    reg_mb.predict(X_test)
+
+    y = np.array([y_[train_test_split[1][t]] for (t, y_) in enumerate(env.y)])
+    for t, (x_raw, x) in enumerate(zip(env.X_raw[:-1], env.X[:-1])):
+      test_ixs = train_test_split[1][t]
+      qhat_mb = np.append(qhat_mb, reg_mb.predict())
+
+      yhat_mb = np.append(yhat_mb, q_mb_fold(x_raw)[test_ixs])
+      yhat_mf = np.append(yhat_mf, q_mf_fold(x[test_ixs, :], np.where(x_raw[test_ixs, -1] == 1),
+                                             np.where(x_raw[test_ixs, -1] == 0)))
+      y = np.append(y, env.y[t][test_ixs])
+
+
+  # Get optimal combination weight
+  alpha_mb = np.sum(np.multiply(y - yhat_mf, yhat_mb - yhat_mf)) / np.linalg.norm(yhat_mb - yhat_mf)**2
+  alpha_mb = np.min((1.0, np.max((0.0, alpha_mb))))
+
+  # Stack q functions
+  if env.__class__.__name__ == 'SIS':
+    q_mb, q_mf, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
+  elif env.__class__.__name__ == 'Ebola':
+    q_mb, q_mf, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2)
+
+  def qfn(a):
+    data_block = env.data_block_at_action(-1, a)
+    raw_data_block = env.data_block_at_action(-1, a, raw=True)
+    infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
+    return alpha_mb * q_mb(raw_data_block) + \
+           (1 - alpha_mb) * q_mf(data_block, infected_indices[0], not_infected_indices[0])
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  info = {}
+  return a, info
+
+
 def two_step_higher_order(**kwargs):
   """
   Use second-order neighbor features rather than first order (as in two_step).
