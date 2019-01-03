@@ -122,7 +122,7 @@ def random_nearest_neighbor(size):
           best_dist = min_dist
     omega_tilde.add_edge(best_pair[0], best_pair[1])
     B = list(nx.connected_components(omega_tilde))
-  return nx.adjacency_matrix(omega_tilde).todense()
+  return np.array(nx.adjacency_matrix(omega_tilde).todense())
 
 
 if __name__ == "__main__":
