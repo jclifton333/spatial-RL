@@ -63,16 +63,17 @@ class Gravity(SpatialDisease):
       for lprime in range(self.L):
         if self.adjacency_matrix[l, lprime] + self.adjacency_matrix[lprime, l] > 0:
           d_l_lprime = self.distance_matrix[l, lprime]
-          product_l_lprime = self.distance_matrix[l, lprime]
-          baseline_logit = self.theta[0] + self.theta[1] * d_l_lprime / np.power(product_l_lprime, self.theta[2])
+          product_l_lprime = self.product_matrix[l, lprime]
+          log_grav_term = np.log(d_l_lprime) - np.exp(self.theta[2])*np.log(product_l_lprime)
+          baseline_logit = self.theta[0] - np.exp(self.theta[1] + log_grav_term)
           if self.include_covariates:
             x_l = self.covariate_matrix[l, :]
             x_lprime = self.covariate_matrix[lprime, :]
             baseline_logit += np.dot(self.theta_x_l, x_l) + np.dot(self.theta_x_lprime, x_lprime)
           self.transmission_probs[l, lprime, 0, 0] = expit(baseline_logit)
-          self.transmission_probs[l, lprime, 1, 0] = expit(baseline_logit - self.theta[3])
-          self.transmission_probs[l, lprime, 0, 1] = expit(baseline_logit - self.theta[4])
-          self.transmission_probs[l, lprime, 1, 1] = expit(baseline_logit - self.theta[3] - self.theta[4])
+          self.transmission_probs[l, lprime, 1, 0] = expit(baseline_logit + self.theta[3])
+          self.transmission_probs[l, lprime, 0, 1] = expit(baseline_logit + self.theta[4])
+          self.transmission_probs[l, lprime, 1, 1] = expit(baseline_logit + self.theta[3] + self.theta[4])
 
   def transmission_prob(self, a, l, lprime, eta, x, eta_x_l, eta_x_lprime):
     if self.current_infected[lprime]:
