@@ -40,13 +40,15 @@ def sis_infection_probability(a, y, eta, L, adjacency_lists, **kwargs):
 
 
 def p_l0(a, a_times_indicator, eta, omega):
-  logit_p_0 = eta[0] + eta[1] * (a_times_indicator - omega * a)
+  # logit_p_0 = eta[0] + eta[1] * (a_times_indicator - omega * a)
+  logit_p_0 = eta[0] + eta[1] * a_times_indicator
   p_0 = expit(logit_p_0)
   return p_0
 
 
 def q_l(a, a_times_indicator, eta, omega):
-  logit_q = eta[5] + eta[6] * (a_times_indicator - omega * a)
+  # logit_q = eta[5] + eta[6] * (a_times_indicator - omega * a)
+  logit_q = eta[5] + eta[6] * a_times_indicator
   q = expit(logit_q)
   return q
 
@@ -97,7 +99,8 @@ def one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_ind
     product_l = 1.0
     for lprime in neighbors:
       if lprime in infected_indices:
-        logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*(a_times_indicator[lprime] - omega * a[lprime])
+        # logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*(a_times_indicator[lprime] - omega * a[lprime])
+        logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*(a_times_indicator[lprime])
         product_l *= 1 - expit(logit_p_llprime)
     product_vector.append(product_l)
 
