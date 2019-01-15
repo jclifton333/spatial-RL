@@ -60,7 +60,56 @@ def generate_two_step_sis_data(L, time_horizon, network, number_of_data_points):
   return
 
 
-def two_step_sis_prefit(**kwargs):
+def two_step_sis_order_prefit(**kwargs):
+  env, evaluation_budget, treatment_budget, argmaxer, bootstrap, q_fn, time_horizon = \
+    kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['bootstrap'], \
+    kwargs['q_fn'], kwargs['planning_depth']
+
+  if q_fn is None:  # Haven't fit yet
+    # Load pre-saved data
+    path_to_saved_data = \
+      os.path.join(this_dir, 'data_for_prefit_policies/two-step-sis-time_horizon={}-L={}.p'.format(time_horizon, env.L))
+    data = pkl.load(open(path_to_saved_data, 'rb'))
+    X_raw, X, X_2, y = data['X_raw'], data['X_first_order'], data['X_second_order'], data['y']
+
+    infected_locations = np.where(np.vstack(X_raw)[:, -1] == 1)
+    not_infected_locations = np.where(np.vstack(X_raw)[:, -1] == 0)
+
+    # One step
+    clf = SKLogit2()
+    clf.fit(np.vstack(X), np.hstack(y), None, False, infected_locations, not_infected_locations)
+
+    def qfn_at_block(block_index, a):
+      infected_locations_ = np.where(X_raw[block_index][:, -1] == 1)
+      not_infected_locations_ = np.where(X_raw[block_index][:, -1] == 0)
+      X_raw_ix = X_raw[block_index]
+      X_raw_at_action = np.column_stack((X_raw_ix[:, 0], a, X_raw_ix[:, 2]))
+      data_block_at_action = env.psi(X_raw_at_action, neighbor_order=1)
+      return clf.predict_proba(data_block_at_action, infected_locations_, not_infected_locations_)
+
+    # Back up once
+    backup = []
+    T = len(X)
+    for t in range(T):
+      # ToDo: make sure indexing of Xs and ys match up
+      qfn_at_block_t = lambda a: qfn_at_block(t, a)
+      a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
+      q_max = qfn_at_block_t(a_max)
+      backup_at_t = y[t] + q_max
+      backup.append(backup_at_t)
+
+    # Fit backup-up q function
+    reg = RandomForestRegressor(n_estimators=200)
+    reg.fit(np.vstack(X), np.hstack(backup))
+
+    def q_fn(a, env):
+      return reg.predict(env.data_block_at_action(-1, a, neighbor_order=2))
+
+  a = argmaxer(lambda a: q_fn(a, env), evaluation_budget, treatment_budget, env)
+  return a, {'q_fn': q_fn}
+
+
+def two_step_sis_second_order_prefit(**kwargs):
   env, evaluation_budget, treatment_budget, argmaxer, bootstrap, q_fn, time_horizon = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['bootstrap'], \
     kwargs['q_fn'], kwargs['planning_depth']
