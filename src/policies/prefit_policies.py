@@ -53,6 +53,7 @@ def generate_two_step_sis_data(L, time_horizon, network, number_of_data_points):
       X_first_order += env.X
       X_second_order += env.X_2
 
+    print('saving data')
     data = {'X_first_order': X_first_order, 'X_second_order': X_second_order, 'y': y, 'X_raw': X_raw}
     fname = os.path.join(data_dir, 'two-step-sis-time_horizon={}-L={}.p'.format(time_horizon, L))
     pkl.dump(data, open(fname, 'wb'))
@@ -69,6 +70,7 @@ def two_step_sis_prefit(**kwargs):
     # Load pre-saved data
     path_to_saved_data = \
       os.path.join(this_dir, 'data_for_prefit_policies/two-step-sis-time_horizon={}-L={}.p'.format(time_horizon, env.L))
+    print('loading data')
     data = pkl.load(open(path_to_saved_data, 'rb'))
     X_raw, X, X_2, y = data['X_raw'], data['X_first_order'], data['X_second_order'], data['y']
 
@@ -76,6 +78,7 @@ def two_step_sis_prefit(**kwargs):
     not_infected_locations = np.where(np.vstack(X_raw)[:, -1] == 0)
 
     # One step
+    print('fitting one step')
     clf = SKLogit2()
     clf.fit(np.vstack(X), np.hstack(y), None, False, infected_locations, not_infected_locations)
 
@@ -91,6 +94,7 @@ def two_step_sis_prefit(**kwargs):
     backup = []
     T = len(X)
     for t in range(T):
+      print('t: {}'.format(t))
       # ToDo: make sure indexing of Xs and ys match up
       qfn_at_block_t = lambda a: qfn_at_block(t, a)
       a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
@@ -105,6 +109,7 @@ def two_step_sis_prefit(**kwargs):
     def q_fn(a, env):
       return reg.predict(env.data_block_at_action(-1, a, neighbor_order=2))
 
+  print('taking argmax')
   a = argmaxer(lambda a: q_fn(a, env), evaluation_budget, treatment_budget, env)
   return a, {'q_fn': q_fn}
 
