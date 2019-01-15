@@ -60,7 +60,7 @@ def generate_two_step_sis_data(L, time_horizon, network, number_of_data_points):
   return
 
 
-def two_step_sis_order_prefit(**kwargs):
+def two_step_sis_prefit(**kwargs):
   env, evaluation_budget, treatment_budget, argmaxer, bootstrap, q_fn, time_horizon = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['bootstrap'], \
     kwargs['q_fn'], kwargs['planning_depth']
