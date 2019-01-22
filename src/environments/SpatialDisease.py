@@ -65,7 +65,7 @@ class SpatialDisease(ABC):
     self.true_infection_probs = []
     
     # Current network status
-    self.current_infected = self.Y[-1,:]
+    self.current_infected = self.Y[-1, :]
     self.T = 0
 
   def reset(self):
