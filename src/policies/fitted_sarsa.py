@@ -14,7 +14,7 @@ import pickle as pkl
 from src.utils.misc import random_argsort
 
 
-def fit_q_function_for_policy():
+def fit_q_function_for_policy(iterations=1):
   """
   Generate data under myopic policy and then evaluate the policy with fitted SARSA.
   :return:
@@ -30,33 +30,41 @@ def fit_q_function_for_policy():
   env.step(np.random.permutation(dummy_action))
 
   # Rollout using random policy
+  print('Rolling out to collect data')
   for t in range(50):
     env.step(np.random.permutation(dummy_action))
 
   # Fit Q-function for myopic policy
   # 0-step Q-function
+  print('Fitting q0')
   y = np.hstack(env.y)
   X = np.vstack(env.X)
   q0 = model_fitters.KerasRegressor()
   q0.fit(X, y, weights=None)
 
-  # 1-step Q-function
-  q0_evaluate_at_pi = np.array([])
+  if iterations == 1:
+    print('Fitting q1')
+    # 1-step Q-function
+    q0_evaluate_at_pi = np.array([])
 
-  for ix, x in enumerate(env.X[1:]):
-    a = np.zeros(L)
-    probs = q0.predict(x)
-    treat_ixs = random_argsort(probs, treatment_budget)
-    a[treat_ixs] = 1
-    x_at_a = env.data_block_at_action(ix, a)
-    q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0.predict(x_at_a))
+    for ix, x in enumerate(env.X[1:]):
+      a = np.zeros(L)
+      probs = q0.predict(x)
+      treat_ixs = random_argsort(probs, treatment_budget)
+      a[treat_ixs] = 1
+      x_at_a = env.data_block_at_action(ix, a)
+      q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0.predict(x_at_a))
 
-  X2 = np.vstack(env.X_2[:-1])
-  q1_target = env.y[:-1] + gamma * q0_evaluate_at_pi
-  q1 = model_fitters.KerasRegressor()
-  q1.fit(X2, q1_target)
+    X2 = np.vstack(env.X_2[:-1])
+    q1_target = env.y[:-1] + gamma * q0_evaluate_at_pi
+    q1 = model_fitters.KerasRegressor()
+    q1.fit(X2, q1_target)
+    q_hat = q1.predict
+    data_for_q_hat = env.X_2
+  elif iterations == 0:
+    q_hat = q0.predict
 
-  return q1.predict, q0.predict, env.X_raw, env.X_2
+  return q_hat, q0.predict, env.X_raw, data_for_q_hat
 
 
 def compute_q_function_for_policy_at_state(initial_infections, initial_action, policy):
@@ -70,10 +78,11 @@ def compute_q_function_for_policy_at_state(initial_infections, initial_action, p
   gamma = 0.9
   MC_REPLICATES = 10000
   L = 1000
-  treatment_budget = int(np.floor(0.05 * L))
+  # treatment_budget = int(np.floor(0.05 * L))
   env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
                                       'initial_infections': initial_infections})
   q = 0.0
+  print('Computing true q value at given state')
   for rep in range(MC_REPLICATES):
     q_rep = 0.0
     env.reset()
@@ -85,12 +94,13 @@ def compute_q_function_for_policy_at_state(initial_infections, initial_action, p
   return q
 
 
-def compare_fitted_q_to_true_q():
+def compare_fitted_q_to_true_q(iterations=1):
   NUMBER_OF_REFERENCE_STATES = 100
   treatment_budget = 50
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
-  q_hat, q_for_policy, X_raw, X_2 = fit_q_function_for_policy()
+  q_hat, q_for_policy, X_raw, data_for_q_hat = fit_q_function_for_policy(iterations=iterations)
+
   def myopic_q_hat_policy(data_block):
     a = np.zeros(treatment_budget)
     probs = q_for_policy(data_block)
@@ -102,12 +112,29 @@ def compare_fitted_q_to_true_q():
   num_states = len(X_raw)
   reference_state_indices = np.random.choice(num_states, NUMBER_OF_REFERENCE_STATES, replace=False)
 
-  for ix in reference_state_indices:
+  q_hat_vals = np.array([])
+  true_q_vals = np.array([])
+  for rep, ix in enumerate(reference_state_indices):
+    print('Computing true and estimated q vals at (s, a) {}'.format(rep))
     x_raw = X_raw[ix]
-    x_2 = X_2[ix]
-    q_hat_at_state = np.sum(q_hat(x_2))
+    x = data_for_q_hat[ix]
+    q_hat_at_state = np.sum(q_hat(x))
+    q_hat_vals = np.append(q_hat_vals, q_hat_at_state)
     initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
     true_q_at_state = compute_q_function_for_policy_at_state(initial_infections, initial_action, myopic_q_hat_policy)
+    true_q_vals = np.append(true_q_at_state, true_q_vals)
+
+  mean_squared_error = np.mean((true_q_vals - q_hat_vals)**2)
+
+  return mean_squared_error, true_q_vals, q_hat_vals
+
+
+if __name__ == "__main__":
+  compare_fitted_q_to_true_q()
+
+
+
+
 
 
 
