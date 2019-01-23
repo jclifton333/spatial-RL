@@ -19,9 +19,10 @@ import numpy as np
 from functools import partial
 import pickle as pkl
 from src.utils.misc import random_argsort
-import pprofile
+# import pprofile
 import multiprocessing as mp
 import yaml
+import keras.backend as K
 
 
 def fit_q_functions_for_policy(L):
@@ -190,6 +191,8 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
     true_q_vals.append(float(true_q_at_state))
     true_q_ses.append(float(true_q_se))
 
+  K.clear_session()  # Done with neural nets
+
   # Posterior dbn of rank coefficients between (0) q0 and estimated true q and (1) q1 and estimated true q.
   true_q_draws = np.random.multivariate_normal(mean=true_q_vals, cov=np.diag(true_q_ses), size=100)
   q0_rank_coef_draws = [float(spearmanr(true_q, qhat0_vals)[0]) for true_q in true_q_draws]
@@ -212,13 +215,13 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
 
 if __name__ == "__main__":
   results_L100 = compare_fitted_q_to_true_q(L=100)
-  results_L1000 = compare_fitted_q_to_true_q(L=1000)
+  with open('L=100.yml', 'w') as outfile:
+    yaml.dump(results_L100, outfile)
 
-  # Save results to yml
-  final_results = {100: results_L100, 1000: results_L1000}
-  filename = 'compare-q0-with-q1.yml'
-  with open(filename, 'w') as outfile:
-    yaml.dump(final_results, outfile)
+  results_L1000 = compare_fitted_q_to_true_q(L=1000)
+  with open('L=1000.yml', 'w') as outfile:
+    yaml.dump(results_L1000, outfile)
+
 
 
 
