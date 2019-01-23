@@ -18,7 +18,7 @@ import numpy as np
 from functools import partial
 import pickle as pkl
 from src.utils.misc import random_argsort
-
+import pprofile
 
 def fit_q_function_for_policy(L, iterations=1):
   """
@@ -31,7 +31,10 @@ def fit_q_function_for_policy(L, iterations=1):
   env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice})
   env.reset()
   dummy_action = np.concatenate((np.zeros(L - treatment_budget), np.ones(treatment_budget)))
-  env.step(np.random.permutation(dummy_action))
+  print('Taking initial steps')
+  profiler = pprofile.Profile()
+  with profiler:
+    env.step(np.random.permutation(dummy_action))
   env.step(np.random.permutation(dummy_action))
 
   # Rollout using random policy
@@ -139,9 +142,17 @@ def compare_fitted_q_to_true_q(L=1000, iterations=1):
 
 
 if __name__ == "__main__":
-  mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=5000)
-
-
+  # mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=100)
+  # Initialize environment
+  gamma = 0.9
+  L = 5000
+  treatment_budget = int(np.floor(0.05 * L))
+  env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice})
+  env.reset()
+  dummy_action = np.concatenate((np.zeros(L - treatment_budget), np.ones(treatment_budget)))
+  print('Taking initial steps')
+  profiler = pprofile.Profile()
+  env.step(np.random.permutation(dummy_action))
 
 
 
