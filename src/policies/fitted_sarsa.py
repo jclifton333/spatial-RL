@@ -49,7 +49,6 @@ def fit_q_function_for_policy(L, iterations=1):
   X = np.vstack(env.X)
   q0 = model_fitters.KerasClassifier()
   q0.fit(X, y.reshape((len(y), 1)), weights=None)
-  pdb.set_trace()
 
   if iterations == 1:
     print('Fitting q1')
@@ -67,6 +66,7 @@ def fit_q_function_for_policy(L, iterations=1):
     X2 = np.vstack(env.X_2[:-1])
     q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
     q1 = model_fitters.KerasRegressor()
+    pdb.set_trace()
     q1.fit(X2, q1_target, weights=None)
     q_hat = q1.predict
     data_for_q_hat = env.X_2
@@ -142,17 +142,7 @@ def compare_fitted_q_to_true_q(L=1000, iterations=1):
 
 
 if __name__ == "__main__":
-  # mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=100)
-  # Initialize environment
-  gamma = 0.9
-  L = 5000
-  treatment_budget = int(np.floor(0.05 * L))
-  env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice})
-  env.reset()
-  dummy_action = np.concatenate((np.zeros(L - treatment_budget), np.ones(treatment_budget)))
-  print('Taking initial steps')
-  profiler = pprofile.Profile()
-  env.step(np.random.permutation(dummy_action))
+  mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=1000)
 
 
 
