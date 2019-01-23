@@ -78,8 +78,8 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   :return:
   """
   gamma = 0.9
-  # MC_REPLICATES = 100
-  MC_REPLICATES = 2
+  MC_REPLICATES = 100
+  # MC_REPLICATES = 2
   # treatment_budget = int(np.floor(0.05 * L))
   env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
                                       'initial_infections': initial_infections})
@@ -103,8 +103,8 @@ def compare_fitted_q_to_true_q(L=1000):
   :param L:
   :return:
   """
-  # NUMBER_OF_REFERENCE_STATES = 20
-  NUMBER_OF_REFERENCE_STATES = 5
+  NUMBER_OF_REFERENCE_STATES = 20
+  # NUMBER_OF_REFERENCE_STATES = 5
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
@@ -157,7 +157,6 @@ def compare_fitted_q_to_true_q(L=1000):
   q1_rank_coef_mean, q1_rank_coef_se = float(np.mean(q1_rank_coef_draws)), \
                                        float(np.std(q1_rank_coef_draws) / np.sqrt(len(q1_rank_coef_draws)))
 
-  pdb.set_trace()
   print('q0 rank mean: {} se: {}'.format(q0_rank_coef_mean, q0_rank_coef_se))
   print('q1 rank mean: {} se: {}'.format(q1_rank_coef_mean, q1_rank_coef_se))
 
@@ -169,8 +168,8 @@ def compare_fitted_q_to_true_q(L=1000):
 
 
 if __name__ == "__main__":
-  results_L100 = compare_fitted_q_to_true_q(L=30)
-  results_L1000 = compare_fitted_q_to_true_q(L=30)
+  results_L100 = compare_fitted_q_to_true_q(L=100)
+  results_L1000 = compare_fitted_q_to_true_q(L=1000)
 
   # Save results to yml
   final_results = {100: results_L100, 1000: results_L1000}
