@@ -47,7 +47,7 @@ def fit_q_function_for_policy(L, iterations=1):
   X = np.vstack(env.X)
   q0 = model_fitters.KerasClassifier()
   q0.fit(X, y.reshape((len(y), 1)), weights=None)
-
+  pdb.set_trace()
   if iterations == 1:
     print('Fitting q1')
     # 1-step Q-function
@@ -64,16 +64,19 @@ def fit_q_function_for_policy(L, iterations=1):
     X2 = np.vstack(env.X_2[:-1])
     q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
     q1 = model_fitters.KerasRegressor()
+    pdb.set_trace()
     q1.fit(X2, q1_target, weights=None, hyperparameter_search=True)
     pdb.set_trace()
     q_hat = q1.predict
     data_for_q_hat = env.X_2
   elif iterations == 0:
     q_hat = q0.predict
+    data_for_q_hat = env.X
+  pdb.set_trace()
   return q_hat, q0.predict, env.X_raw, data_for_q_hat
 
 
-def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy):
+def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy, iterations=1):
   """
 
   :param initial_infections:
@@ -130,7 +133,8 @@ def compare_fitted_q_to_true_q(L=1000, iterations=1):
     q_hat_at_state = np.sum(q_hat(x))
     q_hat_vals = np.append(q_hat_vals, q_hat_at_state)
     initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
-    true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action, myopic_q_hat_policy)
+    true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
+                                                                        myopic_q_hat_policy, iterations=iterations)
     true_q_vals = np.append(true_q_at_state, true_q_vals)
     true_q_ses = np.append(true_q_ses, true_q_se)
 
