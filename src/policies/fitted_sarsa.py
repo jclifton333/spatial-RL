@@ -95,53 +95,27 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   #     q_rep += gamma**t * np.sum(env.current_infected)
   #   q_list.append(q_rep)
 
-  def replicate_wrapper(replicate_index):
-    np.random.seed(replicate_index)
-    q_rep_ = single_replicate_of_compute_q_function_at_state(env_kwargs, gamma, initial_action, policy)
-    return q_rep_
+  replicate_partial = partial(single_replicate_of_compute_q_function_at_state, env_kwargs, gamma, initial_action,
+                              policy)
 
   pool = mp.Pool(num_processes)
-  q_list = pool.map(replicate_wrapper, range(MC_REPLICATES))
+  q_list = pool.map(replicate_partial, range(MC_REPLICATES))
   q = np.mean(q_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
   return q, se
 
 
-def single_replicate_of_compute_q_function_at_state(env_kwargs, gamma, initial_action, policy):
+def single_replicate_of_compute_q_function_at_state(replicate_index, env_kwargs, gamma, initial_action, policy):
+  np.random.seed(replicate_index)
+
   q_rep = 0.0
-  env = environment_factory('sis', env_kwargs)
+  env = environment_factory('sis', **env_kwargs)
   env.reset()
   env.step(initial_action)
   for t in range(50):
       env.step(policy(env.X[-1]))
       q_rep += gamma**t * np.sum(env.current_infected)
   return q_rep
-
-
-def compute_estimated_and_true_qs_at_state(x_tuple, L, qhat0, qhat1, myopic_q_hat_policy):
-  """
-
-  :param x: tuple (x_raw, x, x2)
-  :param L:
-  :param qhat0:
-  :param qhat1:
-  :param myopic_q_hat_policy:
-  :return:
-  """
-  x_raw, x, x2 = x_tuple
-
-  # Evaluate 0-step q function
-  qhat0_at_state = np.sum(qhat0(x))
-
-  # Evaluate 1-step q function
-  qhat1_at_state = np.sum(qhat1(x2))
-
-  # Estimate true q function by rolling out policy
-  initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
-  true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                                                      myopic_q_hat_policy)
-  return {'qhat0_at_state': float(qhat0_at_state), 'qhat1_at_state': float(qhat1_at_state),
-          'true_q_at_state': float(true_q_at_state), 'true_q_se': float(true_q_se)}
 
 
 def compare_fitted_q_to_true_q(L=1000, num_processes=2):
@@ -168,43 +142,31 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
   num_states = len(X_raw)
   reference_state_indices = np.random.choice(num_states, NUMBER_OF_REFERENCE_STATES, replace=False)
 
-  # qhat0_vals = []
-  # qhat1_vals = []
-  # true_q_vals = []
-  # true_q_ses = []
+  qhat0_vals = []
+  qhat1_vals = []
+  true_q_vals = []
+  true_q_ses = []
 
-  # for rep, ix in enumerate(reference_state_indices):
-  #   print('Computing true and estimated q vals at (s, a) {}'.format(rep))
-  #   x_raw = X_raw[ix]
-  #   x = X[ix]
-  #   x2 = X2[ix]
+  for rep, ix in enumerate(reference_state_indices):
+    print('Computing true and estimated q vals at (s, a) {}'.format(rep))
+    x_raw = X_raw[ix]
+    x = X[ix]
+    x2 = X2[ix]
 
-  #   # Evaluate 0-step q function
-  #   qhat0_at_state = np.sum(qhat0(x))
-  #   qhat0_vals.append(float(qhat0_at_state))
+    # Evaluate 0-step q function
+    qhat0_at_state = np.sum(qhat0(x))
+    qhat0_vals.append(float(qhat0_at_state))
 
-  #   # Evaluate 1-step q function
-  #   qhat1_at_state = np.sum(qhat1(x2))
-  #   qhat1_vals.append(float(qhat1_at_state))
+    # Evaluate 1-step q function
+    qhat1_at_state = np.sum(qhat1(x2))
+    qhat1_vals.append(float(qhat1_at_state))
 
-  #   # Estimate true q function by rolling out policy
-  #   initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
-  #   true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-  #                                                                       myopic_q_hat_policy)
-  #   true_q_vals.append(float(true_q_at_state))
-  #   true_q_ses.append(float(true_q_se))
-
-  # Evaluate q functions at reference states in parallel
-  X_tuples = [(X_raw[ix], X[ix], X2[ix]) for ix in reference_state_indices]
-  evaluate_at_state_partial = partial(compute_estimated_and_true_qs_at_state, L, qhat0, qhat1, myopic_q_hat_policy)
-  pool = mp.Pool(num_processes)
-  pool_results = pool.map(evaluate_at_state_partial, X_tuples)
-
-  # Collect results
-  true_q_vals = [r['true_q_at_state'] for r in pool_results]
-  qhat0_vals = [r['qhat0_at_state'] for r in pool_results]
-  qhat1_vals = [r['qhat1_at_state'] for r in pool_results]
-  true_q_ses = [r['true_q_se'] for r in pool_results]
+    # Estimate true q function by rolling out policy
+    initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
+    true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
+                                                                        myopic_q_hat_policy)
+    true_q_vals.append(float(true_q_at_state))
+    true_q_ses.append(float(true_q_se))
 
   # Posterior dbn of rank coefficients between (0) q0 and estimated true q and (1) q1 and estimated true q.
   true_q_draws = np.random.multivariate_normal(mean=true_q_vals, cov=np.diag(true_q_ses), size=100)
