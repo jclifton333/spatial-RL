@@ -79,43 +79,61 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   :return:
   """
   gamma = 0.9
-  # MC_REPLICATES = 100
-  MC_REPLICATES = num_processes
+  MC_REPLICATES = 100
+  # MC_REPLICATES = num_processes
   env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
                                       'initial_infections': initial_infections}
 
-  # env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
-  #                                     'initial_infections': initial_infections})
-  # for rep in range(MC_REPLICATES):
-  #   q_rep = 0.0
-  #   env.reset()
-  #   env.step(initial_action)
-  #   for t in range(50):
-  #     env.step(policy(env.X[-1]))
-  #     q_rep += gamma**t * np.sum(env.current_infected)
-  #   q_list.append(q_rep)
+  env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
+                                    'initial_infections': initial_infections})
+  q_list = []
+  for rep in range(MC_REPLICATES):
+    q_rep = 0.0
+    env.reset()
+    env.step(initial_action)
+    for t in range(50):
+      env.step(policy.evaluate(env.X[-1]))
+      q_rep += gamma**t * np.sum(env.current_infected)
+    q_list.append(q_rep)
 
-  replicate_partial = partial(single_replicate_of_compute_q_function_at_state, env_kwargs, gamma, initial_action,
-                              policy)
+  # replicate_partial = partial(single_replicate_of_compute_q_function_at_state, env_kwargs, gamma, initial_action,
+  #                           policy)
+  # pool = mp.Pool(num_processes)
+  # q_list = pool.map(replicate_partial, range(MC_REPLICATES))
 
-  pool = mp.Pool(num_processes)
-  q_list = pool.map(replicate_partial, range(MC_REPLICATES))
   q = np.mean(q_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
   return q, se
 
 
 def single_replicate_of_compute_q_function_at_state(replicate_index, env_kwargs, gamma, initial_action, policy):
-  np.random.seed(replicate_index)
+  np.random.seed(int(replicate_index))
 
   q_rep = 0.0
   env = environment_factory('sis', **env_kwargs)
   env.reset()
   env.step(initial_action)
   for t in range(50):
-      env.step(policy(env.X[-1]))
+      env.step(policy.evaluate(env.X[-1]))
       q_rep += gamma**t * np.sum(env.current_infected)
   return q_rep
+
+
+class myopic_q_hat_policy_wrapper(object):
+  """
+  To get around issues with pickling nested functions...
+  """
+  def __init__(self, L, qhat0, treatment_budget):
+    self.L = L
+    self.qhat0 = qhat0
+    self.treatment_budget = treatment_budget
+
+  def evaluate(self, data_block):
+    a = np.zeros(self.L)
+    probs = self.qhat0(data_block)
+    treat_ixs = np.argsort(-probs)[:self.treatment_budget]
+    a[treat_ixs] = 1
+    return a
 
 
 def compare_fitted_q_to_true_q(L=1000, num_processes=2):
@@ -124,19 +142,22 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
   :param L:
   :return:
   """
-  NUMBER_OF_REFERENCE_STATES = num_processes
-  # NUMBER_OF_REFERENCE_STATES = 20
+  # NUMBER_OF_REFERENCE_STATES = num_processes
+  NUMBER_OF_REFERENCE_STATES = 20
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
   qhat0, qhat1, X_raw, X, X2 = fit_q_functions_for_policy(L)
 
-  def myopic_q_hat_policy(data_block):
-    a = np.zeros(L)
-    probs = qhat0(data_block)
-    treat_ixs = np.argsort(-probs)[:treatment_budget]
-    a[treat_ixs] = 1
-    return a
+
+  # def myopic_q_hat_policy(data_block):
+  #   a = np.zeros(L)
+  #   probs = qhat0(data_block)
+  #   treat_ixs = np.argsort(-probs)[:treatment_budget]
+  #   a[treat_ixs] = 1
+  #   return a
+
+  myopic_q_hat_policy_wrapper_ = myopic_q_hat_policy_wrapper(L, qhat0, treatment_budget)
 
   # Compare on randomly drawn states
   num_states = len(X_raw)
@@ -164,7 +185,8 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
     # Estimate true q function by rolling out policy
     initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
     true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                                                        myopic_q_hat_policy)
+                                                                        myopic_q_hat_policy_wrapper_)
+
     true_q_vals.append(float(true_q_at_state))
     true_q_ses.append(float(true_q_se))
 
