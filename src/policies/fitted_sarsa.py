@@ -70,7 +70,7 @@ def fit_q_functions_for_policy(L):
   return q0.predict, q1.predict, env.X_raw, env.X, env.X_2
 
 
-def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy):
+def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy, num_processes=2):
   """
 
   :param initial_infections:
@@ -79,23 +79,43 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   :return:
   """
   gamma = 0.9
-  MC_REPLICATES = 100
-  # MC_REPLICATES = 2
-  # treatment_budget = int(np.floor(0.05 * L))
-  env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
-                                      'initial_infections': initial_infections})
-  q_list = []
-  for rep in range(MC_REPLICATES):
-    q_rep = 0.0
-    env.reset()
-    env.step(initial_action)
-    for t in range(50):
-      env.step(policy(env.X[-1]))
-      q_rep += gamma**t * np.sum(env.current_infected)
-    q_list.append(q_rep)
+  # MC_REPLICATES = 100
+  MC_REPLICATES = num_processes
+  env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
+                                      'initial_infections': initial_infections}
+
+  # env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
+  #                                     'initial_infections': initial_infections})
+  # for rep in range(MC_REPLICATES):
+  #   q_rep = 0.0
+  #   env.reset()
+  #   env.step(initial_action)
+  #   for t in range(50):
+  #     env.step(policy(env.X[-1]))
+  #     q_rep += gamma**t * np.sum(env.current_infected)
+  #   q_list.append(q_rep)
+
+  def replicate_wrapper(replicate_index):
+    np.random.seed(replicate_index)
+    q_rep_ = single_replicate_of_compute_q_function_at_state(env_kwargs, gamma, initial_action, policy)
+    return q_rep_
+
+  pool = mp.Pool(num_processes)
+  q_list = pool.map(replicate_wrapper, range(MC_REPLICATES))
   q = np.mean(q_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
   return q, se
+
+
+def single_replicate_of_compute_q_function_at_state(env_kwargs, gamma, initial_action, policy):
+  q_rep = 0.0
+  env = environment_factory('sis', env_kwargs)
+  env.reset()
+  env.step(initial_action)
+  for t in range(50):
+      env.step(policy(env.X[-1]))
+      q_rep += gamma**t * np.sum(env.current_infected)
+  return q_rep
 
 
 def compute_estimated_and_true_qs_at_state(x_tuple, L, qhat0, qhat1, myopic_q_hat_policy):
@@ -175,7 +195,7 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
   #   true_q_ses.append(float(true_q_se))
 
   # Evaluate q functions at reference states in parallel
-  X_tuples = zip(X_raw[reference_state_indices], X[reference_state_indices], X2[reference_state_indices])
+  X_tuples = [(X_raw[ix], X[ix], X2[ix]) for ix in reference_state_indices]
   evaluate_at_state_partial = partial(compute_estimated_and_true_qs_at_state, L, qhat0, qhat1, myopic_q_hat_policy)
   pool = mp.Pool(num_processes)
   pool_results = pool.map(evaluate_at_state_partial, X_tuples)
