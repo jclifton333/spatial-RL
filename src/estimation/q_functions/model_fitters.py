@@ -28,16 +28,17 @@ class KerasClassifier(object):
   def __init__(self):
     self.reg = Sequential()
 
-  def fit(self, X, y, weights=None, l2_weight=0.1, layers=2, epochs=5, learning_rate=0.01):
+  def fit(self, X, y, weights=None, l2_weight=0.1, layers=2, epochs=1, units=100, learning_rate=0.01,
+          validation_split=0.2):
     input_shape = X.shape[1]
-    self.reg.add(Dense(64, input_dim=input_shape, activation='relu'))
+    self.reg.add(Dense(units=units, input_dim=input_shape, activation='relu'))
     # self.reg.add(Dropout(0.5))
     if layers == 2:
-      self.reg.add(Dense(units=64, activation='relu'))
+      self.reg.add(Dense(units=units, activation='relu'))
     self.reg.add(Dense(1, activation='sigmoid'))
-    sgd = optimizers.SGD(lr=learning_rate, decay=1e-6, momentum=0.9, nesterov=True)
+    sgd = optimizers.SGD(lr=learning_rate, decay=0.95, momentum=0.9, nesterov=True)
     self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-    history = self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=epochs, validation_split=0.2)
+    history = self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=epochs, validation_split=validation_split)
 
   def predict(self, X):
     return self.reg.predict(X).reshape(-1)
@@ -47,13 +48,28 @@ class KerasRegressor(object):
   def __init__(self):
     self.reg = Sequential()
 
-  def fit(self, X, y, weights=None):
+  def fit(self, X, y, hyperparameter_search=False, params=None, weights=None):
     input_shape = X.shape[1]
-    self.reg.add(Dense(64, input_dim=input_shape, activation='relu'))
-    self.reg.add(Dense(64, activation='relu'))
-    self.reg.add(Dense(1))
-    self.reg.compile(optimizer='adam', loss='mean_squared_error')
-    self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=5, validation_split=0.2)
+    if hyperparameter_search:
+      if params is None:  # Default hyperparameter search space
+        params = {
+         'dropout1': (0, 0.2, 0.5),
+         'dropout2': (0, 0.2, 0.5),
+         'epochs': (1, 20, 100),
+         'units1': (20, 50, 100),
+         'units2': (10, 25, 50),
+         'lr': (0.5, 5, 10)
+        }
+
+      self.reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+      self.reg.add(Dropout(params['dropout1']))
+      self.reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+      self.reg.add(Dropout(params['dropout2']))
+      self.reg.add(Dense(1))
+      self.reg.compile(optimizer='adam', loss='mean_squared_error')
+      self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=params['epochs'])
+    else:
+      pass
 
   def predict(self, X):
     return self.reg.predict(X).reshape(-1)

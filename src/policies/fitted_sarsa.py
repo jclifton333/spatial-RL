@@ -32,9 +32,7 @@ def fit_q_function_for_policy(L, iterations=1):
   env.reset()
   dummy_action = np.concatenate((np.zeros(L - treatment_budget), np.ones(treatment_budget)))
   print('Taking initial steps')
-  profiler = pprofile.Profile()
-  with profiler:
-    env.step(np.random.permutation(dummy_action))
+  env.step(np.random.permutation(dummy_action))
   env.step(np.random.permutation(dummy_action))
 
   # Rollout using random policy
@@ -66,8 +64,7 @@ def fit_q_function_for_policy(L, iterations=1):
     X2 = np.vstack(env.X_2[:-1])
     q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
     q1 = model_fitters.KerasRegressor()
-    pdb.set_trace()
-    q1.fit(X2, q1_target, weights=None)
+    q1.fit(X2, q1_target, weights=None, validation_split=0.2, epochs=50)
     q_hat = q1.predict
     data_for_q_hat = env.X_2
   elif iterations == 0:
