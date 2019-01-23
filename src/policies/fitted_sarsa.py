@@ -97,6 +97,31 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   return q, se
 
 
+def compute_estimated_and_true_qs_at_state(x_tuple, L, qhat0, qhat1, myopic_q_hat_policy):
+  """
+
+  :param x: tuple (x_raw, x, x2)
+  :param L:
+  :param qhat0:
+  :param qhat1:
+  :param myopic_q_hat_policy:
+  :return:
+  """
+  x_raw, x, x2 = x_tuple
+
+  # Evaluate 0-step q function
+  qhat0_at_state = np.sum(qhat0(x))
+
+  # Evaluate 1-step q function
+  qhat1_at_state = np.sum(qhat1(x2))
+
+  # Estimate true q function by rolling out policy
+  initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
+  true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
+                                                                      myopic_q_hat_policy)
+  return float(qhat0_at_state), float(qhat1_at_state), float(true_q_at_state), float(true_q_se)
+
+
 def compare_fitted_q_to_true_q(L=1000):
   """
 
