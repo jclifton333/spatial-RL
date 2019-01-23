@@ -64,7 +64,8 @@ def fit_q_function_for_policy(L, iterations=1):
     X2 = np.vstack(env.X_2[:-1])
     q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
     q1 = model_fitters.KerasRegressor()
-    q1.fit(X2, q1_target, weights=None, validation_split=0.2, epochs=50)
+    q1.fit(X2, q1_target, weights=None, hyperparameter_search=True)
+    pdb.set_trace()
     q_hat = q1.predict
     data_for_q_hat = env.X_2
   elif iterations == 0:
@@ -139,7 +140,7 @@ def compare_fitted_q_to_true_q(L=1000, iterations=1):
 
 
 if __name__ == "__main__":
-  mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=1000)
+  mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=30)
 
 
 

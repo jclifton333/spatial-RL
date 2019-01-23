@@ -10,6 +10,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.regularizers import L1L2
 from keras import optimizers
+import talos as ta
 
 
 class RidgeProb(object):
@@ -46,11 +47,12 @@ class KerasClassifier(object):
 
 class KerasRegressor(object):
   def __init__(self):
-    self.reg = Sequential()
+    pass
 
   def fit(self, X, y, hyperparameter_search=False, params=None, weights=None):
     input_shape = X.shape[1]
     if hyperparameter_search:
+      # Following https://towardsdatascience.com/hyperparameter-optimization-with-keras-b82e6364ca53
       if params is None:  # Default hyperparameter search space
         params = {
          'dropout1': (0, 0.2, 0.5),
@@ -61,13 +63,22 @@ class KerasRegressor(object):
          'lr': (0.5, 5, 10)
         }
 
-      self.reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
-      self.reg.add(Dropout(params['dropout1']))
-      self.reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
-      self.reg.add(Dropout(params['dropout2']))
-      self.reg.add(Dense(1))
-      self.reg.compile(optimizer='adam', loss='mean_squared_error')
-      self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=params['epochs'])
+      # Define model as function of grid params
+      def model(X_train, y_train, X_val, y_val, params):
+        reg = Sequential()
+        reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+        reg.add(Dropout(params['dropout1']))
+        reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+        reg.add(Dropout(params['dropout2']))
+        reg.add(Dense(1))
+        reg.compile(optimizer='adam', loss='mean_squared_error')
+        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
+                          validation_data=[X_val, y_val])
+        return history, reg
+
+      # Search
+      self.t = ta.Scan(x=X, y=y, model=model, grid_downsample=0.1, params=params)
+
     else:
       pass
 
