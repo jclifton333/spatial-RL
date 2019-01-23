@@ -20,6 +20,7 @@ from functools import partial
 import pickle as pkl
 from src.utils.misc import random_argsort
 import pprofile
+import multiprocessing as mp
 import yaml
 
 
@@ -119,17 +120,18 @@ def compute_estimated_and_true_qs_at_state(x_tuple, L, qhat0, qhat1, myopic_q_ha
   initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
   true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
                                                                       myopic_q_hat_policy)
-  return float(qhat0_at_state), float(qhat1_at_state), float(true_q_at_state), float(true_q_se)
+  return {'qhat0_at_state': float(qhat0_at_state), 'qhat1_at_state': float(qhat1_at_state),
+          'true_q_at_state': float(true_q_at_state), 'true_q_se': float(true_q_se)}
 
 
-def compare_fitted_q_to_true_q(L=1000):
+def compare_fitted_q_to_true_q(L=1000, num_processes=2):
   """
 
   :param L:
   :return:
   """
-  NUMBER_OF_REFERENCE_STATES = 20
-  # NUMBER_OF_REFERENCE_STATES = 5
+  NUMBER_OF_REFERENCE_STATES = num_processes
+  # NUMBER_OF_REFERENCE_STATES = 20
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
@@ -146,33 +148,45 @@ def compare_fitted_q_to_true_q(L=1000):
   num_states = len(X_raw)
   reference_state_indices = np.random.choice(num_states, NUMBER_OF_REFERENCE_STATES, replace=False)
 
-  qhat0_vals = []
-  qhat1_vals = []
-  true_q_vals = []
-  true_q_ses = []
+  # qhat0_vals = []
+  # qhat1_vals = []
+  # true_q_vals = []
+  # true_q_ses = []
 
-  for rep, ix in enumerate(reference_state_indices):
-    print('Computing true and estimated q vals at (s, a) {}'.format(rep))
-    x_raw = X_raw[ix]
-    x = X[ix]
-    x2 = X2[ix]
+  # for rep, ix in enumerate(reference_state_indices):
+  #   print('Computing true and estimated q vals at (s, a) {}'.format(rep))
+  #   x_raw = X_raw[ix]
+  #   x = X[ix]
+  #   x2 = X2[ix]
 
-    # Evaluate 0-step q function
-    qhat0_at_state = np.sum(qhat0(x))
-    qhat0_vals.append(float(qhat0_at_state))
+  #   # Evaluate 0-step q function
+  #   qhat0_at_state = np.sum(qhat0(x))
+  #   qhat0_vals.append(float(qhat0_at_state))
 
-    # Evaluate 1-step q function
-    qhat1_at_state = np.sum(qhat1(x2))
-    qhat1_vals.append(float(qhat1_at_state))
+  #   # Evaluate 1-step q function
+  #   qhat1_at_state = np.sum(qhat1(x2))
+  #   qhat1_vals.append(float(qhat1_at_state))
 
-    # Estimate true q function by rolling out policy
-    initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
-    true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                                                        myopic_q_hat_policy)
-    true_q_vals.append(float(true_q_at_state))
-    true_q_ses.append(float(true_q_se))
+  #   # Estimate true q function by rolling out policy
+  #   initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
+  #   true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
+  #                                                                       myopic_q_hat_policy)
+  #   true_q_vals.append(float(true_q_at_state))
+  #   true_q_ses.append(float(true_q_se))
 
-  # Estimate distribution of rank coefficients between (0) q0 and estimated true q and (1) q1 and estimated true q.
+  # Evaluate q functions at reference states in parallel
+  X_tuples = zip(X_raw[reference_state_indices], X[reference_state_indices], X2[reference_state_indices])
+  evaluate_at_state_partial = partial(compute_estimated_and_true_qs_at_state, L, qhat0, qhat1, myopic_q_hat_policy)
+  pool = mp.Pool(num_processes)
+  pool_results = pool.map(evaluate_at_state_partial, X_tuples)
+
+  # Collect results
+  true_q_vals = [r['true_q_at_state'] for r in pool_results]
+  qhat0_vals = [r['qhat0_at_state'] for r in pool_results]
+  qhat1_vals = [r['qhat1_at_state'] for r in pool_results]
+  true_q_ses = [r['true_q_se'] for r in pool_results]
+
+  # Posterior dbn of rank coefficients between (0) q0 and estimated true q and (1) q1 and estimated true q.
   true_q_draws = np.random.multivariate_normal(mean=true_q_vals, cov=np.diag(true_q_ses), size=100)
   q0_rank_coef_draws = [float(spearmanr(true_q, qhat0_vals)[0]) for true_q in true_q_draws]
   q1_rank_coef_draws = [float(spearmanr(true_q, qhat1_vals)[0]) for true_q in true_q_draws]
