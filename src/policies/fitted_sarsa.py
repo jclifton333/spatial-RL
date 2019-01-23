@@ -10,6 +10,7 @@ sys.path.append(pkg_dir)
 import numpy as np
 import pdb
 from src.environments.environment_factory import environment_factory
+from scipy.stats import spearmanr
 import src.environments.generate_network as generate_network
 import src.estimation.q_functions.model_fitters as model_fitters
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
@@ -20,9 +21,10 @@ import pickle as pkl
 from src.utils.misc import random_argsort
 import pprofile
 
-def fit_q_function_for_policy(L, iterations=1):
+
+def fit_q_functions_for_policy(L):
   """
-  Generate data under myopic policy and then evaluate the policy with fitted SARSA.
+  Generate data under myopic policy and then evaluate the policy with 0 and 1 step of fitted SARSA.
   :return:
   """
   # Initialize environment
@@ -46,31 +48,27 @@ def fit_q_function_for_policy(L, iterations=1):
   y = np.hstack(env.y)
   X = np.vstack(env.X)
   q0 = model_fitters.fit_keras_classifier(X, y)
-  if iterations == 1:
-    print('Fitting q1')
-    # 1-step Q-function
-    q0_evaluate_at_pi = np.array([])
 
-    for ix, x in enumerate(env.X[1:]):
-      a = np.zeros(L)
-      probs = q0.predict(x)
-      treat_ixs = np.argsort(-probs)[:treatment_budget]
-      a[treat_ixs] = 1
-      x_at_a = env.data_block_at_action(ix, a)
-      q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0.predict(x_at_a))
+  print('Fitting q1')
+  # 1-step Q-function
+  q0_evaluate_at_pi = np.array([])
 
-    X2 = np.vstack(env.X_2[:-1])
-    q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
-    q1 = model_fitters.fit_keras_regressor(X2, q1_target)
-    q_hat = q1.predict
-    data_for_q_hat = env.X_2
-  elif iterations == 0:
-    q_hat = q0.predict
-    data_for_q_hat = env.X
-  return q_hat, q0.predict, env.X_raw, data_for_q_hat
+  for ix, x in enumerate(env.X[1:]):
+    a = np.zeros(L)
+    probs = q0.predict(x)
+    treat_ixs = np.argsort(-probs)[:treatment_budget]
+    a[treat_ixs] = 1
+    x_at_a = env.data_block_at_action(ix, a)
+    q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0.predict(x_at_a))
+
+  X2 = np.vstack(env.X_2[:-1])
+  q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
+  q1 = model_fitters.fit_keras_regressor(X2, q1_target)
+
+  return q0.predict, q1.predict, env.X_raw, env.X, env.X_2
 
 
-def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy, iterations=1):
+def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy):
   """
 
   :param initial_infections:
@@ -80,7 +78,7 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   """
   gamma = 0.9
   # MC_REPLICATES = 100
-  MC_REPLICATES = 10
+  MC_REPLICATES = 2
   # treatment_budget = int(np.floor(0.05 * L))
   env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
                                       'initial_infections': initial_infections})
@@ -98,17 +96,22 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   return q, se
 
 
-def compare_fitted_q_to_true_q(L=1000, iterations=1):
-  # NUMBER_OF_REFERENCE_STATES = 30
-  NUMBER_OF_REFERENCE_STATES = 10
+def compare_fitted_q_to_true_q(L=1000):
+  """
+
+  :param L:
+  :return:
+  """
+  # NUMBER_OF_REFERENCE_STATES = 20
+  NUMBER_OF_REFERENCE_STATES = 1
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
-  q_hat, q_for_policy, X_raw, data_for_q_hat = fit_q_function_for_policy(L, iterations=iterations)
+  qhat0, qhat1, X_raw, X, X2 = fit_q_function_for_policy(L)
 
   def myopic_q_hat_policy(data_block):
     a = np.zeros(L)
-    probs = q_for_policy(data_block)
+    probs = qhat0(data_block)
     treat_ixs = np.argsort(-probs)[:treatment_budget]
     a[treat_ixs] = 1
     return a
@@ -117,28 +120,50 @@ def compare_fitted_q_to_true_q(L=1000, iterations=1):
   num_states = len(X_raw)
   reference_state_indices = np.random.choice(num_states, NUMBER_OF_REFERENCE_STATES, replace=False)
 
-  q_hat_vals = np.array([])
+  qhat0_vals = np.array([])
+  qhat1_vals = np.array([])
   true_q_vals = np.array([])
   true_q_ses = np.array([])
+
   for rep, ix in enumerate(reference_state_indices):
     print('Computing true and estimated q vals at (s, a) {}'.format(rep))
     x_raw = X_raw[ix]
-    x = data_for_q_hat[ix]
-    q_hat_at_state = np.sum(q_hat(x))
-    q_hat_vals = np.append(q_hat_vals, q_hat_at_state)
+    x = X[ix]
+    x2 = X2[ix]
+
+    # Evaluate 0-step q function
+    qhat0_at_state = np.sum(qhat0(x))
+    qhat0_vals = np.append(qhat0_vals, qhat0_at_state)
+
+    # Evaluate 1-step q function
+    qhat1_at_state = np.sum(qhat1(x2))
+    qhat1_vals = np.append(qhat1_vals, qhat1_at_state)
+
+    # Estimate true q function by rolling out policy
     initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
     true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                                                        myopic_q_hat_policy, iterations=iterations)
+                                                                        myopic_q_hat_policy)
     true_q_vals = np.append(true_q_at_state, true_q_vals)
     true_q_ses = np.append(true_q_ses, true_q_se)
 
-  mean_squared_error = np.mean((true_q_vals - q_hat_vals)**2)
+  # Estimate distribution of rank coefficients between (0) q0 and estimated true q and (1) q1 and estimated true q.
+  true_q_draws = np.random.multivariate_normal(mean=true_q_vals, cov=np.diag(true_q_ses), size=100)
+  q0_rank_coef_draws = np.array([spearmanr(true_q, qhat0_vals)[0] for true_q in true_q_draws])
+  q1_rank_coef_draws = np.array([spearmanr(true_q, qhat1_vals)[0] for true_q in true_q_draws])
 
-  return mean_squared_error, true_q_vals, true_q_ses, q_hat_vals
+  q0_rank_coef_mean, q0_rank_coef_se = np.mean(q0_rank_coef_draws), \
+                                       np.std(q0_rank_coef_draws) / np.sqrt(len(q0_rank_coef_draws))
+  q1_rank_coef_mean, q1_rank_coef_se = np.mean(q1_rank_coef_draws), \
+                                       np.std(q1_rank_coef_draws) / np.sqrt(len(q1_rank_coef_draws))
+
+  print('q0 rank mean: {} se: {}'.format(q0_rank_coef_mean, q0_rank_coef_se))
+  print('q1 rank mean: {} se: {}'.format(q1_rank_coef_mean, q1_rank_coef_se))
+
+  return true_q_vals, true_q_ses, qhat0_vals, qhat1_vals
 
 
 if __name__ == "__main__":
-  mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=30)
+  true_q_vals_, true_q_ses_, qhat0_vals_, qhat1_vals_ = compare_fitted_q_to_true_q(L=30)
 
 
 
