@@ -25,7 +25,8 @@ class Gravity(SpatialDisease):
   where (x_l, x_lprime) are optional covariates (Gravity doesn't have any).
   """
   def __init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix, theta,
-               theta_x_l, theta_x_lprime, lambda_, initial_infections=None):
+               theta_x_l, theta_x_lprime, lambda_, initial_infections=None,
+               construct_features_for_policy_search=False):
     """
 
     :param distance_matrix:
@@ -34,7 +35,8 @@ class Gravity(SpatialDisease):
     :param covariate_matrix: L x (covariate dimension) array, or None (as in Gravity)
     :param lambda_: array of weights used in policy search
     """
-    SpatialDisease.__init__(self, adjacency_matrix, initial_infections=initial_infections)
+    SpatialDisease.__init__(self, adjacency_matrix, initial_infections=initial_infections,
+                            construct_features_for_policy_search=construct_features_for_policy_search)
     self.current_state = None  # TODO
 
     self.distance_matrix = distance_matrix

@@ -16,7 +16,7 @@ ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
 class SpatialDisease(ABC):
   INITIAL_INFECT_PROP = 0.1
   
-  def __init__(self, adjacency_matrix, initial_infections=None):
+  def __init__(self, adjacency_matrix, initial_infections=None, construct_features_for_policy_search=False):
     """
     :param adjacency_matrix: 2d binary array corresponding to network for gen model
     :param initial_infections: L-length binary array of initial infections, or None
@@ -33,17 +33,19 @@ class SpatialDisease(ABC):
                                    for l in range(self.L)])
 
     network_as_nx_object = nx.from_numpy_matrix(self.adjacency_matrix)
-    pairwise_distance_dictionary = dict(nx.all_pairs_shortest_path_length(network_as_nx_object))
-    self.pairwise_distances = np.zeros((self.L, self.L))  # Entries are omega's in Nick's WNS paper
-    for source_index, targets in pairwise_distance_dictionary.items():
-      for target_index, length in targets.items():
-        self.pairwise_distances[source_index, target_index] = length
-        self.pairwise_distances[target_index, source_index] = length
 
-    data_depth_dictionary = nx.algorithms.centrality.subgraph_centrality(network_as_nx_object)
-    self.data_depth = np.zeros(self.L)
-    for node_ix, subgraph_centrality in data_depth_dictionary.items():
-      self.data_depth[node_ix] = subgraph_centrality
+    if construct_features_for_policy_search:
+      pairwise_distance_dictionary = dict(nx.all_pairs_shortest_path_length(network_as_nx_object))
+      self.pairwise_distances = np.zeros((self.L, self.L))  # Entries are omega's in Nick's WNS paper
+      for source_index, targets in pairwise_distance_dictionary.items():
+        for target_index, length in targets.items():
+          self.pairwise_distances[source_index, target_index] = length
+          self.pairwise_distances[target_index, source_index] = length
+
+      data_depth_dictionary = nx.algorithms.centrality.subgraph_centrality(network_as_nx_object)
+      self.data_depth = np.zeros(self.L)
+      for node_ix, subgraph_centrality in data_depth_dictionary.items():
+        self.data_depth[node_ix] = subgraph_centrality
 
     self.num_neighbors = [len(neighbors) for neighbors in self.adjacency_list]
     self.num_neighbors_rep = [self.num_neighbors]

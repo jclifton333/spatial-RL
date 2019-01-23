@@ -7,8 +7,9 @@ from sklearn.neural_network import MLPClassifier
 from scipy.linalg import block_diag
 from scipy.special import expit, logit
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, Dropout
 from keras.regularizers import L1L2
+from keras import optimizers
 
 
 class RidgeProb(object):
@@ -23,17 +24,36 @@ class RidgeProb(object):
     return np.column_stack((1-phat, phat))
 
 
+class KerasClassifier(object):
+  def __init__(self):
+    self.reg = Sequential()
+
+  def fit(self, X, y, weights=None, l2_weight=0.1, layers=2, epochs=5, learning_rate=0.01):
+    input_shape = X.shape[1]
+    self.reg.add(Dense(64, input_dim=input_shape, activation='relu'))
+    # self.reg.add(Dropout(0.5))
+    if layers == 2:
+      self.reg.add(Dense(units=64, activation='relu'))
+    self.reg.add(Dense(1, activation='sigmoid'))
+    sgd = optimizers.SGD(lr=learning_rate, decay=1e-6, momentum=0.9, nesterov=True)
+    self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+    history = self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=epochs, validation_split=0.2)
+
+  def predict(self, X):
+    return self.reg.predict(X).reshape(-1)
+
+
 class KerasRegressor(object):
   def __init__(self):
     self.reg = Sequential()
 
-  def fit(self, X, y, weights):
+  def fit(self, X, y, weights=None):
     input_shape = X.shape[1]
-    self.reg.add(Dense(int(np.floor(input_shape/2)), input_dim=input_shape,
-                 activation='relu', kernel_regularizer=L1L2(l1=0.0, l2=0.1)))
-    self.reg.add(Dense(1, kernel_regularizer=L1L2(l1=0.0, l2=0.1)))
+    self.reg.add(Dense(64, input_dim=input_shape, activation='relu'))
+    self.reg.add(Dense(64, activation='relu'))
+    self.reg.add(Dense(1))
     self.reg.compile(optimizer='adam', loss='mean_squared_error')
-    self.reg.fit(X, y, sample_weight=weights, verbose=True)
+    self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=5, validation_split=0.2)
 
   def predict(self, X):
     return self.reg.predict(X).reshape(-1)
