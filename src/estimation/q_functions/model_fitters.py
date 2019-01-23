@@ -29,17 +29,16 @@ class KerasClassifier(object):
   def __init__(self):
     self.reg = Sequential()
 
-  def fit(self, X, y, weights=None, l2_weight=0.1, layers=2, epochs=1, units=100, learning_rate=0.01,
-          validation_split=0.2):
+  def fit(self, X, y, weights=None, layers=2, epochs=1, units=100):
     input_shape = X.shape[1]
     self.reg.add(Dense(units=units, input_dim=input_shape, activation='relu'))
     # self.reg.add(Dropout(0.5))
     if layers == 2:
       self.reg.add(Dense(units=units, activation='relu'))
     self.reg.add(Dense(1, activation='sigmoid'))
-    sgd = optimizers.SGD(lr=learning_rate, decay=0.95, momentum=0.9, nesterov=True)
+    # sgd = optimizers.SGD(lr=learning_rate, decay=0.95, momentum=0.9, nesterov=True)
     self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-    history = self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=epochs, validation_split=validation_split)
+    history = self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=epochs)
 
   def predict(self, X):
     return self.reg.predict(X).reshape(-1)
@@ -49,19 +48,20 @@ class KerasRegressor(object):
   def __init__(self):
     pass
 
-  def fit(self, X, y, hyperparameter_search=False, params=None, weights=None):
+  def fit(self, X, y, hyperparameter_search=False, weights=None):
     input_shape = X.shape[1]
+    self.hyperparameter_search = hyperparameter_search
+
     if hyperparameter_search:
       # Following https://towardsdatascience.com/hyperparameter-optimization-with-keras-b82e6364ca53
-      if params is None:  # Default hyperparameter search space
-        params = {
-         'dropout1': (0, 0.2, 0.5),
-         'dropout2': (0, 0.2, 0.5),
-         'epochs': (1, 20, 100),
-         'units1': (20, 50, 100),
-         'units2': (10, 25, 50),
-         'lr': (0.5, 5, 10)
-        }
+      params = {
+       'dropout1': (0, 0.5, 3),
+       'dropout2': (0, 0.5, 3),
+       'epochs': [1, 20, 50],
+       'units1': [20, 50, 100],
+       'units2': [10, 25, 50],
+       'lr': (0.5, 5, 5)
+      }
 
       # Define model as function of grid params
       def model(X_train, y_train, X_val, y_val, params):
@@ -79,11 +79,35 @@ class KerasRegressor(object):
       # Search
       self.t = ta.Scan(x=X, y=y, model=model, grid_downsample=0.1, params=params)
 
+      # Get predictor (model corresponding to best hyperparameters)
+      self.predictor = ta.Predict(self.t)
+
     else:
-      pass
+      # Params from hyperparameter search
+      params = {
+        'dropout1': 0.17,
+        'dropout2': 0.17,
+        'epochs': 20,
+        'units1': 20,
+        'units2': 10,
+        'lr': 1.4
+      }
+      reg = Sequential()
+      reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+      reg.add(Dropout(params['dropout1']))
+      reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+      reg.add(Dropout(params['dropout2']))
+      reg.add(Dense(1))
+      reg.compile(optimizer='adam', loss='mean_squared_error')
+      history = reg.fit(X, y, verbose=True, epochs=params['epochs'])
+
+      self.predictor = reg
 
   def predict(self, X):
-    return self.reg.predict(X).reshape(-1)
+    if self.hyperparameter_search:
+      return self.predictor.predict(X, metric='val_loss').reshape(-1)
+    else:
+      return self.predictor.predict(X).reshape(-1)
 
 
 def is_y_all_1_or_0(y):
