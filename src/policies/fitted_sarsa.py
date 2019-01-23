@@ -45,8 +45,7 @@ def fit_q_function_for_policy(L, iterations=1):
   print('Fitting q0')
   y = np.hstack(env.y)
   X = np.vstack(env.X)
-  q0 = model_fitters.KerasClassifier()
-  q0.fit(X, y.reshape((len(y), 1)), weights=None)
+  q0 = model_fitters.fit_keras_classifier(X, y)
   if iterations == 1:
     print('Fitting q1')
     # 1-step Q-function
@@ -55,15 +54,14 @@ def fit_q_function_for_policy(L, iterations=1):
     for ix, x in enumerate(env.X[1:]):
       a = np.zeros(L)
       probs = q0.predict(x)
-      treat_ixs = random_argsort(probs, treatment_budget)
+      treat_ixs = np.argsort(-probs)[:treatment_budget]
       a[treat_ixs] = 1
       x_at_a = env.data_block_at_action(ix, a)
       q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0.predict(x_at_a))
 
     X2 = np.vstack(env.X_2[:-1])
     q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
-    q1 = model_fitters.KerasRegressor()
-    q1.fit(X2, q1_target, weights=None, hyperparameter_search=True)
+    q1 = model_fitters.fit_keras_regressor(X2, q1_target)
     q_hat = q1.predict
     data_for_q_hat = env.X_2
   elif iterations == 0:
@@ -111,7 +109,7 @@ def compare_fitted_q_to_true_q(L=1000, iterations=1):
   def myopic_q_hat_policy(data_block):
     a = np.zeros(L)
     probs = q_for_policy(data_block)
-    treat_ixs = random_argsort(probs, treatment_budget)
+    treat_ixs = np.argsort(-probs)[:treatment_budget]
     a[treat_ixs] = 1
     return a
 
@@ -140,8 +138,7 @@ def compare_fitted_q_to_true_q(L=1000, iterations=1):
 
 
 if __name__ == "__main__":
-  # mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=30)
-  fit_q_function_for_policy(1000)
+  mse, true_qs, true_q_ses, q_hats = compare_fitted_q_to_true_q(L=30)
 
 
 

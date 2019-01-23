@@ -9,6 +9,7 @@ from scipy.special import expit, logit
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.regularizers import L1L2
+from keras import backend as K
 from keras import optimizers
 import talos as ta
 
@@ -25,23 +26,38 @@ class RidgeProb(object):
     return np.column_stack((1-phat, phat))
 
 
-class KerasClassifier(object):
-  def __init__(self):
-    self.reg = Sequential()
+def fit_keras_classifier(X, y):
+  input_shape = X.shape[1]
 
-  def fit(self, X, y, weights=None, layers=2, epochs=1, units=100):
-    input_shape = X.shape[1]
-    self.reg.add(Dense(units=units, input_dim=input_shape, activation='relu'))
-    # self.reg.add(Dropout(0.5))
-    if layers == 2:
-      self.reg.add(Dense(units=units, activation='relu'))
-    self.reg.add(Dense(1, activation='sigmoid'))
-    # sgd = optimizers.SGD(lr=learning_rate, decay=0.95, momentum=0.9, nesterov=True)
-    self.reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-    history = self.reg.fit(X, y, sample_weight=weights, verbose=True, epochs=epochs)
+  reg = Sequential()
+  reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
+  reg.add(Dense(units=50, activation='relu'))
+  reg.add(Dense(1, activation='sigmoid'))
+  reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+  reg.fit(X, y, sample_weight=None, verbose=True, epochs=5)
+  return reg
 
-  def predict(self, X):
-    return self.reg.predict(X).reshape(-1)
+
+def fit_keras_regressor(X, y):
+  params = {
+      'dropout1': 0.17,
+      'dropout2': 0.17,
+      'epochs': 20,
+      'units1': 20,
+      'units2': 10,
+      'lr': 1.4
+  }
+  input_shape = X.shape[1]
+
+  reg = Sequential()
+  reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+  reg.add(Dropout(params['dropout1']))
+  reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+  reg.add(Dropout(params['dropout2']))
+  reg.add(Dense(1))
+  reg.compile(optimizer='adam', loss='mean_squared_error')
+  reg.fit(X, y, verbose=True, epochs=params['epochs'])
+  return reg
 
 
 class KerasRegressor(object):
@@ -100,7 +116,7 @@ class KerasRegressor(object):
       reg.add(Dense(1))
       reg.compile(optimizer='adam', loss='mean_squared_error')
       history = reg.fit(X, y, verbose=True, epochs=params['epochs'])
-
+      K.clear_session()
       self.predictor = reg
 
   def predict(self, X):
