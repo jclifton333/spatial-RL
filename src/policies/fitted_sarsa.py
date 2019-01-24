@@ -206,13 +206,22 @@ def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
 
 
 if __name__ == "__main__":
-  results_L100 = compare_fitted_q_to_true_q(L=100)
-  with open('L=100.yml', 'w') as outfile:
-    yaml.dump(results_L100, outfile)
+  # results_L100 = compare_fitted_q_to_true_q(L=100)
+  # with open('L=100.yml', 'w') as outfile:
+  #   yaml.dump(results_L100, outfile)
 
-  results_L1000 = compare_fitted_q_to_true_q(L=1000)
-  with open('L=1000.yml', 'w') as outfile:
-    yaml.dump(results_L1000, outfile)
+  # results_L1000 = compare_fitted_q_to_true_q(L=1000)
+  # with open('L=1000.yml', 'w') as outfile:
+  #   yaml.dump(results_L1000, outfile)
+
+  results_dict = {}
+  for time_horizon in [10, 20, 30, 40]:
+    results = compare_fitted_q_to_true_q(L=100, time_horizon=time_horizon)
+    results_dict[time_horizon] = results
+
+  with open('L=100-multiple-horizons.yml', 'w') as outfile:
+    yaml.dump(results_dict, outfile)
+
 
 
 
