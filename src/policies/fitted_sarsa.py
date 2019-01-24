@@ -85,8 +85,7 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
                                       'initial_infections': initial_infections}
 
-  env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
-                                    'initial_infections': initial_infections})
+  env = environment_factory('sis', **env_kwargs)
   q_list = []
   q0_list = []
   q1_list = []
@@ -151,7 +150,7 @@ class myopic_q_hat_policy_wrapper(object):
     return a
 
 
-def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
+def compare_fitted_q_to_true_q(X_raw, X, X2, L=1000, time_horizon=50, num_processes=2):
   """
 
   :param L:
@@ -162,7 +161,7 @@ def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
-  qhat0, qhat1, X_raw, X, X2 = fit_q_functions_for_policy(L, time_horizon)
+  qhat0, qhat1, _, _, _ = fit_q_functions_for_policy(L, time_horizon)
 
 
   # def myopic_q_hat_policy(data_block):
@@ -226,21 +225,30 @@ def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
 
 
 if __name__ == "__main__":
-  results_L100 = compare_fitted_q_to_true_q(L=100)
-  with open('L=100.yml', 'w') as outfile:
-    yaml.dump(results_L100, outfile)
+  # Generate reference states
+  L = 100
+  treatment_budget = int(np.floor(0.5 * L))
+  env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice}
+  ref_env = environment_factory('sis', **env_kwargs)
+  dummy_action = np.concatenate((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
+  for t in range(100):
+    ref_env.step(np.random.permutation(dummy_action))
 
-  results_L1000 = compare_fitted_q_to_true_q(L=1000)
-  with open('L=1000.yml', 'w') as outfile:
-    yaml.dump(results_L1000, outfile)
+  # results_L100 = compare_fitted_q_to_true_q(L=100)
+  # with open('L=100.yml', 'w') as outfile:
+  #   yaml.dump(results_L100, outfile)
 
-  # results_dict = {}
-  # for time_horizon in [10, 20, 30, 40]:
-  #   results = compare_fitted_q_to_true_q(L=100, time_horizon=time_horizon)
-  #   results_dict[time_horizon] = results
+  # results_L1000 = compare_fitted_q_to_true_q(L=1000)
+  # with open('L=1000.yml', 'w') as outfile:
+  #   yaml.dump(results_L1000, outfile)
 
-  # with open('L=100-multiple-horizons.yml', 'w') as outfile:
-  #   yaml.dump(results_dict, outfile)
+  results_dict = {}
+  for time_horizon in [10, 20, 30, 40]:
+    results = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=L, time_horizon=time_horizon)
+    results_dict[time_horizon] = results
+
+  with open('L=100-multiple-horizons.yml', 'w') as outfile:
+    yaml.dump(results_dict, outfile)
 
 
 
