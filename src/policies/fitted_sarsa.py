@@ -88,14 +88,25 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
                                     'initial_infections': initial_infections})
   q_list = []
+  q0_list = []
+  q1_list = []
   for rep in range(MC_REPLICATES):
     q_rep = 0.0
+    q0_rep = 0.0
+    q1_rep = 0.0
     env.reset()
     env.step(initial_action)
     for t in range(50):
       env.step(policy.evaluate(env.X[-1]))
-      q_rep += gamma**t * np.sum(env.current_infected)
+      r_t = np.sum(env.current_infected)
+      q_rep += gamma**t * r_t
+      if t < 1:
+        q0_rep += r_t
+      if t < 2:
+        q1_rep += gamma**t * r_t
     q_list.append(q_rep)
+    q0_list.append(q0_rep)
+    q1_list.append(q1_rep)
 
   # replicate_partial = partial(single_replicate_of_compute_q_function_at_state, env_kwargs, gamma, initial_action,
   #                           policy)
@@ -103,8 +114,11 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   # q_list = pool.map(replicate_partial, range(MC_REPLICATES))
 
   q = np.mean(q_list)
+  q0 = np.mean(q0_list)
+  q1 = np.mean(q1_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
-  return q, se
+
+  return q, q0, q1, se
 
 
 def single_replicate_of_compute_q_function_at_state(replicate_index, env_kwargs, gamma, initial_action, policy):
@@ -167,6 +181,8 @@ def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
   qhat0_vals = []
   qhat1_vals = []
   true_q_vals = []
+  q0_true_vals = []
+  q1_true_vals = []
   true_q_ses = []
 
   for rep, ix in enumerate(reference_state_indices):
@@ -185,11 +201,14 @@ def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
 
     # Estimate true q function by rolling out policy
     initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
-    true_q_at_state, true_q_se = compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                                                        myopic_q_hat_policy_wrapper_)
+    true_q_at_state, q0_true, q1_true, true_q_se = \
+      compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
+                                             myopic_q_hat_policy_wrapper_)
 
     true_q_vals.append(float(true_q_at_state))
     true_q_ses.append(float(true_q_se))
+    q0_true_vals.append(float(q0_true))
+    q1_true_vals.append(float(q1_true))
 
   K.clear_session()  # Done with neural nets
 
@@ -200,27 +219,28 @@ def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
   print('q1 rank coef: {}'.format(q1_rank_coef))
 
   results = {'true_q_vals': true_q_vals, 'true_q_ses': true_q_ses, 'qhat0_vals': qhat0_vals, 'qhat1_vals': qhat1_vals,
-             'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q0_rank_coef}
+             'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q0_rank_coef, 'q0_true_vals': q0_true_vals,
+             'q1_true_vals': q1_true_vals}
 
   return results
 
 
 if __name__ == "__main__":
-  # results_L100 = compare_fitted_q_to_true_q(L=100)
-  # with open('L=100.yml', 'w') as outfile:
-  #   yaml.dump(results_L100, outfile)
+  results_L100 = compare_fitted_q_to_true_q(L=100)
+  with open('L=100.yml', 'w') as outfile:
+    yaml.dump(results_L100, outfile)
 
-  # results_L1000 = compare_fitted_q_to_true_q(L=1000)
-  # with open('L=1000.yml', 'w') as outfile:
-  #   yaml.dump(results_L1000, outfile)
+  results_L1000 = compare_fitted_q_to_true_q(L=1000)
+  with open('L=1000.yml', 'w') as outfile:
+    yaml.dump(results_L1000, outfile)
 
-  results_dict = {}
-  for time_horizon in [10, 20, 30, 40]:
-    results = compare_fitted_q_to_true_q(L=100, time_horizon=time_horizon)
-    results_dict[time_horizon] = results
+  # results_dict = {}
+  # for time_horizon in [10, 20, 30, 40]:
+  #   results = compare_fitted_q_to_true_q(L=100, time_horizon=time_horizon)
+  #   results_dict[time_horizon] = results
 
-  with open('L=100-multiple-horizons.yml', 'w') as outfile:
-    yaml.dump(results_dict, outfile)
+  # with open('L=100-multiple-horizons.yml', 'w') as outfile:
+  #   yaml.dump(results_dict, outfile)
 
 
 
