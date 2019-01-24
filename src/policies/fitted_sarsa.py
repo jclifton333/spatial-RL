@@ -194,21 +194,14 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
   K.clear_session()  # Done with neural nets
 
   # Posterior dbn of rank coefficients between (0) q0 and estimated true q and (1) q1 and estimated true q.
-  true_q_draws = np.random.multivariate_normal(mean=true_q_vals, cov=np.diag(true_q_ses), size=100)
-  q0_rank_coef_draws = [float(spearmanr(true_q, qhat0_vals)[0]) for true_q in true_q_draws]
-  q1_rank_coef_draws = [float(spearmanr(true_q, qhat1_vals)[0]) for true_q in true_q_draws]
+  q0_rank_coef = float(spearmanr(true_q_vals, qhat0_vals)[0])
+  q1_rank_coef = float(spearmanr(true_q_vals, qhat1_vals)[0])
 
-  q0_rank_coef_mean, q0_rank_coef_se = float(np.mean(q0_rank_coef_draws)), \
-                                       float(np.std(q0_rank_coef_draws) / np.sqrt(len(q0_rank_coef_draws)))
-  q1_rank_coef_mean, q1_rank_coef_se = float(np.mean(q1_rank_coef_draws)), \
-                                       float(np.std(q1_rank_coef_draws) / np.sqrt(len(q1_rank_coef_draws)))
-
-  print('q0 rank mean: {} se: {}'.format(q0_rank_coef_mean, q0_rank_coef_se))
-  print('q1 rank mean: {} se: {}'.format(q1_rank_coef_mean, q1_rank_coef_se))
+  print('q0 rank coef: {}'.format(q0_rank_coef))
+  print('q1 rank coef: {}'.format(q1_rank_coef))
 
   results = {'true_q_vals': true_q_vals, 'true_q_ses': true_q_ses, 'qhat0_vals': qhat0_vals, 'qhat1_vals': qhat1_vals,
-             'q0_rank_coef_mean': q0_rank_coef_mean, 'q0_rank_coef_se': q0_rank_coef_se,
-             'q1_rank_coef_mean': q1_rank_coef_mean, 'q1_rank_coef_se': q1_rank_coef_se}
+             'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q0_rank_coef}
 
   return results
 

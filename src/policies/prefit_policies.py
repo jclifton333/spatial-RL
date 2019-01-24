@@ -51,7 +51,6 @@ def generate_two_step_sis_data(L, time_horizon, network, number_of_data_points):
       y += env.y
       X_raw += env.X_raw
       X_first_order += env.X
-      X_second_order += env.X_2
 
     print('saving data')
     data = {'X_first_order': X_first_order, 'X_second_order': X_second_order, 'y': y, 'X_raw': X_raw}
