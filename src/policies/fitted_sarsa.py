@@ -25,7 +25,7 @@ import yaml
 import keras.backend as K
 
 
-def fit_q_functions_for_policy(L):
+def fit_q_functions_for_policy(L, time_horizon):
   """
   Generate data under myopic policy and then evaluate the policy with 0 and 1 step of fitted SARSA.
   :return:
@@ -42,7 +42,7 @@ def fit_q_functions_for_policy(L):
 
   # Rollout using random policy
   print('Rolling out to collect data')
-  for t in range(50):
+  for t in range(time_horizon):
     env.step(np.random.permutation(dummy_action))
 
   # Fit Q-function for myopic policy
@@ -137,7 +137,7 @@ class myopic_q_hat_policy_wrapper(object):
     return a
 
 
-def compare_fitted_q_to_true_q(L=1000, num_processes=2):
+def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
   """
 
   :param L:
@@ -148,7 +148,7 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
-  qhat0, qhat1, X_raw, X, X2 = fit_q_functions_for_policy(L)
+  qhat0, qhat1, X_raw, X, X2 = fit_q_functions_for_policy(L, time_horizon)
 
 
   # def myopic_q_hat_policy(data_block):
@@ -193,7 +193,6 @@ def compare_fitted_q_to_true_q(L=1000, num_processes=2):
 
   K.clear_session()  # Done with neural nets
 
-  # Posterior dbn of rank coefficients between (0) q0 and estimated true q and (1) q1 and estimated true q.
   q0_rank_coef = float(spearmanr(true_q_vals, qhat0_vals)[0])
   q1_rank_coef = float(spearmanr(true_q_vals, qhat1_vals)[0])
 
