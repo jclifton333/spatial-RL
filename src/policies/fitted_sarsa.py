@@ -144,7 +144,7 @@ def compare_fitted_q_to_true_q(L=1000, time_horizon=50, num_processes=2):
   :return:
   """
   # NUMBER_OF_REFERENCE_STATES = num_processes
-  NUMBER_OF_REFERENCE_STATES = 20
+  NUMBER_OF_REFERENCE_STATES = np.min((20, time_horizon))
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
