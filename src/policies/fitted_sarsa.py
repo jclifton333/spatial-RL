@@ -184,8 +184,9 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, L=1000, time_horizon=50, num_proces
   q1_true_vals = []
   true_q_ses = []
 
-  for rep, ix in enumerate(reference_state_indices):
-    print('Computing true and estimated q vals at (s, a) {}'.format(rep))
+  # for rep, ix in enumerate(reference_state_indices):
+  for ix in range(len(X)):
+    print('Computing true and estimated q vals at (s, a) {}'.format(ix))
     x_raw = X_raw[ix]
     x = X[ix]
     x2 = X2[ix]
