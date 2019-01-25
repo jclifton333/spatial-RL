@@ -150,7 +150,10 @@ class myopic_q_hat_policy_wrapper(object):
     return a
 
 
-def compare_fitted_q_to_true_q(X_raw, X, X2, L=1000, time_horizon=50, num_processes=2):
+def generate_data_and_behavior_policy(L=100):
+
+
+def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_horizon=50, num_processes=2):
   """
 
   :param L:
@@ -235,11 +238,11 @@ if __name__ == "__main__":
   for t in range(100):
     ref_env.step(np.random.permutation(dummy_action))
 
-  results_L100 = compare_fitted_q_to_true_q(L=100)
+  results_L100 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=100)
   with open('L=100.yml', 'w') as outfile:
     yaml.dump(results_L100, outfile)
 
-  results_L1000 = compare_fitted_q_to_true_q(L=1000)
+  results_L1000 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=1000)
   with open('L=1000.yml', 'w') as outfile:
     yaml.dump(results_L1000, outfile)
 
