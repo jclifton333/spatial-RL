@@ -169,8 +169,12 @@ def generate_data_and_behavior_policy(L=100):
   q0 = model_fitters.fit_keras_classifier(X, y)
   myopic_q_hat_policy_wrapper_ = myopic_q_hat_policy_wrapper(L, q0.predict, treatment_budget)
 
-  X_raw = ref_env.X_raw
+  results = {'X_raw': env.X_raw, 'X': X, 'X_2': ref_env.X_2, 'behavior_policy': myopic_q_hat_policy_wrapper_}
+  return results
 
+
+def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw):
+  for ix in range(len(X_raw)):
   # Evaluate policy with simulations
   q_true_vals = []
   q_true_ses = []
@@ -178,22 +182,23 @@ def generate_data_and_behavior_policy(L=100):
   q1_true_vals = []
 
   for ix in range(len(X)):
-    print('Computing true and estimated q vals at (s, a) {}'.format(ix))
+    print('Computing true q vals at (s, a) {}'.format(ix))
     x_raw = X_raw[ix]
 
     # Estimate true q function by rolling out policy
     initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
     true_q_at_state, q0_true, q1_true, true_q_se = \
       compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                             myopic_q_hat_policy_wrapper_)
+                                             behavior_policy)
 
     q_true_vals.append(float(true_q_at_state))
     q_true_ses.append(float(true_q_se))
     q0_true_vals.append(float(q0_true))
     q1_true_vals.append(float(q1_true))
 
-  results = {'X_raw': X_raw, 'X': X, 'X_2': ref_env.X_2, 'q_true_vals': q_true_vals, 'q_true_ses': q_true_ses,
-             'q0_true_vals': q0_true_vals, 'q1_true_vals': q1_true_vals}
+  results = {'q_true_vals': q_true_vals, 'q_true_ses': q_true_ses, 'q0_true_vals': q0_true_vals,
+             'q1_true_vals': q1_true_vals}
+
   return results
 
 
@@ -204,7 +209,6 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_hori
   :return:
   """
   # NUMBER_OF_REFERENCE_STATES = num_processes
-  NUMBER_OF_REFERENCE_STATES = np.min((20, time_horizon))
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
@@ -218,22 +222,12 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_hori
   #   a[treat_ixs] = 1
   #   return a
 
-  myopic_q_hat_policy_wrapper_ = myopic_q_hat_policy_wrapper(L, qhat0, treatment_budget)
-
-  # Compare on randomly drawn states
-  num_states = len(X_raw)
-  reference_state_indices = np.random.choice(num_states, NUMBER_OF_REFERENCE_STATES, replace=False)
-
   qhat0_vals = []
   qhat1_vals = []
-  true_q_vals = []
-  q0_true_vals = []
-  q1_true_vals = []
-  true_q_ses = []
 
   # for rep, ix in enumerate(reference_state_indices):
   for ix in range(len(X)):
-    print('Computing true and estimated q vals at (s, a) {}'.format(ix))
+    print('Computing estimated q vals at (s, a) {}'.format(ix))
     x_raw = X_raw[ix]
     x = X[ix]
     x2 = X2[ix]
@@ -259,6 +253,33 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_hori
              'q1_true_vals': q1_true_vals}
 
   return results
+
+
+def compare_at_multiple_horizons(L, horizons=[10, 30, 50, 70, 90]):
+  inputs = generate_data_and_behavior_policy(L)
+  results_dict = {}
+  X_raw, X, X_2 = inputs['X_raw'], inputs['X'], inputs['X_2']
+
+  for time_horizon in horizons:
+    results = compare_fitted_q_to_true_q(X_raw, X, X_2, L=L, time_horizon=time_horizon)
+    results_dict[time_horizon] = results
+
+  with open('L={}-multiple-horizons.yml'.format(L), 'w') as outfile:
+    yaml.dump(results_dict, outfile)
+
+  return
+
+
+def compare_at_multiple_network_sizes(sizes=[100, 1000]):
+  results_dict = {}
+
+  results_L100 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=100)
+  with open('L=100.yml', 'w') as outfile:
+    yaml.dump(results_L100, outfile)
+
+  results_L1000 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=1000)
+  with open('L=1000.yml', 'w') as outfile:
+    yaml.dump(results_L1000, outfile)
 
 
 if __name__ == "__main__":
