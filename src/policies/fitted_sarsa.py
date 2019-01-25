@@ -235,21 +235,21 @@ if __name__ == "__main__":
   for t in range(100):
     ref_env.step(np.random.permutation(dummy_action))
 
-  # results_L100 = compare_fitted_q_to_true_q(L=100)
-  # with open('L=100.yml', 'w') as outfile:
-  #   yaml.dump(results_L100, outfile)
+  results_L100 = compare_fitted_q_to_true_q(L=100)
+  with open('L=100.yml', 'w') as outfile:
+    yaml.dump(results_L100, outfile)
 
-  # results_L1000 = compare_fitted_q_to_true_q(L=1000)
-  # with open('L=1000.yml', 'w') as outfile:
-  #   yaml.dump(results_L1000, outfile)
+  results_L1000 = compare_fitted_q_to_true_q(L=1000)
+  with open('L=1000.yml', 'w') as outfile:
+    yaml.dump(results_L1000, outfile)
 
-  results_dict = {}
-  for time_horizon in [10, 20, 30, 40]:
-    results = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=L, time_horizon=time_horizon)
-    results_dict[time_horizon] = results
+  # results_dict = {}
+  # for time_horizon in [10, 20, 30, 40]:
+  #   results = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=L, time_horizon=time_horizon)
+  #   results_dict[time_horizon] = results
 
-  with open('L=100-multiple-horizons.yml', 'w') as outfile:
-    yaml.dump(results_dict, outfile)
+  # with open('L=100-multiple-horizons.yml', 'w') as outfile:
+  #   yaml.dump(results_dict, outfile)
 
 
 
