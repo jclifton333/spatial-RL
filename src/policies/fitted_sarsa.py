@@ -25,9 +25,9 @@ import yaml
 import keras.backend as K
 
 
-def fit_q_functions_for_policy(L, time_horizon):
+def fit_q_functions_for_policy(behavior_policy, L, time_horizon):
   """
-  Generate data under myopic policy and then evaluate the policy with 0 and 1 step of fitted SARSA.
+  Generate data under given behavior policy and then evaluate the policy with 0 and 1 step of fitted SARSA.
   :return:
   """
   # Initialize environment
@@ -43,7 +43,7 @@ def fit_q_functions_for_policy(L, time_horizon):
   # Rollout using random policy
   print('Rolling out to collect data')
   for t in range(time_horizon):
-    env.step(np.random.permutation(dummy_action))
+    env.step(behavior_policy(env.X[-1]))
 
   # Fit Q-function for myopic policy
   # 0-step Q-function
@@ -71,7 +71,7 @@ def fit_q_functions_for_policy(L, time_horizon):
   return q0.predict, q1.predict, env.X_raw, env.X, env.X_2
 
 
-def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy, num_processes=2):
+def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy):
   """
 
   :param initial_infections:
@@ -107,30 +107,12 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
     q0_list.append(q0_rep)
     q1_list.append(q1_rep)
 
-  # replicate_partial = partial(single_replicate_of_compute_q_function_at_state, env_kwargs, gamma, initial_action,
-  #                           policy)
-  # pool = mp.Pool(num_processes)
-  # q_list = pool.map(replicate_partial, range(MC_REPLICATES))
-
   q = np.mean(q_list)
   q0 = np.mean(q0_list)
   q1 = np.mean(q1_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
 
   return q, q0, q1, se
-
-
-def single_replicate_of_compute_q_function_at_state(replicate_index, env_kwargs, gamma, initial_action, policy):
-  np.random.seed(int(replicate_index))
-
-  q_rep = 0.0
-  env = environment_factory('sis', **env_kwargs)
-  env.reset()
-  env.step(initial_action)
-  for t in range(50):
-      env.step(policy.evaluate(env.X[-1]))
-      q_rep += gamma**t * np.sum(env.current_infected)
-  return q_rep
 
 
 class myopic_q_hat_policy_wrapper(object):
@@ -202,7 +184,7 @@ def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw):
   return results
 
 
-def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_horizon=50, num_processes=2):
+def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, L=1000, time_horizon=50):
   """
 
   :param L:
@@ -212,7 +194,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_hori
   treatment_budget = int(np.floor(0.05 * L))
 
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
-  qhat0, qhat1, _, _, _ = fit_q_functions_for_policy(L, time_horizon)
+  qhat0, qhat1, _, _, _ = fit_q_functions_for_policy(behavior_policy, L, time_horizon)
 
 
   # def myopic_q_hat_policy(data_block):
@@ -258,10 +240,12 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_hori
 def compare_at_multiple_horizons(L, horizons=[10, 30, 50, 70, 90]):
   inputs = generate_data_and_behavior_policy(L)
   results_dict = {}
-  X_raw, X, X_2 = inputs['X_raw'], inputs['X'], inputs['X_2']
+  X_raw, X, X_2, behavior_policy = inputs['X_raw'], inputs['X'], inputs['X_2'], inputs['behavior_policy']
+  true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw)
+  results_dict.update(true_q_vals)
 
   for time_horizon in horizons:
-    results = compare_fitted_q_to_true_q(X_raw, X, X_2, L=L, time_horizon=time_horizon)
+    results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, L=L, time_horizon=time_horizon)
     results_dict[time_horizon] = results
 
   with open('L={}-multiple-horizons.yml'.format(L), 'w') as outfile:
