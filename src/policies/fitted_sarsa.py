@@ -151,6 +151,50 @@ class myopic_q_hat_policy_wrapper(object):
 
 
 def generate_data_and_behavior_policy(L=100):
+  # Generate reference states
+  L = 100
+  treatment_budget = int(np.floor(0.5 * L))
+  env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice}
+  ref_env = environment_factory('sis', **env_kwargs)
+  dummy_action = np.concatenate((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
+  for t in range(100):
+    ref_env.step(np.random.permutation(dummy_action))
+
+  # Get behavior policy to be evaluated
+  # Fit Q-function for myopic policy
+  # 0-step Q-function
+  print('Fitting q0')
+  y = np.hstack(ref_env.y)
+  X = np.vstack(ref_env.X)
+  q0 = model_fitters.fit_keras_classifier(X, y)
+  myopic_q_hat_policy_wrapper_ = myopic_q_hat_policy_wrapper(L, q0.predict, treatment_budget)
+
+  X_raw = ref_env.X_raw
+
+  # Evaluate policy with simulations
+  q_true_vals = []
+  q_true_ses = []
+  q0_true_vals = []
+  q1_true_vals = []
+
+  for ix in range(len(X)):
+    print('Computing true and estimated q vals at (s, a) {}'.format(ix))
+    x_raw = X_raw[ix]
+
+    # Estimate true q function by rolling out policy
+    initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
+    true_q_at_state, q0_true, q1_true, true_q_se = \
+      compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
+                                             myopic_q_hat_policy_wrapper_)
+
+    q_true_vals.append(float(true_q_at_state))
+    q_true_ses.append(float(true_q_se))
+    q0_true_vals.append(float(q0_true))
+    q1_true_vals.append(float(q1_true))
+
+  results = {'X_raw': X_raw, 'X': X, 'X_2': ref_env.X_2, 'q_true_vals': q_true_vals, 'q_true_ses': q_true_ses,
+             'q0_true_vals': q0_true_vals, 'q1_true_vals': q1_true_vals}
+  return results
 
 
 def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_horizon=50, num_processes=2):
@@ -202,17 +246,6 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_hori
     qhat1_at_state = np.sum(qhat1(x2))
     qhat1_vals.append(float(qhat1_at_state))
 
-    # Estimate true q function by rolling out policy
-    initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
-    true_q_at_state, q0_true, q1_true, true_q_se = \
-      compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                             myopic_q_hat_policy_wrapper_)
-
-    true_q_vals.append(float(true_q_at_state))
-    true_q_ses.append(float(true_q_se))
-    q0_true_vals.append(float(q0_true))
-    q1_true_vals.append(float(q1_true))
-
   K.clear_session()  # Done with neural nets
 
   q0_rank_coef = float(spearmanr(true_q_vals, qhat0_vals)[0])
@@ -229,14 +262,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, q0_true, q1_true, L=1000, time_hori
 
 
 if __name__ == "__main__":
-  # Generate reference states
-  L = 100
-  treatment_budget = int(np.floor(0.5 * L))
-  env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice}
-  ref_env = environment_factory('sis', **env_kwargs)
-  dummy_action = np.concatenate((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
-  for t in range(100):
-    ref_env.step(np.random.permutation(dummy_action))
+
 
   results_L100 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=100)
   with open('L=100.yml', 'w') as outfile:
