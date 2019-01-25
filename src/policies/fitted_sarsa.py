@@ -23,6 +23,7 @@ from src.utils.misc import random_argsort
 import multiprocessing as mp
 import yaml
 import keras.backend as K
+import argparse
 
 
 def fit_q_functions_for_policy(behavior_policy, L, time_horizon):
@@ -155,8 +156,14 @@ def generate_data_and_behavior_policy(L=100):
   return results
 
 
-def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw):
-  for ix in range(len(X_raw)):
+def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test):
+  if test:
+    reference_state_indices = np.random.choice(len(X_raw), 2)
+  else:
+    reference_state_indices = range(len(X_raw))
+
+
+  for ix in reference_state_indices:
   # Evaluate policy with simulations
   q_true_vals = []
   q_true_ses = []
@@ -184,30 +191,18 @@ def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw):
   return results
 
 
-def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, L=1000, time_horizon=50):
+def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, q_true, L=1000, time_horizon=50):
   """
 
   :param L:
   :return:
   """
-  # NUMBER_OF_REFERENCE_STATES = num_processes
-  treatment_budget = int(np.floor(0.05 * L))
-
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
   qhat0, qhat1, _, _, _ = fit_q_functions_for_policy(behavior_policy, L, time_horizon)
-
-
-  # def myopic_q_hat_policy(data_block):
-  #   a = np.zeros(L)
-  #   probs = qhat0(data_block)
-  #   treat_ixs = np.argsort(-probs)[:treatment_budget]
-  #   a[treat_ixs] = 1
-  #   return a
 
   qhat0_vals = []
   qhat1_vals = []
 
-  # for rep, ix in enumerate(reference_state_indices):
   for ix in range(len(X)):
     print('Computing estimated q vals at (s, a) {}'.format(ix))
     x_raw = X_raw[ix]
@@ -224,98 +219,36 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, L=1000, time_horiz
 
   K.clear_session()  # Done with neural nets
 
-  q0_rank_coef = float(spearmanr(true_q_vals, qhat0_vals)[0])
-  q1_rank_coef = float(spearmanr(true_q_vals, qhat1_vals)[0])
+  # Compute rank coefs with true (infinite horizon) q values
+  q0_rank_coef = float(spearmanr(q_true, qhat0_vals)[0])
+  q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
 
-  print('q0 rank coef: {}'.format(q0_rank_coef))
-  print('q1 rank coef: {}'.format(q1_rank_coef))
+  # Compute MSEs with true finite-stage q functions
+  q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
+  q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
 
-  results = {'true_q_vals': true_q_vals, 'true_q_ses': true_q_ses, 'qhat0_vals': qhat0_vals, 'qhat1_vals': qhat1_vals,
-             'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q0_rank_coef, 'q0_true_vals': q0_true_vals,
-             'q1_true_vals': q1_true_vals}
+  results = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q1_rank_coef, 'q0_mse': q0_mse, 'q1_mse': q1_mse}
 
   return results
 
 
-def compare_at_multiple_horizons(L, horizons=[10, 30, 50, 70, 90]):
+def compare_at_multiple_horizons(L, horizons=(10, 30, 50, 70, 90), test=False):
   inputs = generate_data_and_behavior_policy(L)
   results_dict = {}
   X_raw, X, X_2, behavior_policy = inputs['X_raw'], inputs['X'], inputs['X_2'], inputs['behavior_policy']
-  true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw)
-  results_dict.update(true_q_vals)
+  true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test)
+  q0_true, q1_true, q_true = true_q_vals['q0_true_vals'], true_q_vals['q1_true_vals'], true_q_vals['q_true_vals']
 
   for time_horizon in horizons:
-    results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, L=L, time_horizon=time_horizon)
+    results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true, q_true, L=L,
+                                         time_horizon=time_horizon)
     results_dict[time_horizon] = results
 
-  with open('L={}-multiple-horizons.yml'.format(L), 'w') as outfile:
-    yaml.dump(results_dict, outfile)
+    if not test:
+      with open('L={}-multiple-horizons.yml'.format(L), 'w') as outfile:
+        yaml.dump(results_dict, outfile)
 
   return
-
-
-def compare_at_multiple_network_sizes(sizes=[100, 1000]):
-  results_dict = {}
-
-  results_L100 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=100)
-  with open('L=100.yml', 'w') as outfile:
-    yaml.dump(results_L100, outfile)
-
-  results_L1000 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=1000)
-  with open('L=1000.yml', 'w') as outfile:
-    yaml.dump(results_L1000, outfile)
-
-
-if __name__ == "__main__":
-
-
-  results_L100 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=100)
-  with open('L=100.yml', 'w') as outfile:
-    yaml.dump(results_L100, outfile)
-
-  results_L1000 = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=1000)
-  with open('L=1000.yml', 'w') as outfile:
-    yaml.dump(results_L1000, outfile)
-
-  # results_dict = {}
-  # for time_horizon in [10, 20, 30, 40]:
-  #   results = compare_fitted_q_to_true_q(ref_env.X_raw, ref_env.X, ref_env.X_2, L=L, time_horizon=time_horizon)
-  #   results_dict[time_horizon] = results
-
-  # with open('L=100-multiple-horizons.yml', 'w') as outfile:
-  #   yaml.dump(results_dict, outfile)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
