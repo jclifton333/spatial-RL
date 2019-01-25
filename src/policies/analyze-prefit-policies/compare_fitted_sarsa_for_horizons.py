@@ -1,7 +1,7 @@
 import os
 import sys
 this_dir = os.path.dirname(os.path.abspath(__file__))
-pkg_dir = os.path.join(this_dir, '..', '..')
+pkg_dir = os.path.join(this_dir, '..', '..', '..')
 sys.path.append(pkg_dir)
 
 import argparse
@@ -25,8 +25,10 @@ import src.policies.fitted_sarsa as fs
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--L", type=int)
+  parser.add_argument("--test", type=str)
   args = parser.parse_args()
 
-  fs.compare_at_multiple_horizons(args.L)
+  test = (args.test == 'True')
+  fs.compare_at_multiple_horizons(args.L, test=test)
 
 

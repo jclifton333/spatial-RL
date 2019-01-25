@@ -26,11 +26,15 @@ import keras.backend as K
 import argparse
 
 
-def fit_q_functions_for_policy(behavior_policy, L, time_horizon):
+def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test):
   """
   Generate data under given behavior policy and then evaluate the policy with 0 and 1 step of fitted SARSA.
   :return:
   """
+  if test:
+    L = 20
+    time_horizon = 5
+
   # Initialize environment
   gamma = 0.9
   treatment_budget = int(np.floor(0.05 * L))
@@ -72,7 +76,7 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon):
   return q0.predict, q1.predict, env.X_raw, env.X, env.X_2
 
 
-def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy):
+def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy, test):
   """
 
   :param initial_infections:
@@ -80,8 +84,14 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   :param policy: Function that takes features in form of X (as opposed to X_raw or X_2) and returns action.
   :return:
   """
+  if test:
+    MC_REPLICATES = 2
+    TIME_HORIZON = 10
+  else:
+    MC_REPLICATES = 100
+    TIME_HORIZON = 50
+
   gamma = 0.9
-  MC_REPLICATES = 100
   # MC_REPLICATES = num_processes
   env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
                                       'initial_infections': initial_infections}
@@ -96,7 +106,7 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
     q1_rep = 0.0
     env.reset()
     env.step(initial_action)
-    for t in range(50):
+    for t in range(TIME_HORIZON):
       env.step(policy.evaluate(env.X[-1]))
       r_t = np.sum(env.current_infected)
       q_rep += gamma**t * r_t
@@ -152,7 +162,7 @@ def generate_data_and_behavior_policy(L=100):
   q0 = model_fitters.fit_keras_classifier(X, y)
   myopic_q_hat_policy_wrapper_ = myopic_q_hat_policy_wrapper(L, q0.predict, treatment_budget)
 
-  results = {'X_raw': env.X_raw, 'X': X, 'X_2': ref_env.X_2, 'behavior_policy': myopic_q_hat_policy_wrapper_}
+  results = {'X_raw': ref_env.X_raw, 'X': X, 'X_2': ref_env.X_2, 'behavior_policy': myopic_q_hat_policy_wrapper_}
   return results
 
 
@@ -162,15 +172,13 @@ def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, te
   else:
     reference_state_indices = range(len(X_raw))
 
-
-  for ix in reference_state_indices:
   # Evaluate policy with simulations
   q_true_vals = []
   q_true_ses = []
   q0_true_vals = []
   q1_true_vals = []
 
-  for ix in range(len(X)):
+  for ix in reference_state_indices:
     print('Computing true q vals at (s, a) {}'.format(ix))
     x_raw = X_raw[ix]
 
@@ -178,7 +186,7 @@ def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, te
     initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
     true_q_at_state, q0_true, q1_true, true_q_se = \
       compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                             behavior_policy)
+                                             behavior_policy, test)
 
     q_true_vals.append(float(true_q_at_state))
     q_true_ses.append(float(true_q_se))
