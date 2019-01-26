@@ -9,6 +9,7 @@ pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 import numpy as np
 import pdb
+import tensorflow as tf
 from src.environments.environment_factory import environment_factory
 from scipy.stats import spearmanr
 import src.environments.generate_network as generate_network
@@ -26,13 +27,12 @@ import keras.backend as K
 import argparse
 
 
-def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test):
+def fit_q_functions_for_policy(behavior_policy, behavior_policy_graph, L, time_horizon, test):
   """
   Generate data under given behavior policy and then evaluate the policy with 0 and 1 step of fitted SARSA.
   :return:
   """
   if test:
-    L = 20
     time_horizon = 5
 
   # Initialize environment
@@ -48,14 +48,21 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test):
   # Rollout using random policy
   print('Rolling out to collect data')
   for t in range(time_horizon):
-    env.step(behavior_policy(env.X[-1]))
+    # env.step(behavior_policy.evaluate(env.X[-1]))
+    with behavior_policy_graph.as_default():
+        session = tf.Session()
+        init = tf.global_variables_initializer()
+        session.run(init)
+        with session.as_default():
+          action = behavior_policy.predict(env.X[-1]).flatten()
+    env.step(action)
 
   # Fit Q-function for myopic policy
   # 0-step Q-function
   print('Fitting q0')
   y = np.hstack(env.y)
   X = np.vstack(env.X)
-  q0 = model_fitters.fit_keras_classifier(X, y)
+  q0, q0_graph = model_fitters.fit_keras_classifier(X, y)
 
   print('Fitting q1')
   # 1-step Q-function
@@ -63,20 +70,32 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test):
 
   for ix, x in enumerate(env.X[1:]):
     a = np.zeros(L)
-    probs = q0.predict(x)
+    with q0_graph.as_default():
+      session = tf.Session()
+      init = tf.global_variables_initializer()
+      session.run(init)
+      with session.as_default():
+        probs = q0.predict(x)
     treat_ixs = np.argsort(-probs)[:treatment_budget]
     a[treat_ixs] = 1
     x_at_a = env.data_block_at_action(ix, a)
-    q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0.predict(x_at_a))
+    with q0_graph.as_default():
+      session = tf.Session()
+      init = tf.global_variables_initializer()
+      session.run(init)
+      with session.as_default():
+       q0_at_a = q0.predict(x_at_a)
+    q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
 
   X2 = np.vstack(env.X_2[:-1])
   q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
-  q1 = model_fitters.fit_keras_regressor(X2, q1_target)
+  q1, q1_graph = model_fitters.fit_keras_regressor(X2, q1_target)
 
-  return q0.predict, q1.predict, env.X_raw, env.X, env.X_2
+  return q0.predict, q1.predict, env.X_raw, env.X, env.X_2, q0_graph, q1_graph
 
 
-def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, policy, test):
+def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, behavior_policy,
+                                           behavior_policy_graph, test):
   """
 
   :param initial_infections:
@@ -100,6 +119,7 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
   q_list = []
   q0_list = []
   q1_list = []
+
   for rep in range(MC_REPLICATES):
     q_rep = 0.0
     q0_rep = 0.0
@@ -107,7 +127,14 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
     env.reset()
     env.step(initial_action)
     for t in range(TIME_HORIZON):
-      env.step(policy.evaluate(env.X[-1]))
+      # env.step(policy.evaluate(env.X[-1]))
+      with behavior_policy_graph.as_default():
+        session = tf.Session()
+        init = tf.global_variables_initializer()
+        session.run(init)
+        with session.as_default():
+          action = behavior_policy.predict(env.X[-1]).flatten()
+      env.step(action)
       r_t = np.sum(env.current_infected)
       q_rep += gamma**t * r_t
       if t < 1:
@@ -145,7 +172,6 @@ class myopic_q_hat_policy_wrapper(object):
 
 def generate_data_and_behavior_policy(L=100):
   # Generate reference states
-  L = 100
   treatment_budget = int(np.floor(0.5 * L))
   env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice}
   ref_env = environment_factory('sis', **env_kwargs)
@@ -159,16 +185,18 @@ def generate_data_and_behavior_policy(L=100):
   print('Fitting q0')
   y = np.hstack(ref_env.y)
   X = np.vstack(ref_env.X)
-  q0 = model_fitters.fit_keras_classifier(X, y)
-  myopic_q_hat_policy_wrapper_ = myopic_q_hat_policy_wrapper(L, q0.predict, treatment_budget)
+  q0_for_behavior_policy, behavior_policy_graph = model_fitters.fit_keras_classifier(X, y)
+  # myopic_q_hat_policy_wrapper_ = myopic_q_hat_policy_wrapper(L, q0.predict, treatment_budget)
+  behavior_policy = q0_for_behavior_policy
+  results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2, 'behavior_policy': behavior_policy,
+             'behavior_policy_graph': behavior_policy_graph}
 
-  results = {'X_raw': ref_env.X_raw, 'X': X, 'X_2': ref_env.X_2, 'behavior_policy': myopic_q_hat_policy_wrapper_}
   return results
 
 
-def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test):
+def get_true_q_functions_on_reference_distribution(behavior_policy, behavior_policy_graph, L, X_raw, test):
   if test:
-    reference_state_indices = np.random.choice(len(X_raw), 2)
+    reference_state_indices = range(2)
   else:
     reference_state_indices = range(len(X_raw))
 
@@ -186,7 +214,7 @@ def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, te
     initial_action, initial_infections = x_raw[:, 1], x_raw[:, 2]
     true_q_at_state, q0_true, q1_true, true_q_se = \
       compute_q_function_for_policy_at_state(L, initial_infections, initial_action,
-                                             behavior_policy, test)
+                                             behavior_policy, behavior_policy_graph, test)
 
     q_true_vals.append(float(true_q_at_state))
     q_true_ses.append(float(true_q_se))
@@ -199,33 +227,48 @@ def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, te
   return results
 
 
-def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, q_true, L=1000, time_horizon=50):
+def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, behavior_policy_graph, q0_true, q1_true, q_true, test,
+                               L=1000, time_horizon=50):
   """
 
   :param L:
   :return:
   """
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
-  qhat0, qhat1, _, _, _ = fit_q_functions_for_policy(behavior_policy, L, time_horizon)
+  qhat0, qhat1, _, _, _, q0_graph, q1_graph = \
+    fit_q_functions_for_policy(behavior_policy, behavior_policy_graph, L, time_horizon, test)
 
   qhat0_vals = []
   qhat1_vals = []
 
-  for ix in range(len(X)):
+  if test:
+    reference_state_indices = range(2)
+  else:
+    reference_state_indices = range(len(X))
+
+  for ix in reference_state_indices:
     print('Computing estimated q vals at (s, a) {}'.format(ix))
     x_raw = X_raw[ix]
     x = X[ix]
     x2 = X2[ix]
 
     # Evaluate 0-step q function
-    qhat0_at_state = np.sum(qhat0(x))
+    with q0_graph.as_default():
+      session0 = tf.Session()
+      init = tf.global_variables_initializer()
+      session0.run(init)
+      with session0.as_default():
+        qhat0_at_state = np.sum(qhat0(x))
     qhat0_vals.append(float(qhat0_at_state))
 
     # Evaluate 1-step q function
-    qhat1_at_state = np.sum(qhat1(x2))
+    with q1_graph.as_default():
+      session1 = tf.Session()
+      init = tf.global_variables_initializer()
+      session1.run(init)
+      with session1.as_default():
+        qhat1_at_state = np.sum(qhat1(x2))
     qhat1_vals.append(float(qhat1_at_state))
-
-  K.clear_session()  # Done with neural nets
 
   # Compute rank coefs with true (infinite horizon) q values
   q0_rank_coef = float(spearmanr(q_true, qhat0_vals)[0])
@@ -241,15 +284,19 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
 
 
 def compare_at_multiple_horizons(L, horizons=(10, 30, 50, 70, 90), test=False):
+  if test:
+    L = 20
+
   inputs = generate_data_and_behavior_policy(L)
   results_dict = {}
-  X_raw, X, X_2, behavior_policy = inputs['X_raw'], inputs['X'], inputs['X_2'], inputs['behavior_policy']
-  true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test)
+  X_raw, X, X_2, behavior_policy, behavior_policy_graph = \
+    inputs['X_raw'], inputs['X'], inputs['X_2'], inputs['behavior_policy'], inputs['behavior_policy_graph']
+  true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, behavior_policy_graph, L, X_raw, test)
   q0_true, q1_true, q_true = true_q_vals['q0_true_vals'], true_q_vals['q1_true_vals'], true_q_vals['q_true_vals']
 
   for time_horizon in horizons:
-    results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true, q_true, L=L,
-                                         time_horizon=time_horizon)
+    results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, behavior_policy_graph, q0_true, q1_true,
+                                         q_true, test, L=L, time_horizon=time_horizon)
     results_dict[time_horizon] = results
 
     if not test:
