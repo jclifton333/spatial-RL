@@ -10,6 +10,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.regularizers import L1L2
 from keras import backend as K
+import tensorflow as tf
 from keras import optimizers
 import talos as ta
 
@@ -28,14 +29,19 @@ class RidgeProb(object):
 
 def fit_keras_classifier(X, y):
   input_shape = X.shape[1]
-
-  reg = Sequential()
-  reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
-  reg.add(Dense(units=50, activation='relu'))
-  reg.add(Dense(1, activation='sigmoid'))
-  reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-  reg.fit(X, y, sample_weight=None, verbose=True, epochs=5)
-  return reg
+  graph = tf.Graph()
+  with graph.as_default():
+    session = tf.Session()
+    init = tf.global_variables_initializer()
+    session.run(init)
+    with session.as_default():
+      reg = Sequential()
+      reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
+      reg.add(Dense(units=50, activation='relu'))
+      reg.add(Dense(1, activation='sigmoid'))
+      reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+      reg.fit(X, y, sample_weight=None, verbose=True, epochs=5)
+  return reg, graph
 
 
 def fit_keras_regressor(X, y):
@@ -49,15 +55,21 @@ def fit_keras_regressor(X, y):
   }
   input_shape = X.shape[1]
 
-  reg = Sequential()
-  reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
-  reg.add(Dropout(params['dropout1']))
-  reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
-  reg.add(Dropout(params['dropout2']))
-  reg.add(Dense(1))
-  reg.compile(optimizer='adam', loss='mean_squared_error')
-  reg.fit(X, y, verbose=True, epochs=params['epochs'])
-  return reg
+  graph = tf.Graph()
+  with graph.as_default():
+    session = tf.Session()
+    init = tf.global_variables_initializer()
+    session.run(init)
+    with session.as_default():
+      reg = Sequential()
+      reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+      reg.add(Dropout(params['dropout1']))
+      reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+      reg.add(Dropout(params['dropout2']))
+      reg.add(Dense(1))
+      reg.compile(optimizer='adam', loss='mean_squared_error')
+      reg.fit(X, y, verbose=True, epochs=params['epochs'])
+  return reg, graph
 
 
 class KerasRegressor(object):
