@@ -28,7 +28,7 @@ import keras.backend as K
 import argparse
 
 
-def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test):
+def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iterations=0):
   """
   Generate data under given behavior policy and then evaluate the policy with 0 and 1 step of fitted SARSA.
   :return:
@@ -59,35 +59,27 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test):
   X = np.vstack(env.X)
   q0, q0_graph = model_fitters.fit_keras_classifier(X, y)
 
-  # print('Fitting q1')
-  # # 1-step Q-function
-  # q0_evaluate_at_pi = np.array([])
+  if iterations == 1:
+    print('Fitting q1')
+    # 1-step Q-function
+    q0_evaluate_at_pi = np.array([])
 
-  # for ix, x in enumerate(env.X[1:]):
-  #   a = np.zeros(L)
-  #   with q0_graph.as_default():
-  #     session = tf.Session()
-  #     init = tf.global_variables_initializer()
-  #     session.run(init)
-  #     with session.as_default():
-  #       probs = q0.predict(x)
-  #   treat_ixs = np.argsort(-probs)[:treatment_budget]
-  #   a[treat_ixs] = 1
-  #   x_at_a = env.data_block_at_action(ix, a)
-  #   with q0_graph.as_default():
-  #     session = tf.Session()
-  #     init = tf.global_variables_initializer()
-  #     session.run(init)
-  #     with session.as_default():
-  #      q0_at_a = q0.predict(x_at_a)
-  #   q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
+    for ix, x in enumerate(env.X[1:]):
+      a = np.zeros(L)
+      probs = q0.predict(x)
+      treat_ixs = np.argsort(-probs)[:treatment_budget]
+      a[treat_ixs] = 1
+      x_at_a = env.data_block_at_action(ix, a)
+      q0_at_a = q0.predict(x_at_a)
+      q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
 
-  # X2 = np.vstack(env.X_2[:-1])
-  # q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
-  # q1, q1_graph = model_fitters.fit_keras_regressor(X2, q1_target)
+    X2 = np.vstack(env.X_2[:-1])
+    q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
+    q1, q1_graph = model_fitters.fit_keras_regressor(X2, q1_target)
 
-  # return q0.predict, q1.predict, env.X_raw, env.X, env.X_2, q0_graph, q1_graph
-  return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
+    return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
+  else:
+    return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
 
 
 def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, behavior_policy,
@@ -220,7 +212,7 @@ def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, te
 
 
 def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, q_true, test,
-                               L=1000, time_horizon=50):
+                               L=1000, time_horizon=50, iterations=0):
   """
 
   :param L:
@@ -228,7 +220,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   """
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
   qhat0, qhat1, _, _, _, q0_graph, q1_graph = \
-    fit_q_functions_for_policy(behavior_policy, L, time_horizon, test)
+    fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iterations=iterations)
 
   qhat0_vals = []
   qhat1_vals = []
@@ -270,7 +262,10 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   # q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
 
   # Compute MSEs with true finite-stage q functions
-  q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
+  if iterations == 0:
+    q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
+  elif iterations == 1:
+    q0_mse = float(np.mean((q1_true - np.array(qhat0_vals))**2))
   # q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
 
   # results = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q1_rank_coef, 'q0_mse': q0_mse, 'q1_mse': q1_mse}
@@ -279,7 +274,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   return results
 
 
-def compare_at_multiple_horizons(L, horizons=(10, 30, 50, 70, 90), test=False):
+def compare_at_multiple_horizons(L, horizons=(10, 30, 50, 70, 90), test=False, iterations=0):
   if test:
     L = 20
 
@@ -292,7 +287,7 @@ def compare_at_multiple_horizons(L, horizons=(10, 30, 50, 70, 90), test=False):
 
   for time_horizon in horizons:
     results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true,
-                                         q_true, test, L=L, time_horizon=time_horizon)
+                                         q_true, test, L=L, time_horizon=time_horizon, iterations=iterations)
     K.clear_session()
     results_dict[time_horizon] = results
 
