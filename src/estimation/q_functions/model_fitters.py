@@ -29,19 +29,29 @@ class RidgeProb(object):
 
 def fit_keras_classifier(X, y):
   input_shape = X.shape[1]
-  graph = tf.Graph()
-  with graph.as_default():
-    session = tf.Session()
-    init = tf.global_variables_initializer()
-    session.run(init)
-    with session.as_default():
-      reg = Sequential()
-      reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
-      reg.add(Dense(units=50, activation='relu'))
-      reg.add(Dense(1, activation='sigmoid'))
-      reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-      reg.fit(X, y, sample_weight=None, verbose=True, epochs=5)
-  return reg, graph
+
+  # graph = tf.Graph()
+  # with graph.as_default():
+  #   session = tf.Session()
+  #   init = tf.global_variables_initializer()
+  #   session.run(init)
+  #   with session.as_default():
+  #     reg = Sequential()
+  #     reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
+  #     reg.add(Dense(units=50, activation='relu'))
+  #     reg.add(Dense(1, activation='sigmoid'))
+  #     reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+  #     reg.fit(X, y, sample_weight=None, verbose=True, epochs=5)
+
+  reg = Sequential()
+  reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
+  reg.add(Dense(units=50, activation='relu'))
+  reg.add(Dense(1, activation='sigmoid'))
+  reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+  reg.fit(X, y, sample_weight=None, verbose=True, epochs=5)
+
+  # return reg, graph
+  return reg, None 
 
 
 def fit_keras_regressor(X, y):
