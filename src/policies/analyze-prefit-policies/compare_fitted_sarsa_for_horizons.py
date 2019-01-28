@@ -26,9 +26,10 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--L", type=int)
   parser.add_argument("--test", type=str)
+  parser.add_argument("--iterations", type=int)
   args = parser.parse_args()
 
   test = (args.test == 'True')
-  fs.compare_at_multiple_horizons(args.L, test=test)
+  fs.compare_at_multiple_horizons(args.L, test=test, iterations=args.iterations)
 
 
