@@ -293,6 +293,7 @@ def compare_at_multiple_horizons(L, horizons=(10, 30, 50, 70, 90), test=False):
   for time_horizon in horizons:
     results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true,
                                          q_true, test, L=L, time_horizon=time_horizon)
+    K.clear_session()
     results_dict[time_horizon] = results
 
     if not test:
