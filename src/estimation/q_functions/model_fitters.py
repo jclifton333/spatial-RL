@@ -49,7 +49,6 @@ def fit_keras_classifier(X, y):
   reg.add(Dense(1, activation='sigmoid'))
   reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
   reg.fit(X, y, sample_weight=None, verbose=True, epochs=5)
-
   # return reg, graph
   return reg, None 
 
