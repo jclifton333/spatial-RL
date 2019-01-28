@@ -64,21 +64,31 @@ def fit_keras_regressor(X, y):
   }
   input_shape = X.shape[1]
 
-  graph = tf.Graph()
-  with graph.as_default():
-    session = tf.Session()
-    init = tf.global_variables_initializer()
-    session.run(init)
-    with session.as_default():
-      reg = Sequential()
-      reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
-      reg.add(Dropout(params['dropout1']))
-      reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
-      reg.add(Dropout(params['dropout2']))
-      reg.add(Dense(1))
-      reg.compile(optimizer='adam', loss='mean_squared_error')
-      reg.fit(X, y, verbose=True, epochs=params['epochs'])
-  return reg, graph
+  # graph = tf.Graph()
+  # with graph.as_default():
+  #   session = tf.Session()
+  #   init = tf.global_variables_initializer()
+  #   session.run(init)
+  #   with session.as_default():
+  #     reg = Sequential()
+  #     reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+  #     reg.add(Dropout(params['dropout1']))
+  #     reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+  #     reg.add(Dropout(params['dropout2']))
+  #     reg.add(Dense(1))
+  #     reg.compile(optimizer='adam', loss='mean_squared_error')
+  #     reg.fit(X, y, verbose=True, epochs=params['epochs'])
+
+  reg = Sequential()
+  reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+  reg.add(Dropout(params['dropout1']))
+  reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+  reg.add(Dropout(params['dropout2']))
+  reg.add(Dense(1))
+  reg.compile(optimizer='adam', loss='mean_squared_error')
+  reg.fit(X, y, verbose=True, epochs=params['epochs'])
+  # return reg, graph
+  return reg, None
 
 
 class KerasRegressor(object):

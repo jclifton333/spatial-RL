@@ -232,9 +232,12 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
 
   for ix in reference_state_indices:
     print('Computing estimated q vals at (s, a) {}'.format(ix))
-    x_raw = X_raw[ix]
     x = X[ix]
-    x2 = X2[ix]
+
+    if iterations == 0:
+      x = X[ix]
+    elif iterations == 1:
+      x = X2[ix]
 
     # Evaluate 0-step q function
     qhat0_at_state = np.sum(qhat0.predict(x))
