@@ -10,6 +10,7 @@ sys.path.append(pkg_dir)
 import numpy as np
 import pdb
 import tensorflow as tf
+import datetime
 from src.environments.environment_factory import environment_factory
 from scipy.stats import spearmanr
 from sklearn.linear_model import LogisticRegression
@@ -277,7 +278,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   return results
 
 
-def compare_at_multiple_horizons(L, horizons=(70, 90, 150), test=False, iterations=0):
+def compare_at_multiple_horizons(L, horizons=(10, 50, 70, 90), test=False, iterations=0):
   if test:
     L = 20
 
@@ -286,7 +287,10 @@ def compare_at_multiple_horizons(L, horizons=(70, 90, 150), test=False, iteratio
   X_raw, X, X_2, behavior_policy, = \
     inputs['X_raw'], inputs['X'], inputs['X_2'], inputs['behavior_policy']
   true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test)
-  q0_true, q1_true, q_true = true_q_vals['q0_true_vals'], true_q_vals['q1_true_vals'], true_q_vals['q_true_vals']
+  q0_true, q1_true, q_true, q_true_ses = \
+    true_q_vals['q0_true_vals'], true_q_vals['q1_true_vals'], true_q_vals['q_true_vals'], \
+    true_q_vals]'q_true_ses']
+  results_dict['q_true_ses'] = q_true_ses
 
   for time_horizon in horizons:
     results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true,
@@ -295,7 +299,10 @@ def compare_at_multiple_horizons(L, horizons=(70, 90, 150), test=False, iteratio
     results_dict[time_horizon] = results
 
     if not test:
-      with open('L={}-multiple-horizons-iterations={}.yml'.format(L, iterations), 'w') as outfile:
+      basename = 'L={}-multiple-horizons-iterations={}'.format(L, iterations)
+      time = datetime.datetime.now().strftime("%y%m%d_H%M")
+      fname = "{}-{}.yml".format(basename, time)
+      with open(fname, 'w') as outfile:
         yaml.dump(results_dict, outfile)
 
   return
