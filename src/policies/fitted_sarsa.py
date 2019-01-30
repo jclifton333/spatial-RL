@@ -289,7 +289,7 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 70, 90), test=False, itera
   true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test)
   q0_true, q1_true, q_true, q_true_ses = \
     true_q_vals['q0_true_vals'], true_q_vals['q1_true_vals'], true_q_vals['q_true_vals'], \
-    true_q_vals]'q_true_ses']
+    true_q_vals['q_true_ses']
   results_dict['q_true_ses'] = q_true_ses
 
   for time_horizon in horizons:
