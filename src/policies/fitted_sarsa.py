@@ -277,7 +277,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   return results
 
 
-def compare_at_multiple_horizons(L, horizons=(10, 30, 50, 70, 90), test=False, iterations=0):
+def compare_at_multiple_horizons(L, horizons=(70, 90, 150), test=False, iterations=0):
   if test:
     L = 20
 
@@ -295,7 +295,7 @@ def compare_at_multiple_horizons(L, horizons=(10, 30, 50, 70, 90), test=False, i
     results_dict[time_horizon] = results
 
     if not test:
-      with open('L={}-multiple-horizons.yml'.format(L), 'w') as outfile:
+      with open('L={}-multiple-horizons-iterations={}.yml'.format(L, iterations), 'w') as outfile:
         yaml.dump(results_dict, outfile)
 
   return
