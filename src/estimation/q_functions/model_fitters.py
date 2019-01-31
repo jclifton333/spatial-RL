@@ -27,6 +27,93 @@ class RidgeProb(object):
     return np.column_stack((1-phat, phat))
 
 
+def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices):
+  """
+  FIt separate kears infection probability models for infected and non-infected locations.
+  :param X:
+  :param y:
+  :param infected_indices:
+  :param not_infected_indices:
+  :return:
+
+  """
+  input_shape = X.shape[1]
+
+  # Fit infected model
+  reg = Sequential()
+  reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
+  reg.add(Dense(units=50, activation='relu'))
+  reg.add(Dense(1, activation='sigmoid'))
+  reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+  reg.fit(X[infected_indices], y[infected_indices], sample_weight=None, verbose=True, epochs=5)
+
+  # Fit not-infected model
+  reg_nof_inf = Sequential()
+  reg_nof_inf.add(Dense(units=50, input_dim=input_shape, activation='relu'))
+  reg_nof_inf.add(Dense(units=50, activation='relu'))
+  reg_nof_inf.add(Dense(1, activation='sigmoid'))
+  reg_nof_inf.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+  reg_nof_inf.fit(X[not_infected_indices], y[not_infected_indices], sample_weight=None, verbose=True, epochs=5)
+
+  def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
+    probs = np.zeros(X_.shape[0])
+    probs[infected_indices_] = reg.predict(X_[infected_indices]).flatten()
+    probs[not_infected_indices_] = reg_nof_inf.predict(X_[not_infected_indices]).flatten()
+    return probs
+
+  # return reg, graph
+  return predict_proba_piecewise
+
+
+def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices):
+  """
+  Fit separate regression models for infected and not-infected locations.
+
+  :param X:
+  :param y:
+  :param infected_indices:
+  :param not_infected_indices:
+  :return:
+  """
+  params = {
+      'dropout1': 0.17,
+      'dropout2': 0.17,
+      'epochs': 20,
+      'units1': 20,
+      'units2': 10,
+      'lr': 1.4
+  }
+  input_shape = X.shape[1]
+
+  # Infected locations
+  reg = Sequential()
+  reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+  reg.add(Dropout(params['dropout1']))
+  reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+  reg.add(Dropout(params['dropout2']))
+  reg.add(Dense(1))
+  reg.compile(optimizer='adam', loss='mean_squared_error')
+  reg.fit(X[infected_indices], y[infected_indices], verbose=True, epochs=params['epochs'])
+
+  # Not infected locations
+  reg_not_inf = Sequential()
+  reg_not_inf.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+  reg_not_inf.add(Dropout(params['dropout1']))
+  reg_not_inf.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+  reg_not_inf.add(Dropout(params['dropout2']))
+  reg_not_inf.add(Dense(1))
+  reg_not_inf.compile(optimizer='adam', loss='mean_squared_error')
+  reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], verbose=True, epochs=params['epochs'])
+
+  def predict_piecewise(X_, infected_indices_, not_infected_indices_):
+    predictions = np.zeros(X_.shape[0])
+    predictions[infected_indices_] = reg.predict(X_[infected_indices]).flatten()
+    predictions[not_infected_indices_] = reg_nof_inf.predict(X_[not_infected_indices]).flatten()
+    return probs
+
+  return predict_piecewise
+
+
 def fit_keras_classifier(X, y):
   input_shape = X.shape[1]
 
