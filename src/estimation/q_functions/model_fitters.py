@@ -57,8 +57,8 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices)
 
   def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
     probs = np.zeros(X_.shape[0])
-    probs[infected_indices_] = reg.predict(X_[infected_indices]).flatten()
-    probs[not_infected_indices_] = reg_nof_inf.predict(X_[not_infected_indices]).flatten()
+    probs[infected_indices_] = reg.predict(X_[infected_indices_]).flatten()
+    probs[not_infected_indices_] = reg_nof_inf.predict(X_[not_infected_indices_]).flatten()
     return probs
 
   # return reg, graph
@@ -107,8 +107,8 @@ def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices):
 
   def predict_piecewise(X_, infected_indices_, not_infected_indices_):
     predictions = np.zeros(X_.shape[0])
-    predictions[infected_indices_] = reg.predict(X_[infected_indices]).flatten()
-    predictions[not_infected_indices_] = reg_nof_inf.predict(X_[not_infected_indices]).flatten()
+    predictions[infected_indices_] = reg.predict(X_[infected_indices_]).flatten()
+    predictions[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_]).flatten()
     return predictions
 
   return predict_piecewise
