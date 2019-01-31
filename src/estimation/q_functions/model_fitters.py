@@ -109,7 +109,7 @@ def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices):
     predictions = np.zeros(X_.shape[0])
     predictions[infected_indices_] = reg.predict(X_[infected_indices]).flatten()
     predictions[not_infected_indices_] = reg_nof_inf.predict(X_[not_infected_indices]).flatten()
-    return probs
+    return predictions
 
   return predict_piecewise
 
