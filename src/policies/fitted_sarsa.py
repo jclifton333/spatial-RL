@@ -58,7 +58,7 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iteration
   print('Fitting q0')
   y = np.hstack(env.y)
   X = np.vstack(env.X)
-  q0, q0_graph = model_fitters.fit_keras_classifier(X, y)
+  q0_piecewise = model_fitters.fit_keras_classifier(X, y)
 
   if iterations == 1:
     print('Fitting q1')
@@ -71,7 +71,14 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iteration
       treat_ixs = np.argsort(-probs)[:treatment_budget]
       a[treat_ixs] = 1
       x_at_a = env.data_block_at_action(ix, a)
-      q0_at_a = q0.predict(x_at_a)
+
+      # Get infected and not-infected indices for piecewise predictions
+      x_raw = env.X_raw[ix+1]
+      infected_indices = np.where(x_raw[:, -1] == 1)[0]
+      not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
+
+      # q0_at_a = q0.predict(x_at_a)
+      q0_at_a = q0_piecewise(x_at_a, infected_indices, not_infected_indices)
       q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
 
     X2 = np.vstack(env.X_2[:-1])
