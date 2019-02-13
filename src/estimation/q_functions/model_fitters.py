@@ -15,19 +15,54 @@ from keras import optimizers
 import talos as ta
 
 
-class RidgeProb(object):
-  def __init__(self):
-    self.reg = Ridge()
+def keras_hyperparameter_search(X, y, clf=False):
+    """
 
-  def fit(self, X, y):
-    self.reg.fit(X, y)
+    :param X:
+    :param y:
+    :param clf: If clf assume y's binary and use CE loss, otherwise use SE loss.
+    :return:
+    """
+    # Following https://towardsdatascience.com/hyperparameter-optimization-with-keras-b82e6364ca53
+    params = {
+     'dropout1': (0, 0.5, 3),
+     'dropout2': (0, 0.5, 3),
+     'epochs': [1, 20, 50],
+     'units1': [20, 50, 100],
+     'units2': [10, 25, 50],
+      'l2': [0.0, 0.001, 0.01, 0.1],
+     'lr': (0.5, 5, 5)
+    }
 
-  def predict_proba(self, X):
-    phat = self.reg.predict(X)
-    return np.column_stack((1-phat, phat))
+    input_shape = X.shape[1]
+
+    # Define model as function of grid params
+    def model(X_train, y_train, X_val, y_val, params):
+      reg = Sequential()
+      reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+      reg.add(Dropout(params['dropout1']))
+      reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+      reg.add(Dropout(params['dropout2']))
+      reg.add(Dense(1))
+      if clf:
+        loss = 'binary_crossentropy'
+      else:
+        loss = 'mean_squared_error'
+      reg.compile(optimizer='adam', loss=loss)
+      history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
+                        validation_data=[X_val, y_val])
+      return history, reg
+
+    # Search
+    search = ta.Scan(x=X, y=y, model=model, grid_downsample=(0.1 / 4), params=params)
+
+    # Get predictor (model corresponding to best hyperparameters)
+    predictor = ta.Predict(search)
+
+    return predictor
 
 
-def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices):
+def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices, tune=True):
   """
   FIt separate kears infection probability models for infected and non-infected locations.
   :param X:
@@ -39,33 +74,38 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices)
   """
   input_shape = X.shape[1]
 
-  # Fit infected model
-  reg = Sequential()
-  reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
-  reg.add(Dense(units=50, activation='relu'))
-  reg.add(Dense(1, activation='sigmoid'))
-  reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-  reg.fit(X[infected_indices], y[infected_indices], sample_weight=None, verbose=True, epochs=5)
+  if not tune:
+    # Fit infected model
+    reg = Sequential()
+    reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
+    reg.add(Dense(units=50, activation='relu'))
+    reg.add(Dense(1, activation='sigmoid'))
+    reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+    reg.fit(X[infected_indices], y[infected_indices], sample_weight=None, verbose=True, epochs=5)
 
-  # Fit not-infected model
-  reg_nof_inf = Sequential()
-  reg_nof_inf.add(Dense(units=50, input_dim=input_shape, activation='relu'))
-  reg_nof_inf.add(Dense(units=50, activation='relu'))
-  reg_nof_inf.add(Dense(1, activation='sigmoid'))
-  reg_nof_inf.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-  reg_nof_inf.fit(X[not_infected_indices], y[not_infected_indices], sample_weight=None, verbose=True, epochs=5)
+    # Fit not-infected model
+    reg_not_inf = Sequential()
+    reg_not_inf.add(Dense(units=50, input_dim=input_shape, activation='relu'))
+    reg_not_inf.add(Dense(units=50, activation='relu'))
+    reg_not_inf.add(Dense(1, activation='sigmoid'))
+    reg_not_inf.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+    reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], sample_weight=None, verbose=True, epochs=5)
+
+  else:
+    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], clf=True)
+    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices], clf=True)
 
   def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
     probs = np.zeros(X_.shape[0])
     probs[infected_indices_] = reg.predict(X_[infected_indices_]).flatten()
-    probs[not_infected_indices_] = reg_nof_inf.predict(X_[not_infected_indices_]).flatten()
+    probs[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_]).flatten()
     return probs
 
   # return reg, graph
   return predict_proba_piecewise
 
 
-def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices):
+def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, tune=False):
   """
   Fit separate regression models for infected and not-infected locations.
 
@@ -75,6 +115,7 @@ def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices):
   :param not_infected_indices:
   :return:
   """
+  if not tune:
   params = {
       'dropout1': 0.17,
       'dropout2': 0.17,
@@ -176,6 +217,18 @@ def fit_keras_regressor(X, y):
   reg.fit(X, y, verbose=True, epochs=params['epochs'])
   # return reg, graph
   return reg, None
+
+
+class RidgeProb(object):
+  def __init__(self):
+    self.reg = Ridge()
+
+  def fit(self, X, y):
+    self.reg.fit(X, y)
+
+  def predict_proba(self, X):
+    phat = self.reg.predict(X)
+    return np.column_stack((1-phat, phat))
 
 
 class KerasRegressor(object):
