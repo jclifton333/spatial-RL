@@ -232,8 +232,15 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   :return:
   """
   # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
-  qhat0, qhat1, _, _, _, q0_graph, q1_graph = \
+  # X_raw_for_q is the raw data that the q functions were fit on, as oppoosed to the ones where they will be
+  # assessed;
+  # we use it for tracking the state of the MDP over time.
+  qhat0, qhat1, X_raw_for_q, _, _, q0_graph, q1_graph = \
     fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iterations=iterations)
+
+  # Summarize covariate history
+  infection_proportions = [float(np.mean(x[:, -1])) for x in X_raw_for_q]
+  state_proportions = [float(np.mean(x[:, 0])) for x in X_raw_for_q]
 
   qhat0_vals = []
   qhat1_vals = []
@@ -290,7 +297,8 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   # q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
 
   # results = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q1_rank_coef, 'q0_mse': q0_mse, 'q1_mse': q1_mse}
-  results = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': None, 'q0_mse': q0_mse, 'q1_mse': None}
+  results = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': None, 'q0_mse': q0_mse, 'q1_mse': None,
+             'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
 
   return results
 
