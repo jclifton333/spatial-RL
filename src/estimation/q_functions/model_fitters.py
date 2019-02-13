@@ -15,12 +15,13 @@ from keras import optimizers
 import talos as ta
 
 
-def keras_hyperparameter_search(X, y, clf=False):
+def keras_hyperparameter_search(X, y, clf=False, test=False):
     """
 
     :param X:
     :param y:
     :param clf: If clf assume y's binary and use CE loss, otherwise use SE loss.
+    :param test: don't try many combos if just testing
     :return:
     """
     # Following https://towardsdatascience.com/hyperparameter-optimization-with-keras-b82e6364ca53
@@ -54,7 +55,11 @@ def keras_hyperparameter_search(X, y, clf=False):
       return history, reg
 
     # Search
-    search = ta.Scan(x=X, y=y, model=model, grid_downsample=(0.1 / 4), params=params)
+    if test:
+      proportion_to_sample = 0.001
+    else:
+      proportion_to_sample = 0.1 / 4
+    search = ta.Scan(x=X, y=y, model=model, grid_downsample=proportion_to_sample, params=params)
 
     # Get predictor (model corresponding to best hyperparameters)
     predictor = ta.Predict(search)
@@ -62,7 +67,7 @@ def keras_hyperparameter_search(X, y, clf=False):
     return predictor
 
 
-def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices, tune=True):
+def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices, test=False, tune=True):
   """
   FIt separate kears infection probability models for infected and non-infected locations.
   :param X:
@@ -92,8 +97,8 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
     reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], sample_weight=None, verbose=True, epochs=5)
 
   else:
-    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], clf=True)
-    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices], clf=True)
+    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], clf=True, test=test)
+    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices], clf=True, test=test)
 
   def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
     probs = np.zeros(X_.shape[0])
@@ -105,7 +110,7 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
   return predict_proba_piecewise
 
 
-def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, tune=False):
+def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, tune=True, test=False):
   """
   Fit separate regression models for infected and not-infected locations.
 
@@ -116,35 +121,39 @@ def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, 
   :return:
   """
   if not tune:
-  params = {
-      'dropout1': 0.17,
-      'dropout2': 0.17,
-      'epochs': 20,
-      'units1': 20,
-      'units2': 10,
-      'lr': 1.4
-  }
-  input_shape = X.shape[1]
+    params = {
+        'dropout1': 0.17,
+        'dropout2': 0.17,
+        'epochs': 20,
+        'units1': 20,
+        'units2': 10,
+        'lr': 1.4
+    }
+    input_shape = X.shape[1]
 
-  # Infected locations
-  reg = Sequential()
-  reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
-  reg.add(Dropout(params['dropout1']))
-  reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
-  reg.add(Dropout(params['dropout2']))
-  reg.add(Dense(1))
-  reg.compile(optimizer='adam', loss='mean_squared_error')
-  reg.fit(X[infected_indices], y[infected_indices], verbose=True, epochs=params['epochs'])
+    # Infected locations
+    reg = Sequential()
+    reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+    reg.add(Dropout(params['dropout1']))
+    reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+    reg.add(Dropout(params['dropout2']))
+    reg.add(Dense(1))
+    reg.compile(optimizer='adam', loss='mean_squared_error')
+    reg.fit(X[infected_indices], y[infected_indices], verbose=True, epochs=params['epochs'])
 
-  # Not infected locations
-  reg_not_inf = Sequential()
-  reg_not_inf.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
-  reg_not_inf.add(Dropout(params['dropout1']))
-  reg_not_inf.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
-  reg_not_inf.add(Dropout(params['dropout2']))
-  reg_not_inf.add(Dense(1))
-  reg_not_inf.compile(optimizer='adam', loss='mean_squared_error')
-  reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], verbose=True, epochs=params['epochs'])
+    # Not infected locations
+    reg_not_inf = Sequential()
+    reg_not_inf.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+    reg_not_inf.add(Dropout(params['dropout1']))
+    reg_not_inf.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+    reg_not_inf.add(Dropout(params['dropout2']))
+    reg_not_inf.add(Dense(1))
+    reg_not_inf.compile(optimizer='adam', loss='mean_squared_error')
+    reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], verbose=True, epochs=params['epochs'])
+
+  else:
+    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], clf=False, test=test)
+    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices], clf=False, test=test)
 
   def predict_piecewise(X_, infected_indices_, not_infected_indices_):
     predictions = np.zeros(X_.shape[0])

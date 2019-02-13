@@ -59,7 +59,8 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iteration
   y = np.hstack(env.y)
   X = np.vstack(env.X)
   q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
-                                                              np.where(np.vstack(env.X_raw)[:, -1] == 0)[0])
+                                                              np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
+                                                              test=test)
 
   if iterations == 1:
     print('Fitting q1')
@@ -86,7 +87,8 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iteration
     q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
     # q1, q1_graph = model_fitters.fit_keras_regressor(X2, q1_target)
     q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, np.where(np.vstack(env.X_raw[:-1])[:, -1] == 1)[0],
-                                                               np.where(np.vstack(env.X_raw[:-1])[:, -1] == 0)[0])
+                                                               np.where(np.vstack(env.X_raw[:-1])[:, -1] == 0)[0],
+                                                               test=test)
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
     return q1_piecewise, None, env.X_raw, env.X, env.X_2, None, None
@@ -303,7 +305,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   return results
 
 
-def compare_at_multiple_horizons(L, horizons=(10, 50, 70, 90), test=False, iterations=0):
+def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, iterations=0):
   if test:
     L = 20
 
