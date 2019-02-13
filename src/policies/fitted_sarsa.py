@@ -319,6 +319,11 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
     true_q_vals['q_true_ses']
   results_dict['q_true_ses'] = q_true_ses
 
+  if not test:
+      basename = 'L={}-multiple-horizons-iterations={}'.format(L, iterations)
+      time = datetime.datetime.now().strftime("%y%m%d_H%M")
+      fname = "{}-{}.yml".format(basename, time)
+
   for time_horizon in horizons:
     results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true,
                                          q_true, test, L=L, time_horizon=time_horizon, iterations=iterations)
@@ -326,9 +331,6 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
     results_dict[time_horizon] = results
 
     if not test:
-      basename = 'L={}-multiple-horizons-iterations={}'.format(L, iterations)
-      time = datetime.datetime.now().strftime("%y%m%d_H%M")
-      fname = "{}-{}.yml".format(basename, time)
       with open(fname, 'w') as outfile:
         yaml.dump(results_dict, outfile)
 
