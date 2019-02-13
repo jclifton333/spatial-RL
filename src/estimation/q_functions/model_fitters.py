@@ -44,12 +44,15 @@ def keras_hyperparameter_search(X, y, clf=False, test=False):
       reg.add(Dropout(params['dropout1']))
       reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
       reg.add(Dropout(params['dropout2']))
-      reg.add(Dense(1))
+      if clf:
+        reg.add(Dense(1, activation='sigmoid'))
+      else:
+        reg.add(Dense(1))
       if clf:
         loss = 'binary_crossentropy'
       else:
         loss = 'mean_squared_error'
-      reg.compile(optimizer='adam', loss=loss)
+      reg.compile(optimizer='adam', loss=loss, metrics=['acc'])
       history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
                         validation_data=[X_val, y_val])
       return history, reg
