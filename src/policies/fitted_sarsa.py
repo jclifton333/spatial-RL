@@ -129,6 +129,10 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
     q1_rep = 0.0
     env.reset()
     env.step(initial_action)
+    r_0 = np.sum(env.current_infected)
+    q0_rep += r_0
+    q1_rep += r_0
+    q_rep += r_0
     for t in range(TIME_HORIZON):
       # env.step(policy.evaluate(env.X[-1]))
       action = behavior_policy(env.X[-1])
@@ -136,8 +140,6 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
       r_t = np.sum(env.current_infected)
       q_rep += gamma**t * r_t
       if t < 1:
-        q0_rep += r_t
-      if t < 2:
         q1_rep += gamma**t * r_t
     q_list.append(q_rep)
     q0_list.append(q0_rep)
