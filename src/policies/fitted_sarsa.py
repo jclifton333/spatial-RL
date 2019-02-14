@@ -233,8 +233,8 @@ def get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, te
   return results
 
 
-def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, q_true, test,
-                               L=1000, time_horizon=50, iterations=0):
+def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, q_true, test, time_horizons,
+                               fname, L=1000, time_horizon=50, iterations=0):
   """
 
   :param L:
@@ -245,7 +245,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   # assessed;
   # we use it for tracking the state of the MDP over time.
   qhat0_dict, qhat1, X_raw_for_q, _, _, q0_graph, q1_graph = \
-    fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iterations=iterations)
+    fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iterations=iterations)
 
   # Summarize covariate history
   infection_proportions = [float(np.mean(x[:, -1])) for x in X_raw_for_q]
@@ -308,8 +308,9 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
     # q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
 
     results_dict[T] = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': None, 'q0_mse': q0_mse, 'q1_mse': None}
-
-  # results = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q1_rank_coef, 'q0_mse': q0_mse, 'q1_mse': q1_mse}
+    if not test:
+      with open(fname, 'w') as outfile:
+        yaml.dump(results_dict, outfile)
 
   return results_dict
 
@@ -328,21 +329,13 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
     true_q_vals['q_true_ses']
   results_dict['q_true_ses'] = q_true_ses
 
-  if not test:
-      basename = 'L={}-multiple-horizons-iterations={}'.format(L, iterations)
-      time = datetime.datetime.now().strftime("%y%m%d_H%M")
-      fname = "{}-{}.yml".format(basename, time)
+  basename = 'L={}-multiple-horizons-iterations={}'.format(L, iterations)
+  time = datetime.datetime.now().strftime("%y%m%d_H%M")
+  fname = "{}-{}.yml".format(basename, time)
 
-  for time_horizon in horizons:
-    results = compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true,
-                                         q_true, test, L=L, time_horizon=time_horizon, iterations=iterations)
-    K.clear_session()
-    results_dict[time_horizon] = results
-
-    if not test:
-      with open(fname, 'w') as outfile:
-        yaml.dump(results_dict, outfile)
-
+  compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true,
+                             q_true, test, horizons, fname, L=L,
+                             iterations=iterations)
   return
 
 
