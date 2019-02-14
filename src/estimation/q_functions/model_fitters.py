@@ -15,7 +15,7 @@ from keras import optimizers
 import talos as ta
 
 
-def keras_hyperparameter_search(X, y, clf=False, test=False):
+def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     """
 
     :param X:
@@ -64,7 +64,8 @@ def keras_hyperparameter_search(X, y, clf=False, test=False):
       proportion_to_sample = 0.001
     else:
       proportion_to_sample = 0.1 / 4
-    search = ta.Scan(x=X, y=y, model=model, grid_downsample=proportion_to_sample, params=params)
+    search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
+                     params=params)
 
     # Get predictor (model corresponding to best hyperparameters)
     predictor = ta.Predict(search)
@@ -72,7 +73,7 @@ def keras_hyperparameter_search(X, y, clf=False, test=False):
     return predictor
 
 
-def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices, test=False, tune=True):
+def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices, model_name, test=False, tune=True):
   """
   FIt separate kears infection probability models for infected and non-infected locations.
   :param X:
@@ -102,8 +103,10 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
     reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], sample_weight=None, verbose=True, epochs=5)
 
   else:
-    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], clf=True, test=test)
-    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices], clf=True, test=test)
+    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], model_name + '-infected', clf=True,
+                                      test=test)
+    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices],
+                                              model_name + '-not-infected', clf=True, test=test)
 
   def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
     probs = np.zeros(X_.shape[0])
@@ -115,7 +118,7 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
   return predict_proba_piecewise
 
 
-def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, tune=True, test=False):
+def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, model_name, tune=True, test=False):
   """
   Fit separate regression models for infected and not-infected locations.
 
@@ -157,8 +160,10 @@ def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, 
     reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], verbose=True, epochs=params['epochs'])
 
   else:
-    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], clf=False, test=test)
-    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices], clf=False, test=test)
+    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], model_name + 'infected', clf=False,
+                                      test=test)
+    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices],
+                                              model_name + '-not-infected', clf=False, test=test)
 
   def predict_piecewise(X_, infected_indices_, not_infected_indices_):
     predictions = np.zeros(X_.shape[0])

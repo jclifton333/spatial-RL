@@ -62,9 +62,10 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
   for T in time_horizons:
     y = np.hstack(env.y)
     X = np.vstack(env.X)
+    model_name = 'L=100-T={}'.format(T)
     q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
                                                                 np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
-                                                                test=test)
+                                                                model_name, test=test)
     q0_dict[T] = q0_piecewise
 
   if iterations == 1:
