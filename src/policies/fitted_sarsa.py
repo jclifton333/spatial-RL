@@ -29,13 +29,15 @@ import keras.backend as K
 import argparse
 
 
-def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iterations=0):
+def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iterations=0):
   """
   Generate data under given behavior policy and then evaluate the policy with 0 and 1 step of fitted SARSA.
   :return:
   """
   if test:
-    time_horizon = 5
+    time_horizons = [4, 5]
+
+  time_horizon = int(np.max(time_horizons))
 
   # Initialize environment
   gamma = 0.9
@@ -55,12 +57,15 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iteration
 
   # Fit Q-function for myopic policy
   # 0-step Q-function
-  print('Fitting q0')
-  y = np.hstack(env.y)
-  X = np.vstack(env.X)
-  q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
-                                                              np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
-                                                              test=test)
+  q0_dict = {}
+  print('Fitting q0s')
+  for T in time_horizons:
+    y = np.hstack(env.y)
+    X = np.vstack(env.X)
+    q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
+                                                                np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
+                                                                test=test)
+    q0_dict[T] = q0_piecewise
 
   if iterations == 1:
     print('Fitting q1')
@@ -94,7 +99,7 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iteration
     return q1_piecewise, None, env.X_raw, env.X, env.X_2, None, None
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
-    return q0_piecewise, None, env.X_raw, env.X, env.X_2, None, None
+    return q0_dict, None, env.X_raw, env.X, env.X_2, None, None
 
 
 def compute_q_function_for_policy_at_state(L, initial_infections, initial_action, behavior_policy,
@@ -239,72 +244,74 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   # X_raw_for_q is the raw data that the q functions were fit on, as oppoosed to the ones where they will be
   # assessed;
   # we use it for tracking the state of the MDP over time.
-  qhat0, qhat1, X_raw_for_q, _, _, q0_graph, q1_graph = \
+  qhat0_dict, qhat1, X_raw_for_q, _, _, q0_graph, q1_graph = \
     fit_q_functions_for_policy(behavior_policy, L, time_horizon, test, iterations=iterations)
 
   # Summarize covariate history
   infection_proportions = [float(np.mean(x[:, -1])) for x in X_raw_for_q]
   state_proportions = [float(np.mean(x[:, 0])) for x in X_raw_for_q]
 
-  qhat0_vals = []
-  qhat1_vals = []
-
   if test:
     reference_state_indices = range(2)
   else:
     reference_state_indices = range(len(X))
 
-  for ix in reference_state_indices:
-    print('Computing estimated q vals at (s, a) {}'.format(ix))
-    x = X[ix]
+  results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
 
-    if iterations == 0:
+  for T, qhat0 in qhat0_dict.items():
+    qhat0_vals = []
+    qhat1_vals = []
+    for ix in reference_state_indices:
+      print('Computing estimated q vals at (s, a) {}'.format(ix))
       x = X[ix]
+
+      if iterations == 0:
+        x = X[ix]
+      elif iterations == 1:
+        x = X2[ix]
+
+      x_raw = X_raw[ix]
+      infected_indices = np.where(x_raw[:, -1] == 1)[0]
+      not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
+
+      # Evaluate 0-step q function
+      # qhat0_at_state = np.sum(qhat0.predict(x))
+      qhat0_at_state = np.sum(qhat0(x, infected_indices, not_infected_indices))
+      qhat0_vals.append(float(qhat0_at_state))
+
+      # with q0_graph.as_default():
+      #   session0 = tf.Session()
+      #   init = tf.global_variables_initializer()
+      #   session0.run(init)
+      #   with session0.as_default():
+      #     qhat0_at_state = np.sum(qhat0(x))
+      # qhat0_vals.append(float(qhat0_at_state))
+
+      # # Evaluate 1-step q function
+      # with q1_graph.as_default():
+      #   session1 = tf.Session()
+      #   init = tf.global_variables_initializer()
+      #   session1.run(init)
+      #   with session1.as_default():
+      #     qhat1_at_state = np.sum(qhat1(x2))
+      # qhat1_vals.append(float(qhat1_at_state))
+
+    # Compute rank coefs with true (infinite horizon) q values
+    q0_rank_coef = float(spearmanr(q_true, qhat0_vals)[0])
+    # q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
+
+    # Compute MSEs with true finite-stage q functions
+    if iterations == 0:
+      q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
     elif iterations == 1:
-      x = X2[ix]
+      q0_mse = float(np.mean((q1_true - np.array(qhat0_vals))**2))
+    # q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
 
-    x_raw = X_raw[ix]
-    infected_indices = np.where(x_raw[:, -1] == 1)[0]
-    not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
-
-    # Evaluate 0-step q function
-    # qhat0_at_state = np.sum(qhat0.predict(x))
-    qhat0_at_state = np.sum(qhat0(x, infected_indices, not_infected_indices))
-    qhat0_vals.append(float(qhat0_at_state))
-
-    # with q0_graph.as_default():
-    #   session0 = tf.Session()
-    #   init = tf.global_variables_initializer()
-    #   session0.run(init)
-    #   with session0.as_default():
-    #     qhat0_at_state = np.sum(qhat0(x))
-    # qhat0_vals.append(float(qhat0_at_state))
-
-    # # Evaluate 1-step q function
-    # with q1_graph.as_default():
-    #   session1 = tf.Session()
-    #   init = tf.global_variables_initializer()
-    #   session1.run(init)
-    #   with session1.as_default():
-    #     qhat1_at_state = np.sum(qhat1(x2))
-    # qhat1_vals.append(float(qhat1_at_state))
-
-  # Compute rank coefs with true (infinite horizon) q values
-  q0_rank_coef = float(spearmanr(q_true, qhat0_vals)[0])
-  # q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
-
-  # Compute MSEs with true finite-stage q functions
-  if iterations == 0:
-    q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
-  elif iterations == 1:
-    q0_mse = float(np.mean((q1_true - np.array(qhat0_vals))**2))
-  # q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
+    results_dict[T] = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': None, 'q0_mse': q0_mse, 'q1_mse': None}
 
   # results = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q1_rank_coef, 'q0_mse': q0_mse, 'q1_mse': q1_mse}
-  results = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': None, 'q0_mse': q0_mse, 'q1_mse': None,
-             'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
 
-  return results
+  return results_dict
 
 
 def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, iterations=0):
