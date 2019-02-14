@@ -27,11 +27,8 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     # Following https://towardsdatascience.com/hyperparameter-optimization-with-keras-b82e6364ca53
     params = {
      'dropout1': (0, 0.5, 3),
-     'dropout2': (0, 0.5, 3),
      'epochs': [1, 20, 50],
-     'units1': [20, 50, 100],
-     'units2': [10, 25, 50],
-     'activation': ['relu', 'sigmoid'],
+     'units1': [20, 50, 100, 200],
       'l2': [0.0, 0.001, 0.01, 0.1],
      'lr': (0.5, 5, 5)
     }
@@ -41,11 +38,9 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     # Define model as function of grid params
     def model(X_train, y_train, X_val, y_val, params):
       reg = Sequential()
-      reg.add(Dense(params['units1'], input_dim=input_shape, activation=params['activation'],
+      reg.add(Dense(params['units1'], input_dim=input_shape, activation='sigmoid',
                     kernel_initializer='normal'))
       reg.add(Dropout(params['dropout1']))
-      reg.add(Dense(params['units2'], activation=params['activation'], kernel_initializer='normal'))
-      reg.add(Dropout(params['dropout2']))
       if clf:
         reg.add(Dense(1, activation='sigmoid'))
       else:
@@ -61,9 +56,9 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
 
     # Search
     if test:
-      proportion_to_sample = 0.001
+      proportion_to_sample = 0.01
     else:
-      proportion_to_sample = 0.1 / 4
+      proportion_to_sample = 0.1
     search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
                      params=params)
 
