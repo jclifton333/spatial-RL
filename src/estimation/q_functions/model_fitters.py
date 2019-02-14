@@ -31,6 +31,7 @@ def keras_hyperparameter_search(X, y, clf=False, test=False):
      'epochs': [1, 20, 50],
      'units1': [20, 50, 100],
      'units2': [10, 25, 50],
+     'activation': ['relu', 'sigmoid'],
       'l2': [0.0, 0.001, 0.01, 0.1],
      'lr': (0.5, 5, 5)
     }
@@ -40,9 +41,10 @@ def keras_hyperparameter_search(X, y, clf=False, test=False):
     # Define model as function of grid params
     def model(X_train, y_train, X_val, y_val, params):
       reg = Sequential()
-      reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
+      reg.add(Dense(params['units1'], input_dim=input_shape, activation=params['activation'],
+                    kernel_initializer='normal'))
       reg.add(Dropout(params['dropout1']))
-      reg.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
+      reg.add(Dense(params['units2'], activation=params['activation'], kernel_initializer='normal'))
       reg.add(Dropout(params['dropout2']))
       if clf:
         reg.add(Dense(1, activation='sigmoid'))
@@ -105,8 +107,8 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
 
   def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
     probs = np.zeros(X_.shape[0])
-    probs[infected_indices_] = reg.predict(X_[infected_indices_]).flatten()
-    probs[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_]).flatten()
+    probs[infected_indices_] = reg.predict(X_[infected_indices_], metric='val_loss').flatten()
+    probs[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_], metric='val_loss').flatten()
     return probs
 
   # return reg, graph
@@ -160,7 +162,7 @@ def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, 
 
   def predict_piecewise(X_, infected_indices_, not_infected_indices_):
     predictions = np.zeros(X_.shape[0])
-    predictions[infected_indices_] = reg.predict(X_[infected_indices_]).flatten()
+    predictions[infected_indices_] = reg.predict(X_[infected_indices_], metric='val_loss').flatten()
     predictions[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_]).flatten()
     return predictions
 
