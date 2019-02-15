@@ -203,7 +203,7 @@ def generate_data_and_behavior_policy(L=100):
   # behavior_policy = q0_for_behavior_policy
   # results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2, 'behavior_policy': behavior_policy}
 
-  results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2, 'behavior_policy': behavior_policy}
+  results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2}
   return results
 
 
