@@ -353,6 +353,10 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
     true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test)
     reference_state_data = {'X_raw': X_raw, 'X': X, 'X_2': X_2}
     reference_state_data.update(true_q_vals)
+    try:
+      pkl.dump(reference_state_data, os.path.join(this_dir, 'data_for_prefit_policies', 'lattice-L={}'.format(L)))
+    except:
+      pdb.set_trace()
 
   q0_true, q1_true, q_true, q_true_ses = \
     reference_state_data['q0_true_vals'], reference_state_data['q1_true_vals'], reference_state_data['q_true_vals'], \
