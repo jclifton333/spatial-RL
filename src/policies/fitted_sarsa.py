@@ -58,6 +58,7 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
   # Fit Q-function for myopic policy
   # 0-step Q-function
   q0_dict = {}
+  q1_dict = {}
   print('Fitting q0s')
   for T in time_horizons:
     y = np.hstack(env.y[:T])
@@ -78,32 +79,33 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
     print('Fitting q1')
     # 1-step Q-function
     q0_evaluate_at_pi = np.array([])
-
-    for ix, x in enumerate(env.X[1:]):
+    q0_piecewise_T = q0_piecewise[T]
+    for ix, x in enumerate(env.X[1:T]):
       # Get infected and not-infected indices for piecewise predictions
       x_raw = env.X_raw[ix+1]
       infected_indices = np.where(x_raw[:, -1] == 1)[0]
       not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
 
       a = np.zeros(L)
-      probs = q0_piecewise(x, infected_indices, not_infected_indices)
+      probs = q0_piecewise_T(x, infected_indices, not_infected_indices)
       treat_ixs = np.argsort(-probs)[:treatment_budget]
       a[treat_ixs] = 1
       x_at_a = env.data_block_at_action(ix, a)
 
       # q0_at_a = q0.predict(x_at_a)
-      q0_at_a = q0_piecewise(x_at_a, infected_indices, not_infected_indices)
+      q0_at_a = q0_piecewise_T(x_at_a, infected_indices, not_infected_indices)
       q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
 
-    X2 = np.vstack(env.X_2[:-1])
-    q1_target = np.hstack(env.y[:-1]) + gamma * q0_evaluate_at_pi
+    X2 = np.vstack(env.X_2[:T-1])
+    q1_target = np.hstack(env.y[:T-1]) + gamma * q0_evaluate_at_pi
     # q1, q1_graph = model_fitters.fit_keras_regressor(X2, q1_target)
-    q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, np.where(np.vstack(env.X_raw[:-1])[:, -1] == 1)[0],
-                                                               np.where(np.vstack(env.X_raw[:-1])[:, -1] == 0)[0],
+    q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 1)[0],
+                                                               np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 0)[0],
                                                                test=test)
+    q1_dict[T] = q1_piecewise
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
-    return q1_piecewise, None, env.X_raw, env.X, env.X_2, None, None
+    return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
     return q0_dict, None, env.X_raw, env.X, env.X_2, None, None
@@ -252,7 +254,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   # X_raw_for_q is the raw data that the q functions were fit on, as oppoosed to the ones where they will be
   # assessed;
   # we use it for tracking the state of the MDP over time.
-  qhat0_dict, qhat1, X_raw_for_q, _, _, q0_graph, q1_graph = \
+  qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph = \
     fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iterations=iterations)
 
   # Summarize covariate history
@@ -266,7 +268,11 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
 
   results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
 
-  for T, qhat0 in qhat0_dict.items():
+  for T in qhat0_dict.keys():
+    qhat0 = qhat0_dict[T]
+    if iterations == 1:
+      qhat1 = qhat1_dict[T]
+
     qhat0_vals = []
     qhat1_vals = []
     for ix in reference_state_indices:
@@ -287,18 +293,19 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
       qhat0_at_state = np.sum(qhat0(x, infected_indices, not_infected_indices))
       qhat0_vals.append(float(qhat0_at_state))
 
+      if iterations == 1:
+        qhat1_at_state = np.sum(qhat1(x, infected_indices, not_infected_indices))
+        qhat1_vals.append(float(qhat1_at_state))
+
     # Compute rank coefs with true (infinite horizon) q values
     q0_rank_coef = float(spearmanr(q_true, qhat0_vals)[0])
-    # q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
+    q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
 
-    # Compute MSEs with true finite-stage q functions
-    if iterations == 0:
-      q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
-    elif iterations == 1:
-      q0_mse = float(np.mean((q1_true - np.array(qhat0_vals))**2))
-    # q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
+    if iterations == 1:
+      q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
+      q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
 
-    results_dict[T] = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': None, 'q0_mse': q0_mse, 'q1_mse': None}
+    results_dict[T] = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q1_rank_coef, 'q0_mse': q0_mse, 'q1_mse': q1_mse}
     if not test:
       with open(fname, 'w') as outfile:
         yaml.dump(results_dict, outfile)
