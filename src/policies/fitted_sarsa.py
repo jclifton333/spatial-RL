@@ -320,21 +320,35 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
   if test:
     L = 20
 
-  inputs = generate_data_and_behavior_policy(L)
   results_dict = {}
+  inputs = generate_data_and_behavior_policy(L)
   X_raw, X, X_2, behavior_policy, = \
     inputs['X_raw'], inputs['X'], inputs['X_2'], inputs['behavior_policy']
-  true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test)
+
+  # Check if there are saved reference state data
+  existing_data = False
+  for filename in os.listdir('./data_for_prefit_policies/'):
+    if 'L={}'.fomrat(L) in filename:
+      existing_data = True
+      reference_state_data = pkl.load(open(filename, 'r'))
+
+  # If there is no pre-saved data, compute true q-vals on current reference distribution and save
+  if not existing_data:
+    true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test)
+    reference_state_data = {'X_raw': X_raw, 'X': X, 'X_2': X_2}
+    reference_state_data.update(true_q_vals)
+
   q0_true, q1_true, q_true, q_true_ses = \
-    true_q_vals['q0_true_vals'], true_q_vals['q1_true_vals'], true_q_vals['q_true_vals'], \
-    true_q_vals['q_true_ses']
+    reference_state_data['q0_true_vals'], reference_state_data['q1_true_vals'], reference_state_data['q_true_vals'], \
+    reference_state_data['q_true_ses']
   results_dict['q_true_ses'] = q_true_ses
 
   basename = 'L={}-multiple-horizons-iterations={}'.format(L, iterations)
   time = datetime.datetime.now().strftime("%y%m%d_H%M")
   fname = "{}-{}.yml".format(basename, time)
 
-  compare_fitted_q_to_true_q(X_raw, X, X_2, behavior_policy, q0_true, q1_true,
+  compare_fitted_q_to_true_q(reference_state_data['X_raw'], reference_state_data['X'], reference_state_data['X_2'],
+                             behavior_policy, q0_true, q1_true,
                              q_true, test, horizons, fname, L=L,
                              iterations=iterations)
   return
