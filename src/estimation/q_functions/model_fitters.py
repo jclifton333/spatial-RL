@@ -53,9 +53,9 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
 
     # Search
     if test:
-      proportion_to_sample = 0.01
+      proportion_to_sample = 0.05
     else:
-      proportion_to_sample = 0.1
+      proportion_to_sample = 0.2
     search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
                      params=params)
 

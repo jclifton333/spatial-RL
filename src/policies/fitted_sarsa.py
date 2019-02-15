@@ -63,10 +63,10 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
   for T in time_horizons:
     y = np.hstack(env.y[:T])
     X = np.vstack(env.X[:T])
-    model_name = 'L=100-T={}'.format(T)
+    model_name_0 = 'L=100-T={}-k=0'.format(T)
     q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],
                                                                 np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0],
-                                                                model_name, test=test)
+                                                                model_name_0, test=test)
 
     # Simple model for debugging purposes
     # clf = model_fitters.SKLogit2()
@@ -76,33 +76,35 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
     q0_dict[T] = q0_piecewise
 
   if iterations == 1:
-    print('Fitting q1')
-    # 1-step Q-function
-    q0_evaluate_at_pi = np.array([])
-    q0_piecewise_T = q0_piecewise[T]
-    for ix, x in enumerate(env.X[1:T]):
-      # Get infected and not-infected indices for piecewise predictions
-      x_raw = env.X_raw[ix+1]
-      infected_indices = np.where(x_raw[:, -1] == 1)[0]
-      not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
+    for T in time_horizons:
+      print('Fitting q1')
+      # 1-step Q-function
+      q0_evaluate_at_pi = np.array([])
+      q0_piecewise_T = q0_dict[T]
+      for ix, x in enumerate(env.X[1:T]):
+        # Get infected and not-infected indices for piecewise predictions
+        x_raw = env.X_raw[ix+1]
+        infected_indices = np.where(x_raw[:, -1] == 1)[0]
+        not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
 
-      a = np.zeros(L)
-      probs = q0_piecewise_T(x, infected_indices, not_infected_indices)
-      treat_ixs = np.argsort(-probs)[:treatment_budget]
-      a[treat_ixs] = 1
-      x_at_a = env.data_block_at_action(ix, a)
+        a = np.zeros(L)
+        probs = q0_piecewise_T(x, infected_indices, not_infected_indices)
+        treat_ixs = np.argsort(-probs)[:treatment_budget]
+        a[treat_ixs] = 1
+        x_at_a = env.data_block_at_action(ix, a)
 
-      # q0_at_a = q0.predict(x_at_a)
-      q0_at_a = q0_piecewise_T(x_at_a, infected_indices, not_infected_indices)
-      q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
+        # q0_at_a = q0.predict(x_at_a)
+        q0_at_a = q0_piecewise_T(x_at_a, infected_indices, not_infected_indices)
+        q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
 
-    X2 = np.vstack(env.X_2[:T-1])
-    q1_target = np.hstack(env.y[:T-1]) + gamma * q0_evaluate_at_pi
-    # q1, q1_graph = model_fitters.fit_keras_regressor(X2, q1_target)
-    q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 1)[0],
-                                                               np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 0)[0],
-                                                               test=test)
-    q1_dict[T] = q1_piecewise
+      X2 = np.vstack(env.X_2[:T-1])
+      q1_target = np.hstack(env.y[:T-1]) + gamma * q0_evaluate_at_pi
+      model_name_1 = 'L=100-T={}-k=1'.format(T)
+      q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 1)[0],
+                                                                 np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 0)[0],
+                                                                 model_name_1,
+                                                                 test=test)
+      q1_dict[T] = q1_piecewise
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
     return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None
@@ -279,11 +281,6 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
       print('Computing estimated q vals at (s, a) {}'.format(ix))
       x = X[ix]
 
-      if iterations == 0:
-        x = X[ix]
-      elif iterations == 1:
-        x = X2[ix]
-
       x_raw = X_raw[ix]
       infected_indices = np.where(x_raw[:, -1] == 1)[0]
       not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
@@ -294,7 +291,8 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
       qhat0_vals.append(float(qhat0_at_state))
 
       if iterations == 1:
-        qhat1_at_state = np.sum(qhat1(x, infected_indices, not_infected_indices))
+        x_2 = X2[ix]
+        qhat1_at_state = np.sum(qhat1(x_2, infected_indices, not_infected_indices))
         qhat1_vals.append(float(qhat1_at_state))
 
     # Compute rank coefs with true (infinite horizon) q values
