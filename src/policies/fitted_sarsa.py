@@ -1,10 +1,7 @@
 """
 For a fixed policy, do fitted Q-iteration (i.e. fitted SARSA), and compare with true Q-function to see how well that
 Q-function is estimated.  This is for diagnosing issues with so-called  ``Q-learning + policy search''.
-
-This file is kind of a mess because it's for tinkering.
 """
-
 import os
 import sys
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -66,9 +63,14 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
     y = np.hstack(env.y)
     X = np.vstack(env.X)
     model_name = 'L=100-T={}'.format(T)
-    q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
-                                                                np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
-                                                                model_name, test=test)
+    # q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
+    #                                                             np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
+    #                                                             model_name, test=test)
+
+    clf = model_fitters.SKLogit2()
+    clf.fit(X, y, None, False, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
+            np.where(np.vstack(env.X_raw)[:, -1] == 0)[0])
+    q0_piecewise = clf.predict_proba
     q0_dict[T] = q0_piecewise
 
   if iterations == 1:
@@ -191,9 +193,9 @@ def generate_data_and_behavior_policy(L=100):
   # Get behavior policy to be evaluated
   # Fit Q-function for myopic policy
   # 0-step Q-function
-  # print('Fitting q0')
-  # y = np.hstack(ref_env.y)
-  # X = np.vstack(ref_env.X)
+  print('Fitting q0')
+  y = np.hstack(ref_env.y)
+  X = np.vstack(ref_env.X)
   # clf = LogisticRegression()
   # clf.fit(X, y)
   # q0_for_behavior_policy = lambda X_: clf.predict_proba(X_)[:, -1]
@@ -201,7 +203,7 @@ def generate_data_and_behavior_policy(L=100):
   # behavior_policy = q0_for_behavior_policy
   # results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2, 'behavior_policy': behavior_policy}
 
-  results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2}
+  results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2, 'behavior_policy': behavior_policy}
   return results
 
 
@@ -284,23 +286,6 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
       qhat0_at_state = np.sum(qhat0(x, infected_indices, not_infected_indices))
       qhat0_vals.append(float(qhat0_at_state))
 
-      # with q0_graph.as_default():
-      #   session0 = tf.Session()
-      #   init = tf.global_variables_initializer()
-      #   session0.run(init)
-      #   with session0.as_default():
-      #     qhat0_at_state = np.sum(qhat0(x))
-      # qhat0_vals.append(float(qhat0_at_state))
-
-      # # Evaluate 1-step q function
-      # with q1_graph.as_default():
-      #   session1 = tf.Session()
-      #   init = tf.global_variables_initializer()
-      #   session1.run(init)
-      #   with session1.as_default():
-      #     qhat1_at_state = np.sum(qhat1(x2))
-      # qhat1_vals.append(float(qhat1_at_state))
-
     # Compute rank coefs with true (infinite horizon) q values
     q0_rank_coef = float(spearmanr(q_true, qhat0_vals)[0])
     # q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
@@ -343,8 +328,8 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
 
   # Check if there are saved reference state data
   existing_data = False
-  for filename in os.listdir(os.path.join(this_dir, 'data_for_prefit_policies')):
-    if 'L={}'.format(L) in filename:
+  for filename in os.listdir('./data_for_prefit_policies/'):
+    if 'L={}'.fomrat(L) in filename:
       existing_data = True
       reference_state_data = pkl.load(open(filename, 'r'))
 
@@ -353,10 +338,6 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
     true_q_vals = get_true_q_functions_on_reference_distribution(behavior_policy, L, X_raw, test)
     reference_state_data = {'X_raw': X_raw, 'X': X, 'X_2': X_2}
     reference_state_data.update(true_q_vals)
-    try:
-      pkl.dump(reference_state_data, os.path.join(this_dir, 'data_for_prefit_policies', 'lattice-L={}'.format(L)))
-    except:
-      pdb.set_trace()
 
   q0_true, q1_true, q_true, q_true_ses = \
     reference_state_data['q0_true_vals'], reference_state_data['q1_true_vals'], reference_state_data['q_true_vals'], \
