@@ -26,9 +26,12 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     """
     # Following https://towardsdatascience.com/hyperparameter-optimization-with-keras-b82e6364ca53
     params = {
-     'epochs': [1, 5, 20],
-     'units1': [20, 50, 100, 200],
-     'lr': (0.5, 5, 5)
+      'dropout1': (0, 0.5, 3),
+      'dropout2': (0, 0.5, 3),
+      'epochs': [1, 20, 50],
+      'units1': [20, 50, 100],
+      'units2': [10, 25, 50],
+      'lr': (0.5, 5, 5)
     }
 
     input_shape = X.shape[1]
@@ -38,6 +41,9 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
       reg = Sequential()
       reg.add(Dense(params['units1'], input_dim=input_shape, activation='sigmoid',
                     kernel_initializer='normal'))
+      reg.add(Dropout(params['dropout1']))
+      reg.add(Dense(params['units2'], activation='sigmoid', kernel_initializer='normal'))
+      reg.add(Dropout(params['dropout2']))
       if clf:
         reg.add(Dense(1, activation='sigmoid'))
       else:
@@ -53,9 +59,9 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
 
     # Search
     if test:
-      proportion_to_sample = 0.05
+      proportion_to_sample = 0.005
     else:
-      proportion_to_sample = 0.2
+      proportion_to_sample = 0.1
     search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
                      params=params)
 
@@ -102,8 +108,11 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
 
   def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
     probs = np.zeros(X_.shape[0])
-    probs[infected_indices_] = reg.predict(X_[infected_indices_], metric='val_loss').flatten()
-    probs[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_], metric='val_loss').flatten()
+    try:
+      probs[infected_indices_] = reg.predict(X_[infected_indices_], metric='val_loss').flatten()
+      probs[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_], metric='val_loss').flatten()
+    except:
+      pdb.set_trace()
     return probs
 
   # return reg, graph
