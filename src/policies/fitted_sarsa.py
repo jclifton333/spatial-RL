@@ -329,7 +329,7 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
   # Check if there are saved reference state data
   existing_data = False
   for filename in os.listdir('./data_for_prefit_policies/'):
-    if 'L={}'.fomrat(L) in filename:
+    if 'L={}'.format(L) in filename:
       existing_data = True
       reference_state_data = pkl.load(open(filename, 'r'))
 
