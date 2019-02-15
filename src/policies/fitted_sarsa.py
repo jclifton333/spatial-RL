@@ -63,13 +63,14 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
     y = np.hstack(env.y[:T])
     X = np.vstack(env.X[:T])
     model_name = 'L=100-T={}'.format(T)
-    # q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
-    #                                                             np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
-    #                                                             model_name, test=test)
+    q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw)[:, -1] == 1)[0],
+                                                                np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
+                                                                model_name, test=test)
 
-    clf = model_fitters.SKLogit2()
-    clf.fit(X, y, None, False, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],
-            np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0])
+    # Simple model for debugging purposes
+    # clf = model_fitters.SKLogit2()
+    # clf.fit(X, y, None, False, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],
+    #         np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0])
     q0_piecewise = clf.predict_proba
     q0_dict[T] = q0_piecewise
 
