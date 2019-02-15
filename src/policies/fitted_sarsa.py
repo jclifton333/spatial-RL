@@ -1,7 +1,10 @@
 """
 For a fixed policy, do fitted Q-iteration (i.e. fitted SARSA), and compare with true Q-function to see how well that
 Q-function is estimated.  This is for diagnosing issues with so-called  ``Q-learning + policy search''.
+
+This file is kind of a mess because it's for tinkering.
 """
+
 import os
 import sys
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -188,16 +191,17 @@ def generate_data_and_behavior_policy(L=100):
   # Get behavior policy to be evaluated
   # Fit Q-function for myopic policy
   # 0-step Q-function
-  print('Fitting q0')
-  y = np.hstack(ref_env.y)
-  X = np.vstack(ref_env.X)
-  clf = LogisticRegression()
-  clf.fit(X, y)
-  q0_for_behavior_policy = lambda X_: clf.predict_proba(X_)[:, -1]
+  # print('Fitting q0')
+  # y = np.hstack(ref_env.y)
+  # X = np.vstack(ref_env.X)
+  # clf = LogisticRegression()
+  # clf.fit(X, y)
+  # q0_for_behavior_policy = lambda X_: clf.predict_proba(X_)[:, -1]
   # myopic_q_hat_policy_wrapper_ = myopic_q_hat_policy_wrapper(L, q0.predict, treatment_budget)
-  behavior_policy = q0_for_behavior_policy
-  results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2, 'behavior_policy': behavior_policy}
+  # behavior_policy = q0_for_behavior_policy
+  # results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2, 'behavior_policy': behavior_policy}
 
+  results = {'X_raw': ref_env.X_raw, 'X': ref_env.X, 'X_2': ref_env.X_2}
   return results
 
 
@@ -317,18 +321,30 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
 
 
 def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, iterations=0):
+  # Define behavior policy - it is a myopic policy that treats the locations mostly likely to be infected next,
+  # where probabilities are given by expit-linear function of X
+  BEHAVIOR_POLICY_COEF = np.array([-0.52, -0.64, -1.22, -1.17, 1.28, 1.3, 0.0, -0.4, 0.1, 0.1, -0.06, -0.04,
+                                   0.5, 0.6, 0.2, 0.2])
+
+  def behavior_policy(X):
+    actions = np.zeros(L)
+    treatment_budget = int(np.floor(0.05 * L))
+    logits = np.dot(X, BEHAVIOR_POLICY_COEF)
+    locations_to_treat = np.argsort(-logits)[:treatment_budget]
+    actions[locations_to_treat] = 1
+    return actions
+
   if test:
     L = 20
 
   results_dict = {}
   inputs = generate_data_and_behavior_policy(L)
-  X_raw, X, X_2, behavior_policy, = \
-    inputs['X_raw'], inputs['X'], inputs['X_2'], inputs['behavior_policy']
+  X_raw, X, X_2 = inputs['X_raw'], inputs['X'], inputs['X_2']
 
   # Check if there are saved reference state data
   existing_data = False
   for filename in os.listdir('./data_for_prefit_policies/'):
-    if 'L={}'.fomrat(L) in filename:
+    if 'L={}'.format(L) in filename:
       existing_data = True
       reference_state_data = pkl.load(open(filename, 'r'))
 
