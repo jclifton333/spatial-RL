@@ -27,9 +27,11 @@ if __name__ == "__main__":
   parser.add_argument("--L", type=int)
   parser.add_argument("--test", type=str)
   parser.add_argument("--iterations", type=int)
+  parser.add_argument("--refit", type=str)
   args = parser.parse_args()
 
   test = (args.test == 'True')
-  fs.compare_at_multiple_horizons(args.L, test=test, iterations=args.iterations)
+  refit = (args.refit == 'True')
+  fs.compare_at_multiple_horizons(args.L, refit=refit, test=test, iterations=args.iterations)
 
 

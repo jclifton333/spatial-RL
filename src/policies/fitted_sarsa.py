@@ -152,9 +152,9 @@ def compute_q_function_for_policy_at_state(L, initial_infections, initial_action
       action = behavior_policy(env.X[-1])
       env.step(action)
       r_t = np.sum(env.current_infected)
-      q_rep += gamma**t * r_t
+      q_rep += gamma**(t+1) * r_t
       if t < 1:
-        q1_rep += gamma**t * r_t
+        q1_rep += gamma * r_t
     q_list.append(q_rep)
     q0_list.append(q0_rep)
     q1_list.append(q1_rep)
@@ -313,7 +313,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   return results_dict
 
 
-def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, iterations=0):
+def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, refit=False, iterations=0):
   # Define behavior policy - it is a myopic policy that treats the locations mostly likely to be infected next,
   # where probabilities are given by expit-linear function of X
   BEHAVIOR_POLICY_COEF = np.array([-0.52, -0.64, -1.22, -1.17, 1.28, 1.3, 0.0, -0.4, 0.1, 0.1, -0.06, -0.04,
@@ -336,10 +336,11 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
 
   # Check if there are saved reference state data
   existing_data = False
-  for filename in os.listdir('./data_for_prefit_policies/'):
-    if 'L={}'.format(L) in filename:
-      existing_data = True
-      reference_state_data = pkl.load(open(os.path.join(this_dir, 'data_for_prefit_policies', filename), 'rb'))
+  if not refit:
+    for filename in os.listdir('./data_for_prefit_policies/'):
+      if 'L={}'.format(L) in filename:
+        existing_data = True
+        reference_state_data = pkl.load(open(os.path.join(this_dir, 'data_for_prefit_policies', filename), 'rb'))
 
   # If there is no pre-saved data, compute true q-vals on current reference distribution and save
   if not existing_data:
