@@ -331,7 +331,7 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ite
   for filename in os.listdir('./data_for_prefit_policies/'):
     if 'L={}'.format(L) in filename:
       existing_data = True
-      reference_state_data = pkl.load(open(os.path.join(this_dir, 'data_for_prefit_policies', filename), 'r'))
+      reference_state_data = pkl.load(open(os.path.join(this_dir, 'data_for_prefit_policies', filename), 'rb'))
 
   # If there is no pre-saved data, compute true q-vals on current reference distribution and save
   if not existing_data:
