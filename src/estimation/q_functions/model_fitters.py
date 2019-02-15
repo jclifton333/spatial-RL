@@ -26,10 +26,8 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     """
     # Following https://towardsdatascience.com/hyperparameter-optimization-with-keras-b82e6364ca53
     params = {
-     'dropout1': (0, 0.5, 3),
-     'epochs': [1, 20, 50],
+     'epochs': [1, 5, 20],
      'units1': [20, 50, 100, 200],
-      'l2': [0.0, 0.001, 0.01, 0.1],
      'lr': (0.5, 5, 5)
     }
 
@@ -40,7 +38,6 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
       reg = Sequential()
       reg.add(Dense(params['units1'], input_dim=input_shape, activation='sigmoid',
                     kernel_initializer='normal'))
-      reg.add(Dropout(params['dropout1']))
       if clf:
         reg.add(Dense(1, activation='sigmoid'))
       else:

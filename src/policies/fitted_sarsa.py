@@ -70,7 +70,6 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
                                                                 np.where(np.vstack(env.X_raw)[:, -1] == 0)[0],
                                                                 model_name, test=test)
     q0_dict[T] = q0_piecewise
-    pdb.set_trace()
 
   if iterations == 1:
     print('Fitting q1')
