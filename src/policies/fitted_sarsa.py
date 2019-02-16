@@ -74,7 +74,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     q0_dict[T] = q0_piecewise
 
     # Fit one-step model-based as comparison
-    q0_mb, _ = fit_one_step_sis_mb_q(env, indices=[t for t in range(T)])
+    q0_mb, _ = fit_one_step_sis_mb_q(env, indices=np.array([[l for l in range(L)] for t in range(T)]))
     q0_mb_dict[T] = q0_mb
 
   if iterations == 1:
