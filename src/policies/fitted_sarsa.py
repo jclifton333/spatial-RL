@@ -170,7 +170,7 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test):
   q = np.mean(q_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
 
-  return q, q0, q1, se
+  return q, se
 
 
 def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iterations=0):
@@ -423,6 +423,73 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
     qhat0_vals = []
     qhat1_vals = []
     for ix in reference_state_indices:
+      print('Computing estimated q vals at (s, a) {}'.format(ix))
+      x = X[ix]
+
+      x_raw = X_raw[ix]
+      infected_indices = np.where(x_raw[:, -1] == 1)[0]
+      not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
+
+      # Evaluate 0-step q function
+      # qhat0_at_state = np.sum(qhat0.predict(x))
+      qhat0_at_state = np.sum(qhat0(x, infected_indices, not_infected_indices))
+      qhat0_vals.append(float(qhat0_at_state))
+
+      if iterations == 1:
+        x_2 = X2[ix]
+        qhat1_at_state = np.sum(qhat1(x_2, infected_indices, not_infected_indices))
+        qhat1_vals.append(float(qhat1_at_state))
+
+    # Compute rank coefs with true (infinite horizon) q values
+    q0_rank_coef = float(spearmanr(q_true, qhat0_vals)[0])
+    q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
+
+    if iterations == 1:
+      q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
+      q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
+
+    results_dict[T] = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q1_rank_coef, 'q0_mse': q0_mse, 'q1_mse': q1_mse}
+    if not test:
+      with open(fname, 'w') as outfile:
+        yaml.dump(results_dict, outfile)
+
+  return results_dict
+
+
+def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, time_horizons=(10, 50, 100, 200), test=False, refit=False,
+                                       iterations=1):
+  """
+
+  :param L:
+  :return:
+  """
+  # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
+  # X_raw_for_q is the raw data that the q functions were fit on, as oppoosed to the ones where they will be
+  # assessed;
+  # we use it for tracking the state of the MDP over time.
+  qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph = \
+    fit_optimal_q_functions(L, time_horizons, test, iterations=iterations)
+
+  # Summarize covariate history
+  infection_proportions = [float(np.mean(x[:, -1])) for x in X_raw_for_q]
+  state_proportions = [float(np.mean(x[:, 0])) for x in X_raw_for_q]
+
+  if test:
+    reference_state_indices = range(2)
+  else:
+    reference_state_indices = range(len(X))
+
+  results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
+
+  for T in qhat0_dict.keys():
+    qhat0 = qhat0_dict[T]
+    if iterations == 1:
+      qhat1 = qhat1_dict[T]
+
+    qhat0_vals = []
+    qhat1_vals = []
+    for ix in reference_state_indices:
+      evaluate_optimal_qfn_policy(qhat1, )
       print('Computing estimated q vals at (s, a) {}'.format(ix))
       x = X[ix]
 
