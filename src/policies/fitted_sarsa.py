@@ -151,7 +151,6 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
 
   for rep in range(MC_REPLICATES):
 
-    # Assuming iterations=1!
     def q_at_block(a):
         infected_indices = np.where(env.X_raw[-1][:, -1] == 1)[0]
         not_infected_indices = np.where(env.X_raw[-1][:, -1] == 0)[0]
@@ -462,7 +461,7 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   return results_dict
 
 
-def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, time_horizons=(10, 50, 100, 200), test=False,
+def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_horizons=(10, 50, 100, 200), test=False,
                                        iterations=0):
   """
 
@@ -474,7 +473,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, time_horizons=(10
   ref_env = environment_factory('sis', **env_kwargs)
 
   qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph, qhat0_mb_dict = \
-    fit_optimal_q_functions(L, time_horizons, test, iterations=iterations)
+    fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=iterations)
 
   # Summarize covariate history
   infection_proportions = [float(np.mean(x[:, -1])) for x in X_raw_for_q]
@@ -547,7 +546,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, time_horizons=(10
 
 
 def evaluate_qopt(L, horizons=(10, 50, 100, 200), test=False, refit=False, iterations=0):
-  inputs = generate_data_and_behavior_policy(L)
+  # inputs = generate_data_and_behavior_policy(L)
 
   # Check if there are saved reference state data
   existing_data = False
@@ -559,10 +558,10 @@ def evaluate_qopt(L, horizons=(10, 50, 100, 200), test=False, refit=False, itera
   # ToDo: Handle case where there's no existing data
 
   basename = 'qopt-L={}-iterations={}'.format(L, iterations)
-  time = datetime.datetime.now().strftime("%y%m%d_H%M")
-  fname = "{}-{}.yml".format(basename, time)
+  timestamp = datetime.datetime.now().strftime("%y%m%d_H%M")
+  fname = "{}-{}.yml".format(basename, timestamp)
   evaluate_qopt_at_multiple_horizons(L, reference_state_data['X_raw'], reference_state_data['X'],
-                                     reference_state_data['X_2'], fname, time_horizons=horizons, test=test,
+                                     reference_state_data['X_2'], fname, timestamp, time_horizons=horizons, test=test,
                                      iterations=iterations)
   return
 

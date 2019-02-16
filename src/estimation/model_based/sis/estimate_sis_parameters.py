@@ -15,6 +15,7 @@ from sklearn.linear_model import LinearRegression
 from src.estimation.q_functions.model_fitters import SKLogit
 from src.environments.sis import update_counts_for_likelihood_
 from scipy.optimize import minimize
+from scipy.special import logit
 
 
 def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
@@ -42,7 +43,10 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
     bootstrap_weights = None
     infected_weights = None
 
-  eta_q = fit_q(A_infected.T, y_infected, infected_weights)
+  if len(y_infected) > 0:
+    eta_q = fit_q(A_infected.T, y_infected, infected_weights)
+  else:
+    eta_q = np.append([logit(np.mean(y))], [0.0])
   eta_p = fit_p(env, bootstrap_weights, indices)
   return np.concatenate((eta_p, eta_q))
 
