@@ -462,8 +462,8 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   return results_dict
 
 
-def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, time_horizons=(10, 50, 100, 200), test=False, refit=False,
-                                       iterations=1):
+def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, time_horizons=(10, 50, 100, 200), test=False,
+                                       iterations=0):
   """
 
   :param L:
@@ -517,38 +517,53 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, time_horizons=(10, 50, 1
                                                           iterations=iterations)
       q0_mb_value, q0_mb_value_se = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
                                                                 iterations=iterations)
-      qhat0_vals.append(q0_value)
-      qhat0_mb_vals.append(q0_mb_value)
-      qhat0_ses.append(q0_value_se)
-      qhat0_mb_ses.append(q0_mb_value_se)
+      qhat0_vals.append(float(q0_value))
+      qhat0_mb_vals.append(float(q0_mb_value))
+      qhat0_ses.append(float(q0_value_se))
+      qhat0_mb_ses.append(float(q0_mb_value_se))
 
       # Compare to true probabilities
       kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
       true_probs = sis_infection_probability(a_, y_, ref_env.ETA, ref_env.adjacency_list, **kwargs_)
       qhat0_probs = qhat0(x, infected_indices, not_infected_indices)
       qhat0_mb_probs = qhat0_mb(x_raw)
-      qhat0_mses.append(np.mean((true_probs - qhat0_probs)**2))
-      qhat0_mb_mses.append(np.mean((true_probs - qhat0_mb_probs)**2))
+      qhat0_mses.append(float(np.mean((true_probs - qhat0_probs)**2)))
+      qhat0_mb_mses.append(float(np.mean((true_probs - qhat0_mb_probs)**2)))
 
       if iterations == 1:
         x_2 = X2[ix]
         qhat1_at_state = np.sum(qhat1(x_2, infected_indices, not_infected_indices))
         qhat1_vals.append(float(qhat1_at_state))
 
-    # Compute rank coefs with true (infinite horizon) q values
-    q0_rank_coef = float(spearmanr(q_true, qhat0_vals)[0])
-    q0_mse = float(np.mean((q0_true - np.array(qhat0_vals))**2))
-
-    if iterations == 1:
-      q1_rank_coef = float(spearmanr(q_true, qhat1_vals)[0])
-      q1_mse = float(np.mean((q1_true - np.array(qhat1_vals))**2))
-
-    results_dict[T] = {'q0_rank_coef': q0_rank_coef, 'q1_rank_coef': q1_rank_coef, 'q0_mse': q0_mse, 'q1_mse': q1_mse}
+    results_dict[T] = {'qhat0_vals': qhat0_vals, 'qhat0_mean_val': float(np.mean(qhat0_vals)),
+                       'qhat0_mse': float(np.mean(qhat0_mb_mses)),'qhat0_mb_vals': qhat0_mb_vals,
+                       'qhat0_mb_mean_val': float(np.mean(qhat0_mb_vals)),
+                       'qhat0_mb_mse': float(np.mean(qhat0_mb_mses))}
     if not test:
       with open(fname, 'w') as outfile:
         yaml.dump(results_dict, outfile)
 
   return results_dict
+
+
+def evaluate_qopt(L, horizons=(10, 50, 100, 200), test=False, refit=False, iterations=0):
+  inputs = generate_data_and_behavior_policy(L)
+  X_raw, X, X_2 = inputs['X_raw'], inputs['X'], inputs['X_2']
+
+  # Check if there are saved reference state data
+  existing_data = False
+  if not refit:
+    for filename in os.listdir('./data_for_prefit_policies/'):
+      if 'L={}'.format(L) in filename:
+        existing_data = True
+        reference_state_data = pkl.load(open(os.path.join(this_dir, 'data_for_prefit_policies', filename), 'rb'))
+  # ToDo: Handle case where there's no existing data
+
+  basename = 'qopt-L={}-iterations={}'.format(L, iterations)
+  time = datetime.datetime.now().strftime("%y%m%d_H%M")
+  fname = "{}-{}.yml".format(basename, time)
+  evaluate_qopt_at_multiple_horizons(L, X_raw, X, X_2, fname, time_horizons=horizons, test=test, iterations=iterations)
+  return
 
 
 def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, refit=False, iterations=0):
