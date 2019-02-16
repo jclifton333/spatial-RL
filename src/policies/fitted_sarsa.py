@@ -126,6 +126,35 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     return q0_dict, None, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
 
 
+def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_action, time_horizon, treatment_budget,
+                                               gamma):
+  """
+  This will be parallelized across reps. 
+  :return: 
+  """
+  np.random.seed(rep)
+
+  def q_at_block(a):
+      infected_indices = np.where(env.X_raw[-1][:, -1] == 1)[0]
+      not_infected_indices = np.where(env.X_raw[-1][:, -1] == 0)[0]
+      X_at_a = env.data_block_at_action(-1, a, neighbor_order=int(iterations+1))
+      q_vals = q(X_at_a, infected_indices, not_infected_indices)
+      return q_vals
+
+  q_rep = 0.0
+  env.reset()
+  env.step(initial_action)
+  r_0 = np.sum(env.current_infected)
+  q_rep += r_0
+
+  for t in range(time_horizon):
+    # env.step(policy.evaluate(env.X[-1]))
+    action = argmaxer_quad_approx(q_at_block, 100, treatment_budget, env)
+    env.step(action)
+    r_t = np.sum(env.current_infected)
+    q_rep += gamma**(t+1) * r_t
+    return q_rep
+
 def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, iterations=0):
   """
 
@@ -135,7 +164,7 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
   """
   if test:
     MC_REPLICATES = 2
-    TIME_HORIZON = 10
+    TIME_HORIZON = 1
   else:
     MC_REPLICATES = 50
     TIME_HORIZON = 20
@@ -147,31 +176,12 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
   treatment_budget = int(np.floor(0.05 * L))
 
   env = environment_factory('sis', **env_kwargs)
-  q_list = []
+  evaluate_at_rep_partial = partial(evaluate_optimal_qfn_policy_for_single_rep, env=env, q=q, iterations=iterations,
+                                    initial_action=initial_action, time_horizon=TIME_HORIZON,
+                                    treatment_budget=treatment_budget, gamma=gamma)
 
-  for rep in range(MC_REPLICATES):
-
-    def q_at_block(a):
-        infected_indices = np.where(env.X_raw[-1][:, -1] == 1)[0]
-        not_infected_indices = np.where(env.X_raw[-1][:, -1] == 0)[0]
-        X_at_a = env.data_block_at_action(-1, a, neighbor_order=int(iterations+1))
-        q_vals = q(X_at_a, infected_indices, not_infected_indices)
-        return q_vals
-
-    q_rep = 0.0
-    env.reset()
-    env.step(initial_action)
-    r_0 = np.sum(env.current_infected)
-    q_rep += r_0
-
-    for t in range(TIME_HORIZON):
-      # env.step(policy.evaluate(env.X[-1]))
-      action = argmaxer_quad_approx(q_at_block, 100, treatment_budget, env)
-      env.step(action)
-      r_t = np.sum(env.current_infected)
-      q_rep += gamma**(t+1) * r_t
-    q_list.append(q_rep)
-
+  pool = mp.Pool(2)
+  q_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
   q = np.mean(q_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
 
