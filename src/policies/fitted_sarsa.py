@@ -18,7 +18,8 @@ from src.estimation.optim.argmaxer_factory import argmaxer_quad_approx
 import src.environments.generate_network as generate_network
 import src.estimation.q_functions.model_fitters as model_fitters
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
-from src.estimation.q_functions.one_step import fit_one_step_predictor
+from src.environments.sis_infection_probs import sis_infection_probability
+from src.estimation.q_functions.one_step import fit_one_step_sis_mb_q
 import numpy as np
 from functools import partial
 import pickle as pkl
@@ -53,6 +54,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
 
   # Fit Q-function for myopic policy
   # 0-step Q-function
+  q0_mb_dict = {}
   q0_dict = {}
   q1_dict = {}
   print('Fitting q0s')
@@ -70,6 +72,10 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     #         np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0])
     # q0_piecewise = clf.predict_proba
     q0_dict[T] = q0_piecewise
+
+    # Fit one-step model-based as comparison
+    q0_mb, _ = fit_one_step_sis_mb_q(env, indices=[t for t in range(T)])
+    q0_mb_dict[T] = q0_mb
 
   if iterations == 1:
     for T in time_horizons:
@@ -114,13 +120,13 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       q1_dict[T] = q1_piecewise
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
-    return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None
+    return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
-    return q0_dict, None, env.X_raw, env.X, env.X_2, None, None
+    return q0_dict, None, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
 
 
-def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test):
+def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, iterations=0):
   """
 
   :param initial_infections:
@@ -149,7 +155,7 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test):
     def q_at_block(a):
         infected_indices = np.where(env.X_raw[-1][:, -1] == 1)[0]
         not_infected_indices = np.where(env.X_raw[-1][:, -1] == 0)[0]
-        X_at_a = env.data_block_at_action(-1, a, neighbor_order=2)
+        X_at_a = env.data_block_at_action(-1, a, neighbor_order=int(iterations+1))
         q_vals = q(X_at_a, infected_indices, not_infected_indices)
         return q_vals
 
@@ -463,11 +469,11 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, time_horizons=(10, 50, 1
   :param L:
   :return:
   """
-  # Get fitted q, and 0-step q function for policy to be evaluated, and data for reference states
-  # X_raw_for_q is the raw data that the q functions were fit on, as oppoosed to the ones where they will be
-  # assessed;
-  # we use it for tracking the state of the MDP over time.
-  qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph = \
+  # We need this to compute true probabilities (to assess q0)
+  env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice}
+  ref_env = environment_factory('sis', **env_kwargs)
+
+  qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph, qhat0_mb_dict = \
     fit_optimal_q_functions(L, time_horizons, test, iterations=iterations)
 
   # Summarize covariate history
@@ -483,13 +489,21 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, time_horizons=(10, 50, 1
 
   for T in qhat0_dict.keys():
     qhat0 = qhat0_dict[T]
+    qhat0_mb = qhat0_mb_dict[T]
+
     if iterations == 1:
       qhat1 = qhat1_dict[T]
 
     qhat0_vals = []
+    qhat0_mb_vals = []
+    qhat0_ses = []
+    qhat0_mb_ses = []
     qhat1_vals = []
+    qhat0_mses = []
+    qhat0_mb_mses = []
+
     for ix in reference_state_indices:
-      evaluate_optimal_qfn_policy(qhat1, )
+      # evaluate_optimal_qfn_policy(qhat1, )
       print('Computing estimated q vals at (s, a) {}'.format(ix))
       x = X[ix]
 
@@ -497,10 +511,24 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, time_horizons=(10, 50, 1
       infected_indices = np.where(x_raw[:, -1] == 1)[0]
       not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
 
-      # Evaluate 0-step q function
-      # qhat0_at_state = np.sum(qhat0.predict(x))
-      qhat0_at_state = np.sum(qhat0(x, infected_indices, not_infected_indices))
-      qhat0_vals.append(float(qhat0_at_state))
+      # Evaluate 0-step q functions
+      a_, y_ = x_raw[:, 1], x_raw[:, 2]
+      q0_value, q0_value_se = evaluate_optimal_qfn_policy(qhat0, L, y_, a_, test,
+                                                          iterations=iterations)
+      q0_mb_value, q0_mb_value_se = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
+                                                                iterations=iterations)
+      qhat0_vals.append(q0_value)
+      qhat0_mb_vals.append(q0_mb_value)
+      qhat0_ses.append(q0_value_se)
+      qhat0_mb_ses.append(q0_mb_value_se)
+
+      # Compare to true probabilities
+      kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
+      true_probs = sis_infection_probability(a_, y_, ref_env.ETA, ref_env.adjacency_list, **kwargs_)
+      qhat0_probs = qhat0(x, infected_indices, not_infected_indices)
+      qhat0_mb_probs = qhat0_mb(x_raw)
+      qhat0_mses.append(np.mean((true_probs - qhat0_probs)**2))
+      qhat0_mb_mses.append(np.mean((true_probs - qhat0_mb_probs)**2))
 
       if iterations == 1:
         x_2 = X2[ix]
