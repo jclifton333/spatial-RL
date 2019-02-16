@@ -74,6 +74,8 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     best_params = {
       'units1': int(best_params['units1']),
       'dropout1': float(best_params['dropout1']),
+      'units2': int(best_params['units2']),
+      'dropout2': float(best_params['dropout2']),
       'lr': float(best_params['lr']),
       'epochs': int(best_params['epochs'])
     }
