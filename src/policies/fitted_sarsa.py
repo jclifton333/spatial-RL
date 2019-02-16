@@ -548,7 +548,6 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, time_horizons=(10
 
 def evaluate_qopt(L, horizons=(10, 50, 100, 200), test=False, refit=False, iterations=0):
   inputs = generate_data_and_behavior_policy(L)
-  X_raw, X, X_2 = inputs['X_raw'], inputs['X'], inputs['X_2']
 
   # Check if there are saved reference state data
   existing_data = False
@@ -562,7 +561,9 @@ def evaluate_qopt(L, horizons=(10, 50, 100, 200), test=False, refit=False, itera
   basename = 'qopt-L={}-iterations={}'.format(L, iterations)
   time = datetime.datetime.now().strftime("%y%m%d_H%M")
   fname = "{}-{}.yml".format(basename, time)
-  evaluate_qopt_at_multiple_horizons(L, X_raw, X, X_2, fname, time_horizons=horizons, test=test, iterations=iterations)
+  evaluate_qopt_at_multiple_horizons(L, reference_state_data['X_raw'], reference_state_data['X'],
+                                     reference_state_data['X_2'], fname, time_horizons=horizons, test=test,
+                                     iterations=iterations)
   return
 
 
