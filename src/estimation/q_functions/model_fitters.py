@@ -72,12 +72,18 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     #   'lr': float(best_params['lr']),
     #   'epochs': int(best_params['epochs'])
     # }
-    # _, best_reg = model(X, y, None, None, best_params)
-    # predictor = best_reg
+    graph = tf.Graph()
+    with graph.as_default():
+      session = tf.Session()
+      init = tf.global_variables_initializer()
+      session.run(init)
+      with session.as_default():
+      _, best_reg = model(X, y, None, None, best_params)
+    predictor = best_reg
 
-    predictor = ta.Predict(search)
+    # predictor = ta.Predict(search)
 
-    return predictor
+    return predictor, graph
 
 
 def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices, model_name, test=False, tune=True):
@@ -110,18 +116,27 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
     reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], sample_weight=None, verbose=True, epochs=5)
 
   else:
-    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], model_name + '-infected', clf=True,
-                                      test=test)
-    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices],
-                                              model_name + '-not-infected', clf=True, test=test)
+    reg, graph_inf = keras_hyperparameter_search(X[infected_indices], y[infected_indices], model_name + '-infected',
+                                                 clf=True, test=test)
+    reg_not_inf , graph_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices],
+                                                              model_name + '-not-infected', clf=True, test=test)
 
   def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
     probs = np.zeros(X_.shape[0])
-    try:
-      probs[infected_indices_] = reg.predict(X_[infected_indices_], metric='val_loss').flatten()
-      probs[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_], metric='val_loss').flatten()
-    except:
-      pdb.set_trace()
+    # Predict infected locations within appropriate session
+    with graph_inf.as_default():
+      session = tf.Session()
+      init = tf.global_variables_initializer()
+      session.run(init)
+      with session.as_default():
+        probs[infected_indices_] = reg.predict(X_[infected_indices_]).flatten()
+    # Likewise for not-infected
+    with graph_not_inf.as_default():
+      session = tf.Session()
+      init = tf.global_variables_initializer()
+      session.run(init)
+      with session.as_default():
+        probs[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_]).flatten()
     return probs
 
   # return reg, graph
