@@ -14,6 +14,7 @@ import datetime
 from src.environments.environment_factory import environment_factory
 from scipy.stats import spearmanr
 from sklearn.linear_model import LogisticRegression
+from src.estimation.optim.argmaxer_factory import argmaxer_quad_approx
 import src.environments.generate_network as generate_network
 import src.estimation.q_functions.model_fitters as model_fitters
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
@@ -27,6 +28,95 @@ import multiprocessing as mp
 import yaml
 import keras.backend as K
 import argparse
+
+
+def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
+  if test:
+    time_horizons = [4, 5]
+
+  time_horizon = int(np.max(time_horizons))
+
+  # Initialize environment
+  gamma = 0.9
+  treatment_budget = int(np.floor(0.05 * L))
+  env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice})
+  env.reset()
+  dummy_action = np.concatenate((np.zeros(L - treatment_budget), np.ones(treatment_budget)))
+  print('Taking initial steps')
+  env.step(np.random.permutation(dummy_action))
+  env.step(np.random.permutation(dummy_action))
+
+  # Rollout using random policy
+  print('Rolling out to collect data')
+  for t in range(time_horizon):
+    env.step(np.random.permutation(dummy_action))
+
+  # Fit Q-function for myopic policy
+  # 0-step Q-function
+  q0_dict = {}
+  q1_dict = {}
+  print('Fitting q0s')
+  for T in time_horizons:
+    y = np.hstack(env.y[:T])
+    X = np.vstack(env.X[:T])
+    model_name_0 = 'L=100-T={}-k=0-{}'.format(T, timestamp)
+    q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],
+                                                                np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0],
+                                                                model_name_0, test=test)
+
+    # Simple model for debugging purposes
+    # clf = model_fitters.SKLogit2()
+    # clf.fit(X, y, None, False, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],
+    #         np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0])
+    # q0_piecewise = clf.predict_proba
+    q0_dict[T] = q0_piecewise
+
+  if iterations == 1:
+    for T in time_horizons:
+      print('Fitting q1')
+      # 1-step Q-function
+      q0_evaluate_at_argmax = np.array([])
+      q0_evaluate_at_xm1 = np.array([])
+      q0_piecewise_T = q0_dict[T]
+
+      def q0_at_block(block_index, a):
+        infected_indices = np.where(env.X_raw[block_index][:, -1] == 1)[0]
+        not_infected_indices = np.where(env.X_raw[block_index][:, -1] == 0)[0]
+        q_vals = q0_piecewise_T(env.X[block_index], infected_indices, not_infected_indices)
+        return q_vals
+
+      for ix, x in enumerate(env.X[1:T]):
+        # Get infected and not-infected indices for piecewise predictions
+        x_raw = env.X_raw[ix+1]
+        infected_indices = np.where(x_raw[:, -1] == 1)[0]
+        not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
+
+        a = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
+        x_at_a = env.data_block_at_action(ix, a)
+
+        q0_at_a = q0_piecewise_T(x_at_a, infected_indices, not_infected_indices)
+        q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
+
+        infected_indices_tm1 = np.where(env.X_raw[ix-1][:, -1] == 1)[0]
+        not_infected_indices_tm1 = np.where(env.X_raw[ix-1][:, -1] == 0)[0]
+        q0_at_xm1 = q0_piecewise_T(env.X[ix-1], infected_indices_tm1, not_infected_indices_tm1)
+        q0_evaluate_at_xm1 = np.append(q0_evaluate_at_xm1, q0_at_xm1)
+
+      X2 = np.vstack(env.X_2[:T-1])
+      q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_pi
+      # q1_target = np.hstack(env.y[:T-1]) + gamma * q0_evaluate_at_pi
+      model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
+      q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 1)[0],
+                                                                 np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 0)[0],
+                                                                 model_name_1,
+                                                                 test=test)
+      q1_dict[T] = q1_piecewise
+
+    # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
+    return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None
+  else:
+    # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
+    return q0_dict, None, env.X_raw, env.X, env.X_2, None, None
 
 
 def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iterations=0):
@@ -87,6 +177,7 @@ def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iteratio
         infected_indices = np.where(x_raw[:, -1] == 1)[0]
         not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
 
+        # ToDo: Should be using behavior policy!
         a = np.zeros(L)
         probs = q0_piecewise_T(x, infected_indices, not_infected_indices)
         treat_ixs = np.argsort(-probs)[:treatment_budget]
