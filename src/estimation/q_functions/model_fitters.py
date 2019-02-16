@@ -49,8 +49,11 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
       else:
         loss = 'mean_squared_error'
       reg.compile(optimizer='adam', loss=loss, metrics=['acc'])
-      history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
-                        validation_data=[X_val, y_val])
+      if X_val is not None:
+        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
+                          validation_data=[X_val, y_val])
+      else:
+        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'])
       return history, reg
 
     # Search
@@ -61,7 +64,17 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
                      params=params)
 
-    # Get predictor (model corresponding to best hyperparameters)
+    # Get best model
+    # best_params = ta.Reporting(search).table().sort_values(by='val_acc', ascending=False).iloc[0]
+    # best_params = {
+    #   'units1': int(best_params['units1']),
+    #   'dropout1': float(best_params['dropout1']),
+    #   'lr': float(best_params['lr']),
+    #   'epochs': int(best_params['epochs'])
+    # }
+    # _, best_reg = model(X, y, None, None, best_params)
+    # predictor = best_reg
+
     predictor = ta.Predict(search)
 
     return predictor

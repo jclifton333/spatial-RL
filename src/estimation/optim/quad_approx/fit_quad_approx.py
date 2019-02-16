@@ -36,9 +36,9 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
     dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
     acts_to_evaluate = [np.random.permutation(dummy_act) for e in range(evaluation_budget)]
   sample_qs = []
-  for act in acts_to_evaluate:
+  for ix, act in enumerate(acts_to_evaluate):
     sample_qs.append(q(act))
-    print('evluating q function on sample')
+    print('evluating q function on sample {}'.format(ix))
   return sample_qs, acts_to_evaluate
 
 
