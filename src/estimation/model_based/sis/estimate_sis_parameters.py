@@ -48,6 +48,7 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
   else:
     eta_q = np.append([logit(np.mean(y))], [0.0])
   eta_p = fit_p(env, bootstrap_weights, indices)
+  pdb.set_trace()
   return np.concatenate((eta_p, eta_q))
 
 

@@ -545,7 +545,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
         qhat1_vals.append(float(qhat1_at_state))
 
     results_dict[T] = {'qhat0_vals': qhat0_vals, 'qhat0_mean_val': float(np.mean(qhat0_vals)),
-                       'qhat0_mse': float(np.mean(qhat0_mb_mses)),'qhat0_mb_vals': qhat0_mb_vals,
+                       'qhat0_mse': float(np.mean(qhat0_mses)), 'qhat0_mb_vals': qhat0_mb_vals,
                        'qhat0_mb_mean_val': float(np.mean(qhat0_mb_vals)),
                        'qhat0_mb_mse': float(np.mean(qhat0_mb_mses))}
     if not test:
