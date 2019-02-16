@@ -79,10 +79,11 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       q0_evaluate_at_xm1 = np.array([])
       q0_piecewise_T = q0_dict[T]
 
-      def q0_at_block(block_index, a):
-        infected_indices = np.where(env.X_raw[block_index][:, -1] == 1)[0]
-        not_infected_indices = np.where(env.X_raw[block_index][:, -1] == 0)[0]
-        q_vals = q0_piecewise_T(env.X[block_index], infected_indices, not_infected_indices)
+      def q0_at_block(a):
+        infected_indices = np.where(env.X_raw[-1][:, -1] == 1)[0]
+        not_infected_indices = np.where(env.X_raw[-1][:, -1] == 0)[0]
+        X_at_a = env.data_block_at_action(-1, a)
+        q_vals = q0_piecewise_T(X_at_a, infected_indices, not_infected_indices)
         return q_vals
 
       for ix, x in enumerate(env.X[1:T]):
@@ -95,7 +96,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         x_at_a = env.data_block_at_action(ix, a)
 
         q0_at_a = q0_piecewise_T(x_at_a, infected_indices, not_infected_indices)
-        q0_evaluate_at_pi = np.append(q0_evaluate_at_pi, q0_at_a)
+        q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_at_a)
 
         infected_indices_tm1 = np.where(env.X_raw[ix-1][:, -1] == 1)[0]
         not_infected_indices_tm1 = np.where(env.X_raw[ix-1][:, -1] == 0)[0]
@@ -103,7 +104,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q0_evaluate_at_xm1 = np.append(q0_evaluate_at_xm1, q0_at_xm1)
 
       X2 = np.vstack(env.X_2[:T-1])
-      q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_pi
+      q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       # q1_target = np.hstack(env.y[:T-1]) + gamma * q0_evaluate_at_pi
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
       q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 1)[0],
@@ -117,6 +118,59 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
     return q0_dict, None, env.X_raw, env.X, env.X_2, None, None
+
+
+def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test):
+  """
+
+  :param initial_infections:
+  :param initial_action:
+  :return:
+  """
+  if test:
+    MC_REPLICATES = 2
+    TIME_HORIZON = 10
+  else:
+    MC_REPLICATES = 50
+    TIME_HORIZON = 20
+
+  gamma = 0.9
+  # MC_REPLICATES = num_processes
+  env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
+                                      'initial_infections': initial_infections}
+  treatment_budget = int(np.floor(0.05 * L))
+
+  env = environment_factory('sis', **env_kwargs)
+  q_list = []
+
+  for rep in range(MC_REPLICATES):
+
+    # Assuming iterations=1!
+    def q_at_block(a):
+        infected_indices = np.where(env.X_raw[-1][:, -1] == 1)[0]
+        not_infected_indices = np.where(env.X_raw[-1][:, -1] == 0)[0]
+        X_at_a = env.data_block_at_action(-1, a, neighbor_order=2)
+        q_vals = q(X_at_a, infected_indices, not_infected_indices)
+        return q_vals
+
+    q_rep = 0.0
+    env.reset()
+    env.step(initial_action)
+    r_0 = np.sum(env.current_infected)
+    q_rep += r_0
+
+    for t in range(TIME_HORIZON):
+      # env.step(policy.evaluate(env.X[-1]))
+      action = argmaxer_quad_approx(q_at_block, 100, treatment_budget, env)
+      env.step(action)
+      r_t = np.sum(env.current_infected)
+      q_rep += gamma**(t+1) * r_t
+    q_list.append(q_rep)
+
+  q = np.mean(q_list)
+  se = np.std(q_list) / np.sqrt(MC_REPLICATES)
+
+  return q, q0, q1, se
 
 
 def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iterations=0):
