@@ -522,18 +522,18 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
 
       # Evaluate 0-step q functions
       a_, y_ = x_raw[:, 1], x_raw[:, 2]
-      q0_value, q0_value_se = evaluate_optimal_qfn_policy(qhat0, L, y_, a_, test,
-                                                          iterations=iterations)
-      q0_mb_value, q0_mb_value_se = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
-                                                                iterations=iterations)
-      qhat0_vals.append(float(q0_value))
-      qhat0_mb_vals.append(float(q0_mb_value))
-      qhat0_ses.append(float(q0_value_se))
-      qhat0_mb_ses.append(float(q0_mb_value_se))
+      # q0_value, q0_value_se = evaluate_optimal_qfn_policy(qhat0, L, y_, a_, test,
+      #                                                     iterations=iterations)
+      # q0_mb_value, q0_mb_value_se = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
+      #                                                           iterations=iterations)
+      # qhat0_vals.append(float(q0_value))
+      # qhat0_mb_vals.append(float(q0_mb_value))
+      # qhat0_ses.append(float(q0_value_se))
+      # qhat0_mb_ses.append(float(q0_mb_value_se))
 
       # Compare to true probabilities
       kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
-      true_probs = sis_infection_probability(a_, y_, ref_env.ETA, ref_env.adjacency_list, **kwargs_)
+      true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
       qhat0_probs = qhat0(x, infected_indices, not_infected_indices)
       qhat0_mb_probs = qhat0_mb(x_raw)
       qhat0_mses.append(float(np.mean((true_probs - qhat0_probs)**2)))
