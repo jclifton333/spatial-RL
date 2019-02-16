@@ -39,7 +39,7 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
   for ix, act in enumerate(acts_to_evaluate):
     sample_qs.append(q(act))
     print('evluating q function on sample {}'.format(ix))
-  return sample_qs, acts_to_evaluate
+  return np.array(sample_qs), acts_to_evaluate
 
 
 def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions):
