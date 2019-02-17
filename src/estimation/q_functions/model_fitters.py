@@ -58,7 +58,8 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
         loss = 'binary_crossentropy'
       else:
         loss = 'mean_squared_error'
-      reg.compile(optimizer='adam', loss=loss, metrics=['acc'])
+      optim = optimizers.SGD(lr=params['lr'])
+      reg.compile(optimizer=optim, loss=loss, metrics=['acc'])
       if X_val is not None:
         history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
                           validation_data=[X_val, y_val])
@@ -92,7 +93,7 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
       'dropout2': 0.0,
       'units3': 100,
       'dropout3': 0.0,
-      'lr': 0.01,
+      'lr': 0.001,
       'epochs': 20
     }
 
