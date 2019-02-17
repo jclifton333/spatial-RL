@@ -536,6 +536,8 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
       qhat0_probs = qhat0(x, infected_indices, not_infected_indices)
       qhat0_mb_probs = qhat0_mb(x_raw)
+      if ix == 0:
+        pdb.set_trace()
       qhat0_mses.append(float(np.mean((true_probs - qhat0_probs)**2)))
       qhat0_mb_mses.append(float(np.mean((true_probs - qhat0_mb_probs)**2)))
 
