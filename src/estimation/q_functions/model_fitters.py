@@ -62,23 +62,33 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
       return history, reg
 
     # Search
-    if test:
-      proportion_to_sample = 0.001
-    else:
-      proportion_to_sample = 0.01
-    search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
-                     params=params)
+    # if test:
+    #   proportion_to_sample = 0.001
+    # else:
+    #   proportion_to_sample = 0.01
+    # search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
+    #                  params=params)
 
-    # Get best model
-    best_params = ta.Reporting(search).table().sort_values(by='val_acc', ascending=False).iloc[0]
+    # # Get best model
+    # best_params = ta.Reporting(search).table().sort_values(by='val_acc', ascending=False).iloc[0]
+    # best_params = {
+    #   'units1': int(best_params['units1']),
+    #   'dropout1': float(best_params['dropout1']),
+    #   'units2': int(best_params['units2']),
+    #   'dropout2': float(best_params['dropout2']),
+    #   'lr': float(best_params['lr']),
+    #   'epochs': int(best_params['epochs'])
+    # }
+
     best_params = {
-      'units1': int(best_params['units1']),
-      'dropout1': float(best_params['dropout1']),
-      'units2': int(best_params['units2']),
-      'dropout2': float(best_params['dropout2']),
-      'lr': float(best_params['lr']),
-      'epochs': int(best_params['epochs'])
+      'units1': 100,
+      'dropout1': 0.0,
+      'units2': 100,
+      'dropout2': 0.0,
+      'lr': 0.01,
+      'epochs': 20
     }
+
     graph = tf.Graph()
     with graph.as_default():
       session = tf.Session()
