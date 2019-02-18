@@ -37,14 +37,14 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
     def model(X_train, y_train, X_val, y_val, params):
       main_effect = Input(shape=(input_shape,))
       main_effect_layer = Dense(50, activation='sigmoid')(main_effect)
-      main_effect_layer_2 = Dense(50, activation='sigmoid')(main_effect_layer)
+      # main_effect_layer_2 = Dense(50, activation='sigmoid')(main_effect_layer)
       # interaction = Input(shape=(input_shape,))
       # interaction_layer = Dense(50, activation='sigmoid')(interaction)
       # interaction_layer_2 = Dense(50, activation='sigmoid')(interaction_layer)
       # added = Add()([main_effect_layer_2, interaction_layer_2])
       # out = Dense(1, activation='sigmoid')(added)
       # reg = Model(inputs=[main_effect, interaction], outputs=out)
-      out = Dense(1, activation='sigmoid')(main_effect_layer_2)
+      out = Dense(1, activation='sigmoid')(main_effect_layer)
       reg = Model(inputs=main_effect, outputs=out)
       if clf:
         loss = 'binary_crossentropy'
@@ -82,7 +82,7 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
         'units1': 200,
         'dropout1': 0.0,
         'lr': 0.001,
-        'epochs': 100
+        'epochs': 20
       }
 
     # graph = tf.Graph()
