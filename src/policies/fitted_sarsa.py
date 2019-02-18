@@ -26,8 +26,10 @@ import pickle as pkl
 from src.utils.misc import random_argsort
 # import pprofile
 import multiprocessing as mp
+import copy
 import yaml
 import keras.backend as K
+from scipy.special import expit
 import argparse
 
 
@@ -67,11 +69,13 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     X_interaction = np.column_stack((X, X_times_infection))
     clf = LogisticRegression()
     clf.fit(X_interaction, y)
+    coefficients = copy.deepcopy(np.concatenate((clf.intercept_, clf.coef_[0])))
 
     def q0_piecewise(X_):
       Xix = np.multiply(X_, X_[:, 2][:, np.newaxis])
-      Xnew = np.column_stack((X_, Xix))
-      return clf.predict_proba(Xnew)[:, -1]
+      Xnew = np.column_stack((np.ones(X_.shape[0]), X_, Xix))
+      prob = expit(np.dot(Xnew, coefficients))
+      return prob
 
     q0_dict[T] = q0_piecewise
 
@@ -491,6 +495,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
   results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
 
   for T in qhat0_dict.keys():
+    pdb.set_trace()
     qhat0 = qhat0_dict[T]
     qhat0_mb = qhat0_mb_dict[T]
 
@@ -507,7 +512,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
 
     for ix in reference_state_indices:
       # evaluate_optimal_qfn_policy(qhat1, )
-      print('Computing estimated q vals at (s, a) {}'.format(ix))
+      # print('Computing estimated q vals at (s, a) {}'.format(ix))
       x = X[ix]
 
       x_raw = X_raw[ix]
