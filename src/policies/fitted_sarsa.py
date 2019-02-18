@@ -66,8 +66,8 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     not_infected_indices = np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0]
     q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, infected_indices, not_infected_indices,
                                                                 model_name_0, test=test)
-
     pdb.set_trace()
+
     # Simple model for debugging purposes
     # clf = model_fitters.SKLogit2()
     # clf.fit(X, y, None, False, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],
@@ -88,37 +88,30 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       q0_piecewise_T = q0_dict[T]
 
       def q0_at_block(a):
-        infected_indices = np.where(env.X_raw[-1][:, -1] == 1)[0]
-        not_infected_indices = np.where(env.X_raw[-1][:, -1] == 0)[0]
         X_at_a = env.data_block_at_action(-1, a)
-        q_vals = q0_piecewise_T(X_at_a, infected_indices, not_infected_indices)
+        q_vals = q0_piecewise_T(X_at_a)
         return q_vals
 
       for ix, x in enumerate(env.X[1:T]):
         # Get infected and not-infected indices for piecewise predictions
         x_raw = env.X_raw[ix+1]
-        infected_indices = np.where(x_raw[:, -1] == 1)[0]
-        not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
 
         a = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
         x_at_a = env.data_block_at_action(ix, a)
 
-        q0_at_a = q0_piecewise_T(x_at_a, infected_indices, not_infected_indices)
+        q0_at_a = q0_piecewise_T(x_at_a)
         q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_at_a)
 
         infected_indices_tm1 = np.where(env.X_raw[ix-1][:, -1] == 1)[0]
         not_infected_indices_tm1 = np.where(env.X_raw[ix-1][:, -1] == 0)[0]
-        q0_at_xm1 = q0_piecewise_T(env.X[ix-1], infected_indices_tm1, not_infected_indices_tm1)
+        q0_at_xm1 = q0_piecewise_T(env.X[ix-1])
         q0_evaluate_at_xm1 = np.append(q0_evaluate_at_xm1, q0_at_xm1)
 
       X2 = np.vstack(env.X_2[:T-1])
       q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       # q1_target = np.hstack(env.y[:T-1]) + gamma * q0_evaluate_at_pi
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
-      q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 1)[0],
-                                                                 np.where(np.vstack(env.X_raw[:T-1])[:, -1] == 0)[0],
-                                                                 model_name_1,
-                                                                 test=test)
+      q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, model_name_1, test=test)
       q1_dict[T] = q1_piecewise
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
@@ -137,10 +130,8 @@ def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_
   np.random.seed(rep)
 
   def q_at_block(a):
-      infected_indices = np.where(env.X_raw[-1][:, -1] == 1)[0]
-      not_infected_indices = np.where(env.X_raw[-1][:, -1] == 0)[0]
       X_at_a = env.data_block_at_action(-1, a, neighbor_order=int(iterations+1))
-      q_vals = q(X_at_a, infected_indices, not_infected_indices)
+      q_vals = q(X_at_a)
       return q_vals
 
   q_rep = 0.0
@@ -156,6 +147,7 @@ def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_
     r_t = np.sum(env.current_infected)
     q_rep += gamma**(t+1) * r_t
     return q_rep
+
 
 def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, iterations=0):
   """
@@ -519,8 +511,6 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       x = X[ix]
 
       x_raw = X_raw[ix]
-      infected_indices = np.where(x_raw[:, -1] == 1)[0]
-      not_infected_indices = np.where(x_raw[:, -1] == 0)[0]
 
       # Evaluate 0-step q functions
       a_, y_ = x_raw[:, 1], x_raw[:, 2]
@@ -536,7 +526,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       # Compare to true probabilities
       kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
       true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
-      qhat0_probs = qhat0(x, infected_indices, not_infected_indices)
+      qhat0_probs = qhat0(x)
       qhat0_mb_probs = qhat0_mb(x_raw)
       if ix == 0:
         pdb.set_trace()

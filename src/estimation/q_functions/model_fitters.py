@@ -6,8 +6,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from scipy.linalg import block_diag
 from scipy.special import expit, logit
-from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.models import Sequential, Model
+from keras.layers import Dense, Dropout, Input, Add
 from keras.regularizers import L1L2
 from keras import backend as K
 import tensorflow as tf
@@ -35,33 +35,23 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
 
     # Define model as function of grid params
     def model(X_train, y_train, X_val, y_val, params):
-      reg = Sequential()
-      # SImple logistic regression for debugging!
-      # reg.add(Dense(params['units1'], input_dim=input_shape, activation='sigmoid',
-      #               kernel_initializer='normal'))
-      reg.add(Dense(1, input_dim=input_shape, activation='sigmoid',
-                    kernel_initializer='normal'))
-      # reg.add(Dropout(params['dropout1']))
-      # reg.add(Dense(params['units2'], activation='sigmoid',
-      #               kernel_initializer='normal'))
-      # reg.add(Dropout(params['dropout2']))
-      # reg.add(Dense(params['units3'], activation='sigmoid',
-      #               kernel_initializer='normal'))
-      # reg.add(Dropout(params['dropout3']))
-      # if clf:
-      #   reg.add(Dense(1, activation='sigmoid'))
-      # else:
-      #   reg.add(Dense(1))
+      main_effect = Input(input_shape)
+      main_effect_layer = Dense(20, activation='sigmoid')(main_effect)
+      interaction = Input(input_shape)
+      interaction_layer = Dense(20, activation='sigmoid')(interaction)
+      added = Add()([main_effect_layer, interaction_layer])
+      out = Dense(1, activation='sigmoid')
+      reg = Model(inputs=[main_effect, interaction], outputs=out)
       if clf:
         loss = 'binary_crossentropy'
       else:
         loss = 'mean_squared_error'
       reg.compile(optimizer='adam', loss=loss, metrics=['binary_accuracy'])
       if X_val is not None:
-        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
+        history = reg.fit([X_train, X_train], y_train, verbose=True, epochs=params['epochs'],
                           validation_data=[X_val, y_val])
       else:
-        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'], validation_split=0.2)
+        history = reg.fit([X_train, X_train], y_train, verbose=True, epochs=params['epochs'], validation_split=0.2)
       return history, reg
 
     # Search
@@ -91,73 +81,45 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
         'epochs': 20
       }
 
-    graph = tf.Graph()
-    with graph.as_default():
-      session = tf.Session()
-      init = tf.global_variables_initializer()
-      session.run(init)
-      with session.as_default():
-        _, best_reg = model(X, y, None, None, best_params)
+    # graph = tf.Graph()
+    # with graph.as_default():
+    #   session = tf.Session()
+    #   init = tf.global_variables_initializer()
+    #   session.run(init)
+    #   with session.as_default():
+    _, best_reg = model(X, y, None, None, best_params)
     predictor = best_reg
 
     # predictor = ta.Predict(search)
 
-    return predictor, graph
+    return predictor
 
 
-def fit_piecewise_keras_classifier(X, y, infected_indices, not_infected_indices, model_name, best_params=None,
+def fit_piecewise_keras_classifier(X, y, model_name, best_params=None,
                                    test=False, tune=True):
   """
-  FIt separate kears infection probability models for infected and non-infected locations.
+  FIt separate kears infection probability models.
   :param X:
   :param y:
-  :param infected_indices:
-  :param not_infected_indices:
   :return:
 
   """
   input_shape = X.shape[1]
 
   if not tune:
-    # Fit infected model
     reg = Sequential()
     reg.add(Dense(units=50, input_dim=input_shape, activation='relu'))
     reg.add(Dense(units=50, activation='relu'))
     reg.add(Dense(1, activation='sigmoid'))
     reg.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-    reg.fit(X[infected_indices], y[infected_indices], sample_weight=None, verbose=True, epochs=5)
-
-    # Fit not-infected model
-    reg_not_inf = Sequential()
-    reg_not_inf.add(Dense(units=50, input_dim=input_shape, activation='relu'))
-    reg_not_inf.add(Dense(units=50, activation='relu'))
-    reg_not_inf.add(Dense(1, activation='sigmoid'))
-    reg_not_inf.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-    reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], sample_weight=None, verbose=True, epochs=5)
+    reg.fit(X, y, sample_weight=None, verbose=True, epochs=5)
 
   else:
-    reg, graph_inf = keras_hyperparameter_search(X[infected_indices], y[infected_indices], model_name + '-infected',
-                                                 best_params=best_params, clf=True, test=test)
-    reg_not_inf, graph_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices],
-                                                              model_name + '-not-infected',
-                                                             best_params=best_params, clf=True, test=test)
+    reg = keras_hyperparameter_search(X, y, model_name + '-infected',
+                                      best_params=best_params, clf=True, test=test)
 
-  def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
-    probs = np.zeros(X_.shape[0])
-    # Predict infected locations within appropriate session
-    with graph_inf.as_default():
-      session = tf.Session()
-      init = tf.global_variables_initializer()
-      session.run(init)
-      with session.as_default():
-        probs[infected_indices_] = reg.predict_proba(X_[infected_indices_]).flatten()
-    # Likewise for not-infected
-    with graph_not_inf.as_default():
-      session = tf.Session()
-      init = tf.global_variables_initializer()
-      session.run(init)
-      with session.as_default():
-        probs[not_infected_indices_] = reg_not_inf.predict_proba(X_[not_infected_indices_]).flatten()
+  def predict_proba_piecewise(X_):
+    probs = reg.predict(X_)
     return probs
 
   # return reg, graph
