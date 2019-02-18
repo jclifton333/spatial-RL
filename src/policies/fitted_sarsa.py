@@ -62,10 +62,12 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     y = np.hstack(env.y[:T])
     X = np.vstack(env.X[:T])
     model_name_0 = 'L=100-T={}-k=0-{}'.format(T, timestamp)
-    q0_piecewise = model_fitters.fit_piecewsie_keras_classifier(X, y, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],
-                                                                np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0],
+    infected_indices = np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0]
+    not_infected_indices = np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0]
+    q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, infected_indices, not_infected_indices,
                                                                 model_name_0, test=test)
 
+    pdb.set_trace()
     # Simple model for debugging purposes
     # clf = model_fitters.SKLogit2()
     # clf.fit(X, y, None, False, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],

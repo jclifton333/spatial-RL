@@ -15,7 +15,7 @@ from keras import optimizers
 import talos as ta
 
 
-def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
+def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, test=False):
     """
 
     :param X:
@@ -29,42 +29,39 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
       'dropout1': (0, 0.5, 3),
       'epochs': [1, 20, 50],
       'units1': [20, 50, 100],
-      'dropout2': (0, 0.5, 3),
-      'units2': [10, 20, 50],
-      'dropout3': [0.0],
-      'units3': [100],
       'lr': (0.5, 5, 5)
     }
-
     input_shape = X.shape[1]
 
     # Define model as function of grid params
     def model(X_train, y_train, X_val, y_val, params):
       reg = Sequential()
-      reg.add(Dense(params['units1'], input_dim=input_shape, activation='sigmoid',
+      # SImple logistic regression for debugging!
+      # reg.add(Dense(params['units1'], input_dim=input_shape, activation='sigmoid',
+      #               kernel_initializer='normal'))
+      reg.add(Dense(1, input_dim=input_shape, activation='sigmoid',
                     kernel_initializer='normal'))
-      reg.add(Dropout(params['dropout1']))
-      reg.add(Dense(params['units2'], activation='sigmoid',
-                    kernel_initializer='normal'))
-      reg.add(Dropout(params['dropout2']))
-      reg.add(Dense(params['units3'], activation='sigmoid',
-                    kernel_initializer='normal'))
-      reg.add(Dropout(params['dropout3']))
-      if clf:
-        reg.add(Dense(1, activation='sigmoid'))
-      else:
-        reg.add(Dense(1))
+      # reg.add(Dropout(params['dropout1']))
+      # reg.add(Dense(params['units2'], activation='sigmoid',
+      #               kernel_initializer='normal'))
+      # reg.add(Dropout(params['dropout2']))
+      # reg.add(Dense(params['units3'], activation='sigmoid',
+      #               kernel_initializer='normal'))
+      # reg.add(Dropout(params['dropout3']))
+      # if clf:
+      #   reg.add(Dense(1, activation='sigmoid'))
+      # else:
+      #   reg.add(Dense(1))
       if clf:
         loss = 'binary_crossentropy'
       else:
         loss = 'mean_squared_error'
-      optim = optimizers.SGD(lr=params['lr'])
-      reg.compile(optimizer=optim, loss=loss, metrics=['acc'])
+      reg.compile(optimizer='adam', loss=loss, metrics=['binary_accuracy'])
       if X_val is not None:
         history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
                           validation_data=[X_val, y_val])
       else:
-        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'])
+        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'], validation_split=0.2)
       return history, reg
 
     # Search
@@ -86,16 +83,13 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     #   'epochs': int(best_params['epochs'])
     # }
 
-    best_params = {
-      'units1': 200,
-      'dropout1': 0.0,
-      'units2': 200,
-      'dropout2': 0.0,
-      'units3': 100,
-      'dropout3': 0.0,
-      'lr': 0.001,
-      'epochs': 20
-    }
+    if best_params is None:
+      best_params = {
+        'units1': 200,
+        'dropout1': 0.0,
+        'lr': 0.001,
+        'epochs': 20
+      }
 
     graph = tf.Graph()
     with graph.as_default():
@@ -111,7 +105,8 @@ def keras_hyperparameter_search(X, y, model_name, clf=False, test=False):
     return predictor, graph
 
 
-def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices, model_name, test=False, tune=True):
+def fit_piecewise_keras_classifier(X, y, infected_indices, not_infected_indices, model_name, best_params=None,
+                                   test=False, tune=True):
   """
   FIt separate kears infection probability models for infected and non-infected locations.
   :param X:
@@ -142,9 +137,10 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
 
   else:
     reg, graph_inf = keras_hyperparameter_search(X[infected_indices], y[infected_indices], model_name + '-infected',
-                                                 clf=True, test=test)
-    reg_not_inf , graph_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices],
-                                                              model_name + '-not-infected', clf=True, test=test)
+                                                 best_params=best_params, clf=True, test=test)
+    reg_not_inf, graph_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices],
+                                                              model_name + '-not-infected',
+                                                             best_params=best_params, clf=True, test=test)
 
   def predict_proba_piecewise(X_, infected_indices_, not_infected_indices_):
     probs = np.zeros(X_.shape[0])
@@ -154,14 +150,14 @@ def fit_piecewsie_keras_classifier(X, y, infected_indices, not_infected_indices,
       init = tf.global_variables_initializer()
       session.run(init)
       with session.as_default():
-        probs[infected_indices_] = reg.predict(X_[infected_indices_]).flatten()
+        probs[infected_indices_] = reg.predict_proba(X_[infected_indices_]).flatten()
     # Likewise for not-infected
     with graph_not_inf.as_default():
       session = tf.Session()
       init = tf.global_variables_initializer()
       session.run(init)
       with session.as_default():
-        probs[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_]).flatten()
+        probs[not_infected_indices_] = reg_not_inf.predict_proba(X_[not_infected_indices_]).flatten()
     return probs
 
   # return reg, graph
