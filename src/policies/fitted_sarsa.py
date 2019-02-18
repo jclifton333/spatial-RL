@@ -33,6 +33,22 @@ from scipy.special import expit
 import argparse
 
 
+def sklogit2(X, y):
+  X_times_infection = np.multiply(X, X[:, 2][:, np.newaxis])
+  X_interaction = np.column_stack((X, X_times_infection))
+  clf = LogisticRegression()
+  clf.fit(X_interaction, y)
+  coefficients = copy.deepcopy(np.concatenate((clf.intercept_, clf.coef_[0])))
+
+  def q0_piecewise(X_):
+    Xix = np.multiply(X_, X_[:, 2][:, np.newaxis])
+    Xnew = np.column_stack((np.ones(X_.shape[0]), X_, Xix))
+    prob = expit(np.dot(Xnew, coefficients))
+    return prob
+
+  return q0_piecewise
+
+
 def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
   if test:
     time_horizons = [4, 5]
@@ -65,18 +81,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     X = np.vstack(env.X[:T])
     model_name_0 = 'L=100-T={}-k=0-{}'.format(T, timestamp)
     # q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, model_name_0, test=test)
-    X_times_infection = np.multiply(X, X[:, 2][:, np.newaxis])
-    X_interaction = np.column_stack((X, X_times_infection))
-    clf = LogisticRegression()
-    clf.fit(X_interaction, y)
-    coefficients = copy.deepcopy(np.concatenate((clf.intercept_, clf.coef_[0])))
-
-    def q0_piecewise(X_):
-      Xix = np.multiply(X_, X_[:, 2][:, np.newaxis])
-      Xnew = np.column_stack((np.ones(X_.shape[0]), X_, Xix))
-      prob = expit(np.dot(Xnew, coefficients))
-      return prob
-
+    q0_piecewise = sklogit2(X, y)
     q0_dict[T] = q0_piecewise
 
     # Fit one-step model-based as comparison
@@ -495,7 +500,6 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
   results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
 
   for T in qhat0_dict.keys():
-    pdb.set_trace()
     qhat0 = qhat0_dict[T]
     qhat0_mb = qhat0_mb_dict[T]
 
