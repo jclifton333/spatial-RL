@@ -35,12 +35,12 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
 
     # Define model as function of grid params
     def model(X_train, y_train, X_val, y_val, params):
-      main_effect = Input(input_shape)
+      main_effect = Input(shape=(input_shape,))
       main_effect_layer = Dense(20, activation='sigmoid')(main_effect)
-      interaction = Input(input_shape)
+      interaction = Input(shape=(input_shape,))
       interaction_layer = Dense(20, activation='sigmoid')(interaction)
       added = Add()([main_effect_layer, interaction_layer])
-      out = Dense(1, activation='sigmoid')
+      out = Dense(1, activation='sigmoid')(added)
       reg = Model(inputs=[main_effect, interaction], outputs=out)
       if clf:
         loss = 'binary_crossentropy'
@@ -119,7 +119,7 @@ def fit_piecewise_keras_classifier(X, y, model_name, best_params=None,
                                       best_params=best_params, clf=True, test=test)
 
   def predict_proba_piecewise(X_):
-    probs = reg.predict(X_)
+    probs = reg.predict([X_, X_])
     return probs
 
   # return reg, graph

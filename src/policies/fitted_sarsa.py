@@ -62,11 +62,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     y = np.hstack(env.y[:T])
     X = np.vstack(env.X[:T])
     model_name_0 = 'L=100-T={}-k=0-{}'.format(T, timestamp)
-    infected_indices = np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0]
-    not_infected_indices = np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0]
-    q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, infected_indices, not_infected_indices,
-                                                                model_name_0, test=test)
-    pdb.set_trace()
+    q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, model_name_0, test=test)
 
     # Simple model for debugging purposes
     # clf = model_fitters.SKLogit2()
@@ -528,8 +524,6 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
       qhat0_probs = qhat0(x)
       qhat0_mb_probs = qhat0_mb(x_raw)
-      if ix == 0:
-        pdb.set_trace()
       qhat0_mses.append(float(np.mean((true_probs - qhat0_probs)**2)))
       qhat0_mb_mses.append(float(np.mean((true_probs - qhat0_mb_probs)**2)))
 
