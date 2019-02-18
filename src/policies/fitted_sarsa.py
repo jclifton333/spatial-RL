@@ -62,13 +62,17 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     y = np.hstack(env.y[:T])
     X = np.vstack(env.X[:T])
     model_name_0 = 'L=100-T={}-k=0-{}'.format(T, timestamp)
-    q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, model_name_0, test=test)
+    # q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, model_name_0, test=test)
+    X_times_infection = np.multiply(X, X[:, 2][:, np.newaxis])
+    X_interaction = np.column_stack((X, X_times_infection))
+    clf = LogisticRegression()
+    clf.fit(X_interaction, y)
 
-    # Simple model for debugging purposes
-    # clf = model_fitters.SKLogit2()
-    # clf.fit(X, y, None, False, np.where(np.vstack(env.X_raw[:T])[:, -1] == 1)[0],
-    #         np.where(np.vstack(env.X_raw[:T])[:, -1] == 0)[0])
-    # q0_piecewise = clf.predict_proba
+    def q0_piecewise(X_):
+      Xix = np.multiply(X_, X_[:, 2][:, np.newaxis])
+      Xnew = np.column_stack((X_, Xix))
+      return clf.predict_proba(Xnew)[:, -1]
+
     q0_dict[T] = q0_piecewise
 
     # Fit one-step model-based as comparison
