@@ -38,12 +38,14 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
       main_effect = Input(shape=(input_shape,))
       main_effect_layer = Dense(50, activation='sigmoid')(main_effect)
       main_effect_layer_2 = Dense(50, activation='sigmoid')(main_effect_layer)
-      interaction = Input(shape=(input_shape,))
-      interaction_layer = Dense(50, activation='sigmoid')(interaction)
-      interaction_layer_2 = Dense(50, activation='sigmoid')(interaction_layer)
-      added = Add()([main_effect_layer_2, interaction_layer_2])
-      out = Dense(1, activation='sigmoid')(added)
-      reg = Model(inputs=[main_effect, interaction], outputs=out)
+      # interaction = Input(shape=(input_shape,))
+      # interaction_layer = Dense(50, activation='sigmoid')(interaction)
+      # interaction_layer_2 = Dense(50, activation='sigmoid')(interaction_layer)
+      # added = Add()([main_effect_layer_2, interaction_layer_2])
+      # out = Dense(1, activation='sigmoid')(added)
+      # reg = Model(inputs=[main_effect, interaction], outputs=out)
+      out = Dense(1, activation='sigmoid')(main_effect_layer_2)
+      reg = Model(inputs=main_effect, outputs=out)
       if clf:
         loss = 'binary_crossentropy'
       else:
@@ -53,7 +55,7 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
         history = reg.fit([X_train, X_train], y_train, verbose=True, epochs=params['epochs'],
                           validation_data=[X_val, y_val])
       else:
-        history = reg.fit([X_train, X_train], y_train, verbose=True, epochs=params['epochs'])
+        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'])
       return history, reg
 
     # Search
@@ -121,7 +123,7 @@ def fit_piecewise_keras_classifier(X, y, model_name, best_params=None,
                                       best_params=best_params, clf=True, test=test)
 
   def predict_proba_piecewise(X_):
-    probs = reg.predict([X_, X_])
+    probs = reg.predict(X_)
     return probs
 
   # return reg, graph
