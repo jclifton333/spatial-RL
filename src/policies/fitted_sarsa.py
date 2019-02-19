@@ -203,6 +203,7 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
 
   pool = mp.Pool(MC_REPLICATES)
   q_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
+  pool.terminate()
   q = np.mean(q_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
 
