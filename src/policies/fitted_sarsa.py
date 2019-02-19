@@ -33,20 +33,38 @@ from scipy.special import expit
 import argparse
 
 
-def sklogit2(X, y):
-  X_times_infection = np.multiply(X, X[:, 2][:, np.newaxis])
-  X_interaction = np.column_stack((X, X_times_infection))
-  clf = LogisticRegression()
-  clf.fit(X_interaction, y)
-  coefficients = copy.deepcopy(np.concatenate((clf.intercept_, clf.coef_[0])))
+class sklogit3(object):
+  def __init__(self, X, y):
+   X = np.column_stack((np.ones(X.shape[0]), X))
+   X_times_infection = np.multiply(X, X[:, 2][:, np.newaxis])
+   X_interaction = np.column_stack((X, X_times_infection))
+   clf = LogisticRegression(fit_intercept=False)
+   clf.fit(X_interaction, y)
+   self.coefficients = clf.coef_[0]
 
-  def q0_piecewise(X_):
+  def predict(self, X_):
+    X_ = np.column_stack((np.ones(X_.shape[0]), X_))
     Xix = np.multiply(X_, X_[:, 2][:, np.newaxis])
-    Xnew = np.column_stack((np.ones(X_.shape[0]), X_, Xix))
-    prob = expit(np.dot(Xnew, coefficients))
+    Xnew = np.column_stack((X_, Xix))
+    prob = expit(np.dot(Xnew, self.coefficients))
     return prob
 
-  return q0_piecewise
+
+class q_mb_wrapper(object):
+  """
+  Need this bc of STUPID pickling issues.
+  """
+  def __init__(self, env, L, T):
+    # Get model-based
+    indices = np.array([[l for l in range(L)] for t in range(T)])
+    eta = fit_sis_transition_model(env, indices=indices)
+    self.eta = eta
+    self.L = L
+    self.adjacency_list = env.adjacency_list
+
+  def predict(self, X_raw):
+    return sis_infection_probability(X_raw[:, 1], X_raw[:, 2], self.eta, self.L, self.adjacency_list,
+                                     **{'s': X_raw[:, 0], 'omega': 0.0})
 
 
 def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
@@ -81,12 +99,12 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     X = np.vstack(env.X[:T])
     model_name_0 = 'L=100-T={}-k=0-{}'.format(T, timestamp)
     # q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, model_name_0, test=test)
-    q0_piecewise = sklogit2(X, y)
-    q0_dict[T] = q0_piecewise
+    q0_piecewise = sklogit3(X, y)
+    q0_dict[T] = q0_piecewise.predict
 
     # Fit one-step model-based as comparison
-    q0_mb, _ = fit_one_step_sis_mb_q(env, indices=np.array([[l for l in range(L)] for t in range(T)]))
-    q0_mb_dict[T] = q0_mb
+    q0_mb_wrapper_ = q_mb_wrapper(env, L, T)
+    q0_mb_dict[T] = q0_mb_wrapper_.predict
 
   if iterations == 1:
     for T in time_horizons:
@@ -183,7 +201,7 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
                                     initial_action=initial_action, time_horizon=TIME_HORIZON,
                                     treatment_budget=treatment_budget, gamma=gamma)
 
-  pool = mp.Pool(2)
+  pool = mp.Pool(MC_REPLICATES)
   q_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
   q = np.mean(q_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
@@ -523,14 +541,14 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
 
       # Evaluate 0-step q functions
       a_, y_ = x_raw[:, 1], x_raw[:, 2]
-      # q0_value, q0_value_se = evaluate_optimal_qfn_policy(qhat0, L, y_, a_, test,
-      #                                                     iterations=iterations)
-      # q0_mb_value, q0_mb_value_se = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
-      #                                                           iterations=iterations)
-      # qhat0_vals.append(float(q0_value))
-      # qhat0_mb_vals.append(float(q0_mb_value))
-      # qhat0_ses.append(float(q0_value_se))
-      # qhat0_mb_ses.append(float(q0_mb_value_se))
+      q0_value, q0_value_se = evaluate_optimal_qfn_policy(qhat0, L, y_, a_, test,
+                                                          iterations=iterations)
+      q0_mb_value, q0_mb_value_se = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
+                                                                iterations=iterations)
+      qhat0_vals.append(float(q0_value))
+      qhat0_mb_vals.append(float(q0_mb_value))
+      qhat0_ses.append(float(q0_value_se))
+      qhat0_mb_ses.append(float(q0_mb_value_se))
 
       # Compare to true probabilities
       kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
