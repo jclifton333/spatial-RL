@@ -19,6 +19,7 @@ import src.environments.generate_network as generate_network
 import src.estimation.q_functions.model_fitters as model_fitters
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
 from src.environments.sis_infection_probs import sis_infection_probability
+from src.environments.sis import convert_second_order_encoding_to_first_order
 from src.estimation.q_functions.one_step import fit_one_step_sis_mb_q
 from sklearn.ensemble import RandomForestRegressor
 import numpy as np
@@ -58,9 +59,10 @@ class q1_rf(object):
     self.gamma = gamma
     self.q0 = q0
 
-  def predict(self, X_):
-    q0max = self.rf.predict(X_)
-    q0 = self.q0(X_)
+  def predict(self, x1):
+    q0max = self.rf.predict(x1)
+    x0 = convert_second_order_encoding_to_first_order(x1)
+    q0 = self.q0(x0)
     return q0 + self.gamma * q0max
 
 
@@ -151,7 +153,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
-      q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T)
+      q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma)
       q1_dict[T] = q1_piecewise.predict
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
@@ -170,9 +172,9 @@ def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_
   np.random.seed(rep)
 
   def q_at_block(a):
-      X_at_a = env.data_block_at_action(-1, a, neighbor_order=int(iterations+1))
-      q_vals = q(X_at_a)
-      return q_vals
+    x_at_a = env.data_block_at_action(-1, a, neighbor_order=int(iterations + 1))
+    q_vals = q(x_at_a)
+    return q_vals
 
   q_rep = 0.0
   q1_rep = 0.0
@@ -541,9 +543,9 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
   for T in qhat0_dict.keys():
     if iterations == 0:
       qhat = qhat0_dict[T]
-      qhat_mb = qhat0_mb_dict[T]
     elif iterations == 1:
       qhat = qhat1_dict[T]
+    qhat_mb = qhat0_mb_dict[T]
 
     qhat_vals = []
     qhat_mb_vals = []
@@ -556,10 +558,8 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     for ix in range(1):  # Only evaluate at one ref state!
       # evaluate_optimal_qfn_policy(qhat1, )
       # print('Computing estimated q vals at (s, a) {}'.format(ix))
-      if iterations == 0:
-        x = X[ix]
-      elif iterations == 1:
-        x = X2[ix]
+      x0 = X[ix]
+      x1 = X2[ix]
       x_raw = X_raw[ix]
 
       a_, y_ = x_raw[:, 1], x_raw[:, 2]
@@ -577,11 +577,12 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
         kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
         true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
         true_q_mb = true_q = np.sum(true_probs)
+        qhat_x = np.sum(qhat(x0))
       elif iterations == 1:
         true_q = q1
         true_q_mb = q1_mb
+        qhat_x = np.sum(qhat(x1))
 
-      qhat_x = np.sum(qhat(x))
       qhat_mb_x = np.sum(qhat_mb(x_raw))
       qhat_mses.append(float((true_q - qhat_x)**2))
       qhat_mb_mses.append(float((true_q_mb - qhat_mb_x)**2))

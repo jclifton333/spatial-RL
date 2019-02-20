@@ -519,3 +519,19 @@ def update_counts_for_likelihood_(counts_for_likelihood, data_block, y, y_next, 
   counts_for_likelihood['a_1'] = np.append(counts_for_likelihood['a_1'],
                                                 new_counts_for_likelihood['a_1'])
   return counts_for_likelihood
+
+
+def convert_second_order_encoding_to_first_order(X2):
+  """
+  Collapse an encoding of second-order neighbor covariates into first-order.
+
+  :param X2:
+  :return:
+  """
+  offset = [0, 8, 16, 24, 32, 40, 48, 56]
+  first_order_encoding = np.array([
+    np.sum(X2[:, [i + j for j in offset]], axis=1) for i in range(8)
+  ])
+  X = np.column_stack((X2[:, :3], first_order_encoding.T))
+  return X
+

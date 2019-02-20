@@ -38,7 +38,6 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
   sample_qs = []
   for ix, act in enumerate(acts_to_evaluate):
     sample_qs.append(q(act))
-    print('evluating q function on sample {}'.format(ix))
   return np.array(sample_qs), acts_to_evaluate
 
 
