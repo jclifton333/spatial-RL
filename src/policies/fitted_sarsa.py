@@ -152,7 +152,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
       q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T)
-      q1_dict[T] = q1_piecewise
+      q1_dict[T] = q1_piecewise.predict
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
     return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
@@ -539,56 +539,62 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
   results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
 
   for T in qhat0_dict.keys():
-    qhat0 = qhat0_dict[T]
-    qhat0_mb = qhat0_mb_dict[T]
+    if iterations == 0:
+      qhat = qhat0_dict[T]
+      qhat_mb = qhat0_mb_dict[T]
+    elif iterations == 1:
+      qhat = qhat1_dict[T]
 
-    if iterations == 1:
-      qhat1 = qhat1_dict[T]
-
-    qhat0_vals = []
-    qhat0_mb_vals = []
-    qhat0_ses = []
-    qhat0_mb_ses = []
-    qhat1_vals = []
-    qhat0_mses = []
-    qhat0_mb_mses = []
+    qhat_vals = []
+    qhat_mb_vals = []
+    qhat_ses = []
+    qhat_mb_ses = []
+    qhat_mses = []
+    qhat_mb_mses = []
 
     # for ix in reference_state_indices:
     for ix in range(1):  # Only evaluate at one ref state!
       # evaluate_optimal_qfn_policy(qhat1, )
       # print('Computing estimated q vals at (s, a) {}'.format(ix))
-      x = X[ix]
-
+      if iterations == 0:
+        x = X[ix]
+      elif iterations == 1:
+        x = X2[ix]
       x_raw = X_raw[ix]
 
-      # Evaluate 0-step q functions
       a_, y_ = x_raw[:, 1], x_raw[:, 2]
-      q0_value, q0_value_se, q1, se1 = evaluate_optimal_qfn_policy(qhat0, L, y_, a_, test,
-                                                                   iterations=iterations)
-      q0_mb_value, q0_mb_value_se, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
-                                                                               iterations=iterations)
-      qhat0_vals.append(float(q0_value))
-      qhat0_mb_vals.append(float(q0_mb_value))
-      qhat0_ses.append(float(q0_value_se))
-      qhat0_mb_ses.append(float(q0_mb_value_se))
+      q, se, q1, se1 = evaluate_optimal_qfn_policy(qhat, L, y_, a_, test,
+                                                   iterations=iterations)
+      q_mb, se_mb, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat_mb, L, y_, a_, test,
+                                                               iterations=iterations)
+      qhat_vals.append(float(q))
+      qhat_mb_vals.append(float(q_mb))
+      qhat_ses.append(float(se))
+      qhat_mb_ses.append(float(se_mb))
 
-      # Compare to true probabilities
-      kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
-      true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
-      qhat0_probs = qhat0(x)
-      qhat0_mb_probs = qhat0_mb(x_raw)
-      qhat0_mses.append(float(np.mean((true_probs - qhat0_probs)**2)))
-      qhat0_mb_mses.append(float(np.mean((true_probs - qhat0_mb_probs)**2)))
+      # Compare to q values
+      if iterations == 0:
+        kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
+        true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
+        true_q_mb = true_q = np.sum(true_probs)
+      elif iterations == 1:
+        true_q = q1
+        true_q_mb = q1_mb
+
+      qhat_x = np.sum(qhat(x))
+      qhat_mb_x = np.sum(qhat_mb(x_raw))
+      qhat_mses.append(float((true_q - qhat_x)**2))
+      qhat_mb_mses.append(float((true_q_mb - qhat_mb_x)**2))
 
       if iterations == 1:
         x_2 = X2[ix]
         qhat1_at_state = np.sum(qhat1(x_2, infected_indices, not_infected_indices))
         qhat1_vals.append(float(qhat1_at_state))
 
-    results_dict[T] = {'qhat0_vals': qhat0_vals, 'qhat0_mean_val': float(np.mean(qhat0_vals)),
-                       'qhat0_mse': float(np.mean(qhat0_mses)), 'qhat0_mb_vals': qhat0_mb_vals,
-                       'qhat0_mb_mean_val': float(np.mean(qhat0_mb_vals)),
-                       'qhat0_mb_mse': float(np.mean(qhat0_mb_mses))}
+    results_dict[T] = {'qhat0_vals': qhat_vals, 'qhat0_mean_val': float(np.mean(qhat_vals)),
+                       'qhat0_mse': float(np.mean(qhat_mses)), 'qhat0_mb_vals': qhat_mb_vals,
+                       'qhat0_mb_mean_val': float(np.mean(qhat_mb_vals)),
+                       'qhat0_mb_mse': float(np.mean(qhat_mb_mses))}
     if not test:
       with open(fname, 'w') as outfile:
         yaml.dump(results_dict, outfile)
