@@ -19,7 +19,7 @@ import src.environments.generate_network as generate_network
 import src.estimation.q_functions.model_fitters as model_fitters
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
 from src.environments.sis_infection_probs import sis_infection_probability
-from src.environments.sis import convert_second_order_encoding_to_first_order
+import src.environments.sis as sis_helpers
 from src.estimation.q_functions.one_step import fit_one_step_sis_mb_q
 from sklearn.ensemble import RandomForestRegressor
 import numpy as np
@@ -37,16 +37,18 @@ import argparse
 
 class sklogit3(object):
   def __init__(self, X, y):
+   infections = sis_helpers.convert_first_order_to_infection_status(X)
    X = np.column_stack((np.ones(X.shape[0]), X))
-   X_times_infection = np.multiply(X, X[:, 2][:, np.newaxis])
+   X_times_infection = np.multiply(X, infections[:, np.newaxis])
    X_interaction = np.column_stack((X, X_times_infection))
    clf = LogisticRegression(fit_intercept=False)
    clf.fit(X_interaction, y)
    self.coefficients = clf.coef_[0]
 
   def predict(self, X_):
+    infections = sis_helpers.convert_first_order_to_infection_status(X_)
     X_ = np.column_stack((np.ones(X_.shape[0]), X_))
-    Xix = np.multiply(X_, X_[:, 2][:, np.newaxis])
+    Xix = np.multiply(X_, infections[:, np.newaxis])
     Xnew = np.column_stack((X_, Xix))
     prob = expit(np.dot(Xnew, self.coefficients))
     return prob
@@ -61,7 +63,7 @@ class q1_rf(object):
 
   def predict(self, x1):
     q0max = self.rf.predict(x1)
-    x0 = convert_second_order_encoding_to_first_order(x1)
+    x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
     q0 = self.q0(x0)
     return q0 + self.gamma * q0max
 
@@ -586,11 +588,6 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       qhat_mb_x = np.sum(qhat_mb(x_raw))
       qhat_mses.append(float((true_q - qhat_x)**2))
       qhat_mb_mses.append(float((true_q_mb - qhat_mb_x)**2))
-
-      if iterations == 1:
-        x_2 = X2[ix]
-        qhat1_at_state = np.sum(qhat1(x_2, infected_indices, not_infected_indices))
-        qhat1_vals.append(float(qhat1_at_state))
 
     results_dict[T] = {'qhat0_vals': qhat_vals, 'qhat0_mean_val': float(np.mean(qhat_vals)),
                        'qhat0_mse': float(np.mean(qhat_mses)), 'qhat0_mb_vals': qhat_mb_vals,

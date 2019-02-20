@@ -520,7 +520,8 @@ def update_counts_for_likelihood_(counts_for_likelihood, data_block, y, y_next, 
                                                 new_counts_for_likelihood['a_1'])
   return counts_for_likelihood
 
-
+## Convert between encoding ##
+# ToDo: Jitify!
 def convert_second_order_encoding_to_first_order(X2):
   """
   Collapse an encoding of second-order neighbor covariates into first-order.
@@ -532,6 +533,13 @@ def convert_second_order_encoding_to_first_order(X2):
   first_order_encoding = np.array([
     np.sum(X2[:, [i + j for j in offset]], axis=1) for i in range(8)
   ])
-  X = np.column_stack((X2[:, :3], first_order_encoding.T))
+  X = np.column_stack((X2[:, :8], first_order_encoding.T))
   return X
+
+
+def convert_first_order_to_infection_status(X1):
+  indices_where_infected = [4, 5, 6, 7]
+  y = np.sum(X1[:, indices_where_infected], axis=1) > 0
+  return y
+
 
