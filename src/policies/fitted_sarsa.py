@@ -20,6 +20,7 @@ import src.estimation.q_functions.model_fitters as model_fitters
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
 from src.environments.sis_infection_probs import sis_infection_probability
 from src.estimation.q_functions.one_step import fit_one_step_sis_mb_q
+from sklearn.ensemble import RandomForestRegressor
 import numpy as np
 from functools import partial
 import pickle as pkl
@@ -48,6 +49,19 @@ class sklogit3(object):
     Xnew = np.column_stack((X_, Xix))
     prob = expit(np.dot(Xnew, self.coefficients))
     return prob
+
+
+class q1_rf(object):
+  def __init__(self, X, y, q0, gamma):
+    self.rf = RandomForestRegressor(n_estimators=100)
+    self.rf.fit(X, y)
+    self.gamma = gamma
+    self.q0 = q0
+
+  def predict(self, X_):
+    q0max = self.rf.predict(X_)
+    q0 = self.q0(X_)
+    return q0 + self.gamma * q0max
 
 
 class q_mb_wrapper(object):
@@ -92,6 +106,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
   # 0-step Q-function
   q0_mb_dict = {}
   q0_dict = {}
+  q1_mb_dict = {}
   q1_dict = {}
   print('Fitting q0s')
   for T in time_horizons:
@@ -129,16 +144,14 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q0_at_a = q0_piecewise_T(x_at_a)
         q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_at_a)
 
-        infected_indices_tm1 = np.where(env.X_raw[ix-1][:, -1] == 1)[0]
-        not_infected_indices_tm1 = np.where(env.X_raw[ix-1][:, -1] == 0)[0]
         q0_at_xm1 = q0_piecewise_T(env.X[ix-1])
         q0_evaluate_at_xm1 = np.append(q0_evaluate_at_xm1, q0_at_xm1)
 
       X2 = np.vstack(env.X_2[:T-1])
-      q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
-      # q1_target = np.hstack(env.y[:T-1]) + gamma * q0_evaluate_at_pi
+      # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
+      q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
-      q1_piecewise = model_fitters.fit_piecewise_keras_regressor(X2, q1_target, model_name_1, test=test)
+      q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T)
       q1_dict[T] = q1_piecewise
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
@@ -162,10 +175,12 @@ def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_
       return q_vals
 
   q_rep = 0.0
+  q1_rep = 0.0
   env.reset()
   env.step(initial_action)
   r_0 = np.sum(env.current_infected)
   q_rep += r_0
+  q1_rep += r_0
 
   for t in range(time_horizon):
     # env.step(policy.evaluate(env.X[-1]))
@@ -173,7 +188,9 @@ def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_
     env.step(action)
     r_t = np.sum(env.current_infected)
     q_rep += gamma**(t+1) * r_t
-    return q_rep
+    if t == 0:
+      q1_rep += r_t
+    return q_rep, q1_rep
 
 
 def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, iterations=0):
@@ -202,12 +219,15 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
                                     treatment_budget=treatment_budget, gamma=gamma)
 
   pool = mp.Pool(MC_REPLICATES)
-  q_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
+  q_and_q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
   pool.terminate()
+  q_list = [q for q, q1 in q_and_q1_list]
+  q1_list = [q1 for q, q1 in q_and_q1_list]
   q = np.mean(q_list)
   se = np.std(q_list) / np.sqrt(MC_REPLICATES)
-
-  return q, se
+  q1 = np.mean(q1_list)
+  se1 = np.std(q1_list) / np.sqrt(MC_REPLICATES)
+  return q, se, q1, se1
 
 
 def fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iterations=0):
@@ -533,7 +553,8 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     qhat0_mses = []
     qhat0_mb_mses = []
 
-    for ix in reference_state_indices:
+    # for ix in reference_state_indices:
+    for ix in range(1):  # Only evaluate at one ref state!
       # evaluate_optimal_qfn_policy(qhat1, )
       # print('Computing estimated q vals at (s, a) {}'.format(ix))
       x = X[ix]
@@ -542,10 +563,10 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
 
       # Evaluate 0-step q functions
       a_, y_ = x_raw[:, 1], x_raw[:, 2]
-      q0_value, q0_value_se = evaluate_optimal_qfn_policy(qhat0, L, y_, a_, test,
-                                                          iterations=iterations)
-      q0_mb_value, q0_mb_value_se = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
-                                                                iterations=iterations)
+      q0_value, q0_value_se, q1, se1 = evaluate_optimal_qfn_policy(qhat0, L, y_, a_, test,
+                                                                   iterations=iterations)
+      q0_mb_value, q0_mb_value_se, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat0_mb, L, y_, a_, test,
+                                                                               iterations=iterations)
       qhat0_vals.append(float(q0_value))
       qhat0_mb_vals.append(float(q0_mb_value))
       qhat0_ses.append(float(q0_value_se))
