@@ -157,8 +157,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
       q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma)
       q1_dict[T] = q1_piecewise.predict
-
-    # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
+    
     return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
@@ -584,10 +583,11 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
         true_q = q1
         true_q_mb = q1_mb
         qhat_x = np.sum(qhat(x1))
-
+      
       qhat_mb_x = np.sum(qhat_mb(x_raw))
       qhat_mses.append(float((true_q - qhat_x)**2))
       qhat_mb_mses.append(float((true_q_mb - qhat_mb_x)**2))
+      pdb.set_trace()
 
     results_dict[T] = {'qhat0_vals': qhat_vals, 'qhat0_mean_val': float(np.mean(qhat_vals)),
                        'qhat0_mse': float(np.mean(qhat_mses)), 'qhat0_mb_vals': qhat_mb_vals,
