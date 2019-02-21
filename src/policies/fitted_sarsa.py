@@ -588,7 +588,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
         true_q = q1
         true_q_mb = q1_mb
         qhat_x = np.sum(qhat(x1))
-        qhat1_estimates.append(float(qhatx))
+        qhat1_estimates.append(float(qhat_x))
         true_q1s.append(float(q1))
       
       qhat_mb_x = np.sum(qhat_mb(x_raw))
