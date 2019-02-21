@@ -553,9 +553,11 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     qhat_mb_ses = []
     qhat_mses = []
     qhat_mb_mses = []
+    qhat1_estimates = []
+    true_q1s = []
 
     # for ix in reference_state_indices:
-    for ix in range(1):  # Only evaluate at one ref state!
+    for ix in range(5):  # Only evaluate at one ref state!
       # evaluate_optimal_qfn_policy(qhat1, )
       # print('Computing estimated q vals at (s, a) {}'.format(ix))
       x0 = X[ix]
@@ -582,16 +584,18 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
         true_q = q1
         true_q_mb = q1_mb
         qhat_x = np.sum(qhat(x1))
+        qhat1_estimates.append(float(qhatx))
+        true_q1s.append(float(q1))
       
       qhat_mb_x = np.sum(qhat_mb(x_raw))
       qhat_mses.append(float((true_q - qhat_x)**2))
       qhat_mb_mses.append(float((true_q_mb - qhat_mb_x)**2))
-      pdb.set_trace()
 
     results_dict[T] = {'qhat0_vals': qhat_vals, 'qhat0_mean_val': float(np.mean(qhat_vals)),
                        'qhat0_mse': float(np.mean(qhat_mses)), 'qhat0_mb_vals': qhat_mb_vals,
                        'qhat0_mb_mean_val': float(np.mean(qhat_mb_vals)),
-                       'qhat0_mb_mse': float(np.mean(qhat_mb_mses))}
+                       'qhat0_mb_mse': float(np.mean(qhat_mb_mses)), 'qhat1_estimates': qhat1_estimates,
+                        'true_q1s': true_q1s}
     if not test:
       with open(fname, 'w') as outfile:
         yaml.dump(results_dict, outfile)
