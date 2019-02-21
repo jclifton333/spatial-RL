@@ -26,7 +26,6 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
     """
     # Following https://towardsdatascience.com/hyperparameter-optimization-with-keras-b82e6364ca53
     params = {
-      'dropout1': (0, 0.5, 3),
       'epochs': [1, 20, 50],
       'units1': [20, 50, 100],
       'lr': (0.5, 5, 5)
@@ -36,15 +35,15 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
     # Define model as function of grid params
     def model(X_train, y_train, X_val, y_val, params):
       main_effect = Input(shape=(input_shape,))
-      main_effect_layer = Dense(50, activation='sigmoid')(main_effect)
-      main_effect_layer_2 = Dense(50, activation='sigmoid')(main_effect_layer)
+      main_effect_layer = Dense(params['units1'], activation='sigmoid')(main_effect)
+      # main_effect_layer_2 = Dense(50, activation='sigmoid')(main_effect_layer)
       # interaction = Input(shape=(input_shape,))
       # interaction_layer = Dense(50, activation='sigmoid')(interaction)
       # interaction_layer_2 = Dense(50, activation='sigmoid')(interaction_layer)
       # added = Add()([main_effect_layer_2, interaction_layer_2])
       # out = Dense(1, activation='sigmoid')(added)
       # reg = Model(inputs=[main_effect, interaction], outputs=out)
-      out = Dense(1, activation='sigmoid')(main_effect_layer_2)
+      out = Dense(1, activation='sigmoid')(main_effect_layer)
       reg = Model(inputs=main_effect, outputs=out)
       if clf:
         loss = 'binary_crossentropy'
@@ -59,15 +58,15 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
       return history, reg
 
     # Search
-    # if test:
-    #   proportion_to_sample = 0.001
-    # else:
-    #   proportion_to_sample = 0.01
-    # search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
-    #                  params=params)
+    if test:
+      proportion_to_sample = 0.001
+    else:
+      proportion_to_sample = 0.01
+    search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
+                     params=params)
 
     # # Get best model
-    # best_params = ta.Reporting(search).table().sort_values(by='val_acc', ascending=False).iloc[0]
+    best_params = ta.Reporting(search).table().sort_values(by='val_acc', ascending=False).iloc[0]
     # best_params = {
     #   'units1': int(best_params['units1']),
     #   'dropout1': float(best_params['dropout1']),
@@ -166,7 +165,7 @@ def fit_piecewise_keras_regressor(X, y, model_name, tune=True, test=False):
                                       test=test)
 
   def predict_piecewise(X_):
-    predictions = reg.predict(X_, metric='val_loss').flatten()
+    predictions = reg.predict(X_).flatten()
     return predictions
 
   return predict_piecewise
