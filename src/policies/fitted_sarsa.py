@@ -157,6 +157,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
       q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma)
       q1_dict[T] = q1_piecewise.predict
+      pdb.set_trace()
 
     # return q1, None, env.X_raw, env.X, env.X_2, q1_graph, None
     return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
