@@ -112,10 +112,14 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
   q0_dict = {}
   q1_mb_dict = {}
   q1_dict = {}
+
   print('Fitting q0s')
+  np.random.seed(3)
+  indices = [i for i in range(max(time_horizons))]
+  np.random.shuffle(indices)
   for T in time_horizons:
-    y = np.hstack(env.y[:T])
-    X = np.vstack(env.X[:T])
+    y = np.hstack([env.y[ix] for ix in indices[:T]])
+    X = np.vstack([env.X[ix] for ix in indices[:T]])
     model_name_0 = 'L=100-T={}-k=0-{}'.format(T, timestamp)
     # q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, model_name_0, test=test)
     q0_piecewise = sklogit3(X, y)
@@ -138,7 +142,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q_vals = q0_piecewise_T(X_at_a)
         return q_vals
 
-      for ix, x in enumerate(env.X[1:T]):
+      for ix, x in enumerate([env.X[indices[t]+1] for t in range(T-1)]):
         # Get infected and not-infected indices for piecewise predictions
         x_raw = env.X_raw[ix+1]
 
@@ -151,7 +155,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q0_at_xm1 = q0_piecewise_T(env.X[ix-1])
         q0_evaluate_at_xm1 = np.append(q0_evaluate_at_xm1, q0_at_xm1)
 
-      X2 = np.vstack(env.X_2[:T-1])
+      X2 = np.vstack([env.X_2[ix] for ix in indices[:T-1]])
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
