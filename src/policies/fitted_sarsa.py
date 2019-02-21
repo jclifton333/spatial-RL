@@ -13,6 +13,7 @@ import tensorflow as tf
 import datetime
 from src.environments.environment_factory import environment_factory
 from scipy.stats import spearmanr
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from src.estimation.optim.argmaxer_factory import argmaxer_quad_approx
 import src.environments.generate_network as generate_network
@@ -110,6 +111,8 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
   # 0-step Q-function
   q0_mb_dict = {}
   q0_dict = {}
+  q0_1_dict = {}
+  q0_2_dict = {}
   q1_mb_dict = {}
   q1_dict = {}
 
@@ -125,6 +128,13 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     q0_piecewise = sklogit3(X, y)
     q0_dict[T] = q0_piecewise.predict
 
+    # Fit two more models on half the data each double Q_learning for construction of pseudo-outcome
+    X1, X2, y1, y2 = train_test_split(X, y, test_size=0.5)
+    q0_1 = sklogit3(X1, y1)
+    q0_2 = sklogit3(X2, y2)
+    q0_1_dict[T] = q0_1.predict
+    q0_2_dict[T] = q0_2.predict
+
     # Fit one-step model-based as comparison
     q0_mb_wrapper_ = q_mb_wrapper(env, L, T)
     q0_mb_dict[T] = q0_mb_wrapper_.predict
@@ -136,24 +146,33 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       q0_evaluate_at_argmax = np.array([])
       q0_evaluate_at_xm1 = np.array([])
       q0_piecewise_T = q0_dict[T]
+      q0_1_T = q0_1_dict[T]
+      q0_2_T = q0_2_dict[T]
 
-      def q0_at_block(a):
+      def q0_1_at_block(a):
         X_at_a = env.data_block_at_action(-1, a)
-        q_vals = q0_piecewise_T(X_at_a)
+        q_vals = q0_1_T(X_at_a)
+        return q_vals
+
+      def q0_2_at_block(a):
+        X_at_a = env.data_block_at_action(-1, a)
+        q_vals = q0_2_T(X_at_a)
         return q_vals
 
       for ix, x in enumerate([env.X[indices[t]+1] for t in range(T-1)]):
         # Get infected and not-infected indices for piecewise predictions
         x_raw = env.X_raw[ix+1]
 
-        a = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
-        x_at_a = env.data_block_at_action(ix, a)
+        # Get optimal actions under the split q-functions
+        a_1 = argmaxer_quad_approx(q0_1_at_block, 100, treatment_budget, env)
+        a_2 = argmaxer_quad_approx(q0_2_at_block, 100, treatment_budget, env)
 
-        q0_at_a = q0_piecewise_T(x_at_a)
-        q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_at_a)
+        # Evaluate the optimal actions under the other q-function
+        q0_1 = q0_2_at_block(a_1)
+        q0_2 = q0_1_at_block(a_2)
+        q0_pooled = 0.5*(q0_1 + q0_2)
 
-        q0_at_xm1 = q0_piecewise_T(env.X[ix-1])
-        q0_evaluate_at_xm1 = np.append(q0_evaluate_at_xm1, q0_at_xm1)
+        q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_pooled)
 
       X2 = np.vstack([env.X_2[ix] for ix in indices[:T-1]])
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
