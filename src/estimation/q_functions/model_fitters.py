@@ -61,7 +61,7 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
     if test:
       proportion_to_sample = 0.001
     else:
-      proportion_to_sample = 0.01
+      proportion_to_sample = 0.1
     search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
                      params=params)
 
@@ -308,7 +308,7 @@ class KerasRegressor(object):
 
   def predict(self, X):
     if self.hyperparameter_search:
-      return self.predictor.predict(X, metric='val_loss').reshape(-1)
+      return self.predictor.predict(X).reshape(-1)
     else:
       return self.predictor.predict(X).reshape(-1)
 
