@@ -56,14 +56,16 @@ class sklogit3(object):
 
 
 class q1_rf(object):
-  def __init__(self, X, y, q0, gamma):
-    self.rf = RandomForestRegressor(n_estimators=100)
-    self.rf.fit(X, y)
+  def __init__(self, X, y, q0, gamma, model_name, test=False):
+    # self.rf = RandomForestRegressor(n_estimators=100)
+    # self.rf.fit(X, y)
+    self.predictor = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
     self.gamma = gamma
     self.q0 = q0
 
   def predict(self, x1):
-    q0max = self.rf.predict(x1)
+    # q0max = self.rf.predict(x1)
+    q0max = self.predictor(x1)
     x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
     q0 = self.q0(x0)
     return q0 + self.gamma * q0max
@@ -178,7 +180,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
-      q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma)
+      q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma, model_name_1, test=test)
       q1_dict[T] = q1_piecewise.predict
     return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
   else:
@@ -243,9 +245,13 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
                                     initial_action=initial_action, time_horizon=TIME_HORIZON,
                                     treatment_budget=treatment_budget, gamma=gamma)
 
-  pool = mp.Pool(MC_REPLICATES)
-  q_and_q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
-  pool.terminate()
+  # pool = mp.Pool(MC_REPLICATES)
+  # q_and_q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
+  # pool.terminate()
+  q_and_q1_list = []
+  for i in range(5):
+    res = evaluate_at_rep_partial(i)
+    q_and_q1_list.append(res)
   q_list = [q for q, q1 in q_and_q1_list]
   q1_list = [q1 for q, q1 in q_and_q1_list]
   q = np.mean(q_list)

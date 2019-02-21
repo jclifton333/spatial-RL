@@ -36,15 +36,15 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
     # Define model as function of grid params
     def model(X_train, y_train, X_val, y_val, params):
       main_effect = Input(shape=(input_shape,))
-      # main_effect_layer = Dense(50, activation='sigmoid')(main_effect)
-      # main_effect_layer_2 = Dense(50, activation='sigmoid')(main_effect_layer)
+      main_effect_layer = Dense(50, activation='sigmoid')(main_effect)
+      main_effect_layer_2 = Dense(50, activation='sigmoid')(main_effect_layer)
       # interaction = Input(shape=(input_shape,))
       # interaction_layer = Dense(50, activation='sigmoid')(interaction)
       # interaction_layer_2 = Dense(50, activation='sigmoid')(interaction_layer)
       # added = Add()([main_effect_layer_2, interaction_layer_2])
       # out = Dense(1, activation='sigmoid')(added)
       # reg = Model(inputs=[main_effect, interaction], outputs=out)
-      out = Dense(1, activation='sigmoid')(main_effect)
+      out = Dense(1, activation='sigmoid')(main_effect_layer_2)
       reg = Model(inputs=main_effect, outputs=out)
       if clf:
         loss = 'binary_crossentropy'
@@ -130,7 +130,7 @@ def fit_piecewise_keras_classifier(X, y, model_name, best_params=None,
   return predict_proba_piecewise
 
 
-def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, model_name, tune=True, test=False):
+def fit_piecewise_keras_regressor(X, y, model_name, tune=True, test=False):
   """
   Fit separate regression models for infected and not-infected locations.
 
@@ -159,28 +159,14 @@ def fit_piecewise_keras_regressor(X, y, infected_indices, not_infected_indices, 
     reg.add(Dropout(params['dropout2']))
     reg.add(Dense(1))
     reg.compile(optimizer='adam', loss='mean_squared_error')
-    reg.fit(X[infected_indices], y[infected_indices], verbose=True, epochs=params['epochs'])
-
-    # Not infected locations
-    reg_not_inf = Sequential()
-    reg_not_inf.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
-    reg_not_inf.add(Dropout(params['dropout1']))
-    reg_not_inf.add(Dense(params['units2'], activation='relu', kernel_initializer='normal'))
-    reg_not_inf.add(Dropout(params['dropout2']))
-    reg_not_inf.add(Dense(1))
-    reg_not_inf.compile(optimizer='adam', loss='mean_squared_error')
-    reg_not_inf.fit(X[not_infected_indices], y[not_infected_indices], verbose=True, epochs=params['epochs'])
+    reg.fit(X, y, verbose=True, epochs=params['epochs'])
 
   else:
-    reg = keras_hyperparameter_search(X[infected_indices], y[infected_indices], model_name + 'infected', clf=False,
+    reg = keras_hyperparameter_search(X, y, model_name + 'infected', clf=False,
                                       test=test)
-    reg_not_inf = keras_hyperparameter_search(X[not_infected_indices], y[not_infected_indices],
-                                              model_name + '-not-infected', clf=False, test=test)
 
-  def predict_piecewise(X_, infected_indices_, not_infected_indices_):
-    predictions = np.zeros(X_.shape[0])
-    predictions[infected_indices_] = reg.predict(X_[infected_indices_], metric='val_loss').flatten()
-    predictions[not_infected_indices_] = reg_not_inf.predict(X_[not_infected_indices_]).flatten()
+  def predict_piecewise(X_):
+    predictions = reg.predict(X_, metric='val_loss').flatten()
     return predictions
 
   return predict_piecewise
