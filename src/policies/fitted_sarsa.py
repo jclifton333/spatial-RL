@@ -245,14 +245,14 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
                                     initial_action=initial_action, time_horizon=TIME_HORIZON,
                                     treatment_budget=treatment_budget, gamma=gamma)
 
-  pool = mp.Pool(MC_REPLICATES)
-  q_and_q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
-  pool.terminate()
+  # pool = mp.Pool(MC_REPLICATES)
+  # q_and_q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
+  # pool.terminate()
 
-  # q_and_q1_list = []
-  # for i in range(5):
-  #   res = evaluate_at_rep_partial(i)
-  #   q_and_q1_list.append(res)
+  q_and_q1_list = []
+  for i in range(5):
+    res = evaluate_at_rep_partial(i)
+    q_and_q1_list.append(res)
 
   q_list = [q for q, q1 in q_and_q1_list]
   q1_list = [q1 for q, q1 in q_and_q1_list]
