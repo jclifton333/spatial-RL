@@ -34,32 +34,24 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
 
     # Define model as function of grid params
     def model(X_train, y_train, X_val, y_val, params):
-      main_effect = Input(shape=(input_shape,))
-      main_effect_layer = Dense(params['units1'], activation='sigmoid')(main_effect)
-      # main_effect_layer_2 = Dense(50, activation='sigmoid')(main_effect_layer)
-      # interaction = Input(shape=(input_shape,))
-      # interaction_layer = Dense(50, activation='sigmoid')(interaction)
-      # interaction_layer_2 = Dense(50, activation='sigmoid')(interaction_layer)
-      # added = Add()([main_effect_layer_2, interaction_layer_2])
-      # out = Dense(1, activation='sigmoid')(added)
-      # reg = Model(inputs=[main_effect, interaction], outputs=out)
-      out = Dense(1, activation='sigmoid')(main_effect_layer)
-      reg = Model(inputs=main_effect, outputs=out)
+      reg = Sequential()
+      reg.add(Dense(units=int(params['units1']), input_dim=input_shape, activation='relu'))
+      reg.add(Dense(1, activation='sigmoid'))
       if clf:
         loss = 'binary_crossentropy'
       else:
         loss = 'mean_squared_error'
-      reg.compile(optimizer='adam', loss=loss, metrics=['binary_accuracy'])
+      reg.compile(optimizer='adam', loss=loss, metrics=['accuracy'])
       if X_val is not None:
-        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
+        history = reg.fit(X_train, y_train, verbose=True, epochs=int(params['epochs']),
                           validation_data=[X_val, y_val])
       else:
-        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'])
+        history = reg.fit(X_train, y_train, verbose=True, epochs=int(params['epochs']))
       return history, reg
 
     # Search
     if test:
-      proportion_to_sample = 0.001
+      proportion_to_sample = 0.05
     else:
       proportion_to_sample = 0.1
     search = ta.Scan(x=X, y=y, model=model, dataset_name=model_name, grid_downsample=proportion_to_sample,
@@ -150,7 +142,6 @@ def fit_piecewise_keras_regressor(X, y, model_name, tune=True, test=False):
     }
     input_shape = X.shape[1]
 
-    # Infected locations
     reg = Sequential()
     reg.add(Dense(params['units1'], input_dim=input_shape, activation='relu', kernel_initializer='normal'))
     reg.add(Dropout(params['dropout1']))
