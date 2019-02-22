@@ -57,15 +57,15 @@ class sklogit3(object):
 
 class q1_rf(object):
   def __init__(self, X, y, q0, gamma, model_name, test=False):
-    # self.rf = RandomForestRegressor(n_estimators=100)
-    # self.rf.fit(X, y)
-    self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
+    self.rf = RandomForestRegressor(n_estimators=100)
+    self.rf.fit(X, y)
+    # self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
     self.gamma = gamma
     self.q0 = q0
 
   def predict(self, x1):
-    # q0max = self.rf.predict(x1)
-    q0max = self.reg.predict(x1).flatten()
+    q0max = self.rf.predict(x1)
+    # q0max = self.reg.predict(x1).flatten()
     x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
     q0 = self.q0(x0)
     return q0 + self.gamma * q0max
@@ -150,18 +150,20 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       q0_piecewise_T = q0_dict[T]
       q0_1_T = q0_1_dict[T]
       q0_2_T = q0_2_dict[T]
-
-      def q0_1_at_block(a):
-        X_at_a = env.data_block_at_action(-1, a)
-        q_vals = q0_1_T(X_at_a)
-        return q_vals
-
-      def q0_2_at_block(a):
-        X_at_a = env.data_block_at_action(-1, a)
-        q_vals = q0_2_T(X_at_a)
-        return q_vals
+      q0_T = q0_dict[T]
 
       for ix, x in enumerate([env.X[indices[t]+1] for t in range(T-1)]):
+
+        def q0_1_at_block(a):
+          X_at_a = env.data_block_at_action(ix, a)
+          q_vals = q0_1_T(X_at_a)
+          return q_vals
+
+        def q0_2_at_block(a):
+          X_at_a = env.data_block_at_action(ix, a)
+          q_vals = q0_2_T(X_at_a)
+          return q_vals
+
         # Get infected and not-infected indices for piecewise predictions
         x_raw = env.X_raw[ix+1]
 
