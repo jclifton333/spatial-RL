@@ -164,6 +164,11 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
           q_vals = q0_2_T(X_at_a)
           return q_vals
 
+        def q0_at_block(a):
+          X_at_a = env.data_block_at_action(ix, a)
+          q_vals = q0_T(X_at_a)
+          return q_vals
+
         # Get infected and not-infected indices for piecewise predictions
         x_raw = env.X_raw[ix+1]
 
@@ -176,7 +181,20 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q0_2 = q0_1_at_block(a_2)
         q0_pooled = 0.5*(q0_1 + q0_2)
 
-        q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_pooled)
+        # Shrink towards Q at baseline (myopic) action to construct pseudo-outcome
+        a_dummy = np.zeros(env.L)
+        phat_no_treatment = q0_at_block(a_dummy)
+        a_dummy[np.argsort(-phat_no_treatment)[:treatment_budget]] = 1
+        q0_baseline = q0_at_block(a_dummy)
+        advantage = (np.sum(q0_pooled) - q0_baseline) / env.L
+        if advantage > 0:
+          softhreshold = np.max((1 - 0.01 / advantage), 0)
+          pseudo_outcome = q0_baseline + (q0_pooled - q0_baseline) * softhreshold
+        else:
+          pseudo_outcome = q0_pooled
+
+        # q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_pooled)
+        q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, pseudo_outcome)
 
       X2 = np.vstack([env.X_2[ix] for ix in indices[:T-1]])
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
@@ -220,6 +238,46 @@ def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_
     if t == 0:
       q1_rep += r_t
     return q_rep, q1_rep
+
+
+def evaluate_random_policy(L, initial_infections, initial_action, test):
+  if test:
+    MC_REPLICATES = 2
+    TIME_HORIZON = 1
+  else:
+    MC_REPLICATES = 50
+    TIME_HORIZON = 20
+
+  gamma = 0.9
+  # MC_REPLICATES = num_processes
+  env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
+                                      'initial_infections': initial_infections}
+  treatment_budget = int(np.floor(0.05 * L))
+
+  env = environment_factory('sis', **env_kwargs)
+
+  q = []
+  for rep in range(MC_REPLICATES):
+    q_rep = 0.0
+    q1_rep = 0.0
+    env.reset()
+    env.step(initial_action)
+    r_0 = np.sum(env.current_infected)
+    q_rep += r_0
+    q1_rep += r_0
+
+    for t in range(TIME_HORIZON):
+      # env.step(policy.evaluate(env.X[-1]))
+      action = np.random.permutation(np.concatenate((np.zeros(L - treatment_budget), np.ones(treatment_budget))))
+      env.step(action)
+      r_t = np.sum(env.current_infected)
+      q_rep += gamma**(t+1) * r_t
+      if t == 0:
+        q1_rep += r_t
+
+    q.append(q_rep)
+
+  return float(np.mean(q))
 
 
 def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, iterations=0):
@@ -588,6 +646,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     qhat_mb_mses = []
     qhat1_estimates = []
     true_q1s = []
+    random_qs = []
 
     # for ix in reference_state_indices:
     for ix in range(5):  # Only evaluate at one ref state!
@@ -602,6 +661,9 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
                                                    iterations=iterations)
       q_mb, se_mb, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat_mb, L, y_, a_, test,
                                                                iterations=iterations)
+      q_random = evaluate_random_policy(L, y_, a_, test)
+
+      random_qs.append(q_random)
       qhat_vals.append(float(q))
       qhat_mb_vals.append(float(q_mb))
       qhat_ses.append(float(se))
@@ -628,7 +690,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
                        'qhat0_mse': float(np.mean(qhat_mses)), 'qhat0_mb_vals': qhat_mb_vals,
                        'qhat0_mb_mean_val': float(np.mean(qhat_mb_vals)),
                        'qhat0_mb_mse': float(np.mean(qhat_mb_mses)), 'qhat1_estimates': qhat1_estimates,
-                        'true_q1s': true_q1s}
+                        'true_q1s': true_q1s, 'random_mean_val': float(np.mean(random_qs))}
     if not test:
       with open(fname, 'w') as outfile:
         yaml.dump(results_dict, outfile)
