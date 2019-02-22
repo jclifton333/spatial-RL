@@ -58,7 +58,7 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
                      params=params)
 
     # # Get best model
-    best_params = ta.Reporting(search).table().sort_values(by='val_acc', ascending=False).iloc[0]
+    # best_params = ta.Reporting(search).table().sort_values(by='val_acc', ascending=False).iloc[0]
     # best_params = {
     #   'units1': int(best_params['units1']),
     #   'dropout1': float(best_params['dropout1']),
@@ -68,13 +68,13 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
     #   'epochs': int(best_params['epochs'])
     # }
 
-    if best_params is None:
-      best_params = {
-        'units1': 200,
-        'dropout1': 0.0,
-        'lr': 0.001,
-        'epochs': 20
-      }
+    # if best_params is None:
+    #   best_params = {
+    #     'units1': 200,
+    #     'dropout1': 0.0,
+    #     'lr': 0.001,
+    #     'epochs': 20
+    #   }
 
     # graph = tf.Graph()
     # with graph.as_default():
@@ -82,10 +82,10 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
     #   init = tf.global_variables_initializer()
     #   session.run(init)
     #   with session.as_default():
-    _, best_reg = model(X, y, None, None, best_params)
-    predictor = best_reg
+    # _, best_reg = model(X, y, None, None, best_params)
+    # predictor = best_reg
 
-    # predictor = ta.Predict(search)
+    predictor = ta.Predict(search)
 
     return predictor
 
