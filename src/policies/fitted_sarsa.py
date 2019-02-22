@@ -59,13 +59,13 @@ class q1_rf(object):
   def __init__(self, X, y, q0, gamma, model_name, test=False):
     # self.rf = RandomForestRegressor(n_estimators=100)
     # self.rf.fit(X, y)
-    self.predictor = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
+    self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
     self.gamma = gamma
     self.q0 = q0
 
   def predict(self, x1):
     # q0max = self.rf.predict(x1)
-    q0max = self.predictor(x1)
+    q0max = self.reg.predict(x1).flatten()
     x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
     q0 = self.q0(x0)
     return q0 + self.gamma * q0max
@@ -245,13 +245,15 @@ def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, 
                                     initial_action=initial_action, time_horizon=TIME_HORIZON,
                                     treatment_budget=treatment_budget, gamma=gamma)
 
-  # pool = mp.Pool(MC_REPLICATES)
-  # q_and_q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
-  # pool.terminate()
-  q_and_q1_list = []
-  for i in range(5):
-    res = evaluate_at_rep_partial(i)
-    q_and_q1_list.append(res)
+  pool = mp.Pool(MC_REPLICATES)
+  q_and_q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
+  pool.terminate()
+
+  # q_and_q1_list = []
+  # for i in range(5):
+  #   res = evaluate_at_rep_partial(i)
+  #   q_and_q1_list.append(res)
+
   q_list = [q for q, q1 in q_and_q1_list]
   q1_list = [q1 for q, q1 in q_and_q1_list]
   q = np.mean(q_list)

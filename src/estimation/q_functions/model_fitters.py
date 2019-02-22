@@ -51,7 +51,7 @@ def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, t
         loss = 'mean_squared_error'
       reg.compile(optimizer='adam', loss=loss, metrics=['binary_accuracy'])
       if X_val is not None:
-        history = reg.fit([X_train, X_train], y_train, verbose=True, epochs=params['epochs'],
+        history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'],
                           validation_data=[X_val, y_val])
       else:
         history = reg.fit(X_train, y_train, verbose=True, epochs=params['epochs'])
@@ -164,11 +164,12 @@ def fit_piecewise_keras_regressor(X, y, model_name, tune=True, test=False):
     reg = keras_hyperparameter_search(X, y, model_name + 'infected', clf=False,
                                       test=test)
 
-  def predict_piecewise(X_):
-    predictions = reg.predict(X_).flatten()
-    return predictions
+  # def predict_piecewise(X_):
+  #   predictions = reg.predict(X_).flatten()
+  #   return predictions
 
-  return predict_piecewise
+  # return predict_piecewise
+  return reg
 
 
 def fit_keras_classifier(X, y):
