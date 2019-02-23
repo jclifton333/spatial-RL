@@ -520,6 +520,7 @@ def update_counts_for_likelihood_(counts_for_likelihood, data_block, y, y_next, 
                                                 new_counts_for_likelihood['a_1'])
   return counts_for_likelihood
 
+
 ## Convert between encoding ##
 # ToDo: Jitify!
 def convert_second_order_encoding_to_first_order(X2):

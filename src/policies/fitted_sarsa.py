@@ -181,20 +181,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q0_2 = q0_1_at_block(a_2)
         q0_pooled = 0.5*(q0_1 + q0_2)
 
-        # Shrink towards Q at baseline (myopic) action to construct pseudo-outcome
-        a_dummy = np.zeros(env.L)
-        phat_no_treatment = q0_at_block(a_dummy)
-        a_dummy[np.argsort(-phat_no_treatment)[:treatment_budget]] = 1
-        q0_baseline = q0_at_block(a_dummy)
-        advantage = (np.sum(q0_pooled) - np.sum(q0_baseline)) / env.L
-        if advantage > 0:
-          softhreshold = np.max((1 - 0.01 / advantage), 0)
-          pseudo_outcome = q0_baseline + (q0_pooled - q0_baseline) * softhreshold
-        else:
-          pseudo_outcome = q0_pooled
-
-        # q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_pooled)
-        q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, pseudo_outcome)
+        q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_pooled)
 
       X2 = np.vstack([env.X_2[ix] for ix in indices[:T-1]])
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
@@ -236,7 +223,7 @@ def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_
     r_t = np.sum(env.current_infected)
     q_rep += gamma**(t+1) * r_t
     if t == 0:
-      q1_rep += r_t
+      q1_rep += gamma * r_t
     return q_rep, q1_rep
 
 
