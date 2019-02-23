@@ -1,6 +1,8 @@
 """
 For a fixed policy, do fitted Q-iteration (i.e. fitted SARSA), and compare with true Q-function to see how well that
 Q-function is estimated.  This is for diagnosing issues with so-called  ``Q-learning + policy search''.
+
+This file is a mess.
 """
 import os
 import sys
@@ -195,6 +197,11 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     return q0_dict, None, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
 
 
+
+
+
+
+
 def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_action, time_horizon, treatment_budget,
                                                gamma):
   """
@@ -265,6 +272,80 @@ def evaluate_random_policy(L, initial_infections, initial_action, test):
     q.append(q_rep)
 
   return float(np.mean(q))
+
+
+def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, gamma):
+  np.random.seed(rep)
+
+  def q0_at_block(a):
+    x_at_a = env.data_block_at_action(-1, a, neighbor_order=1)
+    q_vals = q0(x_at_a)
+    return q_vals
+
+  def q1_at_block(a):
+    x_at_a = env.data_block_at_action(-1, a, neighbor_order=2)
+    q_vals = q1(x_at_a)
+    return q_vals
+
+  q1_rep = 0.0
+  env.reset()
+  r_0 = np.sum(env.current_infected)
+  q1_rep += r_0
+
+  # Step 1
+  action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
+  env.step(action)
+  q1_rep += np.sum(env.current_infected)
+
+  # Step 2
+  action = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
+  env.step(action)
+  q1_rep += gamma * np.sum(env.current_infected)
+
+  return q1_rep
+
+
+def get_true_1_step_q(q0, q1, L, initial_infections, test):
+  """
+  Compute the actual value of following (argmax \hat{q}_1, argmax \hat{q}_0) at the first two steps, in order to
+  assess fit of \hat{q}_1.
+
+  :param q0:
+  :param q1:
+  :param L:
+  :param initial_infections:
+  :param initial_action:
+  :param test:
+  :param iterations:
+  :return:
+  """
+  if test:
+    MC_REPLICATES = 2
+  else:
+    MC_REPLICATES = 50
+
+  gamma = 0.9
+  # MC_REPLICATES = num_processes
+  env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice,
+                                      'initial_infections': initial_infections}
+  treatment_budget = int(np.floor(0.05 * L))
+
+  env = environment_factory('sis', **env_kwargs)
+  evaluate_at_rep_partial = partial(get_true_1_step_q_single_rep, env=env, q0=q0, q1=q1,
+                                    treatment_budget=treatment_budget, gamma=gamma)
+
+  pool = mp.Pool(MC_REPLICATES)
+  q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
+  pool.terminate()
+
+  # q_and_q1_list = []
+  # for i in range(5):
+  #   res = evaluate_at_rep_partial(i)
+  #   q_and_q1_list.append(res)
+
+  q1 = np.mean(q1_list)
+  se1 = np.std(q1_list) / np.sqrt(MC_REPLICATES)
+  return q1, se1
 
 
 def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, iterations=0):
@@ -612,18 +693,22 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
   state_proportions = [float(np.mean(x[:, 0])) for x in X_raw_for_q]
 
   if test:
-    reference_state_indices = range(2)
+    reference_state_indices = range(1)
+    time_horizons = (10,)
   else:
-    reference_state_indices = range(len(X))
+    reference_state_indices = range(5)
+    time_horizons = (10,)
 
   results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
 
   for T in qhat0_dict.keys():
-    if iterations == 0:
-      qhat = qhat0_dict[T]
-    elif iterations == 1:
-      qhat = qhat1_dict[T]
-    qhat_mb = qhat0_mb_dict[T]
+    # if iterations == 0:
+    #   qhat = qhat0_dict[T]
+    # elif iterations == 1:
+    #   qhat = qhat1_dict[T]
+    # qhat_mb = qhat0_mb_dict[T]
+    qhat0 = qhat0_dict[T]
+    qhat1 = qhat1_dict[T]
 
     qhat_vals = []
     qhat_mb_vals = []
@@ -636,48 +721,50 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     random_qs = []
 
     # for ix in reference_state_indices:
-    for ix in range(5):  # Only evaluate at one ref state!
+    for ix in reference_state_indices:  # Only evaluate at one ref state!
       # evaluate_optimal_qfn_policy(qhat1, )
       # print('Computing estimated q vals at (s, a) {}'.format(ix))
       x0 = X[ix]
       x1 = X2[ix]
       x_raw = X_raw[ix]
 
-      a_, y_ = x_raw[:, 1], x_raw[:, 2]
-      q, se, q1, se1 = evaluate_optimal_qfn_policy(qhat, L, y_, a_, test,
-                                                   iterations=iterations)
-      q_mb, se_mb, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat_mb, L, y_, a_, test,
-                                                               iterations=iterations)
-      q_random = evaluate_random_policy(L, y_, a_, test)
+      y_ = x_raw[:, 2]
+      q1, se1 = get_true_1_step_q(qhat0, qhat1, L, y_, test)
+      # q, se, q1, se1 = evaluate_optimal_qfn_policy(qhat, L, y_, a_, test,
+      #                                              iterations=iterations)
+      # q_mb, se_mb, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat_mb, L, y_, a_, test,
+      #                                                          iterations=iterations)
+      # q_random = evaluate_random_policy(L, y_, a_, test)
 
-      random_qs.append(q_random)
-      qhat_vals.append(float(q))
-      qhat_mb_vals.append(float(q_mb))
-      qhat_ses.append(float(se))
-      qhat_mb_ses.append(float(se_mb))
+      # random_qs.append(q_random)
+      # qhat_vals.append(float(q))
+      # qhat_mb_vals.append(float(q_mb))
+      # qhat_ses.append(float(se))
+      # qhat_mb_ses.append(float(se_mb))
 
       # Compare to q values
       if iterations == 0:
         kwargs_ = {'omega': 0.0, 's': np.zeros(L)}
-        true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
-        true_q_mb = true_q = np.sum(true_probs)
-        qhat_x = np.sum(qhat(x0))
+        # true_probs = sis_infection_probability(a_, y_, ref_env.ETA, L, ref_env.adjacency_list, **kwargs_)
+        # true_q_mb = true_q = np.sum(true_probs)
+        qhat_x = np.sum(qhat0(x0))
       elif iterations == 1:
         true_q = q1
-        true_q_mb = q1_mb
-        qhat_x = np.sum(qhat(x1))
+        # true_q_mb = q1_mb
+        qhat_x = np.sum(qhat1(x1))
         qhat1_estimates.append(float(qhat_x))
         true_q1s.append(float(q1))
       
-      qhat_mb_x = np.sum(qhat_mb(x_raw))
+      # qhat_mb_x = np.sum(qhat_mb(x_raw))
       qhat_mses.append(float((true_q - qhat_x)**2))
-      qhat_mb_mses.append(float((true_q_mb - qhat_mb_x)**2))
+      # qhat_mb_mses.append(float((true_q_mb - qhat_mb_x)**2))
 
     results_dict[T] = {'qhat0_vals': qhat_vals, 'qhat0_mean_val': float(np.mean(qhat_vals)),
                        'qhat0_mse': float(np.mean(qhat_mses)), 'qhat0_mb_vals': qhat_mb_vals,
                        'qhat0_mb_mean_val': float(np.mean(qhat_mb_vals)),
                        'qhat0_mb_mse': float(np.mean(qhat_mb_mses)), 'qhat1_estimates': qhat1_estimates,
-                        'true_q1s': true_q1s, 'random_mean_val': float(np.mean(random_qs))}
+                       'true_q1s': true_q1s, 'random_mean_val': float(np.mean(random_qs))}
+
     if not test:
       with open(fname, 'w') as outfile:
         yaml.dump(results_dict, outfile)
