@@ -36,6 +36,53 @@ import argparse
 import src.policies.diagnostics.fitted_sarsa as fs
 
 
+def fit_and_take_max_for_multiple_draws(L, time_horizon, number_of_tries=20):
+  # Initialize environment
+  treatment_budget = int(np.floor(0.05 * L))
+  env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice})
+  env.reset()
+  dummy_action = np.concatenate((np.zeros(L - treatment_budget), np.ones(treatment_budget)))
+  print('Taking initial steps')
+  env.step(np.random.permutation(dummy_action))
+  env.step(np.random.permutation(dummy_action))
+
+  # Rollout using random policy
+  print('Rolling out to collect data')
+  for t in range(time_horizon):
+    env.step(np.random.permutation(dummy_action))
+
+  q0_mb_wrapper = fs.q_mb_wrapper(env, L, time_horizon)
+  maxes_at_each_state = []
+  for t in range(5):
+    def q0_mb_at_t(a):
+      x = env.data_block_at_action(t, a, raw=True)
+      phat = q0_mb_wrapper.predict(x)
+      return phat
+
+    def q0_at_t(a):
+      y = env.Y[t, :]
+      p = sis_infection_probability(a, y, env.ETA, env.L, env.adjacency_list, **{'s': np.zeros(L), 'omega': 0.0})
+      return p
+
+    # phat = q0_mb_wrapper.predict(env.X_raw[t])
+
+    # p = sis_infection_probability(env.X_raw[t][:, 1], env.X_raw[t][:, 2], env.ETA, env.L, env.adjacency_list,
+    #                                **{'s': np.zeros(L), 'omega': 0.0})
+    # phats = np.append(phats, phat)
+    # ps = np.append(ps, p)
+
+    maxes = []
+    max_at_each_draw = []
+    for draws in range(number_of_tries):
+      max_phat = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
+      max_q = np.sum(max_phat)
+      max_at_each_draw.append(max_q)
+      maxes.append(np.max(max_at_each_draw))
+    maxes_at_each_state.append(maxes)
+
+  return maxes_at_each_state
+
+
 def fit_and_take_max(L, time_horizons, test):
   if test:
     time_horizons = [3]
@@ -83,15 +130,14 @@ def fit_and_take_max(L, time_horizons, test):
         p = sis_infection_probability(a, y, env.ETA, env.L, env.adjacency_list, **{'s': np.zeros(L), 'omega': 0.0})
         return p
 
-      # phat = q0_mb_wrapper.predict(env.X_raw[t])
+      phat = q0_mb_wrapper.predict(env.X_raw[t])
+      p = sis_infection_probability(env.X_raw[t][:, 1], env.X_raw[t][:, 2], env.ETA, env.L, env.adjacency_list,
+                                     **{'s': np.zeros(L), 'omega': 0.0})
+      phats = np.append(phats, phat)
+      ps = np.append(ps, p)
 
-      # p = sis_infection_probability(env.X_raw[t][:, 1], env.X_raw[t][:, 2], env.ETA, env.L, env.adjacency_list,
-      #                                **{'s': np.zeros(L), 'omega': 0.0})
-      # phats = np.append(phats, phat)
-      # ps = np.append(ps, p)
-
-      max_phat = argmaxer_quad_approx(q0_at_t, 200, treatment_budget, env)
-      max_p = argmaxer_quad_approx(q0_at_t, 200, treatment_budget, env)
+      max_phat = argmaxer_quad_approx(q0_mb_at_t, 100, treatment_budget, env)
+      max_p = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
       phat_maxes = np.append(phat_maxes, max_phat)
       p_maxes = np.append(p_maxes, max_p)
 
@@ -104,4 +150,7 @@ def fit_and_take_max(L, time_horizons, test):
 
 
 if __name__ == "__main__":
-  fit_and_take_max(100, [10], False)
+  # maxes = fit_and_take_max_for_multiple_draws(100, 10, number_of_tries=1)
+  fit_and_take_max(100, [10, 50], test=False)
+
+
