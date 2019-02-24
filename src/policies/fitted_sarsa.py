@@ -189,6 +189,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q0_at_a = q0_at_block(a_)
         q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_at_a)
 
+      pdb.set_trace()
       X2 = np.vstack([env.X_2[ix] for ix in indices[:T-1]])
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
@@ -199,11 +200,6 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
     return q0_dict, None, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
-
-
-
-
-
 
 
 def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_action, time_horizon, treatment_budget,
@@ -293,8 +289,6 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, gamma):
 
   q1_rep = 0.0
   env.reset()
-  r_0 = np.sum(env.current_infected)
-  q1_rep += r_0
 
   # Step 1
   action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
