@@ -5,7 +5,7 @@ pkg_dir = os.path.join(this_dir, '..', '..', '..')
 sys.path.append(pkg_dir)
 
 import argparse
-import src.policies.fitted_sarsa as fs
+import src.policies.diagnostics.fitted_sarsa as fs
 
 # def compute_mse_for_multiple_horizons(fname):
 #   data = yaml.load(open(fname, 'r'))

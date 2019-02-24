@@ -189,7 +189,6 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q0_at_a = q0_at_block(a_)
         q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_at_a)
 
-      pdb.set_trace()
       X2 = np.vstack([env.X_2[ix] for ix in indices[:T-1]])
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
@@ -776,10 +775,10 @@ def evaluate_qopt(L, horizons=(10, 50, 100, 200), test=False, refit=False, itera
   # Check if there are saved reference state data
   existing_data = False
   if not refit:
-    for filename in os.listdir('./data_for_prefit_policies/'):
+    for filename in os.listdir('../data_for_prefit_policies/'):
       if 'L={}'.format(L) in filename:
         existing_data = True
-        reference_state_data = pkl.load(open(os.path.join(this_dir, 'data_for_prefit_policies', filename), 'rb'))
+        reference_state_data = pkl.load(open(os.path.join(this_dir, '..', 'data_for_prefit_policies', filename), 'rb'))
   # ToDo: Handle case where there's no existing data
 
   basename = 'qopt-L={}-iterations={}'.format(L, iterations)
@@ -815,10 +814,10 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ref
   # Check if there are saved reference state data
   existing_data = False
   if not refit:
-    for filename in os.listdir('./data_for_prefit_policies/'):
+    for filename in os.listdir('../data_for_prefit_policies/'):
       if 'L={}'.format(L) in filename:
         existing_data = True
-        reference_state_data = pkl.load(open(os.path.join(this_dir, 'data_for_prefit_policies', filename), 'rb'))
+        reference_state_data = pkl.load(open(os.path.join(this_dir, '..', 'data_for_prefit_policies', filename), 'rb'))
 
   # If there is no pre-saved data, compute true q-vals on current reference distribution and save
   if not existing_data:

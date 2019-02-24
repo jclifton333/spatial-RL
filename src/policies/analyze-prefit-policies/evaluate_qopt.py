@@ -5,7 +5,7 @@ pkg_dir = os.path.join(this_dir, '..', '..', '..')
 sys.path.append(pkg_dir)
 
 import argparse
-import src.policies.fitted_sarsa as fs
+import src.policies.diagnostics.fitted_sarsa as fs
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
