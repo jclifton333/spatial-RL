@@ -4,7 +4,7 @@ Compare behavior of argmaxer at estimated probabilities to that at true probabil
 import os
 import sys
 this_dir = os.path.dirname(os.path.abspath(__file__))
-pkg_dir = os.path.join(this_dir, '..', '..')
+pkg_dir = os.path.join(this_dir, '..', '..', '..')
 sys.path.append(pkg_dir)
 import numpy as np
 import pdb
@@ -80,17 +80,18 @@ def fit_and_take_max(L, time_horizons, test):
 
       def q0_at_t(a):
         y = env.Y[t, :]
-        p = sis_infection_probability(a, y, env.L, env.adjacency_list, **{'s': np.zeros(L), 'omega': 0.0})
+        p = sis_infection_probability(a, y, env.ETA, env.L, env.adjacency_list, **{'s': np.zeros(L), 'omega': 0.0})
         return p
 
-      phat = q0_mb_wrapper.predict(env.X_raw[t])
-      p = sis_infection_probability(env.X_raw[t][:, 1], env.X_raw[t][:, 2], env.adjacency_list,
-                                     **{'s': np.zeros(L), 'omega': 0.0})
-      phats = np.append(phats, phat)
-      ps = np.append(ps, p)
+      # phat = q0_mb_wrapper.predict(env.X_raw[t])
 
-      max_phat = argmaxer_quad_approx(q0_mb_at_t, 100, treatment_budget, env)
-      max_p = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
+      # p = sis_infection_probability(env.X_raw[t][:, 1], env.X_raw[t][:, 2], env.ETA, env.L, env.adjacency_list,
+      #                                **{'s': np.zeros(L), 'omega': 0.0})
+      # phats = np.append(phats, phat)
+      # ps = np.append(ps, p)
+
+      max_phat = argmaxer_quad_approx(q0_at_t, 200, treatment_budget, env)
+      max_p = argmaxer_quad_approx(q0_at_t, 200, treatment_budget, env)
       phat_maxes = np.append(phat_maxes, max_phat)
       p_maxes = np.append(p_maxes, max_p)
 
@@ -103,4 +104,4 @@ def fit_and_take_max(L, time_horizons, test):
 
 
 if __name__ == "__main__":
-  fit_and_take_max(100, [10, 50, 100], False)
+  fit_and_take_max(100, [10], False)

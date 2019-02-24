@@ -34,7 +34,7 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
     acts_to_evaluate.append(initial_act)
   else:
     dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
-    acts_to_evaluate = [np.random.permutation(dummy_act) for e in range(evaluation_budget)]
+    acts_to_evaluate = [np.random.RandomState(seed=3).permutation(dummy_act) for e in range(evaluation_budget)]
   sample_qs = []
   for ix, act in enumerate(acts_to_evaluate):
     sample_qs.append(q(act))
