@@ -74,10 +74,11 @@ def fit_and_take_max_for_multiple_draws(L, time_horizon, number_of_tries=20):
     maxes = []
     max_at_each_draw = []
     for draws in range(number_of_tries):
-      max_phat = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
+      a = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
+      max_phat = q0_at_t(a) 
       max_q = np.sum(max_phat)
       max_at_each_draw.append(max_q)
-      maxes.append(np.max(max_at_each_draw))
+      maxes.append(np.min(max_at_each_draw))
     maxes_at_each_state.append(maxes)
 
   return maxes_at_each_state
@@ -107,6 +108,7 @@ def fit_and_take_max(L, time_horizons, test):
 
   # Estimate probabilities using data up to each time horizon
   for T in time_horizons:
+    np.random.seed(T)
     y = np.hstack(env.y[:T])
     X = np.vstack(env.X[:T])
 
@@ -117,9 +119,11 @@ def fit_and_take_max(L, time_horizons, test):
     ps = np.array([])
     phat_maxes = np.array([])
     p_maxes = np.array([])
+    qhat_maxes = np.array([])
+    q_maxes = np.array([])
 
     # Compare argmax of estimate to argmax of true probs at each state
-    for t in range(T):
+    for t in range(int(np.min(time_horizons))):
       def q0_mb_at_t(a):
         x = env.data_block_at_action(t, a, raw=True)
         phat = q0_mb_wrapper.predict(x)
@@ -136,21 +140,35 @@ def fit_and_take_max(L, time_horizons, test):
       phats = np.append(phats, phat)
       ps = np.append(ps, p)
 
-      max_phat = argmaxer_quad_approx(q0_mb_at_t, 100, treatment_budget, env)
-      max_p = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
+      # max_phat = argmaxer_quad_approx(q0_mb_at_t, 100, treatment_budget, env)
+      # argmax_phat = argmaxer_quad_approx(q0_mb_at_t, 100, treatment_budget, env)
+      # max_phat = q0_mb_at_t(argmax_phat)
+      argmax_phat = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
+      max_phat = q0_at_t(argmax_phat)
+      argmax_p = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
+      max_p = q0_at_t(argmax_p)
       phat_maxes = np.append(phat_maxes, max_phat)
       p_maxes = np.append(p_maxes, max_p)
+      qhat_max = np.sum(max_phat)
+      q_max = np.sum(max_p)
+      qhat_maxes = np.append(qhat_maxes, qhat_max)
+      q_maxes = np.append(q_maxes, q_max)
 
     phat_mse = np.mean((phats - ps)**2)
     phat_max_mse = np.mean((phat_maxes - p_maxes)**2)
     phat_max_bias = np.mean((phat_maxes - p_maxes))
-    print('Horizon={} phat mse: {} phat max mse: {} phat max bias: {}'.format(T, phat_mse, phat_max_mse, phat_max_bias))
+    qhat_max_mse = np.mean((q_maxes - qhat_maxes)**2)
+    qhat_max_bias = np.mean((qhat_maxes - q_maxes))
+    print('Horizon={} phat mse: {} phat max mse: {} phat max bias: {} qhat max mse: {} qhat max bias: {}'.format(T, phat_mse, phat_max_mse, phat_max_bias,
+      qhat_max_mse, qhat_max_bias))
 
   return
 
 
 if __name__ == "__main__":
-  # maxes = fit_and_take_max_for_multiple_draws(100, 10, number_of_tries=1)
-  fit_and_take_max(100, [10, 50], test=False)
+  # maxes = fit_and_take_max_for_multiple_draws(100, 10, number_of_tries=20)
+  # print(maxes)
+  np.random.seed(3)
+  fit_and_take_max(100, [10, 50, 100, 200], test=False)
 
 
