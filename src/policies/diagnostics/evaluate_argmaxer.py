@@ -36,7 +36,7 @@ import argparse
 import src.policies.diagnostics.fitted_sarsa as fs
 
 
-def fit_and_take_max_for_multiple_draws(L, time_horizon, number_of_tries=20):
+def fit_and_take_max_for_multiple_draws(L, time_horizon, number_of_tries=50):
   # Initialize environment
   treatment_budget = int(np.floor(0.05 * L))
   env = environment_factory('sis', **{'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice})
@@ -140,11 +140,13 @@ def fit_and_take_max(L, time_horizons, test):
       phats = np.append(phats, phat)
       ps = np.append(ps, p)
 
-      # max_phat = argmaxer_quad_approx(q0_mb_at_t, 100, treatment_budget, env)
-      # argmax_phat = argmaxer_quad_approx(q0_mb_at_t, 100, treatment_budget, env)
-      # max_phat = q0_mb_at_t(argmax_phat)
-      argmax_phat = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
-      max_phat = q0_at_t(argmax_phat)
+      max_phats = []
+      for i in range(3):
+        argmax_phat = argmaxer_quad_approx(q0_mb_at_t, 100, treatment_budget, env)
+        max_phats.append(q0_mb_at_t(argmax_phat))
+      max_phat = np.array(max_phats).mean(axis=0)
+      # argmax_phat = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
+      # max_phat = q0_at_t(argmax_phat)
       argmax_p = argmaxer_quad_approx(q0_at_t, 100, treatment_budget, env)
       max_p = q0_at_t(argmax_p)
       phat_maxes = np.append(phat_maxes, max_phat)
@@ -153,6 +155,7 @@ def fit_and_take_max(L, time_horizons, test):
       q_max = np.sum(max_p)
       qhat_maxes = np.append(qhat_maxes, qhat_max)
       q_maxes = np.append(q_maxes, q_max)
+      print('qmax1: {} qmax2: {}'.format(qhat_max, q_max))
 
     phat_mse = np.mean((phats - ps)**2)
     phat_max_mse = np.mean((phat_maxes - p_maxes)**2)
@@ -167,7 +170,7 @@ def fit_and_take_max(L, time_horizons, test):
 
 if __name__ == "__main__":
   # maxes = fit_and_take_max_for_multiple_draws(100, 10, number_of_tries=20)
-  # print(maxes)
+  # for m in maxes: print(m)
   np.random.seed(3)
   fit_and_take_max(100, [10, 50, 100, 200], test=False)
 
