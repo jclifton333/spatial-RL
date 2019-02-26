@@ -1,5 +1,4 @@
 # Experimenting with the issue of discontinuity of p(s, argmax \sum p)
-
 library(MASS)
 
 compare.estimators = function(delta, n, mu.1=0.0){
@@ -31,10 +30,8 @@ compare.estimators.multiple.reps = function(delta, n, n.rep, mu.1=0.0){
 }
 
 naive.estimator = function(x){
-  n = nrow(x)
-  xbar = cbind(rep(mean(x[,1]), n), rep(mean(x[,2], n)))
-  argmax = cbind(xbar[,1] >= xbar[,2], xbar[,2] > xbar[,1])
-  q.hat = xbar * argmax
+  indicator = x[1] >= x[2]
+  q.hat = c(x[1]*indicator, x[2]*(1-indicator))
   return(q.hat)
 }
 
@@ -71,20 +68,20 @@ bootstrapped.smoothed.estimator = function(x, B=2){
 
 importance.sampling.weight = function(xbar.1.n, xbar.2.n, sigma1.n, sigma2.n, xbar.1.nmk, xbar.2.nmk, n, k){
   # Get probability of xbar.1.nmk, xbar.2.nmk under MVN( c(xbar.1.n, xbar.2.n), diag(sigma.1.n, sigma.2.n))
-  Sigma.n = diag(sigma1.n, sigma2.n)
-  Sigma.n.inv = solve(Sigma.n)
+  Sigma.n = diag(c(sigma1.n, sigma2.n))
+  Sigma.n.inv = Sigma.n.inv = diag(c(1/sigma1.n, 1/sigma2.n))
   xbar.n = c(xbar.1.n, xbar.2.n)
   xbar.nmk = c(xbar.1.nmk, xbar.2.nmk)
   normsq.Sigma.n = norm(Sigma.n.inv %*% (xbar.n - xbar.nmk))**2 
   # Double check formula
-  is.weight = (1 / (n - k)) * exp( -0.5 * (normsq.Sigma.n + ((n - k) / n)**2 * normsq.Sigma.n))
+  is.weight = ((n-k)/n) * exp( -0.5 * (normsq.Sigma.n + ((n - k) / n) * normsq.Sigma.n))
   return(is.weight)
 }
 
 
 importance.sampling.estimator = function(xbar.1.n, xbar.2.n, sigma1.n, sigma2.n, xbar.1.history, 
                                          xbar.2.history, q.history){
-  n = len(xbar.1.history) + 1
+  n = length(xbar.1.history) + 1
   xbar.n = c(xbar.1.n, xbar.2.n)
   qhat.naive = naive.estimator(xbar.n) 
   qhat = qhat.naive
@@ -96,7 +93,7 @@ importance.sampling.estimator = function(xbar.1.n, xbar.2.n, sigma1.n, sigma2.n,
     k = n - i
     is.weight = importance.sampling.weight(xbar.1.n, xbar.2.n, sigma1.n, sigma2.n, xbar.1.nmk, xbar.2.nmk,
                                            n, k)
-    qhat = qhat + is.weight*qhat.nmk
+    qhat = qhat + is.weight*qhat.nmk/3
       } 
   qhat = qhat / n
   return(list(qhat=qhat, qhat.naive=qhat.naive))
@@ -104,7 +101,7 @@ importance.sampling.estimator = function(xbar.1.n, xbar.2.n, sigma1.n, sigma2.n,
 
 
 xbar.multiplier.boot = function(x){
-  w = rexponential(n=len(x))
+  w = rexp(n=length(x))
   xbar = (w %*% x) / sum(w)
   return(xbar)
 }
@@ -112,12 +109,12 @@ xbar.multiplier.boot = function(x){
 online.estimation = function(delta, horizon, mu.1=0.0){
   mu = c(mu.1, mu.1 + delta)
   Sigma = diag(2)
-  x = matrix(, nrow=0, ncol=2)
+  x = matrix(mvrnorm(n=1, mu=mu, Sigma=Sigma), nrow=1, ncol=2)
   xbar.1.history = c(x[,1])
   xbar.2.history = c(x[,2])
   q.history = c(naive.estimator(x))
   q.naive.history = c(naive.estimator(x))
-  for(i in 2:t){
+  for(i in 2:horizon){
      # Get estimator at time i
      x.i = mvrnorm(n=1, mu=mu, Sigma=Sigma)
      x = rbind(x, x.i)
@@ -125,14 +122,19 @@ online.estimation = function(delta, horizon, mu.1=0.0){
      xbar.2 = xbar.multiplier.boot(x[,2])
      sigma1 = sd(x[,1]) / sqrt(i)
      sigma2 = sd(x[,2]) / sqrt(i)
-     q.hat = importance.sampling.estimator(xbar.1, xbar.2, sigma1, sigma2, xbar.1, xbar.2)
-     q.hat.naive = naive.estimator(x)
+     
+     q.hats = importance.sampling.estimator(xbar.1, xbar.2, sigma1, sigma2, xbar.1, xbar.2, 
+                                           q.history)
+     q.hat = q.hats$qhat
+     q.hat.naive = q.hats$qhat.naive
+     
+     print(q.hat)
      
      # Update histories 
-     xbar.1.history = c(xbar.1.history, xbar.1)
-     xbar.2.history = c(xbar.2.history, xbar.2)
-     q.history = c(q.history, q.hat)
-     q.naive.history = c(q.naive.history, q.hat.naive)
+     xbar.1.history = append(xbar.1.history, xbar.1)
+     xbar.2.history = append(xbar.2.history, xbar.2)
+     q.history = append(q.history, q.hat)
+     q.naive.history = append(q.naive.history, q.hat.naive)
   }
   q.true = c(mu.1, mu.1 + delta)
   q.naive.error = mean((q.true - q.naive.history)**2)
@@ -140,6 +142,19 @@ online.estimation = function(delta, horizon, mu.1=0.0){
   return(list(naive.error=q.naive.error, is.error=q.error))
 }
 
+online.estimation.multiple.reps = function(delta, horizon, n.rep){
+  naive.errors = c()
+  is.errors = c()
+  for(rep in 1:n.rep){
+    errors = online.estimation(delta, horizon)
+    naive.errors = append(naive.errors, errors$naive.error)
+    is.errors = append(is.errors, errors$is.error)
+  }
+  return(list(naive.error=mean(naive.errors), is.error=mean(is.errors)))
+}
+
+
+# print(online.estimation.multiple.reps(5, 30, 1000))
 
 
 
