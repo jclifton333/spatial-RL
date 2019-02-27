@@ -1,4 +1,6 @@
-# Setup: two-stage MDP where Q-function is additive over 2 locations, and the treatment budget is 1 location.
+# THIS IS NOT RIGHT!  THETA SHOULD INDEX THE ESTIMATED MAX OF CONDITIONAL MEAN, NOT THE TRANSITION FUNCTION
+
+#Setup: two-stage MDP where Q-function is additive over 2 locations, and the treatment budget is 1 location.
 # Stage-1 actions (1, 0), (0, 1) have expected rewards mu.1, mu.2 resp.  Call these actions a1, a2.  
 # Expected payoff at stage 2 at each location is a linear function (with parameter \theta) of a 
 # stage-1 covariate and the stage-1 action. 
@@ -35,15 +37,19 @@ solve.for.theta = function(x1, delta){
 #   return(integrate(Vectorize(outer.function), lower=0, upper=Inf)$value)
 # }
 
-mvn.prob(mu, Sigma, A){
+mvn.prob(mu, Sigma, A, lower){
   # Compute the probability that 3-dimensional Y ~ N(mu, Sigma) satisfies
-  # AY >= 0.
-  Amu = A %*% mu
-  ASigma = A %*% (Sigma %*% t(A))
-  
-  
+  # AY >= lower.
+  A.mu = A %*% mu
+  A.Sigma = A %*% (Sigma %*% t(A))
+  prob = pmvnorm(lower=lower, upper=rep(Inf, 3), mean=A.mu, sigma=A.Sigma)
+  return(prob) 
 }
 
+stage.two.value = function(stage.two.mean.vector){
+  indicator = stage.two.mean.vector[1] >= stage.two.mean.vector[2]
+  stage.two.value = stage.two.mean.vector[1]*indicator + stage.two.mean.vector[2]*(1 - indicator)
+}
 
 prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq){
   # Get the probability of taking a1 at given state x1, where the randomness is over the sampling variability
@@ -62,14 +68,32 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq){
   # optimal actions at each location.  
   x1.1 = x1[1]
   x1.2 = x1[2]
+  x1.diff = x1.1 - x1.2
+  mu.diff = mu.1 - mu.2
+  lower = c(0, 0, mu.diff)
   
-  prob.11 = bvn.halfspace.intersection(theta, Sigma, c(x1.1 - x1.2, x1.1),  c(x1.2 - x1.1, x1.2))  # P(a_opt^2.1 = 1 and a_opt^2.2 = 1)
-  prob.01 = bvn.halfspace.intersection(theta, Sigma, -c(x1.1 - x1.2, x1.1), c(x1.2 - x1.1, x1.2))  # P(a_opt^2.1 = 0 and a_opt^2.2 = 1)
-  prob.10 = bvn.halfspace.intersection(theta, Sigma, c(x1.1 - x1.2, x1.1), -c(x1.2 - x1.1, x1.2))  # P(a_opt^2.1 = 1 and a_opt^2.2 = 0)
-  prob.00 = bvn.halfspace.intersection(theta, Sigma, -c(x1.1 - x1.2, x1.1), -c(x1.2 - x1.1, x1.2)) # P(a_opt^2.1 = 0 and a_opt^2.2 = 0)
+  A.11 = matrix(rbind(c(x1.diff, x1.1), c(-x1.diff, x1.2), c(x1.diff, x1.diff)), nrow=2, ncol=2, byrow=T)
+  p.11 = mvn.prob(theta, Sigma, A.11, lower)
+  A.10 = matrix(rbind(c(x1.diff, x1.1), -c(-x1.diff, x1.2), c(0, x1.1)), nrow=2, ncol=2, byrow=T)
+  p.10 = mvn.prob(theta, Sigma, A.10, lower) 
+  A.01 = matrix(rbind(-c(x1.diff, x1.1), c(-x1.diff, x1.2), c(0, -x1.2)), nrow=2, ncol=2, byrow=T)
+  p.10 = mvn.prob(theta, Sigma, A.01, lower) 
+  A.00 = matrix(rbind(-c(x1.diff, x1.1), -c(-x1.diff, -x1.2), c(-x1.diff, 0)), nrow=2, ncol=2, byrow=T)
+  p.00 = mvn.prob(theta, Sigma, A.00, lower)
   
-  # Get the probability of (1, 0) being optimal conditional on each of these regions.
+  p.a1 = p.11 + p.10 + p.01 + p.00 
   
+  # Compute expected value under this policy.
+  x1.a1 = rbind(c(x1.1, x1.1), c(x1.2, 0))
+  x1.a2 = rbind(c(x1.1, 0), c(x1.2, x1.2))
+  stage.two.mean.a1 = x1.a1 %*% theta 
+  stage.two.mean.a2 = x1.a2 %*% theta
+  stage.two.value.a1 = stage.two.value(stage.two.mean.a1) 
+  stage.two.value.a2 = stage.two.value(stage.two.mean.a2)
   
+  x1diff.x1.1 = c(x1.diff, x1.1) 
+  p.a1.given.a1 = pnorm(0, mean=theta %*% x1diff.x1.1, sd=sqrt(x1diff.x1.1 %*% (Sigma %*% x1diff.x1.1)))
+  x1diff.x1.2 = c(-x1.diff, x1.2)
+  p.a1.given.a2 = pnorm(0, mean=theta %*% x1diff.x1.2, sd=sqrt(x1diff.x1.2 %*% (Sigma %*% x1diff.x1.2)))
 } 
 
