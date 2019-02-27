@@ -68,8 +68,7 @@ bootstrapped.smoothed.estimator = function(x, B=2){
 
 importance.sampling.weight = function(xbar.1.n, xbar.2.n, sigma1.n, sigma2.n, xbar.1.nmk, xbar.2.nmk, n, k){
   # Get probability of xbar.1.nmk, xbar.2.nmk under MVN( c(xbar.1.n, xbar.2.n), diag(sigma.1.n, sigma.2.n))
-  Sigma.n = diag(c(sigma1.n, sigma2.n))
-  Sigma.n.inv = Sigma.n.inv = diag(c(1/sigma1.n, 1/sigma2.n))
+  Sigma.n.inv = Sigma.n.inv = diag(c(1/sigma1.n**2, 1/sigma2.n**2))
   xbar.n = c(xbar.1.n, xbar.2.n)
   xbar.nmk = c(xbar.1.nmk, xbar.2.nmk)
   normsq.Sigma.n = norm(Sigma.n.inv %*% (xbar.n - xbar.nmk))**2 
@@ -128,14 +127,15 @@ online.estimation = function(delta, horizon, mu.1=0.0){
      q.hat = q.hats$qhat
      q.hat.naive = q.hats$qhat.naive
      
-     print(q.hat)
-     
      # Update histories 
      xbar.1.history = append(xbar.1.history, xbar.1)
      xbar.2.history = append(xbar.2.history, xbar.2)
      q.history = append(q.history, q.hat)
      q.naive.history = append(q.naive.history, q.hat.naive)
   }
+  print(q.history)
+  print(xbar.1.history)
+  print(xbar.2.history)
   q.true = c(mu.1, mu.1 + delta)
   q.naive.error = mean((q.true - q.naive.history)**2)
   q.error = mean((q.true - q.history)**2)
