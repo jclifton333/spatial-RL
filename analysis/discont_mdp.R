@@ -14,26 +14,24 @@ solve.for.theta = function(x1, delta){
   return(theta)
 }
 
-bvn.halfspace.intersection(mu, Sigma, v1, v2){
+bvn.halfspace.intersection = function(mu, Sigma, v1, v2){
   # Compute the probability that a bivariate N(mu, Sigma) r.v. Y falls in the region defined by 
   # Y %*% v1 >= 0 and
   # Y %*% v2 >= 0.
-  v1.1 = v1[1]
-  v1.2 = v1[2]
-  v2.1 = v2[1]
-  v2.2 = v2[2]
-  Sigma.det.inv = 1 / (Sigma[1,1]*Sigma[2,2] - Sigma[1,2]*Sigma[2,1])
-  Sigma.inv = solve(Sigma)
-  constant = 1 / sqrt(2 * pi) * sqrt(Sigma.det.inv)
+  V = rbind(v1, v2)
+  mean = V %*% mu
+  Cov = V %*% (Sigma %*% t(V))
+  Cov.det.inv = 1 / (Cov[1,1]*Cov[2,2] - Cov[1,2]*Cov[2,1])
+  Cov.inv = solve(Cov)
+  constant = 1 / (2 * pi) * sqrt(Cov.det.inv)
   outer.function = function(y.2){
-    lower = min(c(-y.2 * (v1.2 / v1.1), -y.2 * (v2.2 / v2.1)))
     inner.function = function(y.1){
       y = c(y.1, y.2)
-      quad.term = -0.5 * (y - mu) %*% ((y - mu) %*% Sigma.inv)  
+      quad.term = -0.5 * (t(y - mean) %*% Cov.inv) %*% (y - mean)
       return(constant * exp(quad.term))}
-    return(integrate(inner.function, lower=lower, upper=Inf))
+    return(integrate(Vectorize(inner.function), lower=0, upper=Inf)$value)
   }
-  return(integrate(outer.function, lower=-Inf, upper=Inf))
+  return(integrate(Vectorize(outer.function), lower=0, upper=Inf)$value)
 }
 
 
