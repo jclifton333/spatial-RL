@@ -85,16 +85,30 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   pseudo.outcomes = X2.hats * (a1.mask.matrix + a2.mask.matrix) # Matrix with columns corresponding to pseudo-outcomes for each draw
   
   # Construct expanded features for pseudo-outcome model (with parameter eta)
-  Phi1.ixn = matrix(, ncol=8, nrow=0)
+  Phi1.ixn = matrix(, ncol=11, nrow=0)
   for(i in 1:n.sample){
     phi.i = design.matrix[(2*i-1):(2*i), ]  
-    phi.i.1 = phi.i[1,]
-    phi.i.2 = phi.i[2,] 
-    phi.ixn.1 = c(phi.i.1, phi.i, phi.i.1[1]*phi.i, phi.i.1[2]*phi.1)
-    phi.ixn.2 = c(phi.i.2, phi.i, phi.i.2[1]*phi.i, phi.i.2[2]*phi.1)
-    Phi1.ixn = rbind(Phi1.ixn, phi.ixn.1, phi.ixn.2)
+    phi.i.ixn = ixn.features(phi.i)
+    Phi1.ixn = rbind(Phi1.ixn, phi.ixn)
   }
   Phi.prime.Phi.inv.Phi.prime = solve(t(Phi.ixn) %*% Phi.ixn) %*% t(Phi.ixn)
   eta.hats = Phi.prime.Phi.inv.Phi.prime %*% t(pseudo.outcomes)
+  
+  # Get stage 1 action at each replicate
+  x1.ixn = ixn.features(x1)
+  q.hats = x1.ixn %*% eta.hats  
+  
+  
 } 
+
+ixn.features = function(phi.i){
+  # :param phi.i: array [x1 & a1*x1 \\ x2 & a2*x2] 
+  phi.i.1 = phi.i[1,]
+  phi.i.2 = phi.i[2,] 
+  phi.i.flat = c(phi.i.1, phi.i.2)
+  phi.ixn.1 = c(phi.i.1, phi.i, phi.i.1[1]*phi.i.flat, phi.i.1[2]*phi.1.flat)
+  phi.ixn.2 = c(phi.i.2, phi.i, phi.i.2[1]*phi.i.flat, phi.i.2[2]*phi.1.flat)
+  return(rbind(phi.ixn.1, phi.ixn.2))
+}
+
 
