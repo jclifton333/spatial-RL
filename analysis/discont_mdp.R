@@ -97,9 +97,26 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   # Get stage 1 action at each replicate
   x1.ixn = ixn.features(x1)
   q.hats = x1.ixn %*% eta.hats  
+  a1.mask = q.hats[1,] >= q.hats[2,]
+  
+  expected.stage.1.reward = mu.1 * sum(a1.mask) + mu.2 * sum(1 - a1.mask)
   
   
 } 
+
+
+q.opt = function(x1, theta, mu.1, mu.2, sigma.sq){
+  # Value of stage 1 actions when optimal q is followed at next stage. 
+  x1.1 = x1[1]
+  x1.2 = x1[2]
+  x1.diff = x1.1 - x1.2
+  
+  # Value of a1
+  mean.a1 = theta %*% c(x1.diff, x1.1)
+  var.a1 = sigma.sq * norm(c(x1.diff, x1.1))**2
+  prob.opt.a1 = pnorm(0, mean=mean.a1, sd=sqrt(var.a1))
+  
+}
 
 ixn.features = function(phi.i){
   # :param phi.i: array [x1 & a1*x1 \\ x2 & a2*x2] 
