@@ -36,7 +36,7 @@ solve.for.theta = function(x1, delta){
 #   return(integrate(Vectorize(outer.function), lower=0, upper=Inf)$value)
 # }
 
-mvn.prob(mu, Sigma, A, lower){
+mvn.prob = function(mu, Sigma, A, lower){
   # Compute the probability that 3-dimensional Y ~ N(mu, Sigma) satisfies
   # AY >= lower.
   A.mu = A %*% mu
@@ -65,7 +65,7 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
    
   # Generate many draws from conditional dbn
   conditional.means = design.matrix %*% theta
-  X2 = mvrnorm(n=mc.replicates, mu=conditional.means, Sigma=sigma.sq*diag(len(conditional.means)))
+  X2 = mvrnorm(n=mc.replicates, mu=conditional.means, Sigma=sigma.sq*diag(length(conditional.means)))
   
   # Fit theta on each draw
   XprimeXinv.Xprime = solve(t(design.matrix) %*% design.matrix) %*% t(design.matrix)
@@ -85,23 +85,32 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   pseudo.outcomes = X2.hats * (a1.mask.matrix + a2.mask.matrix) # Matrix with columns corresponding to pseudo-outcomes for each draw
   
   # Construct expanded features for pseudo-outcome model (with parameter eta)
-  Phi1.ixn = matrix(, ncol=11, nrow=0)
+  Phi1.ixn = matrix(, ncol=14, nrow=0)
   for(i in 1:n.sample){
     phi.i = design.matrix[(2*i-1):(2*i), ]  
     phi.i.ixn = ixn.features(phi.i)
-    Phi1.ixn = rbind(Phi1.ixn, phi.ixn)
+    Phi1.ixn = rbind(Phi1.ixn, phi.i.ixn)
   }
-  Phi.prime.Phi.inv.Phi.prime = solve(t(Phi.ixn) %*% Phi.ixn) %*% t(Phi.ixn)
-  eta.hats = Phi.prime.Phi.inv.Phi.prime %*% t(pseudo.outcomes)
+  Phi.prime.Phi.inv.Phi.prime = solve(t(Phi1.ixn) %*% Phi1.ixn) %*% t(Phi1.ixn)
+  eta.hats = Phi.prime.Phi.inv.Phi.prime %*% pseudo.outcomes
   
-  # Get stage 1 action at each replicate
-  x1.ixn = ixn.features(x1)
-  q.hats = x1.ixn %*% eta.hats  
-  a1.mask = q.hats[1,] >= q.hats[2,]
+  # Get stage 1 action at each replicate 
+  x1.a1.ixn = ixn.features(cbind(x1, c(1, 0)))
+  x1.a2.ixn = ixn.features(cbind(x1, c(0, 1)))
+  q.a1.hats = x1.a1.ixn %*% eta.hats  
+  q.a2.hats = x1.a2.ixn %*% eta.hats
+  a1.mask = colSums(q.a1.hats) > colSums(q1.a2.hats)
   
   expected.stage.1.reward = mu.1 * sum(a1.mask) + mu.2 * sum(1 - a1.mask)
   
+  # Get expected stage 2 rewards
+  stage.1.actions.mask = rbind(a1.mask, 1-a1.mask)
+  stage.2.means = theta[1]*x1 + theta[2]*(x1 * stage.1.actions.mask)
+  prob.stage.2.a1 = 1 - pnorm(0, mean=stage.2.means[1,] - stage.2.means[2,], sd=sqrt(2*sigma.sq)) # Prob of taking action 1 at stage 2
+  stage.2.action.probs = rbind(prob.stage.2.a1, 1-prob.stage.2.a1)
+  expected.stage.2.reward = sum(stage.2.action.probs * stage.2.means)
   
+  return(expected.stage.1.reward + expected.stage.2.reward)
 } 
 
 
@@ -123,9 +132,18 @@ ixn.features = function(phi.i){
   phi.i.1 = phi.i[1,]
   phi.i.2 = phi.i[2,] 
   phi.i.flat = c(phi.i.1, phi.i.2)
-  phi.ixn.1 = c(phi.i.1, phi.i, phi.i.1[1]*phi.i.flat, phi.i.1[2]*phi.1.flat)
-  phi.ixn.2 = c(phi.i.2, phi.i, phi.i.2[1]*phi.i.flat, phi.i.2[2]*phi.1.flat)
+  phi.ixn.1 = c(phi.i.1, phi.i, phi.i.1[1]*phi.i.flat, phi.i.1[2]*phi.i.flat)
+  phi.ixn.2 = c(phi.i.2, phi.i, phi.i.2[1]*phi.i.flat, phi.i.2[2]*phi.i.flat)
   return(rbind(phi.ixn.1, phi.ixn.2))
 }
 
-
+n=15
+mu.1 = 0
+mu.2 = 1
+sigma.sq = 1
+A1 = as.matrix(c(rmultinom(n=n, size=1, prob=c(0.5, 0.5))))
+X1 = as.matrix(c(mvrnorm(n=n, mu=c(mu.1, mu.2), Sigma=sigma.sq*diag(2))))
+delta = c(0, 0.1)
+x1 = as.matrix(c(1, 0.5))
+prob.a1(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000)
+  
