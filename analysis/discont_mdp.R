@@ -99,13 +99,12 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   x1.a2 = cbind(x1, x1*c(0, 1))
   q.a1.hats = x1.a1 %*% eta.hats  
   q.a2.hats = x1.a2 %*% eta.hats
-  a1.mask = colSums(q.a1.hats) > colSums(q1.a2.hats)
+  a1.mask = colSums(q.a1.hats) > colSums(q.a2.hats)
   
   expected.stage.1.reward = mu.1 * sum(a1.mask) + mu.2 * sum(1 - a1.mask)
       
   # Get expected stage 2 rewards
-  stage.1.actions.mask = rbind(a1.mask, 1-a1.mask)
-  stage.2.means = theta[1]*x1 + theta[2]*(x1 * stage.1.actions.mask)
+  stage.2.means = theta[1]*x1 + theta[2]*rbind(kronecker(a1.mask, x1[1,]), kronecker(1-a1.mask, x1[2,]))
   prob.stage.2.a1 = 1 - pnorm(0, mean=stage.2.means[1,] - stage.2.means[2,], sd=sqrt(2*sigma.sq)) # Prob of taking action 1 at stage 2
   stage.2.action.probs = rbind(prob.stage.2.a1, 1-prob.stage.2.a1)
   expected.stage.2.reward = sum(stage.2.action.probs * stage.2.means)
