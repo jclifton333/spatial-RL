@@ -4,15 +4,22 @@
 # stage-1 covariate and the stage-1 action. 
 # We want to evaluate the regret of the policy based on the estimator \theta, and in particular how this regret 
 # varies as \theta approaches boundaries separating the value of different actions. 
+
+# MDP
+# States at stage 1 are randomly generated iid normal.  Stage 1 expected rewards are known constants mu.1, mu.2 corresponding 
+# to the respective actions and independent of state.
+# Stages at stage 2 conditional on stage 1 action and states are independent normal with mean vector [x1.i a1.i*x1.i]_{i=1,2} %*% theta
+# and variance sigma.sq.  Finally, stage 2 rewards are the component of the mean vector corresponding to the location that was chosen to 
+# be treated at stage 2.
+
+
 library(mvtnorm)
 library(MASS)
 
 
 solve.for.theta = function(x1, delta){
-  x1.1 = x1[1]
-  x1.2 = x1[2]
-  Z = matrix(c(x1.1 - x1.2, x1.1, x1.2 - x1.1, x1.2), nrow=2, ncol=2, byrow=T)
-  theta = solve(Z, delta)
+  xa1.m.xa2 = append(x1[1,], x1[1,]) - append(x1[2,], x1[2,])
+  theta = delta * ginv(xa1.m.xa2)
   return(theta)
 }
 
@@ -60,11 +67,11 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   # :param sigma.sq: variance of the second-stage states conditional on first-stage state and action.  
   
   theta = solve.for.theta(x1, delta)
-  design.matrix = cbind(X1, X1*A1)
+  design.matrix = cbind(X1, X1*c(A1))
   Sigma = sigma.sq * (t(design.matrix) %*% design.matrix)  # Covariance of theta.hat
    
   # Generate many draws from conditional dbn
-  conditional.means = design.matrix %*% theta
+  conditional.means = design.matrix %*% t(theta)
   X2 = mvrnorm(n=mc.replicates, mu=conditional.means, Sigma=sigma.sq*diag(length(conditional.means)))
   
   # Fit theta on each draw
@@ -84,25 +91,18 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   a2.mask.matrix = kronecker(1-a1.mask.vector, c(0, 1))
   pseudo.outcomes = X2.hats * (a1.mask.matrix + a2.mask.matrix) # Matrix with columns corresponding to pseudo-outcomes for each draw
   
-  # Construct expanded features for pseudo-outcome model (with parameter eta)
-  Phi1.ixn = matrix(, ncol=14, nrow=0)
-  for(i in 1:n.sample){
-    phi.i = design.matrix[(2*i-1):(2*i), ]  
-    phi.i.ixn = ixn.features(phi.i)
-    Phi1.ixn = rbind(Phi1.ixn, phi.i.ixn)
-  }
-  Phi.prime.Phi.inv.Phi.prime = solve(t(Phi1.ixn) %*% Phi1.ixn) %*% t(Phi1.ixn)
-  eta.hats = Phi.prime.Phi.inv.Phi.prime %*% pseudo.outcomes
+  # Fit pseudo-outcome model - note that this (linear, no interactions) model is stupid!
+  eta.hats = XprimeXinv.Xprime %*% pseudo.outcomes
   
-  # Get stage 1 action at each replicate 
-  x1.a1.ixn = ixn.features(cbind(x1, c(1, 0)))
-  x1.a2.ixn = ixn.features(cbind(x1, c(0, 1)))
-  q.a1.hats = x1.a1.ixn %*% eta.hats  
-  q.a2.hats = x1.a2.ixn %*% eta.hats
+  # Get stage 1 action for x1 at each replicate 
+  x1.a1 = cbind(x1, x1*c(1, 0))
+  x1.a2 = cbind(x1, x1*c(0, 1))
+  q.a1.hats = x1.a1 %*% eta.hats  
+  q.a2.hats = x1.a2 %*% eta.hats
   a1.mask = colSums(q.a1.hats) > colSums(q1.a2.hats)
   
   expected.stage.1.reward = mu.1 * sum(a1.mask) + mu.2 * sum(1 - a1.mask)
-  
+      
   # Get expected stage 2 rewards
   stage.1.actions.mask = rbind(a1.mask, 1-a1.mask)
   stage.2.means = theta[1]*x1 + theta[2]*(x1 * stage.1.actions.mask)
@@ -132,7 +132,7 @@ ixn.features = function(phi.i){
   phi.i.1 = phi.i[1,]
   phi.i.2 = phi.i[2,] 
   phi.i.flat = c(phi.i.1, phi.i.2)
-  phi.ixn.1 = c(phi.i.1, phi.i, phi.i.1[1]*phi.i.flat, phi.i.1[2]*phi.i.flat)
+  phi.ixn.1 = c(phi.i.1, phi.i.flat, phi.i.1[1]*phi.i.flat, phi.i.1[2]*phi.i.flat)
   phi.ixn.2 = c(phi.i.2, phi.i, phi.i.2[1]*phi.i.flat, phi.i.2[2]*phi.i.flat)
   return(rbind(phi.ixn.1, phi.ixn.2))
 }
@@ -142,8 +142,8 @@ mu.1 = 0
 mu.2 = 1
 sigma.sq = 1
 A1 = as.matrix(c(rmultinom(n=n, size=1, prob=c(0.5, 0.5))))
-X1 = as.matrix(c(mvrnorm(n=n, mu=c(mu.1, mu.2), Sigma=sigma.sq*diag(2))))
+X1 = mvrnorm(n=n*2, mu=c(0.0, 0.0), Sigma=diag(2))
 delta = c(0, 0.1)
-x1 = as.matrix(c(1, 0.5))
+x1 = matrix(c(1, 0.5, 2, 1.25), nrow=2, byrow=T)
 prob.a1(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000)
   
