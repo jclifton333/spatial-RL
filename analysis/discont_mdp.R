@@ -17,16 +17,17 @@ library(mvtnorm)
 library(MASS)
 
 
-solve.for.theta = function(x1, delta){
-  xa1.m.xa2 = append(x1[1,], x1[1,]) - append(x1[2,], x1[2,])
-  theta = delta * ginv(xa1.m.xa2)
-  return(theta)
+solve.for.x1 = function(theta, delta){
+  # solve theta . (diff_matrix . x1) = delta
+  diff.matrix = c(1, -1)
+  x = delta * t(ginv(diff.matrix)) %*% ginv(theta)
+  return(x)
 }
 
 # bvn.halfspace.intersection = function(mu, Sigma, v1, v2){
 #   # Compute the probability that a bivariate N(mu, Sigma) r.v. Y falls in the region defined by 
 #   # Y %*% v1 >= 0 and
-#   # Y %*% v2 >= 0.
+
 #   V = rbind(v1, v2)
 #   mean = V %*% mu
 #   Cov = V %*% (Sigma %*% t(V))
@@ -57,7 +58,7 @@ stage.two.value = function(stage.two.mean.vector){
   stage.two.value = stage.two.mean.vector[1]*indicator + stage.two.mean.vector[2]*(1 - indicator)
 }
 
-prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
+prob.a1 = function(theta, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   # Get the probability of taking a1 at given state x1, where the randomness is over the sampling variability
   # of theta.hat.  
   # :param delta: vector controlling distance of theta from the decision boundary for x1.  (theta is solved
@@ -66,7 +67,7 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   # :param A1: array of observed actions; for estimating theta. 
   # :param sigma.sq: variance of the second-stage states conditional on first-stage state and action.  
   
-  theta = solve.for.theta(x1, delta)
+  x1 = solve.for.x1(theta, delta)
   design.matrix = cbind(X1, X1*c(A1))
   Sigma = sigma.sq * (t(design.matrix) %*% design.matrix)  # Covariance of theta.hat
    
@@ -104,7 +105,14 @@ prob.a1 = function(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000){
   expected.stage.1.reward = mu.1 * sum(a1.mask) + mu.2 * sum(1 - a1.mask)
       
   # Get expected stage 2 rewards
-  stage.2.means = theta[1]*x1 + theta[2]*rbind(kronecker(a1.mask, x1[1,]), kronecker(1-a1.mask, x1[2,]))
+  main.effect = x1 %*% theta[1:ncol(x1)]
+  state.1.actions.at.replicates = matrix(kronecker(a1.mask, x1[1,]), ncol=2, byrow=T)
+  state.2.actions.at.replicates = matrix(kronecker(1-a1.mask, x1[2,]), ncol=2, byrow=T)
+  theta.2 = as.matrix(theta[(ncol(x1) + 1):(2*ncol(x1))])
+  action.effect.state.1 = state.1.actions.at.replicates %*% theta.2
+  action.effect.state.2 = state.2.actions.at.replicates %*% theta.2
+  action.effect = rbind(t(action.effect.state.1), t(action.effect.state.2))
+  stage.2.means = main.effect[,1] + action.effect
   prob.stage.2.a1 = 1 - pnorm(0, mean=stage.2.means[1,] - stage.2.means[2,], sd=sqrt(2*sigma.sq)) # Prob of taking action 1 at stage 2
   stage.2.action.probs = rbind(prob.stage.2.a1, 1-prob.stage.2.a1)
   expected.stage.2.reward = sum(stage.2.action.probs * stage.2.means)
@@ -138,11 +146,12 @@ ixn.features = function(phi.i){
 
 n=15
 mu.1 = 0
-mu.2 = 1
+mu.2 = 2
 sigma.sq = 1
+theta = matrix(c(1,2,3,4), nrow=1)
 A1 = as.matrix(c(rmultinom(n=n, size=1, prob=c(0.5, 0.5))))
 X1 = mvrnorm(n=n*2, mu=c(0.0, 0.0), Sigma=diag(2))
-delta = c(0, 0.1)
-x1 = matrix(c(1, 0.5, 2, 1.25), nrow=2, byrow=T)
-prob.a1(x1, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000)
+delta = -1.0
+r = prob.a1(theta, mu.1, mu.2, delta, X1, A1, sigma.sq, mc.replicates=1000)
+print(r)
   
