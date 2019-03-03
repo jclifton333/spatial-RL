@@ -19,6 +19,41 @@
 import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.integrate import nquad
+from sklearn.ensemble import RandomForestRegressor
+
+
+def fit_bandit_pseudo_outcome_models(X1, X2, theta1, theta2, sigma_sq, mc_replicates=1000):
+  """
+
+  :param X:
+  :param theta1:
+  :param theta2:
+  :return:
+  """
+  # Draw estimated params at each arm at each replicate
+  X1prime_X1 = np.dot(X1.T, X1)
+  X2prime_X2 = np.dot(X2.T, X2)
+  theta1_hats = np.random.multivariate_normal(theta1, cov=sigma_sq * X1prime_X1, size=mc_replicates)
+  theta2_hats = np.random.multivariate_normal(theta2, cov=sigma_sq * X2prime_X2, size=mc_replicates)
+
+  # Generate pseudo-outcomes at each replicate
+  estimated_arm1_means = np.dot(theta1_hats, X1)
+  estimated_arm2_means = np.dot(theta2_hats, X2)
+  a1_indicator = estimated_arm1_means.sum(axis=1) >= estimated_arm2_means.sum(axis=1)
+  pseudo_outcomes = np.multiply(estimated_arm1_means, a1_indicator) + \
+                    np.multiply(estimated_arm2_means, 1 - a1_indicator)
+
+  # Fit pseudo-outcome models
+  models = []
+  for rep in range(mc_replicates):
+    model = RandomForestRegressor()
+    y = pseudo_outcomes[rep]
+    model.fit(X, y)
+    models.fit(model.predict)
+
+
+
+
 
 
 def conditional_expectation_linear_inequality(a, b, mean_vector, sigma_sq):

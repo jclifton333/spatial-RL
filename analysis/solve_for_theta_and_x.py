@@ -15,12 +15,47 @@
 # and variance sigma.sq.  Finally, stage 2 rewards are the component of the mean vector corresponding to the location
 # that was chosen to
 # be treated at stage 2.
+
+ToDo: NOW IMPLEMENTING CONTEXTUAL BANDIT INSTEAD
 """
 import numpy as np
 from scipy.stats import norm
 from scipy.optimize import minimize
 from functools import partial
 import pdb
+
+
+def delta_objective_bandit(x, delta, theta1, theta2, V_opt):
+  """
+
+  :param x:
+  :param delta:
+  :param theta1:
+  :param theta2:
+  :param V_opt:
+  :param sigma_sq:
+  :return:
+  """
+  v_theta_x = np.max((np.sum(np.dot(x, theta1)), np.sum((np.dot(x, theta1)))))
+  value_term = (v_theta_x - V_opt)**2
+  margin_theta_x = np.abs(np.sum(np.dot(x, theta1)) - np.sum(np.dot(x, theta2)))
+  margin_term = (margin_theta_x - delta)**2
+  return value_term + margin_term
+
+
+def delta_objective_bandit_wrapper(parameter, delta, V_opt):
+  """
+
+  :param parameter: [x11, x12, x21, x22, theta1_11, theta1_12, theta1_21, theta1_22,
+                     theta2_11, theta2_12, theta2_21, theta2_22]
+  :param delta:
+  :param V_opt:
+  :return:
+  """
+  x = np.array([parameter[:2], parameter[2:4]])
+  theta1 = np.array([parameter[4:6], parameter[6:8]])
+  theta2 = np.array([parameter[8:10], parameter[10:12]])
+  return delta_objective_bandit(x, delta, theta1, theta2, V_opt)
 
 
 def delta_objective(x, theta, eta, delta, mu_1, mu_2, V_opt, sigma_sq):
