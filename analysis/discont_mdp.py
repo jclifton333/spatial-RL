@@ -11,136 +11,69 @@
 # corresponding
 # to the respective actions and independent of state.
 # Stages at stage 2 conditional on stage 1 action and states are independent normal with mean vector [x1.i a1.i*x1.i]_
-# {i=1,2} %*% theta
+# {i=1,2} %*% (theta, eta)
 # and variance sigma.sq.  Finally, stage 2 rewards are the component of the mean vector corresponding to the location
 # that was chosen to
 # be treated at stage 2.
 """
 import numpy as np
-from scipy.stats import norm
-from scipy.optimize import minimize
-from functools import partial
 
 
-def delta_objective(x, theta, eta, delta, mu_1, mu_2, V_opt, sigma_sq):
+def value_of_estimated_policy(theta, eta, mu_1, mu_2, sigma_sq, x, X1, A1, mc_replicates=1000):
   """
-  Objective function whose solution should give (x, theta, eta) with optimal policy value V_opt and margin delta.
+  Get expected value of policy estimated from first-stage observations (X1, A1).
 
-  :param x:
-  :param theta:
+  Local reward currently given by first component of state vector.
+
+  :param theta: rows [theta1, theta2] controlling conditional distribution of features 1, 2 resp
+  :param eta: rows [eta1, eta2] controlling conditional distribution of features 1, 2 resp
   :param mu_1:
   :param mu_2:
-  :param V_opt:
-  :return:
-  """
-  # Simplify terms
-  x1 = x[0, :]
-  x2 = x[1, :]
-  theta_eta_times_x1 = np.dot(theta + eta, x1)
-  theta_eta_times_x2 = np.dot(theta + eta, x2)
-  theta_times_x1 = np.dot(theta, x1)
-  theta_times_x2 = np.dot(theta, x2)
-
-  # p_ij = prob of taking action i at stage 2 given action j was taken at stage 1
-  p_11 = norm.cdf(0, loc=theta_eta_times_x1 - theta_times_x2, scale=np.sqrt(2*sigma_sq))
-  p_21 = 1 - p_11
-  p_12 = norm.cdf(0, loc=theta_eta_times_x2 - theta_times_x1, scale=np.sqrt(2*sigma_sq))
-  p_22 = 1 - p_12
-
-  # Value term
-  a1_value = mu_1 + theta_eta_times_x1*p_11 * theta_times_x2*p_21
-  diff_from_V_opt = (a1_value - V_opt)**2
-
-  # Margin term
-  margin = theta_eta_times_x1 - theta_eta_times_x2
-  diff_from_delta = (margin - delta)**2
-
-  return diff_from_delta + diff_from_V_opt
-
-
-def delta_objective_constraint(x, theta, eta, mu_1, mu_2, sigma_sq):
-  """
-  Solution for (x, theta, eta) must satisfy Q_opt(x, a_1) >= Q_opt(x, a_2).
-
-  :param x:
-  :param theta:
-  :param eta:
-  :param delta:
-  :param mu_1:
-  :param mu_2:
-  :param V_opt:
   :param sigma_sq:
+  :param x:
+  :param X1: list of arrays of stage-1 states
+  :param A1: list of arrays of stage-1 actions
   :return:
   """
-  # Simplify terms
-  x1 = x[0, :]
-  x2 = x[1, :]
-  theta_eta_times_x1 = np.dot(theta + eta, x1)
-  theta_eta_times_x2 = np.dot(theta + eta, x2)
-  theta_times_x1 = np.dot(theta, x1)
-  theta_times_x2 = np.dot(theta, x2)
+  X1_stack = np.vstack(X1)
+  A1_stack = np.hstack(A1)
+  design_matrix = np.column_stack(X1_stack, np.multiply(X1_stack, A1_stack))
+  transition_parameter = np.column_stack((theta, eta))
 
-  # p_ij = prob of taking action i at stage 2 given action j was taken at stage 1
-  p_11 = norm.cdf(0, loc=theta_eta_times_x1 - theta_times_x2, scale=np.sqrt(2*sigma_sq))
-  p_21 = 1 - p_11
-  p_12 = norm.cdf(0, loc=theta_eta_times_x2 - theta_times_x1, scale=np.sqrt(2*sigma_sq))
-  p_22 = 1 - p_12
+  # Draw many reps from conditional dbn of next state
+  conditional_means_1 = np.dot(design_matrix, transition_parameter[0, :])
+  conditional_means_2 = np.dot(design_matrix, transition_parameter[1, :])
+  X2 = np.array([
+    np.column_stack((np.random.normal(loc=conditional_means_1, scale=np.sqrt(sigma_sq)),
+                     np.random.normal(loc=conditional_means_2, scale=np.sqrt(sigma_sq))))
+    for _ in range(mc_replicates)]).T
 
-  # Q_opt(x, a_i)
-  a1_value = mu_1 + theta_eta_times_x1*p_11 * theta_times_x2*p_21
-  a2_value = mu_2 + theta_eta_times_x2*p_22 + theta_times_x1*p_12
+  # Estimate transition_parameter on each draw
+  Xprime_Xinv_Xprime = np.dot(np.linalg.inv(np.dot(design_matrix.T, design_matrix)), design_matrix.T)
+  estimated_transition_parameters_1 = np.dot(Xprime_Xinv_Xprime, X2[:, 0])
+  estimated_transition_parameters_2 = np.dot(Xprime_Xinv_Xprime, X2[:, 1])
 
-  return a1_value - a2_value
+  # Get pseudo-outcome for each draw
+  pseudo_outcomes = []
+  for x1 in X1:
+    x1_a1 = np.column_stack((x, np.multiply(x1, np.array([1, 0]))))
+    x1_a2 = np.column_stack((x1, np.multiply(x1, np.array([0, 1]))))
+    x21_a1_hats = np.dot(x1_a1, estimated_transition_parameters_1)
+    x21_a2_hats = np.dot(x1_a2, estimated_transition_parameters_1)
+    indicator = x21_a1_hats.sum(axis=0) > x21_a2_hats.sum(axis=0)
+    pseudo_outcome_i = np.multiply(x21_a1_hats, indicator) + np.multiply(x21_a2_hats, 1 - indicator)
+    pseudo_outcomes.append(pseudo_outcome_i)
 
-
-def delta_objective_constraint_wrapper(parameter, mu_1, mu_2, sigma_sq):
-  x = np.array([parameter[[0, 1]], parameter[[2, 3]]])
-  theta = parameter[[4, 5]]
-  eta = parameter[[6, 7]]
-  return delta_objective_constraint(x, theta, eta, mu_1, mu_2, sigma_sq)
-
-
-def delta_objective_wrapper(parameter, delta, mu_1, mu_2, V_opt, sigma_sq):
-  """
-  :param parameter: array [x11, x12, x21, x22, theta1, theta2, eta1, eta2].
-  :param mu_1:
-  :param mu_2:
-  :param V_opt:
-  :param sigma_sq:
-  :return:
-  """
-  x = np.array([parameter[[0, 1]], parameter[[2, 3]]])
-  theta = parameter[[4, 5]]
-  eta = parameter[[6, 7]]
-  return delta_objective(x, theta, eta, delta, mu_1, mu_2, V_opt, sigma_sq)
+  # Fit pseudo-outcome models for each draw
 
 
-def solve_for_theta_and_x(delta, mu_1, mu_2, V_opt, sigma_sq):
-  """
-  Solve for a gen model parameter (theta (main effect), eta (action effect) and array of stage-1 features (x) such that
-    i)  the value at state x is equal to V_opt under the optimal policy, and
-    ii) the difference between expected stage-2 rewards under actions 1 and 2 is delta.
-
-  (This allows us to study the effects of varying the margin delta on the value of the _estimated_ optimal policy
-  while keeping the value of the true optimal policy fixed.)
-
-  :param mu_1: expected reward for action 1 at stage 1
-  :param mu_2: expected reward for action 2 at stage 1
-  :param sigma_sq: variance of stage 2 states given stage 1 state and action.
-  """
-  objective = partial(delta_objective_wrapper, delta=delta, mu_1=mu_1, mu_2=mu_2, V_opt=V_opt, sigma_sq=sigma_sq)
-  constraint = partial(delta_objective_constraint_wrapper, mu_1=mu_1, mu_2=mu_2, sigma_sq=sigma_sq)
-  ineq_constraint = {'type': 'ineq',
-                     'fun': lambda x: constraint(x)}
-  res = minimize(objective, np.random.random(size=8), method='SLSQP', constraints=[ineq_constraint])
-  return res.x
 
 
-if __name__ == "__main__":
-  delta = 1.0
-  mu_1 = 1.0
-  mu_0 = 0.0
-  V_opt = 10
-  sigma_sq = 1.0
-  solve_for_theta_and_x(delta, mu_1, mu_2, V_opt, sigma_sq)
+
+
+
+
+
+
+
 
