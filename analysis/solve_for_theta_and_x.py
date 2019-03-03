@@ -37,12 +37,28 @@ def delta_objective(x, theta, eta, delta, mu_1, mu_2, V_opt, sigma_sq):
   # Simplify terms
   x1 = x[0, :]
   x2 = x[1, :]
-  theta_eta_times_x1 = np.dot(theta + eta, x1)
-  theta_eta_times_x2 = np.dot(theta + eta, x2)
-  theta_times_x2 = np.dot(theta, x2)
+  theta1 = theta[0, :]
+  theta2 = theta[1, :]
+  eta1 = eta[0, :]
+  eta2 = eta[1, :]
 
-  # p_ij = prob of taking action i at stage 2 given action j was taken at stage 1
-  p_11 = norm.cdf(0, loc=theta_eta_times_x1 - theta_times_x2, scale=np.sqrt(2*sigma_sq))
+  theta_eta_times_x1 = np.dot(theta1 + eta1, x1)
+  theta_eta_times_x2 = np.dot(theta1 + eta1, x2)
+  theta_times_x2 = np.dot(theta1, x2)
+
+  # p_jk = prob of taking action j at stage 2 given action k was taken at stage 1
+  # r_ijk = expected reward at location i from taking action j at stage 2 given action k was taken at stage 1
+  # var_ijk = variance for the same
+  r_111 = np.dot(theta1 + eta1, np.array([np.dot(theta1 + eta1, x1), np.dot(theta2 + eta2, x1)]))
+  var_111 = sigma_sq * np.dot(theta1 + eta1, theta1 + eta1)
+  r_211 = np.dot(theta1, np.array([np.dot(theta1, x2), np.dot(theta1, x2)]))
+  var_211 = sigma_sq * np.dot(theta1, theta1)
+  r_121 = np.dot(theta1, np.array([np.dot(theta1, x1), np.dot(theta1, x1)]))
+  var_121 = np.dot(theta1, theta1)
+  r_221 = np.dot(theta1 + eta1, np.array([np.dot(theta1 + eta1, x2), np.dot(theta1 + eta1, x2)]))
+  difference_in_expected_reward = (r_111 + r_211) - (r_121 + r_221)
+  difference_in_reward_variance = var_111 + var_211 + var_121 + var_111  # ToDo: make sure these are actually uncorr.
+  p_11 = norm.cdf(0, loc=difference_in_expected_reward, scale=np.sqrt(difference_in_reward_variance))
   p_21 = 1 - p_11
 
   # Value term
@@ -74,10 +90,14 @@ def delta_objective_constraint(x, theta, eta, mu_1, mu_2, sigma_sq):
   # Simplify terms
   x1 = x[0, :]
   x2 = x[1, :]
-  theta_eta_times_x1 = np.dot(theta + eta, x1)
-  theta_eta_times_x2 = np.dot(theta + eta, x2)
-  theta_times_x1 = np.dot(theta, x1)
-  theta_times_x2 = np.dot(theta, x2)
+  theta1 = theta[0, :]
+  theta2 = theta[1, :]
+  eta1 = eta[0, :]
+  eta2 = eta[1, :]
+  theta_eta_times_x1 = np.dot(theta1 + eta1, x1)
+  theta_eta_times_x2 = np.dot(theta1 + eta1, x2)
+  theta_times_x1 = np.dot(theta1, x1)
+  theta_times_x2 = np.dot(theta1, x2)
 
   # p_ij = prob of taking action i at stage 2 given action j was taken at stage 1
   p_11 = norm.cdf(0, loc=theta_eta_times_x1 - theta_times_x2, scale=np.sqrt(2*sigma_sq))

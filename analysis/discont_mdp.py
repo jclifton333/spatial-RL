@@ -17,6 +17,35 @@
 # be treated at stage 2.
 """
 import numpy as np
+from scipy.stats import multivariate_normal
+from scipy.integrate import nquad
+
+
+def conditional_expectation_linear_inequality(a, b, mean_vector, sigma_sq):
+  """
+  Compute expectation of dot(a, Y) given dot(a - b, Y) >= 0, where
+  Y ~ N(mean_vector, sigma_sq * eye(4).
+  :param a:
+  :param b:
+  :param sigma_sq:
+  :return:
+  """
+  amb = a - b
+  normal_pdf = lambda x, mu, s: (1 / np.sqrt(2*np.pi*s)) * np.exp(-0.5 * (x - mu)**2 / s)
+  joint_pdf = lambda x1, x2, x3, x4: normal_pdf(x1, mean_vector[0], sigma_sq) * \
+    normal_pdf(x2, mean_vector[1], sigma_sq) * normal_pdf(x3, mean_vector[2], sigma_sq) * \
+    normal_pdf(x4, mean_vector[3], sigma_sq)
+  lim0 = lambda x1, x2, x3: [-(amb[0]*x1 + amb[1]*x2 + amb[2]*x3), float('inf')]
+  limits = [lim0, [-float('inf'), float('inf')], [-float('inf'), float('inf')], [-float('inf'), float('inf')]]
+  solution = nquad(joint_pdf, limits)
+  return solution[0]
+
+
+def mc_conditional_expectation_linear_inequality(a, b, mean_vector, sigma_sq, mc_replicates=10000):
+  draws = np.random.multivariate_normal(mean_vector, sigma_sq*np.eye(4), size=mc_replicates)
+  conditioning_indicator = np.dot(draws, a-b) >= 0
+  conditional_draws = draws[np.where(conditioning_indicator) == 1, :]
+  return np.mean(np.dot(conditional_draws, a))
 
 
 def draw_q1_estimates(theta, eta, sigma_sq, X1, A1, mc_replicates=1000):
@@ -59,7 +88,7 @@ def draw_q1_estimates(theta, eta, sigma_sq, X1, A1, mc_replicates=1000):
     x1_a1 = np.column_stack((x1, np.multiply(x1, np.array([1, 0]))))
     x1_a2 = np.column_stack((x1, np.multiply(x1, np.array([0, 1]))))
     x21_a1_hats = np.dot(x1_a1, estimated_transition_parameters_1)
-    x21_a2_hats = np.dot(x1_a2, estimated_transition_parameters_1)
+    x21_a2_hats = np.dot(x1_a2, estimated_transition_parameters_2)
     indicator = x21_a1_hats.sum(axis=0) >= x21_a2_hats.sum(axis=0)
     pseudo_outcome_i = np.multiply(x21_a1_hats, indicator) + np.multiply(x21_a2_hats, 1 - indicator)
     pseudo_outcomes.append(pseudo_outcome_i)
@@ -105,7 +134,9 @@ def get_stage_one_actions_under_q1_estimates(x, mu_1, mu_2, estimated_q1_paramet
   return actions
 
 
-
+if __name__ == "__main__":
+  mc_conditional_expectation_linear_inequality(np.random.random(size=4), np.random.random(size=4),
+                                               np.random.random(size=4), 1.0)
 
 
 
