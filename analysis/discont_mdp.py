@@ -19,9 +19,9 @@
 import numpy as np
 
 
-def value_of_estimated_policy(theta, eta, mu_1, mu_2, sigma_sq, x, X1, A1, mc_replicates=1000):
+def draw_q1_estimates(theta, eta, sigma_sq, X1, A1, mc_replicates=1000):
   """
-  Get expected value of policy estimated from first-stage observations (X1, A1).
+  Draw many estimates of q1 by drawing from conditional distribution of next state at stage-1 obs (X1, A1).
 
   Local reward currently given by first component of state vector.
 
@@ -56,15 +56,54 @@ def value_of_estimated_policy(theta, eta, mu_1, mu_2, sigma_sq, x, X1, A1, mc_re
   # Get pseudo-outcome for each draw
   pseudo_outcomes = []
   for x1 in X1:
-    x1_a1 = np.column_stack((x, np.multiply(x1, np.array([1, 0]))))
+    x1_a1 = np.column_stack((x1, np.multiply(x1, np.array([1, 0]))))
     x1_a2 = np.column_stack((x1, np.multiply(x1, np.array([0, 1]))))
     x21_a1_hats = np.dot(x1_a1, estimated_transition_parameters_1)
     x21_a2_hats = np.dot(x1_a2, estimated_transition_parameters_1)
-    indicator = x21_a1_hats.sum(axis=0) > x21_a2_hats.sum(axis=0)
+    indicator = x21_a1_hats.sum(axis=0) >= x21_a2_hats.sum(axis=0)
     pseudo_outcome_i = np.multiply(x21_a1_hats, indicator) + np.multiply(x21_a2_hats, 1 - indicator)
     pseudo_outcomes.append(pseudo_outcome_i)
 
   # Fit pseudo-outcome models for each draw
+  # ToDo: Note that this linear model is misspecified!
+  pseudo_outcomes_stack = np.vstack(pseudo_outcomes)
+  estimated_q1_parameters = np.dot(Xprime_Xinv_Xprime, pseudo_outcomes_stack)
+
+  return estimated_q1_parameters
+
+
+def get_stage_one_actions_under_q1_estimates(x, mu_1, mu_2, estimated_q1_parameters):
+  """
+  Get actions at estimated q1 parameter at stage-1 state x.
+
+  :param x:
+  :param mu_1:
+  :param mu_2:
+  :param estimated_q1_parameters:
+  :return:
+  """
+  x_a1 = np.concatenate(x, np.multiply(x, np.array([1, 0])))
+  x_a2 = np.concatenate(x, np.multiply(x, np.array([0, 1])))
+
+  # Get estimates of next-stage rewards under optimal policy
+  predicted_stage1_outcomes_a1 = np.dot(x_a1, estimated_q1_parameters)
+  indicator_a1 = predicted_stage1_outcomes_a1[0, :] >= predicted_stage1_outcomes_a1[1, :]
+  expected_reward_a1 = np.multiply(predicted_stage1_outcomes_a1[0, :], indicator_a1) + \
+                       np.multiply(predicted_stage1_outcomes_a1[1, :], 1 - indicator_a1)
+  predicted_stage1_outcomes_a2 = np.dot(x_a2, estimated_q1_parameters)
+  indicator_a2 = predicted_stage1_outcomes_a2[0, :] >= predicted_stage1_outcomes_a2[1, :]
+  expected_reward_a2 = np.multiply(predicted_stage1_outcomes_a2[0, :], indicator_a2) + \
+                       np.multiply(predicted_stage1_outcomes_a2[1, :], 1 - indicator_a2)
+
+  # Get estimated q1's
+  q_a1_hats = mu_1 + expected_reward_a1
+  q_a2_hats = mu_2 + expected_reward_a2
+
+  # Get actions taken at each replicates
+  actions = q_a1_hats >= q_a2_hats
+
+  return actions
+
 
 
 
