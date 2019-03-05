@@ -321,8 +321,8 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, gamma):
   env.reset()
 
   # Step 1
-  # action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
-  action = np.random.permutation(np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget))))
+  action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
+  # action = np.random.permutation(np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget))))
   env.step(action)
   q1_rep += np.sum(env.current_infected)
 
@@ -737,7 +737,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     # elif iterations == 1:
     #   qhat = qhat1_dict[T]
     # qhat_mb = qhat0_mb_dict[T]
-    qhat0 = qhat0_dict[T]
+    qhat0 = qhat0_mb_dict[T]
     qhat1 = qhat1_dict[T]
 
     qhat_vals = []
