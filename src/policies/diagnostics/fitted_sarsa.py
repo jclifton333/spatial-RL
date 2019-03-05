@@ -25,6 +25,7 @@ from src.environments.sis_infection_probs import sis_infection_probability
 import src.environments.sis as sis_helpers
 from src.estimation.q_functions.one_step import fit_one_step_sis_mb_q
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
 import numpy as np
 from functools import partial
 import pickle as pkl
@@ -34,7 +35,7 @@ import multiprocessing as mp
 import copy
 import yaml
 import keras.backend as K
-from scipy.special import expit
+from scipy.special import expit, logit
 import argparse
 
 
@@ -62,6 +63,7 @@ class q1_rf(object):
     self.rf = RandomForestRegressor(n_estimators=100, oob_score=True)
     self.rf.fit(X, y)
     # self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
+    self.validation_error = self.rf.oob_score_
     self.gamma = gamma
     self.q0 = q0
 
@@ -70,6 +72,33 @@ class q1_rf(object):
     # q0max = self.reg.predict(x1).flatten()
     x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
     q0 = self.q0(x0)
+    return q0 + self.gamma * q0max
+
+
+class q1_linear(object):
+  def __init__(self, X, y, q0, gamma, model_name, test=False):
+    # Split to get validation set, to make sure the model is improving over time
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2)
+
+    logit_y_train = logit(y_train)
+    self.lm = LinearRegression()
+    self.lm.fit(X_train, logit_y_train)
+    # self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
+    self.gamma = gamma
+    self.q0 = q0
+
+    # Get validation performance
+    logit_yhat_val = self.predict(X_val)
+    yhat_val = expit(logit_yhat_val)
+    self.validation_error = np.mean((yhat_val - y_val)**2)
+
+  def predict(self, x1):
+    logit_q0max = self.lm.predict(x1)
+    q0max = expit(logit_q0max)
+    # q0max = self.reg.predict(x1).flatten()
+    x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
+    q0 = self.q0(x0)
+
     return q0 + self.gamma * q0max
 
 
@@ -194,9 +223,9 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
-      q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma, model_name_1, test=test)
+      q1_piecewise = q1_linear(X2, q1_target, q0_piecewise_T, gamma, model_name_1, test=test)
       q1_dict[T] = q1_piecewise.predict
-      q1_accuracy_dict[T] = q1_piecewise.rf.oob_score_
+      q1_accuracy_dict[T] = q1_piecewise.validation_error
     return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict, q1_accuracy_dict
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
