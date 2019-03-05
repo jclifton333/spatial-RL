@@ -185,7 +185,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       # q0_2_T = q0_2_dict[T]
       q0_T = q0_dict[T]
 
-      for ix, x in enumerate([env.X[indices[t]+1] for t in range(T-1)]):
+      for ix, x in enumerate([env.X[t+1] for t in range(1, T)]):
 
         # def q0_1_at_block(a):
         #   X_at_a = env.data_block_at_action(ix, a)
@@ -219,13 +219,13 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         q0_at_a = q0_at_block(a_)
         q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_at_a)
 
-      X2 = np.vstack([env.X_2[ix] for ix in indices[:T-1]])
+      X2 = np.vstack(env.X_2[:(T-1)])
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
       q1_piecewise = q1_linear(X2, q1_target, q0_piecewise_T, gamma, model_name_1, test=test)
       q1_dict[T] = q1_piecewise.predict
-      q1_accuracy_dict[T] = q1_piecewise.validation_error
+      q1_accuracy_dict[T] = float(q1_piecewise.validation_error)
     return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict, q1_accuracy_dict
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
@@ -321,7 +321,8 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, gamma):
   env.reset()
 
   # Step 1
-  action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
+  # action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
+  action = np.random.permutation(np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget))))
   env.step(action)
   q1_rep += np.sum(env.current_infected)
 
