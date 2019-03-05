@@ -46,15 +46,14 @@ def delta_objective_bandit(x, delta, theta1, theta2, V_opt):
 def delta_objective_bandit_wrapper(parameter, delta, V_opt):
   """
 
-  :param parameter: [x11, x12, x21, x22, theta1_11, theta1_12, theta1_21, theta1_22,
-                     theta2_11, theta2_12, theta2_21, theta2_22]
+  :param parameter: [x11, x12, x21, x22, theta1_1, theta1_2, theta2_1, theta2_2]
   :param delta:
   :param V_opt:
   :return:
   """
   x = np.array([parameter[:2], parameter[2:4]])
-  theta1 = np.array([parameter[4:6], parameter[6:8]])
-  theta2 = np.array([parameter[8:10], parameter[10:12]])
+  theta1 = parameter[4:6]
+  theta2 = parameter[6:8]
   return delta_objective_bandit(x, delta, theta1, theta2, V_opt)
 
 

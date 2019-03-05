@@ -22,7 +22,7 @@ from scipy.integrate import nquad
 from sklearn.ensemble import RandomForestRegressor
 
 
-def fit_bandit_pseudo_outcome_models(X1, X2, theta1, theta2, sigma_sq, mc_replicates=1000):
+def fit_bandit_pseudo_outcome_models(X1, X2, theta1, theta2, sigma_sq, mc_replicates=100):
   """
 
   :param X:

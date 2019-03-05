@@ -172,6 +172,6 @@ if __name__ == "__main__":
   # maxes = fit_and_take_max_for_multiple_draws(100, 10, number_of_tries=20)
   # for m in maxes: print(m)
   np.random.seed(3)
-  fit_and_take_max(100, [10, 50, 100, 200], test=False)
+  fit_and_take_max(100, [10], test=False)
 
 

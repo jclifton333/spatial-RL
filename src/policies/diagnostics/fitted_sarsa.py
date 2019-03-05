@@ -59,7 +59,7 @@ class sklogit3(object):
 
 class q1_rf(object):
   def __init__(self, X, y, q0, gamma, model_name, test=False):
-    self.rf = RandomForestRegressor(n_estimators=100)
+    self.rf = RandomForestRegressor(n_estimators=100, oob_score=True)
     self.rf.fit(X, y)
     # self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
     self.gamma = gamma
@@ -119,6 +119,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
   q0_2_dict = {}
   q1_mb_dict = {}
   q1_dict = {}
+  q1_accuracy_dict = {}
 
   print('Fitting q0s')
   np.random.seed(3)
@@ -195,10 +196,11 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
       q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma, model_name_1, test=test)
       q1_dict[T] = q1_piecewise.predict
-    return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
+      q1_accuracy_dict[T] = q1_piecewise.rf.oob_score_
+    return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict, q1_accuracy_dict
   else:
     # return q0, None, env.X_raw, env.X, env.X_2, q0_graph, None
-    return q0_dict, None, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict
+    return q0_dict, None, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict, None
 
 
 def evaluate_optimal_qfn_policy_for_single_rep(rep, env, q, iterations, initial_action, time_horizon, treatment_budget,
@@ -682,7 +684,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
   env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice}
   ref_env = environment_factory('sis', **env_kwargs)
 
-  qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph, qhat0_mb_dict = \
+  qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph, qhat0_mb_dict, q1_accuracy_dict = \
     fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=iterations)
 
   # Summarize covariate history
@@ -696,7 +698,8 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     reference_state_indices = range(5)
     time_horizons = (10,)
 
-  results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions}
+  results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions,
+                  'q1_accuracies': q1_accuracy_dict}
 
   for T in qhat0_dict.keys():
     # if iterations == 0:
