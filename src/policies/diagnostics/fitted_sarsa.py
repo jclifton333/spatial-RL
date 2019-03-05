@@ -88,7 +88,7 @@ class q1_linear(object):
     self.q0 = q0
 
     # Get validation performance
-    logit_yhat_val = self.predict(X_val)
+    logit_yhat_val = self.lm.predict(X_val)
     yhat_val = expit(logit_yhat_val)
     self.validation_error = np.mean((yhat_val - y_val)**2)
 
