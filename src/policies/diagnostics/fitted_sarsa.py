@@ -778,7 +778,7 @@ def evaluate_qopt(L, horizons=(10, 50, 100, 200), test=False, refit=False, itera
   # Check if there are saved reference state data
   existing_data = False
   if not refit:
-    for filename in os.listdir('../data_for_prefit_policies/'):
+    for filename in os.listdir(os.path.join(this_dir, '..', 'data_for_prefit_policies')):
       if 'L={}'.format(L) in filename:
         existing_data = True
         reference_state_data = pkl.load(open(os.path.join(this_dir, '..', 'data_for_prefit_policies', filename), 'rb'))
@@ -817,7 +817,7 @@ def compare_at_multiple_horizons(L, horizons=(10, 50, 100, 200), test=False, ref
   # Check if there are saved reference state data
   existing_data = False
   if not refit:
-    for filename in os.listdir('../data_for_prefit_policies/'):
+    for filename in os.listdir(os.path.join(this_dir, '..', 'data_for_prefit_policies')):
       if 'L={}'.format(L) in filename:
         existing_data = True
         reference_state_data = pkl.load(open(os.path.join(this_dir, '..', 'data_for_prefit_policies', filename), 'rb'))
