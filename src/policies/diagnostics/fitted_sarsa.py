@@ -304,7 +304,7 @@ def evaluate_random_policy(L, initial_infections, initial_action, test):
   return float(np.mean(q))
 
 
-def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, gamma):
+def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, initial_action, gamma):
   np.random.seed(rep)
 
   def q0_at_block(a):
@@ -312,18 +312,18 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, gamma):
     q_vals = q0(x_at_a)
     return q_vals
 
-  def q1_at_block(a):
-    x_at_a = env.data_block_at_action(-1, a, neighbor_order=2)
-    q_vals = q1(x_at_a)
-    return q_vals
+  # def q1_at_block(a):
+  #   x_at_a = env.data_block_at_action(-1, a, neighbor_order=2)
+  #   q_vals = q1(x_at_a)
+  #   return q_vals
 
   q1_rep = 0.0
   env.reset()
 
   # Step 1
-  action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
+  # action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
   # action = np.random.permutation(np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget))))
-  env.step(action)
+  env.step(initial_action)
   q1_rep += np.sum(env.current_infected)
 
   # Step 2
@@ -334,7 +334,7 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, gamma):
   return q1_rep
 
 
-def get_true_1_step_q(q0, q1, L, initial_infections, test):
+def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
   """
   Compute the actual value of following (argmax \hat{q}_1, argmax \hat{q}_0) at the first two steps, in order to
   assess fit of \hat{q}_1.
@@ -361,7 +361,7 @@ def get_true_1_step_q(q0, q1, L, initial_infections, test):
 
   env = environment_factory('sis', **env_kwargs)
   evaluate_at_rep_partial = partial(get_true_1_step_q_single_rep, env=env, q0=q0, q1=q1,
-                                    treatment_budget=treatment_budget, gamma=gamma)
+                                    treatment_budget=treatment_budget, initial_action=initial_action, gamma=gamma)
 
   pool = mp.Pool(MC_REPLICATES)
   q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
@@ -759,7 +759,8 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       x_raw = X_raw[ix]
 
       y_ = x_raw[:, 2]
-      q1, se1 = get_true_1_step_q(qhat0, qhat1, L, y_, test)
+      a_ = x_raw[:, 1]
+      q1, se1 = get_true_1_step_q(qhat0, qhat1, L, y_, a_, test)
       # q, se, q1, se1 = evaluate_optimal_qfn_policy(qhat, L, y_, a_, test,
       #                                              iterations=iterations)
       # q_mb, se_mb, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat_mb, L, y_, a_, test,
