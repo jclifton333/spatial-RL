@@ -324,15 +324,15 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, initial_act
   # action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
   # action = np.random.permutation(np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget))))
   env.step(initial_action)
-  q0 = np.sum(env.current_infected)
-  q1_rep += q0
+  q0_ = np.sum(env.current_infected)
+  q1_rep += q0_
 
   # Step 2
   action = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
   env.step(action)
   q1_rep += gamma * np.sum(env.current_infected)
 
-  return q1_rep, q0
+  return q1_rep, q0_
 
 
 def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
@@ -763,7 +763,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
 
       y_ = x_raw[:, 2]
       a_ = x_raw[:, 1]
-      q1, se1, q0 = get_true_1_step_q(qhat0, qhat1, L, y_, a_, test)
+      q1_true, se1, q0_true = get_true_1_step_q(qhat0, qhat1, L, y_, a_, test)
       # q, se, q1, se1 = evaluate_optimal_qfn_policy(qhat, L, y_, a_, test,
       #                                              iterations=iterations)
       # q_mb, se_mb, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat_mb, L, y_, a_, test,
@@ -783,13 +783,13 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
         # true_q_mb = true_q = np.sum(true_probs)
         qhat_x = np.sum(qhat0(x0))
       elif iterations == 1:
-        true_q = q1
+        true_q = q1_true
         # true_q_mb = q1_mb
         pdb.set_trace()
         Qhat1 = qhat1(x1)
         qhat_x = np.sum(Qhat1)
         qhat1_estimates.append(float(qhat_x))
-        true_q1s.append(float(q1))
+        true_q1s.append(float(q1_true))
       
       # qhat_mb_x = np.sum(qhat_mb(x_raw))
       qhat_mses.append(float((true_q - qhat_x)**2))
