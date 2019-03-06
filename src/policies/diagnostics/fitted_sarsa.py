@@ -332,7 +332,7 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, initial_act
   env.step(action)
   q1_rep += gamma * np.sum(env.current_infected)
 
-  return q1_rep
+  return q1_rep, q0
 
 
 def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
