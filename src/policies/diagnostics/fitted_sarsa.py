@@ -324,7 +324,8 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, initial_act
   # action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
   # action = np.random.permutation(np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget))))
   env.step(initial_action)
-  q1_rep += np.sum(env.current_infected)
+  q0 = np.sum(env.current_infected)
+  q1_rep += q0
 
   # Step 2
   action = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
@@ -364,17 +365,19 @@ def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
                                     treatment_budget=treatment_budget, initial_action=initial_action, gamma=gamma)
 
   pool = mp.Pool(MC_REPLICATES)
-  q1_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
+  q_list = pool.map(evaluate_at_rep_partial, range(MC_REPLICATES))
   pool.terminate()
 
   # q_and_q1_list = []
   # for i in range(5):
   #   res = evaluate_at_rep_partial(i)
   #   q_and_q1_list.append(res)
-
+  q0_list = [q0_ for q1_, q0_ in q_list]
+  q1_list = [q1_ for q1_, q0_ in q_list]
   q1 = np.mean(q1_list)
+  q0 = np.mean(q0_list)
   se1 = np.std(q1_list) / np.sqrt(MC_REPLICATES)
-  return q1, se1
+  return q1, se1, q0
 
 
 def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, iterations=0):
@@ -760,7 +763,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
 
       y_ = x_raw[:, 2]
       a_ = x_raw[:, 1]
-      q1, se1 = get_true_1_step_q(qhat0, qhat1, L, y_, a_, test)
+      q1, se1, q0 = get_true_1_step_q(qhat0, qhat1, L, y_, a_, test)
       # q, se, q1, se1 = evaluate_optimal_qfn_policy(qhat, L, y_, a_, test,
       #                                              iterations=iterations)
       # q_mb, se_mb, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat_mb, L, y_, a_, test,
@@ -782,7 +785,9 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       elif iterations == 1:
         true_q = q1
         # true_q_mb = q1_mb
-        qhat_x = np.sum(qhat1(x1))
+        pdb.set_trace()
+        Qhat1 = qhat1(x1)
+        qhat_x = np.sum(Qhat1)
         qhat1_estimates.append(float(qhat_x))
         true_q1s.append(float(q1))
       
