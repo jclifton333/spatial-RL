@@ -65,7 +65,10 @@ class q1_rf(object):
     y_train, y_test = y[train_ixs], y[test_ixs]
     self.rf.fit(X_train, y_train)
     # self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
-    self.validation_error = np.mean((self.rf.predict(X_test) - y_test)**2)
+    q_hat_test = self.rf.predict(X_test).sum()
+    q_test = y_test.sum()
+    bias = np.mean(q_hat_test - q_test)
+    self.validation_error = bias
     self.gamma = gamma
     self.q0 = q0
 
