@@ -760,7 +760,8 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     reference_state_indices = range(1)
     time_horizons = (10,)
   else:
-    reference_state_indices = range(5)
+    # reference_state_indices = range(5)
+    reference_state_indices = np.random.choice(len(X), size=5, replace=False)
     time_horizons = (10,)
 
   results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions,
