@@ -751,8 +751,10 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
   env_kwargs = {'L': L, 'omega': 0.0, 'generate_network': generate_network.lattice}
   ref_env = environment_factory('sis', **env_kwargs)
 
-  qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph, qhat0_mb_dict, q1_accuracy_dict = \
+  qhat0_dict, qhat1_dict, X_raw_for_q, X, X2, q0_graph, q1_graph, qhat0_mb_dict, q1_accuracy_dict = \
     fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=iterations)
+
+  X_raw = X_raw_for_q
 
   # Summarize covariate history
   infection_proportions = [float(np.mean(x[:, -1])) for x in X_raw_for_q]
