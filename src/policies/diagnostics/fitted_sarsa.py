@@ -61,13 +61,11 @@ class sklogit3(object):
 class q1_rf(object):
   def __init__(self, X, y, q0, gamma, model_name, train_ixs, test_ixs, test=False):
     self.rf = RandomForestRegressor(n_estimators=100, oob_score=True)
-    X_train, X_test = X[train_ixs, :], X[test_ixs, :]
-    y_train, y_test = y[train_ixs], y[test_ixs]
+    X_train, y_train = X[train_ixs.flatten(), :], y_train[train_ixs.flatten()]
     self.rf.fit(X_train, y_train)
     # self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
-    q_hat_test = self.rf.predict(X_test).sum()
-    q_test = y_test.sum()
-    bias = np.mean(q_hat_test - q_test)
+    biases = [self.rf.predict(X[tix, :]) - y[tix] for tix in test_ixs]
+    bias = np.mean(biases)
     self.validation_error = bias
     self.gamma = gamma
     self.q0 = q0
@@ -248,9 +246,9 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       for t in range(T-1):
         indices_t = [i for i in range(int(t*env.L), int((t+1)*env.L))]
         if dummy_mask[t]:
-          test_ixs += indices_t
+          test_ixs.append(indices_t)
         else:
-          train_ixs += indices_t
+          train_ixs.append(indices_t)
 
       q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma, model_name_1, train_ixs, test_ixs, test=test)
       q1_dict[T] = q1_piecewise.predict
