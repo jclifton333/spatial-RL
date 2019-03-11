@@ -61,7 +61,8 @@ class sklogit3(object):
 class q1_rf(object):
   def __init__(self, X, y, q0, gamma, model_name, train_ixs, test_ixs, test=False):
     self.rf = RandomForestRegressor(n_estimators=100, oob_score=True)
-    X_train, y_train = X[train_ixs.flatten(), :], y_train[train_ixs.flatten()]
+    train_ixs_flat = [tr_ix for tr_ixs in train_ixs for tr_ix in tr_ixs]
+    X_train, y_train = X[train_ixs_flat, :], y[train_ixs_flat]
     self.rf.fit(X_train, y_train)
     # self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
     biases = [self.rf.predict(X[tix, :]) - y[tix] for tix in test_ixs]
