@@ -59,18 +59,21 @@ class sklogit3(object):
 
 
 class q1_rf(object):
-  def __init__(self, X, y, q0, gamma, model_name, test=False):
+  def __init__(self, X, y, q0, gamma, model_name, train_ixs, test_ixs, test=False):
     self.rf = RandomForestRegressor(n_estimators=100, oob_score=True)
-    self.rf.fit(X, y)
+    X_train, X_test = X[train_ixs, :], X[test_ixs, :]
+    y_train, y_test = y[train_ixs], y[test_ixs]
+    self.rf.fit(X_train, y_train)
     # self.reg = model_fitters.fit_piecewise_keras_regressor(X, y, model_name, test=test)
-    self.validation_error = self.rf.oob_score_
+    self.validation_error = np.mean((self.rf.predict(X_test) - y_test)**2)
     self.gamma = gamma
     self.q0 = q0
 
   def predict(self, x1):
     q0max = self.rf.predict(x1)
     # q0max = self.reg.predict(x1).flatten()
-    x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
+    # x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
+    x0 = sis_helpers.convert_second_order_encoding_to_zeroth_order(x1)
     q0 = self.q0(x0)
     return q0 + self.gamma * q0max
 
@@ -216,9 +219,15 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         # q0_1 = q0_2_at_block(a_1)
         # q0_2 = q0_1_at_block(a_2)
         # q0_pooled = 0.5*(q0_1 + q0_2)
-
         # q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_pooled)
         a_ = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
+
+        # q0_at_no_treat = q0_at_block(np.zeros(env.L))
+        # treat_ixs = np.argsort(-q0_at_no_treat)[:treatment_budget]
+        # a_ = np.zeros(env.L)
+        # a_[treat_ixs] = 1
+        # a_ = env.X_raw[ix][:, 1]
+
         q0_at_a = q0_at_block(a_)
         q0_evaluate_at_argmax = np.append(q0_evaluate_at_argmax, q0_at_a)
 
@@ -226,7 +235,21 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
       # q1_target = np.hstack(q0_evaluate_at_xm1) + gamma * q0_evaluate_at_argmax
       q1_target = q0_evaluate_at_argmax  # Only approximate maxQ0(S_tp1); can plug in Q0(S_t) directly
       model_name_1 = 'L=100-T={}-k=1-{}'.format(T, timestamp)
-      q1_piecewise = q1_linear(X2, q1_target, q0_piecewise_T, gamma, model_name_1, test=test)
+
+      # Get train/test split
+      train_ixs = []
+      test_ixs = []
+      number_of_test_times = int(np.floor(0.2 * (T-1)))
+      dummy_mask = np.concatenate((np.zeros((T-1) - number_of_test_times),
+                                   np.ones(number_of_test_times)))
+      for t in range(T-1):
+        indices_t = [i for i in range(int(t*env.L), int((t+1)*env.L))]
+        if dummy_mask[t]:
+          test_ixs += indices_t
+        else:
+          train_ixs += indices_t
+
+      q1_piecewise = q1_rf(X2, q1_target, q0_piecewise_T, gamma, model_name_1, train_ixs, test_ixs, test=test)
       q1_dict[T] = q1_piecewise.predict
       q1_accuracy_dict[T] = float(q1_piecewise.validation_error)
     return q0_dict, q1_dict, env.X_raw, env.X, env.X_2, None, None, q0_mb_dict, q1_accuracy_dict
@@ -311,7 +334,8 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, initial_act
   np.random.seed(rep)
 
   def q0_at_block(a):
-    x_at_a = env.data_block_at_action(-1, a, neighbor_order=1)
+    # x_at_a = env.data_block_at_action(-1, a, neighbor_order=1)
+    x_at_a = env.data_block_at_action(-1, a, raw=True)
     q_vals = q0(x_at_a)
     return q_vals
 
@@ -320,20 +344,22 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, initial_act
   #   q_vals = q1(x_at_a)
   #   return q_vals
 
-  q1_rep = 0.0
+  q1_rep = np.zeros(env.L)
   env.reset()
 
   # Step 1
   # action = argmaxer_quad_approx(q1_at_block, 100, treatment_budget, env)
   # action = np.random.permutation(np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget))))
   env.step(initial_action)
-  q0_ = np.sum(env.current_infected)
+  # q0_ = np.sum(env.current_infected)
+  q0_ = env.current_infected
   q1_rep += q0_
 
   # Step 2
   action = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
   env.step(action)
-  q1_rep += gamma * np.sum(env.current_infected)
+  # q1_rep += gamma * np.sum(env.current_infected)
+  q1_rep += gamma * env.current_infected
 
   return q1_rep, q0_
 
@@ -378,8 +404,8 @@ def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
   #   q_and_q1_list.append(res)
   q0_list = [q0_ for q1_, q0_ in q_list]
   q1_list = [q1_ for q1_, q0_ in q_list]
-  q1 = np.mean(q1_list)
-  q0 = np.mean(q0_list)
+  q1 = np.mean(q1_list, axis=0)
+  q0 = np.mean(q0_list, axis=0)
   se1 = np.std(q1_list) / np.sqrt(MC_REPLICATES)
   return q1, se1, q0
 
@@ -787,12 +813,12 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
         # true_q_mb = true_q = np.sum(true_probs)
         qhat_x = np.sum(qhat0(x0))
       elif iterations == 1:
-        true_q = q1_true
+        true_q = np.sum(q1_true)
         # true_q_mb = q1_mb
         Qhat1 = qhat1(x1)
         qhat_x = np.sum(Qhat1)
         qhat1_estimates.append(float(qhat_x))
-        true_q1s.append(float(q1_true))
+        true_q1s.append(float(np.sum(q1_true)))
       
       # qhat_mb_x = np.sum(qhat_mb(x_raw))
       qhat_mses.append(float((true_q - qhat_x)**2))
