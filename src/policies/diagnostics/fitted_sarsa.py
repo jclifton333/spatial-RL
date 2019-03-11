@@ -683,8 +683,10 @@ def compare_fitted_q_to_true_q(X_raw, X, X2, behavior_policy, q0_true, q1_true, 
   # X_raw_for_q is the raw data that the q functions were fit on, as oppoosed to the ones where they will be
   # assessed;
   # we use it for tracking the state of the MDP over time.
-  qhat0_dict, qhat1_dict, X_raw_for_q, _, _, q0_graph, q1_graph = \
+  qhat0_dict, qhat1_dict, X_raw_for_q, X, X2, q0_graph, q1_graph = \
     fit_q_functions_for_policy(behavior_policy, L, time_horizons, test, iterations=iterations)
+
+  X_raw = X_raw_for_q
 
   # Summarize covariate history
   infection_proportions = [float(np.mean(x[:, -1])) for x in X_raw_for_q]
@@ -761,7 +763,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     time_horizons = (10,)
   else:
     # reference_state_indices = range(5)
-    reference_state_indices = np.random.choice(len(X), size=5, replace=False)
+    reference_state_indices = np.random.choice(len(X), size=10, replace=False)
     time_horizons = (10,)
 
   results_dict = {'infection_proportions': infection_proportions, 'state_proportions': state_proportions,
