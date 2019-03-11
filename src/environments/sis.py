@@ -538,6 +538,19 @@ def convert_second_order_encoding_to_first_order(X2):
   return X
 
 
+def convert_second_order_encoding_to_zeroth_order(X2):
+  # encoding = int(1*s + 2*a + 4*y)
+  X = convert_second_order_encoding_to_first_order(X2)
+  action_ixs = [2, 3, 6, 7]
+  infect_ixs = [4, 5, 6, 7]
+  state_ixs = [1, 3, 5, 7]
+  A = X[:, action_ixs].sum(axis=1) > 0
+  Y = X[:, infect_ixs].sum(axis=1) > 0
+  S = X[:, state_ixs].sum(axis=1) > 0
+  X_raw = np.column_stack((S, A, Y))
+  return X_raw
+
+
 def convert_first_order_to_infection_status(X1):
   indices_where_infected = [4, 5, 6, 7]
   y = np.sum(X1[:, indices_where_infected], axis=1) > 0

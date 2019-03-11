@@ -96,7 +96,9 @@ class q1_linear(object):
     logit_q0max = self.lm.predict(x1)
     q0max = expit(logit_q0max)
     # q0max = self.reg.predict(x1).flatten()
-    x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
+    # ToDo: should be 0-th order encoding if passing to model based estimator!
+    # x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
+    x0 = sis_helpers.convert_second_order_encoding_to_zeroth_order(x1)
     q0 = self.q0(x0)
 
     return q0 + self.gamma * q0max
@@ -109,7 +111,8 @@ class q_mb_wrapper(object):
   def __init__(self, env, L, T):
     # Get model-based
     indices = np.array([[l for l in range(L)] for t in range(T)])
-    eta = fit_sis_transition_model(env, indices=indices)
+    # eta = fit_sis_transition_model(env, indices=indices)
+    eta = env.ETA
     self.eta = eta
     self.L = L
     self.adjacency_list = env.adjacency_list
@@ -352,7 +355,8 @@ def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
   if test:
     MC_REPLICATES = 2
   else:
-    MC_REPLICATES = 50
+    # MC_REPLICATES = 50
+    MC_REPLICATES = 4
 
   gamma = 0.9
   # MC_REPLICATES = num_processes
@@ -785,7 +789,6 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       elif iterations == 1:
         true_q = q1_true
         # true_q_mb = q1_mb
-        pdb.set_trace()
         Qhat1 = qhat1(x1)
         qhat_x = np.sum(Qhat1)
         qhat1_estimates.append(float(qhat_x))
