@@ -74,8 +74,8 @@ class q1_rf(object):
   def predict(self, x1):
     q0max = self.rf.predict(x1)
     # q0max = self.reg.predict(x1).flatten()
-    # x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
-    x0 = sis_helpers.convert_second_order_encoding_to_zeroth_order(x1)
+    x0 = sis_helpers.convert_second_order_encoding_to_first_order(x1)
+    # x0 = sis_helpers.convert_second_order_encoding_to_zeroth_order(x1)
     q0 = self.q0(x0)
     return q0 + self.gamma * q0max
 
@@ -166,21 +166,12 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
     y = np.hstack([env.y[ix] for ix in indices[:T]])
     X = np.vstack([env.X[ix] for ix in indices[:T]])
     model_name_0 = 'L=100-T={}-k=0-{}'.format(T, timestamp)
-    # q0_piecewise = model_fitters.fit_piecewise_keras_classifier(X, y, model_name_0, test=test)
-    # q0_piecewise = sklogit3(X, y)
-    # q0_dict[T] = q0_piecewise.predict
-
-    # Fit two more models on half the data each double Q_learning for construction of pseudo-outcome
-    # X1, X2, y1, y2 = train_test_split(X, y, test_size=0.5)
-    # q0_1 = sklogit3(X1, y1)
-    # q0_2 = sklogit3(X2, y2)
-    # q0_1_dict[T] = q0_1.predict
-    # q0_2_dict[T] = q0_2.predict
 
     # Fit one-step model-based as comparison
     q0_mb_wrapper_ = q_mb_wrapper(env, L, T)
     q0_mb_dict[T] = q0_mb_wrapper_.predict
-    q0_dict[T] = q0_mb_wrapper_.predict
+    q0_ = sklogit3(X, y)
+    q0_dict[T] = q0_.predict
 
   if iterations == 1:
     for T in time_horizons:
@@ -207,7 +198,7 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
 
         def q0_at_block(a):
           # X_at_a = env.data_block_at_action(ix, a)
-          X_at_a = env.data_block_at_action(ix, a, raw=True)
+          X_at_a = env.data_block_at_action(ix, a, raw=False)
           q_vals = q0_T(X_at_a)
           return q_vals
 
@@ -337,8 +328,8 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, initial_act
   np.random.seed(rep)
 
   def q0_at_block(a):
-    # x_at_a = env.data_block_at_action(-1, a, neighbor_order=1)
-    x_at_a = env.data_block_at_action(-1, a, raw=True)
+    x_at_a = env.data_block_at_action(-1, a, neighbor_order=1)
+    # x_at_a = env.data_block_at_action(-1, a, raw=True)
     q_vals = q0(x_at_a)
     return q_vals
 
@@ -782,7 +773,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
     # elif iterations == 1:
     #   qhat = qhat1_dict[T]
     # qhat_mb = qhat0_mb_dict[T]
-    qhat0 = qhat0_mb_dict[T]
+    qhat0 = qhat0_dict[T]
     qhat1 = qhat1_dict[T]
 
     qhat_vals = []
@@ -827,7 +818,6 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       elif iterations == 1:
         true_q = np.sum(q1_true)
         # true_q_mb = q1_mb
-        pdb.set_trace()
         Qhat1 = qhat1(x1)
         qhat_x = np.sum(Qhat1)
         qhat1_estimates.append(float(qhat_x))
