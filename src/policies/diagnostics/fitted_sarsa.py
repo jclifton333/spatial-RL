@@ -206,7 +206,8 @@ def fit_optimal_q_functions(L, time_horizons, test, timestamp, iterations=0):
         #   return q_vals
 
         def q0_at_block(a):
-          X_at_a = env.data_block_at_action(ix, a)
+          # X_at_a = env.data_block_at_action(ix, a)
+          X_at_a = env.data_block_at_action(ix, a, raw=True)
           q_vals = q0_T(X_at_a)
           return q_vals
 
