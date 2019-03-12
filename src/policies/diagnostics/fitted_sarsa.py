@@ -383,8 +383,8 @@ def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
   if test:
     MC_REPLICATES = 2
   else:
-    # MC_REPLICATES = 50
-    MC_REPLICATES = 4
+    MC_REPLICATES = 50
+    # MC_REPLICATES = 4
 
   gamma = 0.9
   # MC_REPLICATES = num_processes
@@ -409,6 +409,7 @@ def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
   q1 = np.mean(q1_list, axis=0)
   q0 = np.mean(q0_list, axis=0)
   se1 = np.std(q1_list) / np.sqrt(MC_REPLICATES)
+  print('se1: {}'.format(se1))
   return q1, se1, q0
 
 
