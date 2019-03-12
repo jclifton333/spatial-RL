@@ -361,9 +361,10 @@ def get_true_1_step_q_single_rep(rep, env, q0, q1, treatment_budget, initial_act
   action = argmaxer_quad_approx(q0_at_block, 100, treatment_budget, env)
   env.step(action)
   # q1_rep += gamma * np.sum(env.current_infected)
-  q1_rep += gamma * env.current_infected
+  y1_ = env.current_infected
+  q1_rep += gamma * y1_
 
-  return q1_rep, q0_
+  return q1_rep, q0_, y1_
 
 
 def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
@@ -404,13 +405,15 @@ def get_true_1_step_q(q0, q1, L, initial_infections, initial_action, test):
   # for i in range(5):
   #   res = evaluate_at_rep_partial(i)
   #   q_and_q1_list.append(res)
-  q0_list = [q0_ for q1_, q0_ in q_list]
-  q1_list = [q1_ for q1_, q0_ in q_list]
+  q0_list = [q0_ for q1_, q0_, y1_ in q_list]
+  q1_list = [q1_ for q1_, q0_, y1_ in q_list]
+  y1_list = [y1_ for q1_, q0_, y1_ in q_list]
   q1 = np.mean(q1_list, axis=0)
   q0 = np.mean(q0_list, axis=0)
+  y1 = np.mean(y1_list, axis=0)
   se1 = np.std(q1_list) / np.sqrt(MC_REPLICATES)
   print('se1: {}'.format(se1))
-  return q1, se1, q0
+  return q1, se1, q0, y1
 
 
 def evaluate_optimal_qfn_policy(q, L, initial_infections, initial_action, test, iterations=0):
@@ -801,7 +804,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
 
       y_ = x_raw[:, 2]
       a_ = x_raw[:, 1]
-      q1_true, se1, q0_true = get_true_1_step_q(qhat0, qhat1, L, y_, a_, test)
+      q1_true, se1, q0_true, y1_true = get_true_1_step_q(qhat0, qhat1, L, y_, a_, test)
       # q, se, q1, se1 = evaluate_optimal_qfn_policy(qhat, L, y_, a_, test,
       #                                              iterations=iterations)
       # q_mb, se_mb, q1_mb, se1_mb = evaluate_optimal_qfn_policy(qhat_mb, L, y_, a_, test,
