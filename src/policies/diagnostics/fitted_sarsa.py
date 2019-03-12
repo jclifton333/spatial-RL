@@ -826,6 +826,7 @@ def evaluate_qopt_at_multiple_horizons(L, X_raw, X, X2, fname, timestamp, time_h
       elif iterations == 1:
         true_q = np.sum(q1_true)
         # true_q_mb = q1_mb
+        pdb.set_trace()
         Qhat1 = qhat1(x1)
         qhat_x = np.sum(Qhat1)
         qhat1_estimates.append(float(qhat_x))
