@@ -95,7 +95,7 @@ def two_step(**kwargs):
     qfn_at_block_t = lambda a: qfn_at_block(t, a)
     a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
     q_max = qfn_at_block_t(a_max)
-    backup_at_t = env.y[t] + q_max
+    backup_at_t = q_max
     backup.append(backup_at_t)
 
   # Fit backup-up q function
@@ -103,7 +103,9 @@ def two_step(**kwargs):
   reg.fit(np.vstack(env.X[:-1]), np.hstack(backup))
 
   def qfn(a):
-    return reg.predict(env.data_block_at_action(-1, a))
+    X_ = env.data_block_at_action(-1, a)
+    X2 = env.data_block_at_action(-1, a, neighbor_order=2)
+    return clf.predict(X_) + reg.predict(X2)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, None

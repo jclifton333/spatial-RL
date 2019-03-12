@@ -17,4 +17,4 @@ if __name__ == "__main__":
 
   test = (args.test == 'True')
   refit = (args.refit == 'True')
-  fs.evaluate_qopt(args.L, horizons=(1000,), refit=refit, test=test, iterations=args.iterations)
+  fs.evaluate_qopt(args.L, horizons=(10,30,50), refit=refit, test=test, iterations=args.iterations)
