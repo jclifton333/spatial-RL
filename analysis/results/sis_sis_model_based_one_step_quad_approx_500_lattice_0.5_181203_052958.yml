@@ -1,0 +1,40 @@
+results:
+  15: {runtime: 15678.168840169907, score: 0.43}
+  16: {runtime: 15700.215275287628, score: 0.412}
+  17: {runtime: 15718.650718212128, score: 0.432}
+  18: {runtime: 15657.117273330688, score: 0.442}
+  19: {runtime: 15624.264986276627, score: 0.48}
+  20: {runtime: 15625.6732339859, score: 0.476}
+  21: {runtime: 15638.611788511276, score: 0.43}
+  22: {runtime: 15651.538031578064, score: 0.468}
+  23: {runtime: 15655.313465833664, score: 0.364}
+  24: {runtime: 15661.664546489716, score: 0.526}
+  25: {runtime: 15681.09683394432, score: 0.416}
+  26: {runtime: 15628.92054772377, score: 0.496}
+  27: {runtime: 15691.548276901245, score: 0.468}
+  28: {runtime: 15656.869138240814, score: 0.46}
+  29: {runtime: 15700.707444667816, score: 0.434}
+  30: {runtime: 15683.359978199005, score: 0.35}
+  31: {runtime: 15642.943395614624, score: 0.476}
+  32: {runtime: 15712.870108604431, score: 0.458}
+  33: {runtime: 15707.737128019333, score: 0.46}
+  34: {runtime: 15626.806505203247, score: 0.484}
+  35: {runtime: 15712.194541692734, score: 0.528}
+  36: {runtime: 15644.422609090805, score: 0.544}
+  37: {runtime: 15720.406574964523, score: 0.444}
+  38: {runtime: 15697.074333906174, score: 0.416}
+  39: {runtime: 15632.033128738403, score: 0.496}
+  40: {runtime: 15632.255292654037, score: 0.436}
+  41: {runtime: 15710.052916288376, score: 0.484}
+  42: {runtime: 15722.03513789177, score: 0.45}
+  43: {runtime: 15716.23997592926, score: 0.498}
+  44: {runtime: 15718.604577302933, score: 0.466}
+  45: {runtime: 15720.366226434708, score: 0.49}
+  46: {runtime: 15720.924386024475, score: 0.476}
+  47: {runtime: 15715.450833559036, score: 0.456}
+  mean: 0.4589696969696969
+  se: 0.007135637851336539
+settings: {L: 500, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: SKLogit2,
+  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 48,
+  planning_depth: 50, policy_name: sis_model_based_one_step, regressor: RandomForestRegressor,
+  rollout_depth: 1, time_horizon: 50, treatment_budget: 25}

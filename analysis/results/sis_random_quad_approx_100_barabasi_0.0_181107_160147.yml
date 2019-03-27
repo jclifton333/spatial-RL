@@ -1,0 +1,31 @@
+results:
+  0: {runtime: 30.626862049102783, score: 0.45}
+  1: {runtime: 30.12088179588318, score: 0.43}
+  2: {runtime: 30.18512535095215, score: 0.4}
+  3: {runtime: 30.242729425430298, score: 0.41}
+  4: {runtime: 30.638295888900757, score: 0.46}
+  5: {runtime: 30.505157470703125, score: 0.36}
+  6: {runtime: 30.3885498046875, score: 0.37}
+  7: {runtime: 30.18910002708435, score: 0.41}
+  8: {runtime: 30.19456458091736, score: 0.38}
+  9: {runtime: 30.325262308120728, score: 0.37}
+  10: {runtime: 30.440085649490356, score: 0.41}
+  11: {runtime: 30.622678995132446, score: 0.46}
+  12: {runtime: 30.485803365707397, score: 0.47}
+  13: {runtime: 30.605977058410645, score: 0.45}
+  14: {runtime: 30.511845588684082, score: 0.45}
+  15: {runtime: 30.50299835205078, score: 0.45}
+  16: {runtime: 30.18652653694153, score: 0.55}
+  17: {runtime: 30.62047052383423, score: 0.47}
+  18: {runtime: 30.640528917312622, score: 0.4}
+  19: {runtime: 30.595684051513672, score: 0.35}
+  20: {runtime: 30.47022247314453, score: 0.39}
+  21: {runtime: 30.631894826889038, score: 0.52}
+  22: {runtime: 30.603423357009888, score: 0.39}
+  23: {runtime: 30.49175238609314, score: 0.37}
+  mean: 0.42375
+  se: 0.0101175813013234
+settings: {L: 100, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: SKLogit2,
+  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 24,
+  planning_depth: 50, policy_name: random, regressor: RandomForestRegressor, rollout_depth: 1,
+  time_horizon: 50, treatment_budget: 5}

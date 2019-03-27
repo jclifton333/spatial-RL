@@ -1,0 +1,40 @@
+results:
+  15: {runtime: 15885.630852460861, score: 0.022}
+  16: {runtime: 15875.745988607407, score: 0.012}
+  17: {runtime: 15890.27320599556, score: 0.02}
+  18: {runtime: 15925.25312948227, score: 0.01}
+  19: {runtime: 15952.137846946716, score: 0.014}
+  20: {runtime: 15943.611656188965, score: 0.034}
+  21: {runtime: 15972.987653493881, score: 0.006}
+  22: {runtime: 15882.550413131714, score: 0.022}
+  23: {runtime: 15963.936935186386, score: 0.014}
+  24: {runtime: 15949.858672142029, score: 0.024}
+  25: {runtime: 15874.079431295395, score: 0.016}
+  26: {runtime: 15927.846506595612, score: 0.026}
+  27: {runtime: 15928.422711372375, score: 0.008}
+  28: {runtime: 15892.652637720108, score: 0.02}
+  29: {runtime: 15891.064314365387, score: 0.016}
+  30: {runtime: 15944.54653930664, score: 0.01}
+  31: {runtime: 15911.000374555588, score: 0.036}
+  32: {runtime: 15902.14406991005, score: 0.03}
+  33: {runtime: 15872.746481657028, score: 0.028}
+  34: {runtime: 15987.823006868362, score: 0.01}
+  35: {runtime: 15894.350864887238, score: 0.034}
+  36: {runtime: 15873.678398609161, score: 0.018}
+  37: {runtime: 15927.562352657318, score: 0.028}
+  38: {runtime: 15903.310102462769, score: 0.026}
+  39: {runtime: 15913.370647192001, score: 0.016}
+  40: {runtime: 15905.621088981628, score: 0.018}
+  41: {runtime: 15969.695064544678, score: 0.008}
+  42: {runtime: 15971.368783473969, score: 0.02}
+  43: {runtime: 15961.39770078659, score: 0.022}
+  44: {runtime: 15968.729887247086, score: 0.032}
+  45: {runtime: 15973.792525053024, score: 0.018}
+  46: {runtime: 15974.57123374939, score: 0.026}
+  47: {runtime: 15970.682631254196, score: 0.012}
+  mean: 0.019878787878787878
+  se: 0.0014211814791279475
+settings: {L: 500, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: SKLogit2,
+  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 48,
+  planning_depth: 50, policy_name: sis_model_based_one_step, regressor: RandomForestRegressor,
+  rollout_depth: 1, time_horizon: 50, treatment_budget: 25}

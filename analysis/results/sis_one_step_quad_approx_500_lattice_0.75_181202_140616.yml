@@ -1,0 +1,39 @@
+results:
+  16: {runtime: 16209.10468840599, score: 0.418}
+  17: {runtime: 16275.49486708641, score: 0.478}
+  18: {runtime: 16218.31808924675, score: 0.41}
+  19: {runtime: 16206.675132989883, score: 0.432}
+  20: {runtime: 16201.867921829224, score: 0.422}
+  21: {runtime: 16209.961179971695, score: 0.4}
+  22: {runtime: 16216.28220820427, score: 0.44}
+  23: {runtime: 16273.98279762268, score: 0.444}
+  24: {runtime: 16214.771539211273, score: 0.4}
+  25: {runtime: 16253.989964962006, score: 0.386}
+  26: {runtime: 16262.316645383835, score: 0.378}
+  27: {runtime: 16212.815614938736, score: 0.436}
+  28: {runtime: 16210.470896244049, score: 0.354}
+  29: {runtime: 16202.609113931656, score: 0.414}
+  30: {runtime: 16198.376927375793, score: 0.37}
+  31: {runtime: 16257.486963510513, score: 0.404}
+  32: {runtime: 16196.668294668198, score: 0.378}
+  33: {runtime: 16192.340110778809, score: 0.442}
+  34: {runtime: 16241.867454767227, score: 0.406}
+  35: {runtime: 16258.143514633179, score: 0.4}
+  36: {runtime: 16212.121102809906, score: 0.382}
+  37: {runtime: 16246.825083494186, score: 0.372}
+  38: {runtime: 16267.939007997513, score: 0.438}
+  39: {runtime: 16202.938420534134, score: 0.356}
+  40: {runtime: 16261.500089168549, score: 0.452}
+  41: {runtime: 16270.377036333084, score: 0.404}
+  42: {runtime: 16222.185232639313, score: 0.498}
+  43: {runtime: 16213.12111544609, score: 0.454}
+  44: {runtime: 16263.2850959301, score: 0.404}
+  45: {runtime: 16246.498816490173, score: 0.44}
+  46: {runtime: 16266.550405979156, score: 0.422}
+  47: {runtime: 16196.853201150894, score: 0.362}
+  mean: 0.412375
+  se: 0.0060443914473460435
+settings: {L: 500, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: SKLogit2,
+  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 48,
+  planning_depth: 50, policy_name: one_step, regressor: RandomForestRegressor, rollout_depth: 1,
+  time_horizon: 50, treatment_budget: 25}

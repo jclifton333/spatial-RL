@@ -1,0 +1,55 @@
+results:
+  0: {runtime: 91.07642817497253, score: 0.41}
+  16: {runtime: 91.06610059738159, score: 0.34}
+  12: {runtime: 91.17963123321533, score: 0.37}
+  6: {runtime: 91.2986843585968, score: 0.44}
+  18: {runtime: 91.10521602630615, score: 0.45}
+  4: {runtime: 91.50084948539734, score: 0.51}
+  5: {runtime: 91.60062384605408, score: 0.45}
+  30: {runtime: 91.11929392814636, score: 0.44}
+  9: {runtime: 91.64949703216553, score: 0.44}
+  11: {runtime: 91.65697050094604, score: 0.45}
+  26: {runtime: 91.3501079082489, score: 0.39}
+  1: {runtime: 91.88745522499084, score: 0.39}
+  7: {runtime: 91.82207655906677, score: 0.43}
+  46: {runtime: 90.9048228263855, score: 0.42}
+  13: {runtime: 91.93554306030273, score: 0.42}
+  14: {runtime: 91.91213893890381, score: 0.42}
+  33: {runtime: 91.4327552318573, score: 0.52}
+  2: {runtime: 92.14914631843567, score: 0.42}
+  32: {runtime: 91.49530100822449, score: 0.47}
+  38: {runtime: 91.3194625377655, score: 0.38}
+  17: {runtime: 91.94502425193787, score: 0.41}
+  3: {runtime: 92.15566635131836, score: 0.46}
+  22: {runtime: 91.86817955970764, score: 0.44}
+  21: {runtime: 91.87462425231934, score: 0.46}
+  19: {runtime: 91.92634463310242, score: 0.51}
+  44: {runtime: 91.13793540000916, score: 0.46}
+  42: {runtime: 91.2421658039093, score: 0.44}
+  40: {runtime: 91.32054734230042, score: 0.52}
+  29: {runtime: 91.72249412536621, score: 0.45}
+  39: {runtime: 91.40201330184937, score: 0.43}
+  20: {runtime: 91.98417735099792, score: 0.49}
+  35: {runtime: 91.60235118865967, score: 0.47}
+  41: {runtime: 91.37935829162598, score: 0.42}
+  36: {runtime: 91.58335590362549, score: 0.48}
+  15: {runtime: 92.22912979125977, score: 0.42}
+  47: {runtime: 91.25435781478882, score: 0.53}
+  8: {runtime: 92.3674852848053, score: 0.52}
+  45: {runtime: 91.31348085403442, score: 0.4}
+  25: {runtime: 92.07186365127563, score: 0.37}
+  23: {runtime: 92.1214668750763, score: 0.38}
+  31: {runtime: 91.91560578346252, score: 0.46}
+  24: {runtime: 92.10523724555969, score: 0.48}
+  27: {runtime: 92.05098390579224, score: 0.47}
+  43: {runtime: 91.4932963848114, score: 0.38}
+  10: {runtime: 92.4213297367096, score: 0.45}
+  34: {runtime: 91.81327486038208, score: 0.46}
+  37: {runtime: 91.73523688316345, score: 0.37}
+  28: {runtime: 92.02853584289551, score: 0.41}
+  mean: 0.4395833333333334
+  se: 0.006434487788616267
+settings: {L: 100, argmaxer: random, argmaxer_name: random, classifier: SKLogit2,
+  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 48,
+  planning_depth: 50, policy_name: one_step, regressor: RandomForestRegressor, rollout_depth: 1,
+  time_horizon: 50, treatment_budget: 5}

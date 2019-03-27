@@ -1,0 +1,40 @@
+results:
+  15: {runtime: 15748.911502361298, score: 0.48}
+  16: {runtime: 15723.985955953598, score: 0.428}
+  17: {runtime: 15769.710342884064, score: 0.506}
+  18: {runtime: 15740.327456712723, score: 0.46}
+  19: {runtime: 15762.410578012466, score: 0.498}
+  20: {runtime: 15765.381429433823, score: 0.466}
+  21: {runtime: 15721.432932138443, score: 0.436}
+  22: {runtime: 15723.48383307457, score: 0.552}
+  23: {runtime: 15738.132168531418, score: 0.582}
+  24: {runtime: 15768.718896627426, score: 0.472}
+  25: {runtime: 15763.16967535019, score: 0.518}
+  26: {runtime: 15709.830701589584, score: 0.49}
+  27: {runtime: 15763.903765916824, score: 0.454}
+  28: {runtime: 15734.841562986374, score: 0.45}
+  29: {runtime: 15729.464409589767, score: 0.382}
+  30: {runtime: 15714.322939395905, score: 0.534}
+  31: {runtime: 15758.697164297104, score: 0.484}
+  32: {runtime: 15756.957446336746, score: 0.47}
+  33: {runtime: 15769.492178916931, score: 0.47}
+  34: {runtime: 15712.34924030304, score: 0.376}
+  35: {runtime: 15721.89892244339, score: 0.466}
+  36: {runtime: 15725.97010397911, score: 0.514}
+  37: {runtime: 15705.008602380753, score: 0.452}
+  38: {runtime: 15730.047904491425, score: 0.474}
+  39: {runtime: 15734.388164520264, score: 0.426}
+  40: {runtime: 15699.30593252182, score: 0.476}
+  41: {runtime: 15774.895472288132, score: 0.494}
+  42: {runtime: 15782.189859628677, score: 0.45}
+  43: {runtime: 15778.2431807518, score: 0.43}
+  44: {runtime: 15735.368820667267, score: 0.462}
+  45: {runtime: 15770.478597402573, score: 0.498}
+  46: {runtime: 15780.446586847305, score: 0.44}
+  47: {runtime: 15781.34114933014, score: 0.434}
+  mean: 0.4704242424242424
+  se: 0.007335465543145477
+settings: {L: 500, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: SKLogit2,
+  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 48,
+  planning_depth: 50, policy_name: sis_model_based_one_step, regressor: RandomForestRegressor,
+  rollout_depth: 1, time_horizon: 50, treatment_budget: 25}
