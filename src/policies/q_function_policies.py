@@ -75,9 +75,9 @@ def two_step_mb(**kwargs):
 
 
 def two_step(**kwargs):
-  classifier, regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
+  classifier, regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, gamma = \
     kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
-    kwargs['argmaxer'], kwargs['bootstrap']
+    kwargs['argmaxer'], kwargs['bootstrap'], kwargs['gamma']
 
   if bootstrap:
     weights = np.random.exponential(size=len(env.X)*env.L)
@@ -91,7 +91,7 @@ def two_step(**kwargs):
 
   # Back up once
   backup = []
-  for t in range(env.T-1):
+  for t in range(1, env.T):
     qfn_at_block_t = lambda a: qfn_at_block(t, a)
     a_max = argmaxer(qfn_at_block_t, evaluation_budget, treatment_budget, env)
     q_max = qfn_at_block_t(a_max)
@@ -105,7 +105,7 @@ def two_step(**kwargs):
   def qfn(a):
     X_ = env.data_block_at_action(-1, a)
     X2 = env.data_block_at_action(-1, a, neighbor_order=2)
-    return clf.predict(X_) + reg.predict(X2)
+    return clf.predict(X_) + gamma * reg.predict(X2)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, None

@@ -1,6 +1,7 @@
 .idea/
 profile_output
 *.p
+*.DS_Store
 
 # Scratchwork
 bin/scratch.sh
