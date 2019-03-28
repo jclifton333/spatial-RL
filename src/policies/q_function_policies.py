@@ -107,8 +107,10 @@ def two_step(**kwargs):
     infected_indices = np.where(infections == 1)[0]
     not_infected_indices = np.where(infections == 0)[0]
     X_ = env.data_block_at_action(-1, a)
-    X2 = env.data_block_at_action(-1, a, neighbor_order=2)
-    return clf.predict_proba(X_, infected_indices, not_infected_indices) + gamma * reg.predict(X2)
+    # Commenting out to test whether poor performance is due to backup or something else
+    # X2 = env.data_block_at_action(-1, a, neighbor_order=2)
+    # return clf.predict_proba(X_, infected_indices, not_infected_indices) + gamma * reg.predict(X2)
+    return clf.predict_proba(X_, infected_indices, not_infected_indices)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, None
