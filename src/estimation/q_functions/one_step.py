@@ -14,9 +14,9 @@ def compare_with_true_probs(env, predictor, raw):
                         for raw_data_block, data_block in zip(env.X_raw, env.X)])
   true_expected_counts = np.hstack(env.true_infection_probs)
   max_loss = np.max(np.abs(phat - true_expected_counts))
-  # mean_loss = np.mean(np.abs(phat - true_expected_counts))
+  mean_loss = np.mean(np.abs(phat - true_expected_counts))
   # print('mean loss {} max loss {}'.format(mean_loss, max_loss))
-  return max_loss
+  return mean_loss, max_loss
 
 
 def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None, print_compare_with_true_probs=True,
@@ -49,8 +49,8 @@ def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None
     weights = weights.flatten()
   clf.fit(features, target, weights, truncate, **clf_kwargs)
 
-  loss = compare_with_true_probs(env, clf.predict_proba, False)
-  return clf, predict_proba_kwargs, loss
+  mean_loss, max_loss = compare_with_true_probs(env, clf.predict_proba, False)
+  return clf, predict_proba_kwargs, {'mean_loss': mean_loss, 'max_loss': max_loss}
 
 
 def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None, indices=None):

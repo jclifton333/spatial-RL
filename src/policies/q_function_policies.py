@@ -25,13 +25,13 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  clf, predict_proba_kwargs, loss = fit_one_step_predictor(classifier, env, weights)
+  clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
 
   def qfn(a):
     return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  return a, {'loss': loss}
+  return a, loss_dict
 
 
 def two_step_mb(**kwargs):

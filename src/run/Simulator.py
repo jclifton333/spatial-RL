@@ -108,17 +108,21 @@ class Simulator(object):
     # Save results
     results_dict = {k: v for d in results_list for k, v in d.items()}
     list_of_scores = [v['score'] for v in results_dict.values()]
-    list_of_losses = [v['losses'] for v in results_dict.values()]
+    list_of_mean_losses = [v['mean_losses'] for v in results_dict.values()]
+    list_of_max_losses = [v['max_losses'] for v in results_dict.values()]
 
-    if list_of_losses[0][0] is not None:
-      mean_losses = np.array(list_of_losses).mean(axis=0)
+    if list_of_mean_losses[0][0] is not None:
+      mean_mean_losses = np.array(list_of_mean_losses).mean(axis=0)
+      mean_max_losses = np.array(list_of_max_losses).mean(axis=0)
     else:
-      mean_losses = None
+      mean_mean_losses = None
+      mean_max_losses = None
 
     mean, se = float(np.mean(list_of_scores)), float(np.std(list_of_scores) / np.sqrt(len(list_of_scores)))
     results_dict['mean'] = mean
     results_dict['se'] = se
-    results_dict['mean_losses'] = mean_losses
+    results_dict['mean_mean_losses'] = mean_mean_losses
+    results_dict['mean_max_losses'] = mean_max_losses
     self.save_results(results_dict)
     print('mean: {} se: {}'.format(mean, se))
     return
@@ -132,7 +136,8 @@ class Simulator(object):
     # Initial steps
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     self.env.step(self.random_policy(**self.policy_arguments)[0])
-    losses = []
+    mean_losses = []
+    max_losses = []
     for t in range(self.time_horizon-2):
       a, info = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
@@ -141,13 +146,17 @@ class Simulator(object):
       if info is not None:
         if 'q_fn' in info.keys():
           self.policy_arguments['q_fn'] = info['q_fn']
-        if 'loss' in info.keys():
-          loss = float(info['loss'])
+        if 'mean_loss' in info.keys():
+          mean_loss = float(info['mean_loss'])
+          max_loss = float(info['max_loss'])
         else:
-          loss = None
+          mean_loss = None
+          max_loss = None
       else:
-        loss = None
-      losses.append(loss)
+        mean_loss = None
+        max_loss = None
+      mean_losses.append(mean_loss)
+      max_losses.append(max_loss)
 
       # For policy search
       # if 'initial_policy_parameter' in info.keys():
@@ -160,7 +169,8 @@ class Simulator(object):
     score = np.mean(self.env.current_infected)
     episode_results['score'] = float(score)
     episode_results['runtime'] = float(t1 - t0)
-    episode_results['losses'] = losses
+    episode_results['mean_losses'] = mean_losses
+    episode_results['max_losses'] = max_losses
     # print(np.mean(self.env.Y[-1,:]))
     print(episode_results)
     return {replicate: episode_results}
