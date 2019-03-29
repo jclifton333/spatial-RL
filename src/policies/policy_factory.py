@@ -24,7 +24,7 @@ def policy_factory(policy_type):
     return roll.two_step_higher_order
   elif policy_type == 'treat_all':
     return ref.treat_all
-  elif policy_type == 'sis_stacked':
+  elif policy_type == 'sis_model_based_one_step':
     return roll.sis_model_based_one_step
   elif policy_type == 'one_step_mse_averaged':
     return roll.one_step_mse_averaged
