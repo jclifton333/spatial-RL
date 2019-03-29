@@ -6,6 +6,7 @@ For taking argmax of quadratic approximation to Q function.
 ref: http://www.gurobi.com/documentation/7.0/examples/dense_py.html
 """
 import numpy as np
+import pdb
 from gurobipy import *
 
 
@@ -19,6 +20,7 @@ def qp_max(M, r, budget):
   :param budget:
   :return:
   """
+  pdb.set_trace()
 
   model = Model('qip')
   model.setParam('OutputFlag', False)
