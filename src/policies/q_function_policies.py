@@ -31,7 +31,7 @@ def one_step_policy(**kwargs):
     return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  return a, None
+  return a, {'loss': predict_proba_kwargs['loss']}
 
 
 def two_step_mb(**kwargs):

@@ -12,11 +12,11 @@ def compare_with_true_probs(env, predictor, raw):
   else:
       phat = np.hstack([predictor(data_block, np.where(raw_data_block[:, -1] == 1)[0], np.where(raw_data_block[:, -1] == 0)[0])
                         for raw_data_block, data_block in zip(env.X_raw, env.X)])
-  # true_expected_counts = np.hstack(env.true_infection_probs)
-  # max_loss = np.max(np.abs(phat - true_expected_counts))
+  true_expected_counts = np.hstack(env.true_infection_probs)
+  max_loss = np.max(np.abs(phat - true_expected_counts))
   # mean_loss = np.mean(np.abs(phat - true_expected_counts))
   # print('mean loss {} max loss {}'.format(mean_loss, max_loss))
-  return
+  return max_loss
 
 
 def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None, print_compare_with_true_probs=True,
@@ -49,8 +49,8 @@ def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None
     weights = weights.flatten()
   clf.fit(features, target, weights, truncate, **clf_kwargs)
 
-  if print_compare_with_true_probs:
-    compare_with_true_probs(env, clf.predict_proba, False)
+  loss = compare_with_true_probs(env, clf.predict_proba, False)
+  predict_proba_kwargs['loss'] = loss
   return clf, predict_proba_kwargs
 
 
