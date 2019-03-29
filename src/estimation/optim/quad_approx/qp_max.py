@@ -20,7 +20,6 @@ def qp_max(M, r, budget):
   :param budget:
   :return:
   """
-  pdb.set_trace()
 
   model = Model('qip')
   model.setParam('OutputFlag', False)

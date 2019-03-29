@@ -50,8 +50,7 @@ def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None
   clf.fit(features, target, weights, truncate, **clf_kwargs)
 
   loss = compare_with_true_probs(env, clf.predict_proba, False)
-  predict_proba_kwargs['loss'] = loss
-  return clf, predict_proba_kwargs
+  return clf, predict_proba_kwargs, loss
 
 
 def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None, indices=None):
