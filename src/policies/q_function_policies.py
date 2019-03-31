@@ -71,11 +71,6 @@ def one_step_truth_augmented(**kwargs):
   error_model = RandomForestRegressor()
   error_model.fit(X, errors)
 
-  # Fit simple model for replacing high-error states
-  X_raw = np.vstack(env.X_raw)
-  simple_model = LogisticRegression()
-  simple_model.fit(X_raw, y)
-
   def qfn(a):
     # Get absolute errors
     X_a = env.data_block_at_action(-1, a)
@@ -88,10 +83,8 @@ def one_step_truth_augmented(**kwargs):
 
     # Replace probabilities above error_quantile with truth
     X_raw_a = env.data_block_at_action(-1, a, raw=True)
-    simple_model_probs = simple_model.predict_proba(X_raw_a)[:, -1]
     high_error_locations = np.where(phat > error_quantile)
-    phat[high_error_locations] = simple_model_probs[high_error_locations]
-
+    low_error_locations = np.where(phat <= error_quantile)
     return phat
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
