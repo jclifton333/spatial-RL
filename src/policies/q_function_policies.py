@@ -9,6 +9,8 @@ from src.estimation.q_functions.model_fitters import SKLogit2
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 from src.utils.misc import random_argsort
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LogisticRegression
 
 import numpy as np
 import keras.backend as K
@@ -61,16 +63,34 @@ def one_step_truth_augmented(**kwargs):
 
   clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
 
+  # Fit model for errors
+  X = np.vstack(env.X)
+  phats = clf.predict_proba(X)
+  y = np.hstack(env.y)
+  errors = (phats - y)**2
+  error_model = RandomForestRegressor()
+  error_model.fit(X, errors)
+
+  # Fit simple model for replacing high-error states
+  X_raw = np.vstack(env.X_raw)
+  simple_model = LogisticRegression()
+  simple_model.fit(X_raw, y)
+
   def qfn(a):
     # Get absolute errors
-    phat = clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
-    true_probs = env.next_infected_probabilities(a, eta=env.ETA)
-    abs_error = np.abs(phat - true_probs)
-    error_quantile = np.quantile(abs_error, [quantile])
+    X_a = env.data_block_at_action(-1, a)
+    phat = clf.predict_proba(X_a, **predict_proba_kwargs)
+    # true_probs = env.next_infected_probabilities(a, eta=env.ETA)
+    # abs_error = np.abs(phat - true_probs)
+    # error_quantile = np.quantile(abs_error, [quantile])
+    predicted_errors = error_model.predict(X_a)
+    error_quantile = np.quantile(predicted_errors, [quantile])
 
     # Replace probabilities above error_quantile with truth
+    X_raw_a = env.data_block_at_action(-1, a, raw=True)
+    simple_model_probs = simple_model.predict_proba(X_raw_a)[:, -1]
     high_error_locations = np.where(phat > error_quantile)
-    phat[high_error_locations] = true_probs[high_error_locations]
+    phat[high_error_locations] = simple_model_probs[high_error_locations]
 
     return phat
 
