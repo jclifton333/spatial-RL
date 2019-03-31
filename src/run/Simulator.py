@@ -33,7 +33,7 @@ import keras.backend as K
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, env_kwargs, network_name, bootstrap, seed):
+               evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Gravity'
@@ -64,7 +64,8 @@ class Simulator(object):
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
-                              'bootstrap': bootstrap, 'initial_policy_parameter': None, 'q_fn': None}
+                              'bootstrap': bootstrap, 'initial_policy_parameter': None, 'q_fn': None,
+                              'quantile': error_quantile}
 
     # Get settings dict for log
     self.settings = {'classifier': self.policy_arguments['classifier'].__name__,

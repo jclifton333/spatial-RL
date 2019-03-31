@@ -43,6 +43,42 @@ def one_step_policy(**kwargs):
   return a, loss_dict
 
 
+def one_step_truth_augmented(**kwargs):
+  """
+  Replace high-error probability estimates with true probabilities.
+
+  :param kwargs:
+  :return:
+  """
+  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, quantile = \
+    kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
+    kwargs['bootstrap'], kwargs['quantile']
+
+  if bootstrap:
+    weights = np.random.exponential(size=len(env.X)*env.L)
+  else:
+    weights = None
+
+  clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+
+  def qfn(a):
+    # Get absolute errors
+    phat = clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
+    true_probs = env.next_infected_probabilities(a, eta=env.ETA)
+    abs_error = np.abs(phat - true_probs)
+    error_quantile = np.quantile(abs_error, [quantile])
+
+    # Replace probabilities above error_quantile with truth
+    high_error_locations = np.where(phat > error_quantile)
+    phat[high_error_locations] = true_probs[high_error_locations]
+
+    return phat
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+
+  return a, loss_dict
+
+
 def two_step_mb(**kwargs):
   regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
     kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \

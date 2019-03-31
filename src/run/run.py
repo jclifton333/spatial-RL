@@ -23,7 +23,7 @@ VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 
                       'one_step_mse_averaged', 'sis_two_step_mse_averaged',
                       'gravity_model_based_one_step', 'gravity_model_based_myopic', 'policy_search',
                       'sis_one_step_equal_averaged', 'one_step_stacked', 'sis_model_based_myopic',
-                      'two_step_higher_order', 'two_step_sis_prefit']
+                      'two_step_higher_order', 'two_step_sis_prefit', 'one_step_truth_augmented']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 VALID_NETWORK_NAMES = ['lattice', 'barabasi', 'nearestneighbor']
 
@@ -44,6 +44,7 @@ if __name__ == '__main__':
   parser.add_argument('--ts', type=str, choices=['True', 'False'])
   parser.add_argument('--seed', type=int)
   parser.add_argument('--num_prefit_data', type=float)
+  parser.add_argument('--error_quantile', type=float)
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
@@ -69,7 +70,8 @@ if __name__ == '__main__':
     generate_two_step_sis_data(args.L, args.time_horizon, args.network, args.num_prefit_data)
 
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
-                  args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed)
+                  args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed,
+                  args.error_quantile)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:

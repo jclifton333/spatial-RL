@@ -22,7 +22,7 @@ class SpatialDisease(ABC):
     :param initial_infections: L-length binary array of initial infections, or None
     """
     
-    self.initial_infections = initial_infections
+    self.initial_infections = initial_infection
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
     

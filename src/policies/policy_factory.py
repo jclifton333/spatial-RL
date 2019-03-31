@@ -48,5 +48,7 @@ def policy_factory(policy_type):
     return roll.one_step_stacked
   elif policy_type == 'two_step_sis_prefit':
     return prefit.two_step_sis_prefit
+  elif policy_type == 'one_step_truth_augmented':
+    return roll.one_step_truth_augmented
   else:
     raise ValueError('Argument does not match any policy.')
