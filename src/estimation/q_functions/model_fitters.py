@@ -360,9 +360,8 @@ class SKLogit2(object):
   condition_on_infection = True
 
   def __init__(self):
-    # self.reg_inf = RandomForestClassifier(200)
-    # self.reg_not_inf = RandomForestClassifier(200)
     self.reg_= LogisticRegression()
+    # self.reg_ = MLPClassifier(hidden_layer_sizes=(200,200))
     self.model_fitted = False
     self.params = None
     self.eb_prob = None
@@ -421,9 +420,7 @@ class SKLogit2(object):
       X_times_infection = np.multiply(X, infection_indicator[:, np.newaxis])
       X_interaction = np.column_stack((X, X_times_infection))
       self.reg_.fit(X_interaction, y)
-      intercept_, coef_ = self.reg_.intercept_, self.reg_.coef_[0]
       self.model_fitted = True
-      self.params = np.concatenate((intercept_, coef_))
     if truncate:  # ToDo: modify to reflect not-split model
       cov = self.covariance(X, y, infected_locations)
       p = X.shape[1]

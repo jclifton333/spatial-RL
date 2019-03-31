@@ -12,11 +12,25 @@ def compare_with_true_probs(env, predictor, raw):
   else:
       phat = np.hstack([predictor(data_block, np.where(raw_data_block[:, -1] == 1)[0], np.where(raw_data_block[:, -1] == 0)[0])
                         for raw_data_block, data_block in zip(env.X_raw, env.X)])
+  # For diagnostic purposes
+  # high_error_features = np.zeros((0, env.X[0].shape[1]))
+  # low_error_features = np.zeros((0, env.X[0].shape[1]))
+  # for ix, (raw_data_block, data_block) in enumerate(zip(env.X_raw, env.X)):
+  #     phat_ix = predictor(data_block, np.where(raw_data_block[:, -1] == 1)[0], np.where(raw_data_block[:, -1] == 0)[0])
+  #     true_probs = env.true_infection_probs[ix]
+  #     high_error = np.where(np.abs(phat_ix - true_probs) > 0.3)
+  #     low_error  = np.where(np.abs(phat_ix - true_probs) < 0.3)
+  #     high_error_features = np.vstack((high_error_features, data_block[high_error]))
+  #     low_error_features = np.vstack((low_error_features, data_block[low_error]))
+  # pdb.set_trace()
   true_expected_counts = np.hstack(env.true_infection_probs)
-  max_loss = np.max(np.abs(phat - true_expected_counts))
-  mean_loss = np.mean(np.abs(phat - true_expected_counts))
+  err = phat - true_expected_counts
+  abs_err = np.abs(err)
+  max_loss = np.max(abs_err)
+  mean_loss = np.mean(abs_err)
+  high_error_count = np.sum(abs_err > 0.2)
   # print('mean loss {} max loss {}'.format(mean_loss, max_loss))
-  return mean_loss, max_loss
+  return mean_loss, max_loss, high_error_count
 
 
 def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None, print_compare_with_true_probs=True,
@@ -49,8 +63,8 @@ def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None
     weights = weights.flatten()
   clf.fit(features, target, weights, truncate, **clf_kwargs)
 
-  mean_loss, max_loss = compare_with_true_probs(env, clf.predict_proba, False)
-  return clf, predict_proba_kwargs, {'mean_loss': mean_loss, 'max_loss': max_loss}
+  mean_loss, max_loss, high_error_count = compare_with_true_probs(env, clf.predict_proba, False)
+  return clf, predict_proba_kwargs, {'mean_loss': mean_loss, 'max_loss': max_loss, 'high_error_count': high_error_count}
 
 
 def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None, indices=None):

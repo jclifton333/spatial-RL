@@ -31,6 +31,15 @@ def one_step_policy(**kwargs):
     return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  
+  # For diagnostic purposes; see how many actions were at high-error locations
+  # phat = clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
+  # true_probs = env.next_infected_probabilities(a, eta=env.ETA)
+  # overestimated_locations = np.where(phat - true_probs > 0.3)
+  # treated_locations = np.where(a == 1)
+  # num_treated_high_loss_locations = np.intersect1d(treated_locations[0], overestimated_locations[0])
+  # loss_dict['num_treated_high_loss'] = len(num_treated_high_loss_locations)
+
   return a, loss_dict
 
 
