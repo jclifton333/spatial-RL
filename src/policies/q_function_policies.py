@@ -65,7 +65,7 @@ def one_step_truth_augmented(**kwargs):
 
   # Fit model for errors
   X = np.vstack(env.X)
-  phats = clf.predict_proba(X)
+  phats = clf.predict_proba(X, **predict_proba_kwargs)
   y = np.hstack(env.y)
   errors = (phats - y)**2
   error_model = RandomForestRegressor()
