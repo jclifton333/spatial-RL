@@ -9,7 +9,7 @@ from src.estimation.q_functions.model_fitters import SKLogit2
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 from src.utils.misc import random_argsort
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, IsolationForest
 from sklearn.linear_model import LogisticRegression
 
 import numpy as np
@@ -32,16 +32,11 @@ def one_step_policy(**kwargs):
   def qfn(a):
     return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
-  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  # a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  # ToDo: Using random actions for diagnostic purposes!
+  a = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
+  a = np.random.permutation(a) 
   
-  # For diagnostic purposes; see how many actions were at high-error locations
-  # phat = clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
-  # true_probs = env.next_infected_probabilities(a, eta=env.ETA)
-  # overestimated_locations = np.where(phat - true_probs > 0.3)
-  # treated_locations = np.where(a == 1)
-  # num_treated_high_loss_locations = np.intersect1d(treated_locations[0], overestimated_locations[0])
-  # loss_dict['num_treated_high_loss'] = len(num_treated_high_loss_locations)
-
   return a, loss_dict
 
 
@@ -63,28 +58,27 @@ def one_step_truth_augmented(**kwargs):
 
   clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
 
-  # Fit model for errors
+  # Fit anomaly detector
   X = np.vstack(env.X)
-  phats = clf.predict_proba(X, **predict_proba_kwargs)
+  detector = IsolationForest()
+  detector.fit(X[:, 8:])
+
+  # Fit simple model
   y = np.hstack(env.y)
-  errors = (phats - y)**2
-  error_model = RandomForestRegressor()
-  error_model.fit(X, errors)
+  X_raw = np.vstack(env.X_raw)
+  simple_model = LogisticRegression()
+  simple_model.fit(X_raw, y)
 
   def qfn(a):
     # Get absolute errors
     X_a = env.data_block_at_action(-1, a)
     phat = clf.predict_proba(X_a, **predict_proba_kwargs)
-    # true_probs = env.next_infected_probabilities(a, eta=env.ETA)
-    # abs_error = np.abs(phat - true_probs)
-    # error_quantile = np.quantile(abs_error, [quantile])
-    predicted_errors = error_model.predict(X_a)
-    error_quantile = np.quantile(predicted_errors, [quantile])
+    outliers = np.where(detector.predict(X_a[:, 8:]) == -1)
 
-    # Replace probabilities above error_quantile with truth
+    # Replace outlier probabilities 
     X_raw_a = env.data_block_at_action(-1, a, raw=True)
-    high_error_locations = np.where(phat > error_quantile)
-    low_error_locations = np.where(phat <= error_quantile)
+    simple_model_probs = simple_model.predict_proba(X_raw_a)[:, -1]
+    phat[outliers] = simple_model_probs[outliers]
     return phat
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
