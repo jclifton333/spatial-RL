@@ -14,17 +14,19 @@ def compare_with_true_probs(env, predictor, raw):
                         for raw_data_block, data_block in zip(env.X_raw, env.X)])
 
   # For diagnostic purposes
-  if np.hstack(env.X).shape[0] > 5000:
-    high_error_features = np.zeros((0, env.X[0].shape[1]))
-    low_error_features = np.zeros((0, env.X[0].shape[1]))
-    for ix, (raw_data_block, data_block) in enumerate(zip(env.X_raw, env.X)):
-        phat_ix = predictor(data_block, np.where(raw_data_block[:, -1] == 1)[0], np.where(raw_data_block[:, -1] == 0)[0])
-        true_probs = env.true_infection_probs[ix]
-        high_error = np.where(np.abs(phat_ix - true_probs) > 0.3)
-        low_error = np.where(np.abs(phat_ix - true_probs) < 0.3)
-        high_error_features = np.vstack((high_error_features, data_block[high_error]))
-        low_error_features = np.vstack((low_error_features, data_block[low_error]))
-    pdb.set_trace()
+  # high_error_features = np.zeros((0, env.X[0].shape[1]))
+  # low_error_features = np.zeros((0, env.X[0].shape[1]))
+  # for ix, (raw_data_block, data_block) in enumerate(zip(env.X_raw, env.X)):
+  #     phat_ix = predictor(data_block, np.where(raw_data_block[:, -1] == 1)[0], np.where(raw_data_block[:, -1] == 0)[0])
+  #     true_probs = env.true_infection_probs[ix]
+  #     high_error = np.where(np.abs(phat_ix - true_probs) > 0.3)
+  #     low_error = np.where(np.abs(phat_ix - true_probs) < 0.3)
+  #     high_error_features = np.vstack((high_error_features, data_block[high_error]))
+  #     low_error_features = np.vstack((low_error_features, data_block[low_error]))
+  # unique_high_error = np.unique(high_error_features[:, 8:], axis=0)
+  # if unique_high_error.shape[0] > 6:
+  #   pdb.set_trace()
+  # print('num unique high error: {}'.format(unique_high_error.shape[0]))
 
   true_expected_counts = np.hstack(env.true_infection_probs)
   err = phat - true_expected_counts

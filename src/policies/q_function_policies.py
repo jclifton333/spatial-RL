@@ -1,3 +1,6 @@
+import os
+this_dir = os.path.dirname(os.path.abspath(__file__))
+
 from src.estimation.q_functions.fqi import fqi
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.q_functions import q, q_max_all_states
@@ -57,28 +60,26 @@ def one_step_truth_augmented(**kwargs):
     weights = None
 
   clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
-
-  # Fit anomaly detector
-  X = np.vstack(env.X)
-  detector = IsolationForest()
-  detector.fit(X[:, 8:])
-
-  # Fit simple model
-  y = np.hstack(env.y)
-  X_raw = np.vstack(env.X_raw)
-  simple_model = LogisticRegression()
-  simple_model.fit(X_raw, y)
+  bad_state_fname = os.path.join(this_dir, 'high-error-states.txt')
+  high_error_states = np.loadtxt(bad_state_fname)
 
   def qfn(a):
     # Get absolute errors
     X_a = env.data_block_at_action(-1, a)
     phat = clf.predict_proba(X_a, **predict_proba_kwargs)
-    outliers = np.where(detector.predict(X_a[:, 8:]) == -1)
+    true_probs = env.next_infected_probabilities(a, eta=env.ETA)
+    # errors = np.abs(phat - true_probs)
+    # outliers = np.where(errors > 0.1)
+
+    high_error_locations = []
+    for l, x in enumerate(X_a):
+      for h in high_error_states:
+          if np.array_equal(x[8:], h):
+            high_error_locations.append(l)
+            break
 
     # Replace outlier probabilities 
-    X_raw_a = env.data_block_at_action(-1, a, raw=True)
-    simple_model_probs = simple_model.predict_proba(X_raw_a)[:, -1]
-    phat[outliers] = simple_model_probs[outliers]
+    phat[high_error_locations] = true_probs[high_error_locations]
     return phat
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
