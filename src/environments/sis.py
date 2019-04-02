@@ -151,21 +151,24 @@ class SIS(SpatialDisease):
     psi_l[encoding] = 1
 
     if neighbor_order == 1:
-      psi_neighbors = [0]*8
+      # psi_neighbors = [0]*8
+      psi_neighbors = raw_data_block[self.adjacency_list[l]].sum(axis=0)
     elif neighbor_order == 2:
-      psi_neighbors = [0]*64
+      # psi_neighbors = [0]*64
+      pass
 
-    for lprime in self.adjacency_list[l]:
-      s, a, y = raw_data_block[lprime, :]
-      first_order_encoding = int(1*s + 2*a + 4*y)
-      if neighbor_order == 2:
-        for lprime_prime in self.adjacency_list[lprime]:
-          if lprime_prime != l:
-            s_prime_prime, a_prime_prime, y_prime_prime = raw_data_block[lprime_prime, :]
-            second_order_encoding = first_order_encoding + int(8*s_prime_prime + 16*a_prime_prime + 32*y_prime_prime)
-            psi_neighbors[second_order_encoding] += 1
-      else:
-        psi_neighbors[first_order_encoding] += 1
+    # for lprime in self.adjacency_list[l]:
+    #   s, a, y = raw_data_block[lprime, :]
+    #   first_order_encoding = int(1*s + 2*a + 4*y)
+    #   if neighbor_order == 2:
+    #     for lprime_prime in self.adjacency_list[lprime]:
+    #       if lprime_prime != l:
+    #         s_prime_prime, a_prime_prime, y_prime_prime = raw_data_block[lprime_prime, :]
+    #         second_order_encoding = first_order_encoding + int(8*s_prime_prime + 16*a_prime_prime + 32*y_prime_prime)
+    #         psi_neighbors[second_order_encoding] += 1
+    #   else:
+    #     psi_neighbors[first_order_encoding] += 1
+    # return np.concatenate((psi_l, psi_neighbors))
     return np.concatenate((psi_l, psi_neighbors))
 
   def psi(self, raw_data_block, neighbor_order):
@@ -174,7 +177,8 @@ class SIS(SpatialDisease):
     :return:
     """
     if neighbor_order == 1:
-      psi = np.zeros((0, 16))
+      # psi = np.zeros((0, 16))
+      psi = np.zeros((0, 11))
     elif neighbor_order == 2:
       psi = np.zeros((0, 72))
 
@@ -182,20 +186,6 @@ class SIS(SpatialDisease):
       psi_l = self.psi_at_location(l, raw_data_block, neighbor_order)
       psi = np.vstack((psi, psi_l))
     return psi
-
-  def psi_at_action(self, old_raw_data_block, old_data_block, old_action, action, neighbor_order):
-    new_data_block = copy.copy(old_data_block)
-    if self.add_neighbor_sums:
-      new_data_block = new_data_block[:, :int(new_data_block.shape[1] / 2)]
-    locations_with_changed_actions = set(np.where(old_action != action)[0])
-
-    for l in range(self.L):
-      l_and_neighbors = [l] + self.adjacency_list[l]
-      if self.is_any_element_in_set(l_and_neighbors, locations_with_changed_actions):
-        new_data_block[l, :] = self.psi_at_location(l, old_raw_data_block, neighbor_order)
-    if self.add_neighbor_sums:
-      new_data_block = self.psi_neighbor(new_data_block)
-    return new_data_block
 
   ##############################################################
   ##            End path-based feature function stuff         ##
