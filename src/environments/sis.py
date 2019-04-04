@@ -280,7 +280,7 @@ class SIS(SpatialDisease):
     self.y.append(self.current_infected)
 
     # Update likelihood counts
-    # self.update_counts_for_likelihood(data_block_1, self.Y[-2, :], self.current_infected)
+    self.update_counts_for_likelihood(data_block_1, self.Y[-2, :], self.current_infected)
 
   def data_block_at_action(self, data_block_ix, action, neighbor_order=1, raw=False):
     """

@@ -88,9 +88,9 @@ def one_step_truth_augmented(**kwargs):
 
 
 def two_step_mb(**kwargs):
-  regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
+  regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, gamma = \
     kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
-    kwargs['argmaxer'], kwargs['bootstrap']
+    kwargs['argmaxer'], kwargs['bootstrap'], kwargs['gamma']
 
   if bootstrap:
     weights = np.random.exponential(size=len(env.X)*env.L)
@@ -98,14 +98,14 @@ def two_step_mb(**kwargs):
     weights = None
 
   # One step
-  if env.__class__.__name__ == 'sis':
-    qfn_at_block_, predict_proba_kwargs = fit_one_step_sis_mb_q(env, bootstrap_weights=weights)
+  if env.__class__.__name__ == 'SIS':
+    q_fn_at_block_, predict_proba_kwargs = fit_one_step_sis_mb_q(env, bootstrap_weights=weights)
   elif env.__class__.__name__ == 'Ebola':
     q_fn_at_block_, _ = fit_one_step_ebola_mb_q(env)
 
   def q_fn(raw_data_block, a):
     raw_data_block_at_action = np.column_stack((raw_data_block[:, 0], a, raw_data_block[:, 2]))
-    return qfn_at_block_(raw_data_block_at_action)
+    return q_fn_at_block_(raw_data_block_at_action)
 
   # Back up once
   backup = []
