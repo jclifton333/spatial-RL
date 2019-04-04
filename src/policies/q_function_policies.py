@@ -34,7 +34,7 @@ def one_step_policy(**kwargs):
 
   def qfn(a):
     return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
-
+ 
   # a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   # ToDo: Using random actions for diagnostic purposes!
   a = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
@@ -109,19 +109,50 @@ def two_step_mb(**kwargs):
 
   # Back up once
   backup = []
-  for t in range(env.T-1):
+  for t in range(1, env.T):
     q_fn_at_block_t = lambda a: q_fn_at_block_(np.column_stack((env.X_raw[t][:, 0], a, env.X_raw[t][:, 2])))
     a_max = argmaxer(q_fn_at_block_t, evaluation_budget, treatment_budget, env)
     q_max = q_fn_at_block_t(a_max)
-    backup_at_t = env.y[t] + q_max
+    backup_at_t = q_max
     backup.append(backup_at_t)
 
   # Fit backup-up q function
+  y_infected = np.zeros(0) 
+  y_not_infected = np.zeros(0)
+  X2_infected = np.zeros((0, env.X_2[0].shape[1]))
+  X2_not_infected = np.zeros((0, env.X_2[0].shape[1]))
+
+  for t, x_2 in enumerate(env.X_2[:-1]):
+    infected_indices = np.where(env.X_raw[t][:, -1] == 1)
+    not_infected_indices = np.where(env.X_raw[t][:, -1] == 0)
+    y_infected = np.hstack((y_infected, env.y[t][infected_indices]))
+    y_not_infected = np.hstack((y_not_infected, env.y[t][not_infected_indices]))
+    X2_infected = np.vstack((X2_infected, x_2[infected_indices]))
+    X2_not_infected = np.vstack((X2_not_infected, x_2[not_infected_indices]))
+
+  reg_infected = regressor()
+  reg_not_infected = regressor()
+
+  reg_infected.fit(X2_infected, y_infected)
+  reg_not_infected.fit(X2_not_infected, y_not_infected)
+
+  X2_infected = np.vstack([x_2[np.where(env.X_raw[t][:, -1] == 1)] for t, x_2 in enumerate(env.X_2[:-1])])
+  X2_not_infected = np.vstack([x_2[np.where(env.X_raw[t][:, -1] == 0)] for t, x_2 in enumerate(env.X_2[:-1])])
+
   reg = regressor()
-  reg.fit(np.vstack(env.X[:-1]), np.hstack(backup))
+  reg.fit(np.vstack(env.X_2[:-1]), np.hstack(backup))
 
   def backedup_up_qfn(a):
-    return reg.predict(env.data_block_at_action(-1, a))
+    backup = np.zeros(env.L)
+    phat = q_fn(env.X_raw[-1], a)
+    infected_indices_ = np.where(env.X_raw[-1][:, -1] == 1)
+    not_infected_indices_ = np.where(env.X_raw[-1][:, -1] == 0) 
+
+    X2_at_a = env.data_block_at_action(-1, a, neighbor_order=2)
+    backup[infected_indices] = reg_infected.predict(X2_at_a[infected_indices])
+    backup[not_infected_indices] = reg_not_infected.predict(X2_at_a[not_infected_indices])
+
+    return phat + gamma * backup
 
   a = argmaxer(backedup_up_qfn, evaluation_budget, treatment_budget, env)
   return a, None

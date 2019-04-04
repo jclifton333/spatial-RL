@@ -151,25 +151,26 @@ class SIS(SpatialDisease):
     psi_l[encoding] = 1
 
     if neighbor_order == 1:
-      # psi_neighbors = [0]*8
-      psi_neighbors = raw_data_block[self.adjacency_list[l]].sum(axis=0)
+      psi_neighbors = [0]*8
+      # psi_neighbors = raw_data_block[self.adjacency_list[l]].sum(axis=0)
     elif neighbor_order == 2:
-      # psi_neighbors = [0]*64
+      psi_neighbors = [0]*64
       pass
 
-    # for lprime in self.adjacency_list[l]:
-    #   s, a, y = raw_data_block[lprime, :]
-    #   first_order_encoding = int(1*s + 2*a + 4*y)
-    #   if neighbor_order == 2:
-    #     for lprime_prime in self.adjacency_list[lprime]:
-    #       if lprime_prime != l:
-    #         s_prime_prime, a_prime_prime, y_prime_prime = raw_data_block[lprime_prime, :]
-    #         second_order_encoding = first_order_encoding + int(8*s_prime_prime + 16*a_prime_prime + 32*y_prime_prime)
-    #         psi_neighbors[second_order_encoding] += 1
-    #   else:
-    #     psi_neighbors[first_order_encoding] += 1
-    # return np.concatenate((psi_l, psi_neighbors))
+    for lprime in self.adjacency_list[l]:
+      s, a, y = raw_data_block[lprime, :]
+      first_order_encoding = int(1*s + 2*a + 4*y)
+      if neighbor_order == 2:
+        for lprime_prime in self.adjacency_list[lprime]:
+          if lprime_prime != l:
+            s_prime_prime, a_prime_prime, y_prime_prime = raw_data_block[lprime_prime, :]
+            second_order_encoding = first_order_encoding + int(8*s_prime_prime + 16*a_prime_prime + 32*y_prime_prime)
+            psi_neighbors[second_order_encoding] += 1
+      else:
+        psi_neighbors[first_order_encoding] += 1
     return np.concatenate((psi_l, psi_neighbors))
+    # psi_l = np.concatenate((psi_l, psi_neighbors))
+    # return psi_l
 
   def psi(self, raw_data_block, neighbor_order):
     """
@@ -177,8 +178,8 @@ class SIS(SpatialDisease):
     :return:
     """
     if neighbor_order == 1:
-      # psi = np.zeros((0, 16))
-      psi = np.zeros((0, 11))
+      psi = np.zeros((0, 16))
+      # psi = np.zeros((0, 11))
     elif neighbor_order == 2:
       psi = np.zeros((0, 72))
 
@@ -279,7 +280,7 @@ class SIS(SpatialDisease):
     self.y.append(self.current_infected)
 
     # Update likelihood counts
-    self.update_counts_for_likelihood(data_block_1, self.Y[-2, :], self.current_infected)
+    # self.update_counts_for_likelihood(data_block_1, self.Y[-2, :], self.current_infected)
 
   def data_block_at_action(self, data_block_ix, action, neighbor_order=1, raw=False):
     """
