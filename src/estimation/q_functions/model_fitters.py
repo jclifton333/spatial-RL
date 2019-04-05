@@ -357,17 +357,19 @@ class SKLogit(object):
 
 
 class SKLogit2(object):
-  condition_on_infection = True
-
   def __init__(self):
-    self.reg_= LogisticRegression()
-    # self.reg_ = MLPClassifier(hidden_layer_sizes=(50,50))
-    self.model_fitted = False
-    self.params = None
-    self.eb_prob = None
+    # self.reg_inf = RandomForestClassifier(200)
+    # self.reg_not_inf = RandomForestClassifier(200)
+    self.reg_inf = LogisticRegression()
+    self.reg_not_inf = LogisticRegression()
+    self.condition_on_infection = True
+    self.inf_model_fitted = False
+    self.not_inf_model_fitted = False
+    self.inf_params = None
+    self.not_inf_params = None
+    self.inf_eb_prob = None
+    self.not_inf_eb_prob = None
 
-  # ToDo: Change likelihood functions now that interaction term is included in model
-  # ToDo: No longer separating inf and not-inf, but instead interacting features with infection indicator
   def log_lik_gradient(self, x, y_next, infected):
     dim = len(x)
     if infected:
@@ -412,16 +414,35 @@ class SKLogit2(object):
       n = len(y)
       expit_intercept_ = (1 + y0*n) / (2 + n)  # Smoothed estimate
       intercept_ = logit(expit_intercept_)
-      coef_ = np.zeros(X.shape[1]*2)
-      self.params = np.concatenate((intercept_, coef_))
-      self.eb_prob = expit(intercept_[0])
+      coef_ = np.zeros(X.shape[1])
+      self.inf_params = self.not_inf_params = np.concatenate((intercept_, coef_))
     else:
-      infection_indicator = np.array([i in infected_locations[0] for i in range(X.shape[0])])
-      X_times_infection = np.multiply(X, infection_indicator[:, np.newaxis])
-      X_interaction = np.column_stack((X, X_times_infection))
-      self.reg_.fit(X_interaction, y)
-      self.model_fitted = True
-    if truncate:  # ToDo: modify to reflect not-split model
+      if weights is not None:
+        inf_weights = weights[infected_locations]
+        not_inf_weights = weights[not_infected_locations]
+      else:
+        inf_weights = not_inf_weights = None
+      if len(infected_locations) > 0:
+        if is_y_all_1_or_0(y[infected_locations]):
+          inf_intercept_, inf_coef_ = empirical_bayes_coef(y[infected_locations], X.shape[1])
+          inf_intercept_ = [inf_intercept_]
+          self.inf_eb_prob = expit(inf_intercept_[0])
+        else:
+          self.reg_inf.fit(X[infected_locations], y[infected_locations])
+          inf_intercept_, inf_coef_ = self.reg_inf.intercept_, self.reg_inf.coef_[0]
+          self.inf_model_fitted = True
+      if len(not_infected_locations) > 0:
+        if is_y_all_1_or_0(y[not_infected_locations]):
+          not_inf_intercept_, not_inf_coef_ = empirical_bayes_coef(y[not_infected_locations], X.shape[1])
+          not_inf_intercept_ = [not_inf_intercept_]
+          self.not_inf_eb_prob = expit(not_inf_intercept_[0])
+        else:
+          self.reg_not_inf.fit(X[not_infected_locations], y[not_infected_locations])
+          not_inf_intercept_, not_inf_coef_ = self.reg_not_inf.intercept_, self.reg_not_inf.coef_[0]
+          self.not_inf_model_fitted = True
+      self.inf_params = np.concatenate((inf_intercept_, inf_coef_))
+      self.not_inf_params = np.concatenate((not_inf_intercept_, not_inf_coef_))
+    if truncate:
       cov = self.covariance(X, y, infected_locations)
       p = X.shape[1]
       new_params = np.random.multivariate_normal(np.concatenate((self.inf_params, self.not_inf_params)), cov=cov)
@@ -429,19 +450,24 @@ class SKLogit2(object):
       self.not_inf_params = new_params[p:]
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
-    if self.model_fitted:
-      infection_indicator = np.array([i in infected_locations for i in range(X.shape[0])])
-      X_times_infection = np.multiply(X, infection_indicator[:, np.newaxis])
-      X_interaction = np.column_stack((X, X_times_infection))
-      phat = self.reg_.predict_proba(X_interaction)[:, -1]
-    else:
-      phat = self.eb_prob
+    phat = np.zeros(X.shape[0])
+    if len(phat[infected_locations]) > 0:
+      if self.inf_model_fitted:
+        phat[infected_locations] = self.reg_inf.predict_proba(X[infected_locations])[:, -1]
+      else:
+        phat[infected_locations] = self.inf_eb_prob
+    if len(phat[not_infected_locations]) > 0:
+      if self.not_inf_model_fitted:
+        # phat[not_infected_locations] = self.reg_not_inf.predict_proba(X[not_infected_locations])[:, -1]
+        logit_probs = np.dot(X[not_infected_locations, :], self.inf_params[1:]) + self.inf_params[0]
+        phat[not_infected_locations] = expit(logit_probs)
+      else:
+        phat[not_infected_locations] = self.not_inf_eb_prob
     return phat
 
   @staticmethod
   def predict_proba_given_parameter(X, infected_locations, not_infected_locations, parameter):
     """
-
     :param X:
     :param infected_locations:
     :param not_infected_locations:
@@ -462,5 +488,3 @@ class SKLogit2(object):
     phat[not_infected_locations] = expit(np.dot(X[not_infected_locations, :], not_inf_coef) + not_inf_intercept)
 
     return phat
-
-
