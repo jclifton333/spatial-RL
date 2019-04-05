@@ -119,28 +119,25 @@ def two_step_mb(**kwargs):
   # Fit backup-up q function
   y_infected = np.zeros(0) 
   y_not_infected = np.zeros(0)
-  X2_infected = np.zeros((0, env.X_2[0].shape[1]))
-  X2_not_infected = np.zeros((0, env.X_2[0].shape[1]))
+  X_infected = np.zeros((0, env.X[0].shape[1]))
+  X_not_infected = np.zeros((0, env.X[0].shape[1]))
 
-  for t, x_2 in enumerate(env.X_2[:-1]):
+  for t, x_ in enumerate(env.X[:-1]):
     infected_indices = np.where(env.X_raw[t][:, -1] == 1)
     not_infected_indices = np.where(env.X_raw[t][:, -1] == 0)
     y_infected = np.hstack((y_infected, env.y[t][infected_indices]))
     y_not_infected = np.hstack((y_not_infected, env.y[t][not_infected_indices]))
-    X2_infected = np.vstack((X2_infected, x_2[infected_indices]))
-    X2_not_infected = np.vstack((X2_not_infected, x_2[not_infected_indices]))
+    X_infected = np.vstack((X_infected, x_[infected_indices]))
+    X_not_infected = np.vstack((X_not_infected, x_[not_infected_indices]))
 
   reg_infected = regressor()
   reg_not_infected = regressor()
 
-  reg_infected.fit(X2_infected, y_infected)
-  reg_not_infected.fit(X2_not_infected, y_not_infected)
+  reg_infected.fit(X_infected, y_infected)
+  reg_not_infected.fit(X_not_infected, y_not_infected)
 
-  X2_infected = np.vstack([x_2[np.where(env.X_raw[t][:, -1] == 1)] for t, x_2 in enumerate(env.X_2[:-1])])
-  X2_not_infected = np.vstack([x_2[np.where(env.X_raw[t][:, -1] == 0)] for t, x_2 in enumerate(env.X_2[:-1])])
-
-  reg = regressor()
-  reg.fit(np.vstack(env.X_2[:-1]), np.hstack(backup))
+  X_infected = np.vstack([x_[np.where(env.X_raw[t][:, -1] == 1)] for t, x_ in enumerate(env.X[:-1])])
+  X_not_infected = np.vstack([x_[np.where(env.X_raw[t][:, -1] == 0)] for t, x_ in enumerate(env.X[:-1])])
 
   def backedup_up_qfn(a):
     backup = np.zeros(env.L)
@@ -148,9 +145,9 @@ def two_step_mb(**kwargs):
     infected_indices_ = np.where(env.X_raw[-1][:, -1] == 1)
     not_infected_indices_ = np.where(env.X_raw[-1][:, -1] == 0) 
 
-    X2_at_a = env.data_block_at_action(-1, a, neighbor_order=2)
-    backup[infected_indices] = reg_infected.predict(X2_at_a[infected_indices])
-    backup[not_infected_indices] = reg_not_infected.predict(X2_at_a[not_infected_indices])
+    X_at_a = env.data_block_at_action(-1, a)
+    backup[infected_indices] = reg_infected.predict(X_at_a[infected_indices])
+    backup[not_infected_indices] = reg_not_infected.predict(X_at_a[not_infected_indices])
 
     return phat + gamma * backup
 
