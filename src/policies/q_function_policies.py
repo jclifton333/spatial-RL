@@ -35,10 +35,10 @@ def one_step_policy(**kwargs):
   def qfn(a):
     return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
  
-  # a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  # ToDo: Using random actions for diagnostic purposes!
-  a = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
-  a = np.random.permutation(a)
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  # # ToDo: Using random actions for diagnostic purposes!
+  # a = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
+  # a = np.random.permutation(a)
   
   return a, loss_dict
 

@@ -8,12 +8,14 @@ ref: http://www.gurobi.com/documentation/7.0/examples/dense_py.html
 import numpy as np
 from scipy import sparse
 import pdb
-try:
-  from gurobipy import *
-  GUROBI = True
-except ImportError:
-  import miosqp
-  GUROBI = False
+# try:
+#   from gurobipy import *
+#   GUROBI = True
+# except ImportError:
+#   import miosqp
+#   GUROBI = False
+import miosqp
+GUROBI = False
 
 
 def qp_max(M, r, budget):
@@ -57,7 +59,6 @@ def qp_max_gurobi(M, r, budget):
 
   # Optimize
   model.optimize()
-  pdb.set_trace()
   return np.array([v.X for v in vars])
 
 
