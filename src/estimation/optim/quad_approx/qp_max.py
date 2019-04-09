@@ -7,7 +7,14 @@ ref: http://www.gurobi.com/documentation/7.0/examples/dense_py.html
 """
 import numpy as np
 import pdb
-from gurobipy import *
+try:
+  from gurobipy import *
+  GUROBI = True
+except ImportError:
+  from cvxopt import matrix, solvers
+  GUROBI = False
+
+
 
 
 def qp_max(M, r, budget):
@@ -20,7 +27,13 @@ def qp_max(M, r, budget):
   :param budget:
   :return:
   """
+  if GUROBI:
+    return qp_max_gurobi(M, r, budget)
+  else:
+    return qp_max_cvx(M, r, budget)
 
+
+def qp_max_gurobi(M, r, budget):
   model = Model('qip')
   model.setParam('OutputFlag', False)
   L = M.shape[0]
@@ -47,4 +60,21 @@ def qp_max(M, r, budget):
   model.optimize()
 
   return np.array([v.X for v in vars])
+
+
+def qp_max_cvx(M, r, budget):
+  """
+  CVX qp notation:
+    min 0.5 x^T P x + q^T x
+    s.t. Gx <= h
+         Ax = b
+
+  :param M:
+  :param r:
+  :param budget:
+  :return:
+  """
+  P = matrix(2*M)
+  A = matrix(np.ones(M.shape[0]))
+  b = matrix([budget])
 
