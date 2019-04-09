@@ -166,7 +166,7 @@ def two_step(**kwargs):
     weights = None
 
   # One step
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, weights)
+  clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
   def qfn_at_block(block_index, a):
     return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
 
