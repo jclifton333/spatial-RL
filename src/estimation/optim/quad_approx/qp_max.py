@@ -6,16 +6,14 @@ For taking argmax of quadratic approximation to Q function.
 ref: http://www.gurobi.com/documentation/7.0/examples/dense_py.html
 """
 import numpy as np
-from scipy import sparse
+from scipy import sparse, linalg, optimize
 import pdb
-# try:
-#   from gurobipy import *
-#   GUROBI = True
-# except ImportError:
-#   import miosqp
-#   GUROBI = False
-import miosqp
-GUROBI = False
+try:
+  from gurobipy import *
+  GUROBI = True
+except ImportError:
+  import miosqp
+  GUROBI = False
 
 
 def qp_max(M, r, budget):
@@ -31,7 +29,47 @@ def qp_max(M, r, budget):
   if GUROBI:
     return qp_max_gurobi(M, r, budget)
   else:
-    return qp_max_miosqp(M, r, budget)
+    # return qp_max_miosqp(M, r, budget)
+    return qp_super_relaxed(M, r, budget)
+
+
+def qp_relaxed(M, r, budget):
+  # Continuous relaxation of the BQP.
+  model = Model('qp')
+  model.setParam('OutputFlag', False)
+  L = M.shape[0]
+
+  # Define decision variables
+  vars = []
+  for j in range(L):
+    vars.append(model.addVar(ub=1.0, lb=0.0))
+
+  # Define objective
+  obj = QuadExpr()
+  for i in range(L):
+    for j in range(L):
+      obj += M[i,j]*vars[i]*vars[j]
+  obj += r
+  model.setObjective(obj)
+
+  # Define constraint
+  constr_expr = LinExpr()
+  constr_expr.addTerms([1.0]*L, vars)
+  model.addConstr(constr_expr == budget)
+
+  # Optimize
+  model.optimize()
+  return np.array([v.X for v in vars])
+
+
+def qp_super_relaxed(M, r, budget):
+  # Replace M with its diagonal.
+
+  M_diag = np.diag(M)
+  a_ = np.zeros(M.shape[0])
+  treated_locations = np.argsort(M_diag)[:budget]
+  a_[treated_locations] = 1
+  return a_
 
 
 def qp_max_gurobi(M, r, budget):
@@ -62,22 +100,16 @@ def qp_max_gurobi(M, r, budget):
   return np.array([v.X for v in vars])
 
 
-def nearPSD(A,epsilon=0.01):
+def nearPSD(A, eps=0.1):
   """
-  Projection onto semidefinite cone, for relaxation.  See
-  https://stackoverflow.com/questions/10939213/how-can-i-calculate-the-nearest-positive-semi-definite-matrix.
+  Projection onto semidefinite cone, for relaxation.
   :param A:
-  :param epsilon:
   :return:
   """
-  n = A.shape[0]
-  eigval, eigvec = np.linalg.eig(A)
-  val = np.matrix(np.maximum(eigval,epsilon))
-  vec = np.matrix(eigvec)
-  T = 1/(np.multiply(vec,vec) * val.T)
-  T = np.matrix(np.sqrt(np.diag(np.array(T).reshape((n)) )))
-  B = T * vec * np.diag(np.array(np.sqrt(val)).reshape((n)))
-  out = B*B.T
+  A2 = np.dot(A.T, A)
+  A2_sqrt = linalg.sqrtm(A2)
+  diag_ = np.diag(np.ones(A2.shape[0])*eps)
+  out = 0.5 * (A + A2_sqrt + diag_)
   return(out)
 
 
@@ -105,7 +137,7 @@ def qp_max_miosqp(M, r, budget):
   P = sparse.csc_matrix(P)
   q = np.zeros(L)
   A = sparse.csc_matrix(np.ones((1, L)))
-  l = np.array([budget])
+  l = np.array([0])
   u = np.array([budget])
   i_l = np.array([0 for _ in range(L)])
   i_u = np.array([1 for _ in range(L)])
