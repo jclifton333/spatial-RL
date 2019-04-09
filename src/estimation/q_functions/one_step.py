@@ -114,7 +114,7 @@ def fit_one_step_sis_mf_and_mb_qs(env, classifier, bootstrap_weights=None, y_nex
   q_mb, mb_params = fit_one_step_sis_mb_q(env, bootstrap_weights=bootstrap_weights, y_next=y_next, indices=indices)
 
   # Get model-free
-  clf, predict_proba_kwargs = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next, indices=indices)
+  clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, bootstrap_weights, y_next=y_next, indices=indices)
 
   def q_mf(data_block, infected_locations, not_infected_locations):
     return clf.predict_proba(data_block, infected_locations, not_infected_locations)

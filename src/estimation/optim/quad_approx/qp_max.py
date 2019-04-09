@@ -27,7 +27,8 @@ def qp_max(M, r, budget):
   :return:
   """
   if GUROBI:
-    return qp_max_gurobi(M, r, budget)
+    # return qp_max_gurobi(M, r, budget)
+    return qp_relaxed(M, r, budget)
   else:
     # return qp_max_miosqp(M, r, budget)
     return qp_super_relaxed(M, r, budget)

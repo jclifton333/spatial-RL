@@ -407,6 +407,7 @@ class SKLogit2(object):
     return cov
 
   def fit(self, X, y, weights, truncate, infected_locations, not_infected_locations):
+    self.X_train = X
     if is_y_all_1_or_0(y):
       y0 = y[0]
       n = len(y)
@@ -438,6 +439,7 @@ class SKLogit2(object):
       phat = self.eb_prob
     return phat
 
+  # ToDo: This is no longer correct!
   @staticmethod
   def predict_proba_given_parameter(X, infected_locations, not_infected_locations, parameter):
     """

@@ -13,8 +13,8 @@ import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 from src.utils.misc import random_argsort
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
-from sklearn.linear_model import LogisticRegression
-
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from scipy.special import expit, logit
 import numpy as np
 import keras.backend as K
 from functools import partial
@@ -41,6 +41,47 @@ def one_step_policy(**kwargs):
   # a = np.random.permutation(a)
   
   return a, loss_dict
+
+
+def one_step_projection_combo(**kwargs):
+  """
+  Combine one-step mf and mb estimators based on error of (linear) mf estimator and the projection of the mb
+  estimator onto the space of linear models.
+
+  :param kwargs:
+  :return:
+  """
+  BANDWIDTH = 0.1
+  KERNEL = lambda x: np.exp(-x**2 / BANDWIDTH)
+
+  env, evaluation_budget, treatment_budget, argmaxer, bootstrap, quantile = \
+    kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
+    kwargs['bootstrap'], kwargs['quantile']
+
+  q_mb, q_mf, _, clf = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
+
+  # Project q_mb onto q_mf
+  expit_q_model = LinearRegression()
+  X_ref = clf.X_train
+  expit_q_mb_target = np.hstack([expit(q_mb(x_raw)) for x_raw in env.X_raw])
+  expit_q_model.fit(X_ref, expit_q_mb_target)
+
+  def qfn_combo(a):
+    x_raw = env.data_block_at_action(-1, a, raw=True)
+    x = env.data_block_at_action(-1, a)
+    x_times_infection = np.multiply(x, x_raw[:, -1])
+    x_interaction = np.column_stack((x, x_times_infection))
+
+    # Get error of projection
+    expit_projection_prediction = expit_q_model.predict(x_interaction)
+    projection_prediction = logit(expit_projection_prediction)
+    mf_prediction = q_mf(x)
+    error = projection_prediction - mf_prediction
+
+    # Combine
+    alpha = np.array([KERNEL(e_) for e_ in error])
+    mb_prediction = q_mb(x_raw)
+    return alpha*mb_prediction + (1-alpha)*mf_prediction
 
 
 def one_step_truth_augmented(**kwargs):
