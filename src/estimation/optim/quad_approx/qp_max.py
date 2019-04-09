@@ -61,8 +61,29 @@ def qp_max_gurobi(M, r, budget):
   return np.array([v.X for v in vars])
 
 
+def nearPSD(A,epsilon=0.01):
+  """
+  Projection onto semidefinite cone, for relaxation.  See
+  https://stackoverflow.com/questions/10939213/how-can-i-calculate-the-nearest-positive-semi-definite-matrix.
+  :param A:
+  :param epsilon:
+  :return:
+  """
+  n = A.shape[0]
+  eigval, eigvec = np.linalg.eig(A)
+  val = np.matrix(np.maximum(eigval,epsilon))
+  vec = np.matrix(eigvec)
+  T = 1/(np.multiply(vec,vec) * val.T)
+  T = np.matrix(np.sqrt(np.diag(np.array(T).reshape((n)) )))
+  B = T * vec * np.diag(np.array(np.sqrt(val)).reshape((n)))
+  out = B*B.T
+  return(out)
+
+
 def qp_max_miosqp(M, r, budget):
   """
+  Solve semidefinite relaxation of the original BQP.
+
   miosqp notation:
     minimize        0.5 x' P x + q' x
 
@@ -75,9 +96,12 @@ def qp_max_miosqp(M, r, budget):
   :param budget:
   :return:
   """
+  # Relax by projecting onto semidefinite cone
+  P = 2*nearPSD(M)
+
   # Optimization problem definition
   L = M.shape[0]
-  P = sparse.csc_matrix(2*M)
+  P = sparse.csc_matrix(P)
   q = np.zeros(L)
   A = sparse.csc_matrix(np.ones((1, L)))
   l = np.array([budget])
