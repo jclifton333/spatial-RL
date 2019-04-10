@@ -69,19 +69,23 @@ def one_step_projection_combo(**kwargs):
   def qfn_combo(a):
     x_raw = env.data_block_at_action(-1, a, raw=True)
     x = env.data_block_at_action(-1, a)
-    x_times_infection = np.multiply(x, x_raw[:, -1])
+    x_times_infection = np.multiply(x, x_raw[:, -1][:, np.newaxis])
     x_interaction = np.column_stack((x, x_times_infection))
 
     # Get error of projection
     expit_projection_prediction = expit_q_model.predict(x_interaction)
     projection_prediction = logit(expit_projection_prediction)
-    mf_prediction = q_mf(x)
+    infected_locations = np.where(x_raw[:, -1] == 1)[0]
+    mf_prediction = q_mf(x, infected_locations, None)
     error = projection_prediction - mf_prediction
 
     # Combine
     alpha = np.array([KERNEL(e_) for e_ in error])
     mb_prediction = q_mb(x_raw)
     return alpha*mb_prediction + (1-alpha)*mf_prediction
+
+  a = argmaxer(qfn_combo, evaluation_budget, treatment_budget, env)
+  return a, {}
 
 
 def one_step_truth_augmented(**kwargs):
