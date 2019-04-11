@@ -68,8 +68,9 @@ def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None
     weights = weights.flatten()
   clf.fit(features, target, weights, truncate, **clf_kwargs)
 
-  mean_loss, max_loss, high_error_count = compare_with_true_probs(env, clf.predict_proba, False)
-  return clf, predict_proba_kwargs, {'mean_loss': mean_loss, 'max_loss': max_loss, 'high_error_count': high_error_count}
+  # mean_loss, max_loss, high_error_count = compare_with_true_probs(env, clf.predict_proba, False)
+  info = {}
+  return clf, predict_proba_kwargs, info
 
 
 def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None, indices=None):

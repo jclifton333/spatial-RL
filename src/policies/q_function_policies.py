@@ -562,7 +562,7 @@ def one_step_stacked(**kwargs):
     for t, (x_raw, x) in enumerate(zip(env.X_raw[:-1], env.X[:-1])):
       test_ixs = train_test_split[1][t]
       yhat_mb = np.append(yhat_mb, q_mb_fold(x_raw)[test_ixs])
-      yhat_mf = np.append(yhat_mf, q_mf_fold(x[test_ixs, :], np.where(x_raw[test_ixs, -1] == 1),
+      yhat_mf = np.append(yhat_mf, q_mf_fold(x[test_ixs, :], np.where(x_raw[test_ixs, -1] == 1)[0],
                                              np.where(x_raw[test_ixs, -1] == 0)))
       y = np.append(y, env.y[t][test_ixs])
 
