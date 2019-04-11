@@ -293,8 +293,10 @@ def two_step_stacked(**kwargs):
       q_max_mf = q_mf_at_block(a_max_mf)[train_ixs]
       q_max_mb = q_mb_at_block(a_max_mb)[train_ixs]
 
-      backup_at_t_mf = env.y[t][train_ixs] + q_max_mf
-      backup_at_t_mb = q_mb_fold(env.X_raw[t])[train_ixs] + q_max_mb
+      # backup_at_t_mf = env.y[t][train_ixs] + q_max_mf
+      # backup_at_t_mb = q_mb_fold(env.X_raw[t])[train_ixs] + q_max_mb
+      backup_at_t_mf = q_max_mf
+      backup_at_t_mb = q_max_mb
       backup_mf.append(backup_at_t_mf)
       backup_mb.append(backup_at_t_mb)
 
@@ -313,13 +315,12 @@ def two_step_stacked(**kwargs):
     y = np.array([y_[train_test_split[1][t]] for (t, y_) in enumerate(env.y)])
     for t, (x_raw, x) in enumerate(zip(env.X_raw[:-1], env.X[:-1])):
       test_ixs = train_test_split[1][t]
-      qhat_mb = np.append(qhat_mb, reg_mb.predict())
+      qhat_mb = np.append(qhat_mb, reg_mb.predict(x_raw))
 
       yhat_mb = np.append(yhat_mb, q_mb_fold(x_raw)[test_ixs])
       yhat_mf = np.append(yhat_mf, q_mf_fold(x[test_ixs, :], np.where(x_raw[test_ixs, -1] == 1),
                                              np.where(x_raw[test_ixs, -1] == 0)))
       y = np.append(y, env.y[t][test_ixs])
-
 
   # Get optimal combination weight
   alpha_mb = np.sum(np.multiply(y - yhat_mf, yhat_mb - yhat_mf)) / np.linalg.norm(yhat_mb - yhat_mf)**2
