@@ -407,7 +407,6 @@ class SKLogit2(object):
     return cov
 
   def fit(self, X, y, weights, truncate, infected_locations, not_infected_locations):
-    self.X_train = X
     if is_y_all_1_or_0(y):
       y0 = y[0]
       n = len(y)
@@ -420,6 +419,7 @@ class SKLogit2(object):
       infection_indicator = np.array([i in infected_locations[0] for i in range(X.shape[0])])
       X_times_infection = np.multiply(X, infection_indicator[:, np.newaxis])
       X_interaction = np.column_stack((X, X_times_infection))
+      self.X_train = X_interaction
       self.reg_.fit(X_interaction, y)
       self.model_fitted = True
     if truncate:  # ToDo: modify to reflect not-split model

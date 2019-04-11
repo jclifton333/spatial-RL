@@ -50,5 +50,7 @@ def policy_factory(policy_type):
     return prefit.two_step_sis_prefit
   elif policy_type == 'one_step_truth_augmented':
     return roll.one_step_truth_augmented
+  elif policy_type == 'one_step_projection_combo':
+    return roll.one_step_projection_combo
   else:
     raise ValueError('Argument does not match any policy.')

@@ -1,4 +1,3 @@
-from .quad_approx.argmaxer_quad_approx import argmaxer_quad_approx, argmaxer_sequential_quad_approx
 from .sweep.argmaxer_sweep import argmaxer_sweep
 import numpy as np
 import logging
@@ -43,7 +42,11 @@ def argmaxer_factory(choice):
   if choice == 'sweep':
     return argmaxer_sweep
   elif choice == 'quad_approx':
-    return argmaxer_quad_approx
+    try:
+      from .quad_approx.argmaxer_quad_approx import argmaxer_quad_approx, argmaxer_sequential_quad_approx
+      return argmaxer_quad_approx
+    except ImportError:
+      return argmaxer_random
   elif choice == 'sequential_quad_approx':
     return argmaxer_sequential_quad_approx
   elif choice == 'random':
