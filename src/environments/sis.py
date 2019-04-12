@@ -368,7 +368,8 @@ class SIS(SpatialDisease):
     :param fitted_mf_clf: flexible SKLogit2-like classifier
     :return:
     """
-    mf_params = np.concatenate((fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
+    # mf_params = np.concatenate((fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
+    mf_params = fitted_mf_clf.params
     mb_dim = len(mb_params)
     dim = len(mb_params) + len(mf_params)
     grad_outer = np.zeros((dim, dim))
@@ -405,7 +406,8 @@ class SIS(SpatialDisease):
           mb_hess = block_diag(mb_hess, np.zeros((2, 2)))
 
         # MF gradient
-        mf_features = np.concatenate(([1.0], x))
+        # ToDo: mf features should be a method of mf_clf, not implemented here
+        mf_features = x
         mf_grad = fitted_mf_clf.log_lik_gradient(mf_features, y_next, y[l])
         mf_hess = fitted_mf_clf.log_lik_hess(mf_features, y[l])
 

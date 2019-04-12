@@ -35,7 +35,8 @@ def one_step_sis_convex_combo(env):
   cov = env.joint_mf_and_mb_covariance(mb_params, fitted_mf_clf)
 
   # Simulate from estimated sampling dbns
-  params = np.concatenate((mb_params, fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
+  # params = np.concatenate((mb_params, fitted_mf_clf.inf_params, fitted_mf_clf.not_inf_params))
+  params = np.concatenate((mb_params, fitted_mf_clf.params))
   simulated_params = np.random.multivariate_normal(mean=params, cov=cov, size=100)
 
   yhat_mb_draws = np.zeros((0, env.T * env.L))
@@ -46,7 +47,7 @@ def one_step_sis_convex_combo(env):
     simulated_mf_params = simulated_param[len(mb_params):]
     yhat_mb_draw = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
                                                         eta=simulated_mb_params) for data_block in env.X_raw])
-    yhat_mf_draw = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
+    yhat_mf_draw = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1)[0],
                                                                           np.where(raw_data_block[:, 2] == 0),
                                                                       simulated_mf_params)
                           for data_block, raw_data_block in zip(env.X, env.X_raw)])
@@ -62,7 +63,7 @@ def one_step_sis_convex_combo(env):
   # Compute bias
   yhat_mb = np.hstack([env.infection_probability(data_block[:, 1], data_block[:, 2], data_block[:, 0],
                                                  eta=mb_params) for data_block in env.X_raw])
-  yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1),
+  yhat_mf = np.hstack([fitted_mf_clf.predict_proba_given_parameter(data_block, np.where(raw_data_block[:, 2] == 1)[0],
                                                                    np.where(raw_data_block[:, 2] == 0),
                                                                    params[len(mb_params):])
                        for data_block, raw_data_block in zip(env.X, env.X_raw)])

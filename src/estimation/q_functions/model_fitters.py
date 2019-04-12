@@ -366,27 +366,17 @@ class SKLogit2(object):
     self.params = None
     self.eb_prob = None
 
-  # ToDo: Change likelihood functions now that interaction term is included in model
-  # ToDo: No longer separating inf and not-inf, but instead interacting features with infection indicator
   def log_lik_gradient(self, x, y_next, infected):
-    dim = len(x)
-    if infected:
-      inf_grad = gradient.logit_gradient(x, y_next, self.inf_params)
-      not_inf_grad = np.zeros(dim)
-    else:
-      inf_grad = np.zeros(dim)
-      not_inf_grad = gradient.logit_gradient(x, y_next, self.not_inf_params)
-    return np.concatenate((inf_grad, not_inf_grad))
+    x_inf = infected * x
+    x_interaction = np.concatenate(([1], x, x_inf))
+    grad = gradient.logit_gradient(x_interaction, y_next, self.params)
+    return grad
 
   def log_lik_hess(self, x, infected):
-    dim = len(x)
-    if infected:
-      inf_hess = gradient.logit_hessian(x, self.inf_params)
-      not_inf_hess = np.zeros((dim, dim))
-    else:
-      inf_hess = np.zeros((dim, dim))
-      not_inf_hess = gradient.logit_hessian(x,  self.not_inf_params)
-    return block_diag(inf_hess, not_inf_hess)
+    x_inf = infected * x
+    x_interaction = np.concatenate(([1], x, x_inf))
+    hess = gradient.logit_hessian(x_interaction, self.params)
+    return hess
 
   def covariance(self, X, y, infected_locations):
     n, p = X.shape[1]
@@ -396,12 +386,8 @@ class SKLogit2(object):
       infected = i in infected_locations
       grad = self.log_lik_gradient(x, y_, infected)
       hess_i = self.log_lik_hess(x, infected)
-      if infected:
-        grad_outer[:p, :p] += np.outer(grad, grad)
-        hess[:p, :p] += hess_i
-      else:
-        grad_outer[p:, p:] += np.outer(grad, grad)
-        hess[p:, p:] += hess_i
+      grad_outer += np.outer(grad, grad)
+      hess += hess_i
     hess_inv = np.linalg.inv(hess + 0.1*np.eye(2*p))
     cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(n)
     return cov
@@ -422,6 +408,7 @@ class SKLogit2(object):
       self.X_train = X_interaction
       self.reg_.fit(X_interaction, y)
       self.model_fitted = True
+      self.params = np.concatenate(([self.reg_.intercept_, self.reg_.coef_[0]]))
     if truncate:  # ToDo: modify to reflect not-split model
       cov = self.covariance(X, y, infected_locations)
       p = X.shape[1]
@@ -439,9 +426,7 @@ class SKLogit2(object):
       phat = self.eb_prob
     return phat
 
-  # ToDo: This is no longer correct!
-  @staticmethod
-  def predict_proba_given_parameter(X, infected_locations, not_infected_locations, parameter):
+  def predict_proba_given_parameter(self, X, infected_locations, not_infected_locations, parameter):
     """
     :param X:
     :param infected_locations:
@@ -449,18 +434,13 @@ class SKLogit2(object):
     :param parameter: array of the form [inf_intercept, inf_coef, not_inf_intercept, not_inf_coef]
     :return:
     """
-    phat = np.zeros(X.shape[0])
-    number_of_parameters = X.shape[1]
-
-    # Get probabilities at infected locations
-    inf_coef = parameter[1:number_of_parameters+1]
-    inf_intercept = parameter[0]
-    phat[infected_locations] = expit(np.dot(X[infected_locations, :], inf_coef) + inf_intercept)
-
-    # Get probabilities at not-infected locations
-    not_inf_coef = parameter[number_of_parameters+2:]
-    not_inf_intercept = parameter[number_of_parameters+1]
-    phat[not_infected_locations] = expit(np.dot(X[not_infected_locations, :], not_inf_coef) + not_inf_intercept)
-
+    if self.model_fitted:
+      infection_indicator = np.array([i in infected_locations for i in range(X.shape[0])])
+      X_times_infection = np.multiply(X, infection_indicator[:, np.newaxis])
+      X_interaction = np.column_stack((np.ones(X.shape[0]), X, X_times_infection))
+      expit_phat = np.dot(X_interaction, parameter)
+      phat = logit(expit_phat)
+    else:
+      phat = self.eb_prob
     return phat
 
