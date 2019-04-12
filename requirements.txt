@@ -10,4 +10,6 @@ scipy==0.19.0
 seaborn==0.8.1
 networkx==2.2
 tensorflow==1.4.1
-talos=0.4.5
+talos==0.4.5
+cplex==12.8.0.1
+docplex==2.9.141

@@ -15,6 +15,13 @@ except ImportError:
   import miosqp
   GUROBI = False
 
+try:
+  import docplex.mp
+  import docplex.mp.model as dcpm
+  CPLEX = True
+except ImportError:
+  CPLEX = False
+
 
 def qp_max(M, r, budget):
   """
@@ -29,8 +36,10 @@ def qp_max(M, r, budget):
   if GUROBI:
     return qp_max_gurobi(M, r, budget)
     # return qp_relaxed(M, r, budget)
+  elif CPLEX:
+    return qp_max_cplex(M, r, budget)
   else:
-    raise ImportError("Gurobi not found")
+    raise ImportError("Gurobi and Cplex not found")
     # return qp_max_miosqp(M, r, budget)
     # return qp_super_relaxed(M, r, budget)
 
@@ -72,6 +81,28 @@ def qp_super_relaxed(M, r, budget):
   treated_locations = np.argsort(M_diag)[:budget]
   a_[treated_locations] = 1
   return a_
+
+
+def qp_max_cplex(M, r, budget):
+  # Following examples in https://ibmdecisionoptimization.github.io/tutorials/html/Beyond_Linear_Programming.html.
+  L = M.shape[0]
+  url = key = None
+  model = dcpm.Model(name="argmaxer")
+
+  # Define decision variables
+  vars = {i: model.binary_var(name="trt_{}".format(i)) for i in range(L)}
+
+  # Define objective
+  obj = model.sum(vars[i]*vars[j]*float(M[i, j]) for i in range(L) for j in range(L))
+
+  # Define constraints
+  model.add_constraint(model.sum(vars[i] for i in range(L)) == budget)
+
+  # Optimize
+  model.minimize(obj)
+
+  sol = model.solve(url=url, key=key)
+  return np.array([sol['trt_{}'.format(i)] for i in range(L)])
 
 
 def qp_max_gurobi(M, r, budget):
