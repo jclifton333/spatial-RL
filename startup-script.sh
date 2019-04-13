@@ -1,3 +1,8 @@
+# From GCP shell, execute
+# gcloud compute instances create [INSTANCE NAME] --custom-memory=[N GIGS]GB \
+#   --custom-cpu=[N CPUS] --scopes storage-ro \
+#   --metadata startup-script-url=gs://spatial-rl-startup-script/startup-script.sh
+
 # Install git
 sudo apt-get update
 sudo apt-get --assume-yes install git
