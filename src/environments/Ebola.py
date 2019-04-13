@@ -85,7 +85,7 @@ class Ebola(Gravity):
                                 initial_infections=Ebola.INITIAL_INFECTIONS)
 
   # Neighbor features #
-  def feature_function_at_location(self, l, raw_data_block):
+  def feature_function_at_location(self, l, raw_data_block, neighbor_order):
     x_l = raw_data_block[l, :]
     neighbors = self.adjacency_list[l]
     num_neighbors = len(neighbors)
