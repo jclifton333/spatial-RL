@@ -61,10 +61,10 @@ def one_step_projection_combo(**kwargs):
   q_mb, q_mf, _, clf = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
 
   # Project q_mb onto q_mf
-  expit_q_model = LinearRegression()
+  logit_q_model = LinearRegression()
   X_ref = clf.X_train
-  expit_q_mb_target = np.hstack([expit(q_mb(x_raw)) for x_raw in env.X_raw])
-  expit_q_model.fit(X_ref, expit_q_mb_target)
+  logit_q_mb_target = np.hstack([logit(q_mb(x_raw)) for x_raw in env.X_raw])
+  logit_q_model.fit(X_ref, logit_q_mb_target)
 
   # Select bandwidth by minimizing error on training set
   errors_at_bandwidths = np.zeros(len(CANDIDATE_BANDWIDTHS))
@@ -76,8 +76,8 @@ def one_step_projection_combo(**kwargs):
     y = env.y[t]
 
     # Get error of projection
-    expit_projection_prediction = expit_q_model.predict(x_interaction)
-    projection_prediction = logit(expit_projection_prediction)
+    logit_projection_prediction = logit_q_model.predict(x_interaction)
+    projection_prediction = expit(logit_projection_prediction)
     infected_locations = np.where(x_raw[:, -1] == 1)[0]
     mf_prediction = q_mf(x, infected_locations, None)
     error = projection_prediction - mf_prediction
@@ -99,8 +99,8 @@ def one_step_projection_combo(**kwargs):
     x_interaction = np.column_stack((x, x_times_infection))
 
     # Get error of projection
-    expit_projection_prediction = expit_q_model.predict(x_interaction)
-    projection_prediction = logit(expit_projection_prediction)
+    logit_projection_prediction = logit_q_model.predict(x_interaction)
+    projection_prediction = expit(logit_projection_prediction)
     infected_locations = np.where(x_raw[:, -1] == 1)[0]
     mf_prediction = q_mf(x, infected_locations, None)
     error = projection_prediction - mf_prediction
@@ -108,6 +108,7 @@ def one_step_projection_combo(**kwargs):
     # Combine
     alpha = np.array([KERNEL(e_, bandwidth) for e_ in error])
     mb_prediction = q_mb(x_raw)
+
     return alpha*mb_prediction + (1-alpha)*mf_prediction
 
   a = argmaxer(qfn_combo, evaluation_budget, treatment_budget, env)
