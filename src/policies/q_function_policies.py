@@ -109,6 +109,15 @@ def one_step_projection_combo(**kwargs):
     alpha = np.array([KERNEL(e_, bandwidth) for e_ in error])
     mb_prediction = q_mb(x_raw)
 
+    if not np.isfinite(mb_prediction).all():
+      pdb.set_trace()
+
+    if not np.isfinite(mf_prediction).all():
+      pdb.set_trace()
+
+    if not np.isfinite(alpha).all():
+      pdb.set_trace()
+
     return alpha*mb_prediction + (1-alpha)*mf_prediction
 
   a = argmaxer(qfn_combo, evaluation_budget, treatment_budget, env)

@@ -102,7 +102,7 @@ def qp_max_cplex(M, r, budget):
   model.minimize(obj)
 
   sol = model.solve(url=url, key=key)
-  return np.array([sol['trt_{}'.format(i)] for i in range(L)])
+  return np.array([int(sol.get_value('trt_{}'.format(i))) for i in range(L)])
 
 
 def qp_max_gurobi(M, r, budget):
