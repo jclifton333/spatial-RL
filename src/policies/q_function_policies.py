@@ -51,8 +51,8 @@ def one_step_projection_combo(**kwargs):
   :param kwargs:
   :return:
   """
-  BANDWIDTH = 0.1
-  KERNEL = lambda x: np.exp(-x**2 / BANDWIDTH)
+  CANDIDATE_BANDWIDTHS = [0.01, 0.1, 1]
+  KERNEL = lambda x, b: np.exp(-x**2 / b)
 
   env, evaluation_budget, treatment_budget, argmaxer, bootstrap, quantile = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
@@ -65,6 +65,32 @@ def one_step_projection_combo(**kwargs):
   X_ref = clf.X_train
   expit_q_mb_target = np.hstack([expit(q_mb(x_raw)) for x_raw in env.X_raw])
   expit_q_model.fit(X_ref, expit_q_mb_target)
+
+  # Select bandwidth by minimizing error on training set
+  errors_at_bandwidths = np.zeros(len(CANDIDATE_BANDWIDTHS))
+  for t in range(env.T):
+    x_raw = env.X_raw[t]
+    x = env.X[t]
+    x_times_infection = np.multiply(x, env.Y[t, :][:, np.newaxis])
+    x_interaction = np.column_stack((x, x_times_infection))
+    y = env.y[t]
+
+    # Get error of projection
+    expit_projection_prediction = expit_q_model.predict(x_interaction)
+    projection_prediction = logit(expit_projection_prediction)
+    infected_locations = np.where(x_raw[:, -1] == 1)[0]
+    mf_prediction = q_mf(x, infected_locations, None)
+    error = projection_prediction - mf_prediction
+    mb_prediction = q_mb(x_raw)
+
+    # Get error at each bandwidth
+    for bandwidth_ix, bandwidth in enumerate(CANDIDATE_BANDWIDTHS):
+      alpha = np.array([KERNEL(e_, bandwidth) for e_ in error])
+      combined_prediction = alpha*mb_prediction + (1 - alpha)*mf_prediction
+      loss = np.mean((combined_prediction - y)**2)
+      errors_at_bandwidths[bandwidth_ix] += loss
+
+  bandwidth = CANDIDATE_BANDWIDTHS[int(np.argmin(errors_at_bandwidths))]
 
   def qfn_combo(a):
     x_raw = env.data_block_at_action(-1, a, raw=True)
@@ -80,7 +106,7 @@ def one_step_projection_combo(**kwargs):
     error = projection_prediction - mf_prediction
 
     # Combine
-    alpha = np.array([KERNEL(e_) for e_ in error])
+    alpha = np.array([KERNEL(e_, bandwidth) for e_ in error])
     mb_prediction = q_mb(x_raw)
     return alpha*mb_prediction + (1-alpha)*mf_prediction
 
