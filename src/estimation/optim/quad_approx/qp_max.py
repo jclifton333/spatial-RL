@@ -12,7 +12,6 @@ try:
   from gurobipy import *
   GUROBI = True
 except ImportError:
-  import miosqp
   GUROBI = False
 
 try:
