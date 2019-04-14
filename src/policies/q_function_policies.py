@@ -86,6 +86,9 @@ def one_step_projection_combo(**kwargs):
     # Get error at each bandwidth
     for bandwidth_ix, bandwidth in enumerate(CANDIDATE_BANDWIDTHS):
       alpha = np.array([KERNEL(e_, bandwidth) for e_ in error])
+      if not np.isfinite(alpha).all():
+        alpha_not_nan = alpha[np.where(np.isfinite(alpha))]
+        alpha[np.where(np.np.isfinite(alpha) != True)] = np.mean(alpha_not_nan)
       combined_prediction = alpha*mb_prediction + (1 - alpha)*mf_prediction
       loss = np.mean((combined_prediction - y)**2)
       errors_at_bandwidths[bandwidth_ix] += loss
@@ -107,16 +110,20 @@ def one_step_projection_combo(**kwargs):
 
     # Combine
     alpha = np.array([KERNEL(e_, bandwidth) for e_ in error])
+    if not np.isfinite(alpha).all():
+      alpha_not_nan = alpha[np.where(np.isfinite(alpha))]
+      alpha[np.where(np.np.isfinite(alpha) != True)] = np.mean(alpha_not_nan)
+
     mb_prediction = q_mb(x_raw)
 
-    if not np.isfinite(mb_prediction).all():
-      pdb.set_trace()
+    # if not np.isfinite(mb_prediction).all():
+    #   pdb.set_trace()
 
-    if not np.isfinite(mf_prediction).all():
-      pdb.set_trace()
+    # if not np.isfinite(mf_prediction).all():
+    #   pdb.set_trace()
 
-    if not np.isfinite(alpha).all():
-      pdb.set_trace()
+    # if not np.isfinite(alpha).all():
+    #   pdb.set_trace()
 
     return alpha*mb_prediction + (1-alpha)*mf_prediction
 
