@@ -40,7 +40,6 @@ class Ebola(Gravity):
         ADJACENCY_MATRIX[l, lprime] = 1
 
   MAX_NUMBER_OF_NEIGHBORS = int(np.max(np.sum(ADJACENCY_MATRIX, axis=1)))
-
   # Fill matrix of susceptibility products
   PRODUCT_MATRIX = np.outer(SUSCEPTIBILITY, SUSCEPTIBILITY)
 
@@ -84,11 +83,24 @@ class Ebola(Gravity):
                                 Ebola.SUSCEPTIBILITY, Ebola.ETA, None, None, Ebola.ADJACENCY_MATRIX,
                                 initial_infections=Ebola.INITIAL_INFECTIONS)
 
-  # Neighbor features #
-  def feature_function_at_location(self, l, raw_data_block, neighbor_order):
+  # Neighbor features
+  def second_order_encoding(self, l, raw_data_block):
+    second_order_features = [0]*16
+    for lprime in self.adjacency_list[l]:
+      a_lprime, y_lprime = raw_data_block[lprime, 1], raw_data_block[lprime, 2]
+      first_order_encoding = int(1*a_lprime + 2*y_lprime)
+      for lprime_prime in self.adjacency_list[lprime]:
+        a_lprime_prime, y_lprime_prime = raw_data_block[lprime_prime, 1], raw_data_block[lprime_prime, 2]
+        second_order_encoding = first_order_encoding + int(4*a_lprime_prime + 8*y_lprime_prime)
+        second_order_features[second_order_encoding] += 1
+    return second_order_features
+
+  def feature_function_at_location(self, l, raw_data_block, neighbor_order=1):
     x_l = raw_data_block[l, :]
     neighbors = self.adjacency_list[l]
     num_neighbors = len(neighbors)
+
+    # Concatenate features at each neighbor
     for i in range(self.MAX_NUMBER_OF_NEIGHBORS):
       if i >= num_neighbors:  # zero padding
         x_l = np.concatenate((x_l, np.zeros(4)))
@@ -96,18 +108,26 @@ class Ebola(Gravity):
         l_prime = neighbors[i]
         x_lprime = raw_data_block[l_prime, :]
         x_l = np.concatenate((x_l, x_lprime, [self.DISTANCE_MATRIX[l, l_prime] + self.DISTANCE_MATRIX[l_prime, l]]))
+
+    # If second-order, concatenate counts of infection and treatment status pairs for first- and second-order neighbors
+    # (similar to SIS).
+    if neighbor_order == 2:
+      second_order_features = self.second_order_encoding(l, raw_data_block)
+      x_l = np.concatenate((x_l, second_order_features))
     return x_l
 
-  def feature_function(self, raw_data_block):
+  def feature_function(self, raw_data_block, neighbor_order=1):
     # (s, a, y) for location and (s, a, y, d) for each of its neighbors
     number_of_features = int(3 + 4*self.MAX_NUMBER_OF_NEIGHBORS)
+    if neighbor_order == 2:
+      number_of_features += 16
     X = np.zeros((0, number_of_features))
     for l in range(self.L):
-      x_l = self.feature_function_at_location(l, raw_data_block)
+      x_l = self.feature_function_at_location(l, raw_data_block, neighbor_order=neighbor_order)
       X = np.vstack((X, x_l))
     return X
 
-  def feature_function_at_action(self, old_data_block, old_action, action):
+  def feature_function_at_action(self, old_data_block, old_action, action, neighbor_order=1):
     new_data_block = copy.copy(old_data_block)
     locations_with_changed_actions = set(np.where(old_action != action)[0])
 
@@ -121,6 +141,15 @@ class Ebola(Gravity):
         l_prime = self.adjacency_list[l][i]
         if l_prime in locations_with_changed_actions:
           new_data_block[l, 3 + i*4 + 1] = action[l_prime]
+
+    # If neighbor_order=2, have to account for changes in second-order neighbors, too.
+    if neighbor_order == 2:
+      new_raw_data_block = new_data_block[:, :4]
+      new_second_order_features = np.zeros((0, 16))
+      for l in range(self.L):
+        new_second_order_features_l = self.second_order_encoding(l, new_raw_data_block)
+        new_second_order_features = np.vstack((new_second_order_features, new_second_order_features_l))
+      new_data_block = np.column_stack((new_data_block, new_second_order_features))
     return new_data_block
 
   def mb_covariance(self, mb_params):

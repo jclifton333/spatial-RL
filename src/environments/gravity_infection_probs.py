@@ -87,7 +87,8 @@ def get_all_gravity_transmission_probs(a, eta, L, **kwargs):
                                                                   product_matrix, x, eta_x_l, eta_x_lprime)
 
 
-def gravity_transmission_probs(a, l, lprime, eta, distance_matrix, product_matrix, x, eta_x_l, eta_x_lprime):
+def gravity_transmission_probs(a, l, lprime, eta, covariate_matrix, distance_matrix, product_matrix, x,
+                               eta_x_l, eta_x_lprime):
   """
 
   :param l:

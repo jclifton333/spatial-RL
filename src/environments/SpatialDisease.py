@@ -63,6 +63,7 @@ class SpatialDisease(ABC):
     self.A = np.zeros((0, self.L))
     self.X_raw = []  # Will hold blocks [S_t, A_t, Y_t] at each time t
     self.X = []
+    self.X_2 = []
     self.y = []  # Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = []
     
@@ -85,6 +86,7 @@ class SpatialDisease(ABC):
     self.A = np.zeros((0, self.L))
     self.X_raw = []
     self.X = []
+    self.X_2 = []
     self.y = [] # Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = []
     

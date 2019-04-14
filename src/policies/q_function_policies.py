@@ -230,7 +230,7 @@ def two_step(**kwargs):
   reg.fit(np.vstack(env.X_2[:-1]), np.hstack(backup))
 
   def qfn(a):
-    infections = env.X_raw[-1][:, -1]
+    infections = env.Y[-1, :]
     infected_indices = np.where(infections == 1)[0]
     not_infected_indices = np.where(infections == 0)[0]
     X_ = env.data_block_at_action(-1, a)

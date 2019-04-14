@@ -104,23 +104,25 @@ class Gravity(SpatialDisease):
     ])
 
   @abstractmethod
-  def feature_function(self, raw_data_block):
+  def feature_function(self, raw_data_block, neighbor_order=1):
     pass
 
   @abstractmethod
-  def feature_function_at_action(self, old_data_block, old_action, action):
+  def feature_function_at_action(self, old_data_block, old_action, action, neighbor_order=1):
     pass
 
   @abstractmethod
-  def feature_function_at_location(self, l, raw_data_block):
+  def feature_function_at_location(self, l, raw_data_block, neighbor_order=1):
     pass
 
   def update_obs_history(self, a):
     super(Gravity, self).update_obs_history(a)
     raw_data_block = np.column_stack((self.covariate_matrix, a, self.Y[-2, :]))
     data_block = self.feature_function(raw_data_block)
+    data_block_2 = self.feature_function(raw_data_block, neighbor_order=2)
     self.X_raw.append(raw_data_block)
     self.X.append(data_block)
+    self.X_2.append(data_block_2)
     self.y.append(self.current_infected)
 
   def next_state(self):
@@ -133,13 +135,14 @@ class Gravity(SpatialDisease):
     self.Y = np.vstack((self.Y, next_infections))
     self.current_infected = next_infections
 
-  def data_block_at_action(self, data_block_ix, action, raw=False):
+  def data_block_at_action(self, data_block_ix, action, neighbor_order=1, raw=False):
     super(Gravity, self).data_block_at_action(data_block_ix, action)
     if raw:
       new_data_block = copy.copy(self.X_raw[data_block_ix])
       new_data_block[:, 1] = action
     else:
-      new_data_block = self.feature_function_at_action(self.X[data_block_ix], self.A[data_block_ix, :], action)
+      new_data_block = self.feature_function_at_action(self.X[data_block_ix], self.A[data_block_ix, :], action,
+                                                       neighbor_order)
     return new_data_block
 
   def mb_covariance(self, mb_params):

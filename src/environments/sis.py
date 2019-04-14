@@ -110,7 +110,6 @@ class SIS(SpatialDisease):
     self.omega = omega
     self.state_covariance = self.beta[1] * np.eye(self.L)
 
-    self.X_2 = []  # For second-order neighbor features
     self.S = np.array([self.initial_state])
     self.S_indicator = self.S > 0
     self.num_infected_neighbors = []
