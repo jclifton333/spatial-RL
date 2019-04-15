@@ -438,8 +438,8 @@ class SKLogit2(object):
       infection_indicator = np.array([i in infected_locations for i in range(X.shape[0])])
       X_times_infection = np.multiply(X, infection_indicator[:, np.newaxis])
       X_interaction = np.column_stack((np.ones(X.shape[0]), X, X_times_infection))
-      expit_phat = np.dot(X_interaction, parameter)
-      phat = logit(expit_phat)
+      logit_phat = np.dot(X_interaction, parameter)
+      phat = expit(logit_phat)
     else:
       phat = self.eb_prob
     return phat

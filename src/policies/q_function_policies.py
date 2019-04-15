@@ -570,9 +570,8 @@ def one_step_mse_averaged(**kwargs):
     infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
     q_mb_at_a = q_mb(raw_data_block)
     q_mf_at_a = q_mf(data_block, infected_indices[0], not_infected_indices[0])
-    if not np.isfinite(q_mf_at_a).all() or not np.isfinite(q_mb_at_a).all():
-      pdb.set_trace()
-    return alpha_mb*q_mb_at_a + alpha_mf*q_mf_at_a
+    q_combined = alpha_mb*q_mb_at_a + alpha_mf*q_mf_at_a
+    return q_combined
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   # info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
