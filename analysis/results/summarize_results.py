@@ -5,6 +5,8 @@ import argparse
 
 def summarize_results_at_date(date_str):
   epsilons = ['0.0', '0.5', '0.75', '1.0']
+  networks = ['lattice', 'nearestneighbor']
+
   any_found = False
   for fname in os.listdir():
     if date_str in fname:
@@ -12,10 +14,17 @@ def summarize_results_at_date(date_str):
       f = yaml.load(open(fname, 'rb'))
       mean_, se_ = f['results']['mean'], f['results']['se']
       env_name, L, policy_name = f['settings']['env_name'], f['settings']['L'], f['settings']['policy_name']
+
+      epsilon = None
       for eps in epsilons:
         if eps in fname:
           epsilon = eps
-      print(env_name, policy_name, L, epsilon, mean_, se_)
+
+      network = None
+      for net in networks:
+        if net in fname:
+          network = net
+      print(env_name, network, policy_name, L, epsilon, mean_, se_)
   if not any_found:
     print('No results found for that date.')
 
