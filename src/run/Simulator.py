@@ -130,7 +130,7 @@ class Simulator(object):
     return
 
   def episode(self, replicate):
-    np.random.seed(replicate)
+    np.random.seed(int(self.seed*self.number_of_replicates + replicate))
     episode_results = {'score': None, 'runtime': None}
     t0 = time.time()
     self.env.reset()

@@ -112,7 +112,7 @@ def one_step_projection_combo(**kwargs):
     alpha = np.array([KERNEL(e_, bandwidth) for e_ in error])
     if not np.isfinite(alpha).all():
       alpha_not_nan = alpha[np.where(np.isfinite(alpha))]
-      alpha[np.where(np.np.isfinite(alpha) != True)] = np.mean(alpha_not_nan)
+      alpha[np.where(np.isfinite(alpha) != True)] = np.mean(alpha_not_nan)
 
     mb_prediction = q_mb(x_raw)
 
