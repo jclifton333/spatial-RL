@@ -63,7 +63,12 @@ def one_step_projection_combo(**kwargs):
   # Project q_mb onto q_mf
   logit_q_model = Ridge()
   X_ref = clf.X_train
-  logit_q_mb_target = np.hstack([logit(q_mb(x_raw)) for x_raw in env.X_raw])
+  logit_q_mb_target = np.array([])
+  for x_raw in env.X_raw:
+    # Clip q_mb
+    q_mb_at_x = q_mb(x_raw)
+    q_mb_at_x = np.maximum(np.minimum(q_mb_at_x, 0.99), 0.01)
+    logit_q_mb_target = np.append(logit_q_mb_target, logit(q_mb_at_x))
   logit_q_model.fit(X_ref, logit_q_mb_target)
 
   # Select bandwidth by minimizing error on training set
