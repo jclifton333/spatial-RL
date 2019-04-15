@@ -13,7 +13,7 @@ import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 from src.utils.misc import random_argsort
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
-from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
 from scipy.special import expit, logit
 import numpy as np
 import keras.backend as K
@@ -61,7 +61,7 @@ def one_step_projection_combo(**kwargs):
   q_mb, q_mf, _, clf = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2)
 
   # Project q_mb onto q_mf
-  logit_q_model = LinearRegression()
+  logit_q_model = Ridge()
   X_ref = clf.X_train
   logit_q_mb_target = np.hstack([logit(q_mb(x_raw)) for x_raw in env.X_raw])
   logit_q_model.fit(X_ref, logit_q_mb_target)
