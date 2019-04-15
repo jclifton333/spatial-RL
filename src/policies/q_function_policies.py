@@ -563,7 +563,11 @@ def one_step_mse_averaged(**kwargs):
     data_block = env.data_block_at_action(-1, a)
     raw_data_block = env.data_block_at_action(-1, a, raw=True)
     infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
-    return alpha_mb*q_mb(raw_data_block) + alpha_mf*q_mf(data_block, infected_indices[0], not_infected_indices[0])
+    q_mb_at_a = q_mb(raw_data_block)
+    q_mf_at_a = q_mf(data_block, infected_indices[0], not_infected_indices[0])
+    if not np.isfinite(q_mf_at_a).all() or not np.isfinite(q_mb_at_a).all():
+      pdb.set_trace()
+    return alpha_mb*q_mb_at_a + alpha_mf*q_mf_at_a
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   # info = {'mb_bias': mb_bias, 'mb_var': mb_var, 'mf_var': mf_var, 'cov': mb_mf_cov, 'mf_bias': mf_bias}
@@ -623,8 +627,9 @@ def one_step_stacked(**kwargs):
     data_block = env.data_block_at_action(-1, a)
     raw_data_block = env.data_block_at_action(-1, a, raw=True)
     infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
-    return alpha_mb * q_mb(raw_data_block) + \
-           (1 - alpha_mb) * q_mf(data_block, infected_indices[0], not_infected_indices[0])
+    q_mb_at_a = q_mb(raw_data_block)
+    q_mf_at_a = q_mf(data_block, infected_indices[0], not_infected_indices[0])
+    return alpha_mb * q_mb_at_a + (1 - alpha_mb) * q_mf_at_a
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   info = {}
