@@ -5,6 +5,7 @@ spatial QL paper.
 
 import copy
 import numpy as np
+from numba import njit
 from src.estimation.model_based.sis.infection_model_objective import success_or_failure_component
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator, recoding_mapping
@@ -147,31 +148,9 @@ class SIS(SpatialDisease):
 
   def psi_at_location(self, l, raw_data_block, neighbor_order):
     s, a, y = raw_data_block[l, :]
-    psi_l = [0]*8
-    encoding = int(1*s + 2*a + 4*y)
-    psi_l[encoding] = 1
-
-    if neighbor_order == 1:
-      psi_neighbors = [0]*8
-      # psi_neighbors = raw_data_block[self.adjacency_list[l]].sum(axis=0)
-    elif neighbor_order == 2:
-      psi_neighbors = [0]*64
-      pass
-
-    for lprime in self.adjacency_list[l]:
-      s, a, y = raw_data_block[lprime, :]
-      first_order_encoding = int(1*s + 2*a + 4*y)
-      if neighbor_order == 2:
-        for lprime_prime in self.adjacency_list[lprime]:
-          if lprime_prime != l:
-            s_prime_prime, a_prime_prime, y_prime_prime = raw_data_block[lprime_prime, :]
-            second_order_encoding = first_order_encoding + int(8*s_prime_prime + 16*a_prime_prime + 32*y_prime_prime)
-            psi_neighbors[second_order_encoding] += 1
-      else:
-        psi_neighbors[first_order_encoding] += 1
-    return np.concatenate((psi_l, psi_neighbors))
-    # psi_l = np.concatenate((psi_l, psi_neighbors))
-    # return psi_l
+    psi_l, psi_neighbors_l = psi_at_location_nbfied(s, a, y, l, raw_data_block, neighbor_order, self.adjacency_matrix,
+                                                    self.L)
+    return np.concatenate((psi_l, psi_neighbors_l))
 
   def psi(self, raw_data_block, neighbor_order):
     """
@@ -553,3 +532,28 @@ def convert_first_order_to_infection_status(X1):
   return y
 
 
+@njit
+def psi_at_location_nbfied(s, a, y, l, raw_data_block, neighbor_order, adjacency_matrix, L):
+  psi_l = np.zeros(8)
+  encoding = int(1*s + 2*a + 4*y)
+  psi_l[encoding] = 1
+
+  if neighbor_order == 1:
+    psi_neighbors = np.zeros(8)
+    # psi_neighbors = raw_data_block[self.adjacency_list[l]].sum(axis=0)
+  elif neighbor_order == 2:
+    psi_neighbors = np.zeros(64)
+
+  for lprime in range(L):
+    if l != lprime and adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
+      s, a, y = raw_data_block[lprime, :]
+      first_order_encoding = int(1*s + 2*a + 4*y)
+      if neighbor_order == 2:
+        for lprime_prime in range(L):
+          if lprime_prime != l and lprime_prime != lprime and adjacency_matrix[lprime, lprime_prime] + adjacency_matrix[lprime_prime, lprime] > 0:
+            s_prime_prime, a_prime_prime, y_prime_prime = raw_data_block[lprime_prime, :]
+            second_order_encoding = first_order_encoding + int(8*s_prime_prime + 16*a_prime_prime + 32*y_prime_prime)
+            psi_neighbors[second_order_encoding] += 1
+      else:
+        psi_neighbors[first_order_encoding] += 1
+  return psi_l, psi_neighbors
