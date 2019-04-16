@@ -65,7 +65,8 @@ class SIS(SpatialDisease):
 
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
                initial_infections=None, initial_state=None, eta=None, beta=None,
-               epsilon=0, contaminator=CONTAMINATOR, construct_features_for_policy_search=False):
+               epsilon=0, contaminator=CONTAMINATOR, construct_features_for_policy_search=False,
+               neighbor_features=True):
     """
     :param omega: parameter in [0,1] for mixing two sis models
     :param generate_network: function that accepts network size L and returns adjacency matrix
@@ -110,6 +111,7 @@ class SIS(SpatialDisease):
     self.omega = omega
     self.state_covariance = self.beta[1] * np.eye(self.L)
 
+    self.neighbor_features = neighbor_features # Compute X and X2; should be false for model-based and myopic policies
     self.S = np.array([self.initial_state])
     self.S_indicator = self.S > 0
     self.num_infected_neighbors = []
@@ -268,15 +270,17 @@ class SIS(SpatialDisease):
     :param a: self.L-length array of binary actions at each state
     """
     super(SIS, self).update_obs_history(a)
-    raw_data_block = np.column_stack((self.S_indicator[-2,:], a, self.Y[-2,:]))
-    data_block_1 = self.psi(raw_data_block, neighbor_order=1)
-    data_block_2 = self.psi(raw_data_block, neighbor_order=2)
+    raw_data_block = np.column_stack((self.S_indicator[-2, :], a, self.Y[-2, :]))
 
     # Main features
     self.X_raw.append(raw_data_block)
+    data_block_1 = self.psi(raw_data_block, neighbor_order=1)
     self.X.append(data_block_1)
-    self.X_2.append(data_block_2)
     self.y.append(self.current_infected)
+
+    if self.neighbor_features:
+      data_block_2 = self.psi(raw_data_block, neighbor_order=2)
+      self.X_2.append(data_block_2)
 
     # Update likelihood counts
     self.update_counts_for_likelihood(data_block_1, self.Y[-2, :], self.current_infected)

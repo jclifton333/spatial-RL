@@ -62,7 +62,7 @@ import copy
 
 import src.environments.sis_infection_probs as sis_inf_probs
 import src.environments.gravity_infection_probs as ebola_inf_probs
-from numba import njit
+from numba import njit, jit
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_infection_prob_model
 from bayes_opt import BayesianOptimization
 from src.estimation.model_based.Gravity.estimate_ebola_parameters import fit_ebola_transition_model
@@ -308,8 +308,9 @@ def psi(infected_locations, predicted_infection_probs, lambda_, transmission_pro
   return psi_1, psi_2, psi_3
 
 
-# @njit
-def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth):
+@njit
+# @jit
+def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_2, data_depth, len_not_inf, L):
   lambda_inf = lambda_[:, not_infected_locations]
   transmission_probabilities_not_inf = transmission_probabilities[:, not_infected_locations]
 
@@ -317,19 +318,22 @@ def phi(not_infected_locations, lambda_, transmission_probabilities, psi_1, psi_
   psi_2_not_inf = psi_2[not_infected_locations]
   data_depth_not_inf = data_depth[not_infected_locations]
 
-  phi_1 = np.dot(lambda_inf, psi_1_not_inf)
+  # phi_1 = np.dot(lambda_inf, psi_1_not_inf)
   # phi_2 = np.dot(transmission_probabilities_not_inf, psi_2_not_inf)
   # phi_3 = np.dot(transmission_probabilities_not_inf, data_depth_not_inf)
-  len_not_inf = transmission_probabilities_not_inf.shape[0]
-  phi_2 = np.zeros(len_not_inf)
-  phi_3 = np.zeros(len_not_inf)
-  for i in range(len_not_inf):
-    for j in range(transmission_probabilities_not_inf.shape[1]):
+  phi_1 = [0.0 for _ in range(L)]
+  phi_2 = [0.0 for _ in range(L)]
+  phi_3 = [0.0 for _ in range(L)]
+
+  for i in range(L):
+    for j in range(len_not_inf):
       phi_2[i] += transmission_probabilities_not_inf[i, j]*psi_2_not_inf[j]
       phi_3[i] += transmission_probabilities_not_inf[i, j]*data_depth_not_inf[j]
-  phi = np.column_stack((phi_1, phi_2, phi_3))
+    for j in range(len_not_inf):
+      phi_1[i] += lambda_inf[i, j]*psi_1_not_inf[j]
 
-  return phi
+  # phi = np.column_stack((phi_1, phi_2, phi_3))
+  return phi_1, phi_2, phi_3
 
 
 def features_for_priority_score(env, s, a, y, infection_probs_predictor, infection_probs_kwargs,
@@ -345,7 +349,10 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, infecti
   not_infected_locations = np.where(y == 0)
   psi_1, psi_2, psi_3 = psi(infected_locations, predicted_infection_probs, lambda_, transmission_probabilities,
                             data_depth)
-  phi_ = phi(not_infected_locations[0], lambda_, transmission_probabilities, psi_1, psi_2, data_depth)
+  len_not_inf = len(not_infected_locations[0])
+  phi_1, phi_2, phi_3 = \
+    phi(not_infected_locations[0], lambda_, transmission_probabilities, psi_1, psi_2, data_depth, len_not_inf, env.L)
+  phi_ = np.column_stack((phi_1, phi_2, phi_3))
 
   # Collect features
   priority_score_features = np.zeros((env.L, 3))
