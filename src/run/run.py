@@ -64,6 +64,7 @@ if __name__ == '__main__':
   ts = (args.ts == 'True')
   if args.policy_name == 'policy_search':
     env_kwargs['construct_features_for_policy_search'] = True
+    env_kwargs['neighbor_features'] = False
 
   # Generate data if using a prefit policy
   # ToDo: Currently only implemented for two-step mf sis

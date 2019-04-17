@@ -1,13 +1,14 @@
 import pdb
 import numpy as np
 from numba import njit, jit
+import math
 
 """"
 For computing sis model infection probabilities.  See draft pg. 13.
 """
 
 
-@jit
+@njit
 def expit(logit_p):
   return 1 - 1 / (1 + np.exp(logit_p))
 
@@ -53,6 +54,7 @@ def q_l(a, a_times_indicator, eta, omega):
   return q
 
 
+# @njit
 def sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix):
   """
   p_llprime when omega=0
@@ -74,15 +76,27 @@ def sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix):
 
 def get_all_sis_transmission_probs_omega0(a, eta, L, **kwargs):
   adjacency_matrix = kwargs['adjacency_matrix']
+  eta_nb_compatible = [eta_ for eta_ in eta]
+  return get_all_sis_transmission_probs_omega0_wrapped(a, eta_nb_compatible, L, adjacency_matrix)
+
+
+@njit
+def get_all_sis_transmission_probs_omega0_wrapped(a, eta_nb_compatible, L, adjacency_matrix):
   transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
     for lprime in range(L):
-      transmission_probs_matrix[l, lprime] = sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix)
+      if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
+        logit_p_llprime = eta_nb_compatible[2] + eta_nb_compatible[3]*a[l] + eta_nb_compatible[4]*a[lprime]
+        p_llprime = expit(logit_p_llprime)
+      else:
+        p_llprime = 0.0
+      transmission_probs_matrix[l, lprime] = p_llprime
   return transmission_probs_matrix
 
 
 @jit
-def one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists, omega):
+def one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists, omega,
+                        len_not_infected, product_vector):
   """
 
   :param a_times_indicator:
@@ -92,11 +106,10 @@ def one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_ind
   :param adjacency_lists:
   :return:
   """
-
   product_vector = []
   for l in not_infected_indices:
-    neighbors = adjacency_lists[l]
     product_l = 1.0
+    neighbors = adjacency_lists[l]
     for lprime in neighbors:
       if lprime in infected_indices:
         # logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*(a_times_indicator[lprime] - omega * a[lprime])
@@ -118,7 +131,9 @@ def one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_ind
 
 def p_l(a, a_times_indicator, not_infected_indices, infected_indices, eta, adjacency_lists, omega):
   p_l0_ = p_l0(a[not_infected_indices], a_times_indicator[not_infected_indices], eta, omega)
+  len_not_infected = len(not_infected_indices)
+  initial_product_vector = np.ones(len_not_infected)
   one_minus_p_llprime_ = one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_indices, eta,
-                                             adjacency_lists, omega)
+                                             adjacency_lists, omega, len_not_infected, initial_product_vector)
   product = np.multiply(1 - p_l0_, one_minus_p_llprime_)
   return 1 - product
