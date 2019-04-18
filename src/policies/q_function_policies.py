@@ -300,7 +300,7 @@ def two_step(**kwargs):
 
 
 def two_step_stacked(**kwargs):
-  MONTE_CARLO_REPS = 10  # For estimating model-based backup
+  MONTE_CARLO_REPS = 1  # For estimating model-based backup
   N_SPLITS = 10
   TRAIN_PROPORTION = 0.8
 
@@ -357,8 +357,7 @@ def two_step_stacked(**kwargs):
     return alpha_mb * q_mb_at_a + (1 - alpha_mb) * q_mf_at_a
 
   # Stack to get v1(s,a) estimator (pseudo_outcome for short, though technically that's the whole backup)
-  # Construct mb and mf pseudo-outcomes
-  pseudo_outcome_mb = np.zeros(0)
+  # Construct mf pseudo-outcomes
   pseudo_outcome_mf = np.zeros(0)
   for t in range(env.T-1):
     # Model-free pseudo-outcome
@@ -366,34 +365,14 @@ def two_step_stacked(**kwargs):
     pseudo_outcome_mf_t = qfn0(a_tp1, t+1)
     pseudo_outcome_mf = np.append(pseudo_outcome_mf, pseudo_outcome_mf_t)
 
-    # Model-based pseudo-outcome
-    phat = q_mb(env.X_raw[t])
-    pseudo_outcome_mb_t = np.zeros(L)
-    # Estimate E[max_a q(Xtp1, a) | Xt, At]
-    for mc_rep in range(MONTE_CARLO_REPS):
-      def qfn0_mb(a):
-        # Get prediction of next state
-        y_draw = np.random.binomial(1, phat)
-        raw_data_block_tp1 = np.column_stack((np.zeros(env.L), y_draw, a))
-        X_tp1 = env.psi(raw_data_block_tp1, neighbor_order=1)
-        infected_indices = np.where(y_draw == 1)
-
-        # Get estimated q0 at predicted state
-        q_mb_tp1 = q_mb(raw_data_block_tp1)
-        q_mf_tp1 = q_mf(X_tp1, infected_indices[0], None)
-        q_tp1 = alpha_mb*q_mb_tp1 + (1 - alpha_mb)*q_mf_tp1
-        return q_tp1
-      a_tp1 = argmaxer(qfn0_mb, evaluation_budget, treatment_budget, env)
-      pseudo_outcome_mb_t += qfn0_mb(a_tp1)
-    pseudo_outcome_mb_t /= MONTE_CARLO_REPS
-    pseudo_outcome_mb = np.append(pseudo_outcome_mb, pseudo_outcome_mb_t)
-
   # Fit model to mf pseudo-outcomes
   reg = regressor()
-  reg.fit(np.vstack(env.X_2), pseudo_outcome_mf)
+  reg.fit(np.vstack(env.X_2[:-1]), pseudo_outcome_mf)
 
   def qfn1(a):
-    data_block = env.data_block_at_action(-1, a, neighbor_order=2)
+    print("Working")
+    data_block = env.data_block_at_action(-1, a)
+    data_block_2 = env.data_block_at_action(-1, a, neighbor_order=2)
     raw_data_block = env.data_block_at_action(-1, a, raw=True)
     infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
 
@@ -403,7 +382,7 @@ def two_step_stacked(**kwargs):
     q0_at_a = alpha_mb*q_mb_at_a + (1-alpha_mb)*q_mf_at_a
 
     # Model-free prediction of v1
-    q_mf_at_a = reg.predict(data_block)
+    q_mf_at_a = reg.predict(data_block_2)
 
     # Model-based prediction of v1
     q_mb_at_a = np.zeros(env.L)

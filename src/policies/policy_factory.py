@@ -20,6 +20,8 @@ def policy_factory(policy_type):
     return roll.one_step_policy
   elif policy_type == 'two_step':
     return roll.two_step
+  elif policy_type == 'two_step_stacked':
+    return roll.two_step_stacked
   elif policy_type == 'two_step_higher_order':
     return roll.two_step_higher_order
   elif policy_type == 'treat_all':
