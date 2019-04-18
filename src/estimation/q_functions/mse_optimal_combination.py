@@ -107,9 +107,9 @@ def two_step_sis_convex_combo(env, gamma, argmaxer, evaluation_budget, treatment
     Sp1_indicator_draw_list = \
       np.array([np.random.normal(loc=Sp1_mean, scale=sigma_hat) > 0 for Sp1_mean in Sp1_mean_list])
     yp1_draw_list = np.array([np.random.binomial(1, p=phat) for phat in phat_list])
-
     # Fit 2-step mf and mb on draws
-    q_mb, q_mf, mb_params, fitted_mf_clf = fit_one_step_mf_and_mb_qs(env, SKLogit2, y_next=yp1_draw_list.flatten())
+    q_mb, q_mf, mb_params, fitted_mf_clf = \
+      one_step.fit_one_step_sis_mf_and_mb_qs(env, SKLogit2, y_next=yp1_draw_list.flatten())
     mb_backup_draw = sis_mb_backup(env, gamma, q_mb, q_mb, argmaxer, evaluation_budget, treatment_budget)
     list_of_infections_and_states = [(Sp1_indicator_draw, yp1_draw) for Sp1_indicator_draw, yp1_draw in
                                      zip(Sp1_indicator_draw_list, yp1_draw_list)]

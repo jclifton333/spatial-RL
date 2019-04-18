@@ -73,6 +73,7 @@ def one_step_projection_combo(**kwargs):
 
   # Select bandwidth by minimizing error on training set
   errors_at_bandwidths = np.zeros(len(CANDIDATE_BANDWIDTHS))
+  projection_error = np.zeros(0)
   for t in range(env.T):
     x_raw = env.X_raw[t]
     x = env.X[t]
@@ -87,6 +88,7 @@ def one_step_projection_combo(**kwargs):
     mf_prediction = q_mf(x, infected_locations, None)
     error = projection_prediction - mf_prediction
     mb_prediction = q_mb(x_raw)
+    projection_error = np.append(projection_error, error)
 
     # Get error at each bandwidth
     for bandwidth_ix, bandwidth in enumerate(CANDIDATE_BANDWIDTHS):
@@ -99,6 +101,12 @@ def one_step_projection_combo(**kwargs):
       errors_at_bandwidths[bandwidth_ix] += loss
 
   bandwidth = CANDIDATE_BANDWIDTHS[int(np.argmin(errors_at_bandwidths))]
+
+  # Get mean of alphas for diagnostics
+  alphas = np.array([KERNEL(e_, bandwidth) for e_ in projection_error])
+  if not np.isfinite(alphas).all():
+    alphas_not_nan = alphas[np.where(np.isfinite(alphas))]
+    alphas[np.where(np.isfinite(alphas) != True)] = np.mean(alphas_not_nan)
 
   def qfn_combo(a):
     x_raw = env.data_block_at_action(-1, a, raw=True)
@@ -133,7 +141,7 @@ def one_step_projection_combo(**kwargs):
     return alpha*mb_prediction + (1-alpha)*mf_prediction
 
   a = argmaxer(qfn_combo, evaluation_budget, treatment_budget, env)
-  return a, {}
+  return a, {'alpha_quantiles': np.percentile(alphas, [10, 50, 90])}
 
 
 def one_step_truth_augmented(**kwargs):
@@ -292,6 +300,7 @@ def two_step(**kwargs):
 
 
 def two_step_stacked(**kwargs):
+  MONTE_CARLO_REPS = 10  # For estimating model-based backup
   N_SPLITS = 10
   TRAIN_PROPORTION = 0.8
 
@@ -299,7 +308,7 @@ def two_step_stacked(**kwargs):
     kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
     kwargs['bootstrap']
 
-  # Train-test splits
+  # Train test-splits
   train_test_splits = []  # List of tuples (training_ixs, test_ixs), where each of these is a list of lists of indices
   for fold in range(N_SPLITS):
     training_ixs_for_fold = []
@@ -310,67 +319,22 @@ def two_step_stacked(**kwargs):
       test_ixs_for_fold.append(np.where(train_test_mask == 0)[0])
     train_test_splits.append((training_ixs_for_fold, test_ixs_for_fold))
 
+  # Stack to get q0 estimator
   # Fit models on training splits
   yhat_mb = np.zeros(0)
   yhat_mf = np.zeros(0)
   y = np.zeros(0)
   for fold in range(N_SPLITS):
     train_test_split = train_test_splits[fold]
-
-    # Fit rewards
     if env.__class__.__name__ == 'SIS':
       q_mb_fold, q_mf_fold, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
 
     elif env.__class__.__name__ == 'Ebola':
       q_mb_fold, q_mf_fold, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
-
-    def q_mb_at_block(t, a):
-      return q_mb_fold(env.data_block_at_action(t, a, raw=True))
-
-    def q_mf_at_block(t, a):
-      X_raw_t = env.X_raw[t]
-      infected_ixs = np.where(X_raw_t[:, -1] == 1)
-      not_infected_ixs = np.where(X_raw_t[:, -1] == 0)
-      return q_mf_fold(env.data_block_at_action(t, a), infected_ixs, not_infected_ixs)
-
-    # Back up once
-    backup_mb = []
-    backup_mf = []
-    for t in range(env.T-1):
-      train_ixs = train_test_split[0][t]
-      q_mf_block_t = lambda a: q_mf_fold(t, a)
-      q_mb_block_t = lambda a: q_mb_fold(t, a)
-      a_max_mf = argmaxer(q_mf_block_t, evaluation_budget, treatment_budget, env)
-      a_max_mb = argmaxer(q_mb_block_t, evaluation_budget, treatment_budget, env)
-      q_max_mf = q_mf_at_block(a_max_mf)[train_ixs]
-      q_max_mb = q_mb_at_block(a_max_mb)[train_ixs]
-
-      # backup_at_t_mf = env.y[t][train_ixs] + q_max_mf
-      # backup_at_t_mb = q_mb_fold(env.X_raw[t])[train_ixs] + q_max_mb
-      backup_at_t_mf = q_max_mf
-      backup_at_t_mb = q_max_mb
-      backup_mf.append(backup_at_t_mf)
-      backup_mb.append(backup_at_t_mb)
-
-    # Fit backed-up q fns
-    reg_mf = regressor()
-    reg_mb = regressor()
-    X_train = np.vstack([x[train_test_split[0][t]] for (t, x) in enumerate(env.X)])
-    reg_mf.fit(X_train, backup_mf)
-    reg_mb.fit(X_train, backup_mb)
-
-    # Get backup values on test set
-    X_test = np.vstack([x[train_test_split[1][t]] for (t, x) in enumerate(env.X)])
-    reg_mf.predict(X_test)
-    reg_mb.predict(X_test)
-
-    y = np.array([y_[train_test_split[1][t]] for (t, y_) in enumerate(env.y)])
     for t, (x_raw, x) in enumerate(zip(env.X_raw[:-1], env.X[:-1])):
       test_ixs = train_test_split[1][t]
-      qhat_mb = np.append(qhat_mb, reg_mb.predict(x_raw))
-
       yhat_mb = np.append(yhat_mb, q_mb_fold(x_raw)[test_ixs])
-      yhat_mf = np.append(yhat_mf, q_mf_fold(x[test_ixs, :], np.where(x_raw[test_ixs, -1] == 1),
+      yhat_mf = np.append(yhat_mf, q_mf_fold(x[test_ixs, :], np.where(x_raw[test_ixs, -1] == 1)[0],
                                              np.where(x_raw[test_ixs, -1] == 0)))
       y = np.append(y, env.y[t][test_ixs])
 
@@ -384,15 +348,70 @@ def two_step_stacked(**kwargs):
   elif env.__class__.__name__ == 'Ebola':
     q_mb, q_mf, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2)
 
-  def qfn(a):
-    data_block = env.data_block_at_action(-1, a)
-    raw_data_block = env.data_block_at_action(-1, a, raw=True)
+  def qfn0(a, t_):
+    data_block = env.data_block_at_action(t_, a)
+    raw_data_block = env.data_block_at_action(t_, a, raw=True)
     infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
-    return alpha_mb * q_mb(raw_data_block) + \
-           (1 - alpha_mb) * q_mf(data_block, infected_indices[0], not_infected_indices[0])
+    q_mb_at_a = q_mb(raw_data_block)
+    q_mf_at_a = q_mf(data_block, infected_indices[0], not_infected_indices[0])
+    return alpha_mb * q_mb_at_a + (1 - alpha_mb) * q_mf_at_a
 
-  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  info = {}
+  # Stack to get v1(s,a) estimator (pseudo_outcome for short, though technically that's the whole backup)
+  pseudo_outcome_mb = np.zeros(0)
+  pseudo_outcome_mf = np.zeros(0)
+  for fold in range(N_SPLITS):
+    train_test_split = train_test_splits[fold]
+
+    # Construct mb and mf pseudo-outcomes
+    for t in range(env.T-1):
+      # Model-free pseudo-outcome
+      a_tp1 = argmaxer(lambda a_: qfn0(a_, t+1), evaluation_budget, treatment_budget, env)
+      pseudo_outcome_mf_t = qfn0(a_tp1, t+1)
+      pseudo_outcome_mf = np.append(pseudo_outcome_mf, pseudo_outcome_mf_t)
+
+      # Model-based pseudo-outcome
+      phat = q_mb(env.X_raw[t])
+      pseudo_outcome_mb_t = np.zeros(L)
+      # Estimate E[max_a q(Xtp1, a) | Xt, At]
+      for mc_rep in range(MONTE_CARLO_REPS):
+        def qfn0_mb(a):
+          # Get prediction of next state
+          y_draw = np.random.binomial(1, phat)
+          raw_data_block_tp1 = np.column_stack((np.zeros(env.L), y_draw, a))
+          X_tp1 = env.psi(raw_data_block_tp1, neighbor_order=1)
+          infected_indices = np.where(y_draw == 1)
+
+          # Get estimated q0 at predicted state
+          q_mb_tp1 = q_mb(raw_data_block_tp1)
+          q_mf_tp1 = q_mf(X_tp1, infected_indices[0], None)
+          q_tp1 = alpha_mb*q_mb_tp1 + (1 - alpha_mb)*q_mf_tp1
+          return q_tp1
+        a_tp1 = argmaxer(qfn0_mb, evaluation_budget, treatment_budget, env)
+        pseudo_outcome_mb_t += qfn0_mb(a_tp1)
+      pseudo_outcome_mb_t /= MONTE_CARLO_REPS
+      pseudo_outcome_mb = np.append(pseudo_outcome_mb, pseudo_outcome_mb_t)
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if env.__class__.__name__ == 'SIS':
+      q_mb_fold, q_mf_fold, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
+    elif env.__class__.__name__ == 'Ebola':
+      q_mb_fold, q_mf_fold, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
+
+    for t, (x_raw, x) in enumerate(zip(env.X_raw[:-1], env.X[:-1])):
+      test_ixs = train_test_split[1][t]
+
+
   return a, info
 
 
