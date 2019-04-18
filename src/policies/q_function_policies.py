@@ -357,62 +357,79 @@ def two_step_stacked(**kwargs):
     return alpha_mb * q_mb_at_a + (1 - alpha_mb) * q_mf_at_a
 
   # Stack to get v1(s,a) estimator (pseudo_outcome for short, though technically that's the whole backup)
+  # Construct mb and mf pseudo-outcomes
   pseudo_outcome_mb = np.zeros(0)
   pseudo_outcome_mf = np.zeros(0)
-  for fold in range(N_SPLITS):
-    train_test_split = train_test_splits[fold]
+  for t in range(env.T-1):
+    # Model-free pseudo-outcome
+    a_tp1 = argmaxer(lambda a_: qfn0(a_, t+1), evaluation_budget, treatment_budget, env)
+    pseudo_outcome_mf_t = qfn0(a_tp1, t+1)
+    pseudo_outcome_mf = np.append(pseudo_outcome_mf, pseudo_outcome_mf_t)
 
-    # Construct mb and mf pseudo-outcomes
-    for t in range(env.T-1):
-      # Model-free pseudo-outcome
-      a_tp1 = argmaxer(lambda a_: qfn0(a_, t+1), evaluation_budget, treatment_budget, env)
-      pseudo_outcome_mf_t = qfn0(a_tp1, t+1)
-      pseudo_outcome_mf = np.append(pseudo_outcome_mf, pseudo_outcome_mf_t)
+    # Model-based pseudo-outcome
+    phat = q_mb(env.X_raw[t])
+    pseudo_outcome_mb_t = np.zeros(L)
+    # Estimate E[max_a q(Xtp1, a) | Xt, At]
+    for mc_rep in range(MONTE_CARLO_REPS):
+      def qfn0_mb(a):
+        # Get prediction of next state
+        y_draw = np.random.binomial(1, phat)
+        raw_data_block_tp1 = np.column_stack((np.zeros(env.L), y_draw, a))
+        X_tp1 = env.psi(raw_data_block_tp1, neighbor_order=1)
+        infected_indices = np.where(y_draw == 1)
 
-      # Model-based pseudo-outcome
-      phat = q_mb(env.X_raw[t])
-      pseudo_outcome_mb_t = np.zeros(L)
-      # Estimate E[max_a q(Xtp1, a) | Xt, At]
-      for mc_rep in range(MONTE_CARLO_REPS):
-        def qfn0_mb(a):
-          # Get prediction of next state
-          y_draw = np.random.binomial(1, phat)
-          raw_data_block_tp1 = np.column_stack((np.zeros(env.L), y_draw, a))
-          X_tp1 = env.psi(raw_data_block_tp1, neighbor_order=1)
-          infected_indices = np.where(y_draw == 1)
+        # Get estimated q0 at predicted state
+        q_mb_tp1 = q_mb(raw_data_block_tp1)
+        q_mf_tp1 = q_mf(X_tp1, infected_indices[0], None)
+        q_tp1 = alpha_mb*q_mb_tp1 + (1 - alpha_mb)*q_mf_tp1
+        return q_tp1
+      a_tp1 = argmaxer(qfn0_mb, evaluation_budget, treatment_budget, env)
+      pseudo_outcome_mb_t += qfn0_mb(a_tp1)
+    pseudo_outcome_mb_t /= MONTE_CARLO_REPS
+    pseudo_outcome_mb = np.append(pseudo_outcome_mb, pseudo_outcome_mb_t)
 
-          # Get estimated q0 at predicted state
-          q_mb_tp1 = q_mb(raw_data_block_tp1)
-          q_mf_tp1 = q_mf(X_tp1, infected_indices[0], None)
-          q_tp1 = alpha_mb*q_mb_tp1 + (1 - alpha_mb)*q_mf_tp1
-          return q_tp1
-        a_tp1 = argmaxer(qfn0_mb, evaluation_budget, treatment_budget, env)
-        pseudo_outcome_mb_t += qfn0_mb(a_tp1)
-      pseudo_outcome_mb_t /= MONTE_CARLO_REPS
-      pseudo_outcome_mb = np.append(pseudo_outcome_mb, pseudo_outcome_mb_t)
+  # Fit model to mf pseudo-outcomes
+  reg = regressor()
+  reg.fit(np.vstack(env.X_2), pseudo_outcome_mf)
 
+  def qfn1(a):
+    data_block = env.data_block_at_action(-1, a, neighbor_order=2)
+    raw_data_block = env.data_block_at_action(-1, a, raw=True)
+    infected_indices, not_infected_indices = np.where(env.current_infected == 1), np.where(env.current_infected == 0)
 
+    # Estimate q0
+    q_mb_at_a = q_mb(raw_data_block)
+    q_mf_at_a = q_mf(data_block, infected_indices[0], not_infected_indices[0])
+    q0_at_a = alpha_mb*q_mb_at_a + (1-alpha_mb)*q_mf_at_a
 
+    # Model-free prediction of v1
+    q_mf_at_a = reg.predict(data_block)
 
+    # Model-based prediction of v1
+    q_mb_at_a = np.zeros(env.L)
+    for mc_rep in range(MONTE_CARLO_REPS):
 
+      def qfn0_mb(a):
+        # Get prediction of next state
+        y_draw = np.random.binomial(1, q0_at_a)
+        raw_data_block_tp1 = np.column_stack((np.zeros(env.L), y_draw, a))
+        X_tp1 = env.psi(raw_data_block_tp1, neighbor_order=1)
+        infected_indices = np.where(y_draw == 1)
 
+        # Get estimated q0 at predicted state
+        q_mb_tp1 = q_mb(raw_data_block_tp1)
+        q_mf_tp1 = q_mf(X_tp1, infected_indices[0], None)
+        q_tp1 = alpha_mb*q_mb_tp1 + (1 - alpha_mb)*q_mf_tp1
+        return q_tp1
 
+      a_tp1 = argmaxer(qfn0_mb, evaluation_budget, treatment_budget, env)
+      q_mb_at_a += qfn0_mb(a_tp1)
+    q_mb_at_a /= MONTE_CARLO_REPS
 
+    return alpha_mb*q_mb_at_a + (1 - alpha_mb)*q_mf_at_a
 
-
-
-
-
-    if env.__class__.__name__ == 'SIS':
-      q_mb_fold, q_mf_fold, _, _ = fit_one_step_sis_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
-    elif env.__class__.__name__ == 'Ebola':
-      q_mb_fold, q_mf_fold, _, _ = fit_one_step_ebola_mf_and_mb_qs(env, SKLogit2, indices=train_test_splits[fold][0])
-
-    for t, (x_raw, x) in enumerate(zip(env.X_raw[:-1], env.X[:-1])):
-      test_ixs = train_test_split[1][t]
-
-
-  return a, info
+  a_ = argmaxer(qfn1, evaluation_budget, treatment_budget, env)
+  return a_, {}
 
 
 def two_step_higher_order(**kwargs):
