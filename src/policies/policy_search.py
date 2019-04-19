@@ -364,31 +364,10 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, infecti
   return priority_score_features
 
 
-def policy_search(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
-                  treatment_budget, rho, tau, tol=1e-3, maxiter=100, feature_function=features_for_priority_score, k=1,
-                  method='bayes_opt'):
-  """
-  Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
-  as in QL draft and the rest of this source code
+def policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
+                    treatment_budget, rho, tau, tol=1e-3, maxiter=100, feature_function=features_for_priority_score, k=1,
+                    method='bayes_opt'):
 
-  :param tau: SA stepsize hyperparameter
-  :param rho: SA stepsize hyperparameter
-  :param treatment_budget:
-  :param infection_probs_predictor:
-  :param transmission_probs_predictor:
-  :param feature_function:
-  :param maxiter:
-  :param tol:
-  :param initial_zeta:
-  :param initial_alpha:
-  :param env:
-  :param time_horizon:
-  :param gen_model_posterior: function that returns draws from conf dbn over gen model parameter
-  :param initial_policy_parameter:
-  :param k: number of locations to change during decision rule iterations
-  :param method: either 'bayes_opt' or 'stochastic_approximation'
-  :return:
-  """
   if env.__class__.__name__ == 'SIS':
     infection_probs_kwargs = {'s': np.zeros(env.L), 'omega': 0.0}
     transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
@@ -418,6 +397,38 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
                                                 infection_probs_predictor, infection_probs_kwargs,
                                                 transmission_probs_predictor, transmission_probs_kwargs, env.data_depth,
                                                 n_rep_per_gp_opt_iteration=10)
+
+  return policy_parameter
+
+
+def policy_search(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
+                  treatment_budget, rho, tau, tol=1e-3, maxiter=100, feature_function=features_for_priority_score, k=1,
+                  method='bayes_opt'):
+  """
+  Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
+  as in QL draft and the rest of this source code
+
+  :param tau: SA stepsize hyperparameter
+  :param rho: SA stepsize hyperparameter
+  :param treatment_budget:
+  :param infection_probs_predictor:
+  :param transmission_probs_predictor:
+  :param feature_function:
+  :param maxiter:
+  :param tol:
+  :param initial_zeta:
+  :param initial_alpha:
+  :param env:
+  :param time_horizon:
+  :param gen_model_posterior: function that returns draws from conf dbn over gen model parameter
+  :param initial_policy_parameter:
+  :param k: number of locations to change during decision rule iterations
+  :param method: either 'bayes_opt' or 'stochastic_approximation'
+  :return:
+  """
+  policy_parameter = policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha,
+                                      initial_zeta, treatment_budget, rho, tau, tol=1e-3, maxiter=100,
+                                      feature_function=features_for_priority_score, k=1, method='bayes_opt')
 
   # Get priority function features
   a_for_transmission_probs = np.zeros(env.L)  # ToDo: Check which action is used to get transmission probs
