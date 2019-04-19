@@ -139,6 +139,28 @@ def update_alpha_and_zeta(alpha, zeta, j, rho, tau):
   return new_alpha, new_zeta
 
 
+def roll_out_candidate_policy(T, s, a, y, beta, eta, treatment_budget, k, env, infection_probs_predictor,
+                              infection_probs_kwargs, transmission_probs_predictor, transmission_probs_kwargs,
+                              data_depth, number_of_steps_ahead=0, monte_carlo_reps=10, gamma=0.9):
+  scores = []
+  for _ in range(monte_carlo_reps):
+    s_tpm = s
+    y_tpm = y
+    for m in range(T):
+      priority_score = R(env, s_tpm, a, y_tpm, infection_probs_predictor, infection_probs_kwargs,
+                         transmission_probs_predictor, transmission_probs_kwargs, data_depth, eta, beta)
+      a_tpm = decision_rule(env, s_tpm, a, y_tpm, infection_probs_predictor, infection_probs_kwargs,
+                            transmission_probs_predictor, transmission_probs_kwargs, eta,
+                            beta, k, treatment_budget, priority_score)
+      infection_probs = infection_probs_predictor(a_tpm, y_tpm, beta, env.L, env.adjacency_list,
+                                                  **infection_probs_kwargs)
+      y_tpm = np.random.binomial(n=1, p=infection_probs)
+      if m >= number_of_steps_ahead:  # In case we want returns starting a few steps in the future; used in continuation policies
+        r_tpm = (gamma**m) * -np.sum(y_tpm)
+        scores.append(r_tpm)
+  return np.mean(scores)
+
+
 def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, infection_probs_predictor,
                              infection_probs_kwargs, transmission_probs_predictor, transmission_probs_kwargs,
                              data_depth, n_rep_per_gp_opt_iteration=10):
@@ -146,27 +168,12 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
   # Objective is mean score over n_rep_per_gp_opt_iteration MC replicates
   def objective(eta1, eta2, eta3):
     eta = np.array([eta1, eta2, eta3])
-    scores = []
-
-    for _ in range(n_rep_per_gp_opt_iteration):
-      s_tpm = s
-      y_tpm = y
-      a_dummy = np.zeros(env.L)
-      for m in range(T):
-        # print(m)
-        # Plus perturbation
-        priority_score = R(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
-                           transmission_probs_predictor, transmission_probs_kwargs, data_depth, eta, beta)
-        # env, s, a, y, infection_probs_predictor, infection_probs_kwargs, transmission_prob_predictor,
-        # transmission_probs_kwargs, data_depth, eta, bet
-        a_tpm = decision_rule(env, s_tpm, a_dummy, y_tpm, infection_probs_predictor, infection_probs_kwargs,
-                              transmission_probs_predictor, transmission_probs_kwargs, eta,
-                              beta, k, treatment_budget, priority_score)
-        infection_probs = infection_probs_predictor(a_tpm, y_tpm, beta, env.L, env.adjacency_list,
-                                                    **infection_probs_kwargs)
-        y_tpm = np.random.binomial(n=1, p=infection_probs)
-        scores.append(-np.mean(y_tpm))
-    return np.mean(scores)
+    a_dummy = np.zeros(env.L)
+    score = roll_out_candidate_policy(T, s, a_dummy, y_tpm, beta, eta, treatment_budget, k, env,
+                                      infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
+                                      transmission_probs_kwargs, data_depth,
+                                      monte_carlo_reps=n_rep_per_gp_opt_iteration, gamma=0.9)
+    return score
 
   ETA_BOUNDS = (0.0, np.power(1, -1/3))
   explore_ = {'eta1': [eta_init[0]], 'eta2': [eta_init[1]], 'eta3': [eta_init[2]]}
@@ -453,8 +460,49 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
   return a, policy_parameter
 
 
-def policy_search_policy(**kwargs):
+def policy_parameter_wrapper(**kwargs):
+  """
+  Helper for policies that depend on policy search.
 
+  :param kwargs:
+  :return:
+  """
+  env, remaining_time_horizon, treatment_budget, initial_policy_parameter = \
+    kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget'], kwargs['initial_policy_parameter']
+
+  if env.__class__.__name__ == "SIS":
+    beta_mean, _ = fit_infection_prob_model(env, None)
+    beta_cov = env.mb_covariance(beta_mean)
+
+    def gen_model_posterior():
+      beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
+      return beta_tilde
+  elif env.__class__.__name__ == "Gravity":
+    # beta_mean = fit_ebola_transition_model(env)
+    # beta_cov = env.mb_covariance(beta_mean)
+    def gen_model_posterior():
+      beta_tilde = fit_ebola_transition_model(env, bootstrap=True)
+      return beta_tilde
+
+  # Settings
+  if initial_policy_parameter is None:
+    initial_policy_parameter = np.ones(3) * 0.5
+  initial_alpha = initial_zeta = None
+  # remaining_time_horizon = T - env.T
+
+  # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random
+  # ToDo: policy; may be improved...
+  rho = 3.20
+  tau = 0.76
+
+  policy_parameter_ = policy_parameter(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
+                                      initial_alpha, initial_zeta, treatment_budget, rho, tau, tol=1e-3,
+                                      maxiter=100, feature_function=features_for_priority_score, k=1,
+                                      method='bayes_opt')
+  return policy_parameter_
+
+
+def policy_search_policy(**kwargs):
   env, remaining_time_horizon, treatment_budget, initial_policy_parameter = \
     kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget'], kwargs['initial_policy_parameter']
 
