@@ -33,13 +33,15 @@ def sis_aic_two_step(**kwargs):
   mf_classifier, env = kwargs['classifier'], kwargs['env']
 
   # Get aic of model-free and model-based estimators
-  mf_classifier.fit(env.vstack(env.X), env.hstack(env.y))
-  mf_aic = mf_classifier.aic
+  infected_locations = np.where(np.vstack(env.X_raw)[:, :-1] == 1)
+  clf = mf_classifier()
+  clf.fit(np.vstack(env.X), np.hstack(env.y), None, False, infected_locations, None)
+  mf_aic = clf.aic
   beta_mean, mb_aic = fit_infection_prob_model(env, None)
 
   if mf_aic < mb_aic:  # Model-free policy
     return two_step(**kwargs)
-  else: # Model-based policy search
+  else:  # Model-based policy search
     treatment_budget, remaining_time_horizon, initial_policy_parameter = \
       kwargs['treatment_budget'], kwargs['planning_depth'], kwargs['initial_policy_parameter']
     if env.__class__.__name__ == "SIS":

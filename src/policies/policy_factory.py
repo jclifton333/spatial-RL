@@ -2,6 +2,7 @@ import src.policies.reference_policies as ref
 import src.policies.q_function_policies as roll
 import src.policies.policy_search as ps
 import src.policies.prefit_policies as prefit
+import src.policies.model_selection_policies as model_selection
 
 
 def policy_factory(policy_type):
@@ -10,6 +11,8 @@ def policy_factory(policy_type):
   """
   if policy_type == 'random':
     return ref.random
+  elif policy_type == 'sis_aic_two_step':
+    return model_selection.sis_aic_two_step
   elif policy_type == 'no_action':
     return ref.no_action
   elif policy_type == 'true_probs':

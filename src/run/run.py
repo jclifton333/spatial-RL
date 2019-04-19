@@ -24,7 +24,8 @@ VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 
                       'gravity_model_based_one_step', 'gravity_model_based_myopic', 'policy_search',
                       'sis_one_step_equal_averaged', 'one_step_stacked', 'sis_model_based_myopic',
                       'two_step_higher_order', 'two_step_sis_prefit', 'one_step_truth_augmented',
-                      'one_step_projection_combo', 'two_step_stacked']
+                      'one_step_projection_combo', 'two_step_stacked', 'sis_aic_two_step']
+POLICY_SEARCH_NAMES = ['policy_search', 'sis_aic_two_step']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 VALID_NETWORK_NAMES = ['lattice', 'barabasi', 'nearestneighbor']
 
@@ -62,7 +63,7 @@ if __name__ == '__main__':
     env_kwargs = {'L': args.L}
     network_name = 'ContinuousGrav'
   ts = (args.ts == 'True')
-  if args.policy_name == 'policy_search':
+  if args.policy_name in POLICY_SEARCH_NAMES:
     env_kwargs['construct_features_for_policy_search'] = True
     env_kwargs['neighbor_features'] = False
 

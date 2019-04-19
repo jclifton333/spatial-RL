@@ -423,11 +423,11 @@ class SKLogit2(object):
       self.inf_params = new_params[:p]
       self.not_inf_params = new_params[p:]
 
-      # Negative log likelihood
-      phat = self.reg_.predict_proba(X_interaction)[:, -1]
-      log_likelihood_elements = y * np.log(phat) + (1 - y) * np.log(1 - phat)
-      negative_log_likelihood = -np.sum(log_likelihood_elements)
-      self.aic = X_interaction.shape[1] + negative_log_likelihood
+    # Negative log likelihood
+    phat = self.reg_.predict_proba(X_interaction)[:, -1]
+    log_likelihood_elements = y * np.log(phat) + (1 - y) * np.log(1 - phat)
+    negative_log_likelihood = -np.sum(log_likelihood_elements)
+    self.aic = X_interaction.shape[1] + negative_log_likelihood
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     if self.model_fitted:
