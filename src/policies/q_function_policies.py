@@ -561,7 +561,7 @@ def continuous_model_based_myopic(**kwargs):
 def sis_model_based_one_step(**kwargs):
   env, bootstrap, argmaxer, evaluation_budget, treatment_budget = \
     kwargs['env'], kwargs['bootstrap'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
-  eta = fit_sis_transition_model(env)
+  eta, _ = fit_sis_transition_model(env)
   print('eta hat: {} eta true: {}'.format(eta, env.ETA))
   one_step_q = partial(sis_infection_probability, y=env.current_infected, s=env.current_state, eta=eta,
                        omega=0, L=env.L, adjacency_lists=env.adjacency_list)
