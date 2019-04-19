@@ -372,20 +372,10 @@ def features_for_priority_score(env, s, a, y, infection_probs_predictor, infecti
 
 
 def policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
-                    treatment_budget, rho, tau, tol=1e-3, maxiter=100, feature_function=features_for_priority_score, k=1,
+                    treatment_budget, rho, tau, infection_probs_predictor, infection_probs_kwargs,
+                    transmission_probs_predictor, transmission_probs_kwargs,
+                    tol=1e-3, maxiter=100, feature_function=features_for_priority_score, k=1,
                     method='bayes_opt'):
-
-  if env.__class__.__name__ == 'SIS':
-    infection_probs_kwargs = {'s': np.zeros(env.L), 'omega': 0.0}
-    transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
-    infection_probs_predictor = sis_inf_probs.sis_infection_probability
-    transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
-  elif env.__class__.__name__ == 'Gravity':
-    infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
-    transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
-                                 'adjacency_matrix': env.ADJACENCY_MATRIX}
-    infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
-    transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
 
   dimension = len(initial_policy_parameter)
   beta_tilde = gen_model_posterior()
@@ -433,9 +423,24 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
   :param method: either 'bayes_opt' or 'stochastic_approximation'
   :return:
   """
-  policy_parameter = policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha,
-                                      initial_zeta, treatment_budget, rho, tau, tol=1e-3, maxiter=100,
-                                      feature_function=features_for_priority_score, k=1, method='bayes_opt')
+  if env.__class__.__name__ == 'SIS':
+    infection_probs_kwargs = {'s': np.zeros(env.L), 'omega': 0.0}
+    transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
+    infection_probs_predictor = sis_inf_probs.sis_infection_probability
+    transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
+  elif env.__class__.__name__ == 'Gravity':
+    infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
+    transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
+                                 'adjacency_matrix': env.ADJACENCY_MATRIX}
+    infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
+    transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
+
+  policy_parameter_ = policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha,
+                                       initial_zeta, treatment_budget, rho, tau,
+                                       infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
+                                       transmission_probs_kwargs,
+                                       tol=1e-3, maxiter=100,
+                                       feature_function=features_for_priority_score, k=1, method='bayes_opt')
 
   # Get priority function features
   a_for_transmission_probs = np.zeros(env.L)  # ToDo: Check which action is used to get transmission probs
@@ -453,11 +458,11 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
                               infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
                               transmission_probs_kwargs, env.data_depth, beta_tilde)
 
-  priority_scores = np.dot(features, policy_parameter)
+  priority_scores = np.dot(features, policy_parameter_)
   a_ix = np.argsort(-priority_scores)[:treatment_budget]
   a = np.zeros(env.L)
   a[a_ix] = 1
-  return a, policy_parameter
+  return a, policy_parameter_
 
 
 def policy_parameter_wrapper(**kwargs):

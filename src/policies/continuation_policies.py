@@ -13,7 +13,9 @@ import src.policies.q_function_policies as qfn_policies
 import numpy as np
 
 
-def policy_search_continuation(policy_parameter_, number_of_steps_ahead, env, x_raw_current, remaining_time_horizon):
+def sis_policy_search_continuation(policy_parameter_, number_of_steps_ahead, env, x_raw_current, remaining_time_horizon,
+                                   treatment_budget, infection_probs_predictor, infection_probs_kwargs,
+                                   transmission_probs_predictor, transmission_probs_kwargs, data_depth):
   """
   Estimate returns under policy indexed by policy_parameter_, starting number_of_steps_ahead.
 
@@ -24,11 +26,16 @@ def policy_search_continuation(policy_parameter_, number_of_steps_ahead, env, x_
   :param remaining_time_horizon:
   :return:
   """
-  score = ps.roll_out_candidate_policy(T, s, a, y, beta, eta, treatment_budget, k, env, infection_probs_predictor
+  k = 1
+  s, a, y = x_raw_current[:, 0], x_raw_current[:, 1], x_raw_current[:, 2]
+  score = ps.roll_out_candidate_policy(remaining_time_horizon, s, a, y, beta, policy_parameter_, treatment_budget, k,
+                                       env, infection_probs_predictor,
                                        infection_probs_kwargs, transmission_probs_predictor, transmission_probs_kwargs,
-                                       data_depth, number_of_steps_ahead = 0, monte_carlo_reps = 10, gamma = 0.9)
+                                       data_depth, number_of_steps_ahead=number_of_steps_ahead, monte_carlo_reps=10,
+                                       gamma=0.9)
 
-def one_step_continuation(**kwargs):
+
+def sis_one_step_continuation(**kwargs):
   classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
     kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
     kwargs['bootstrap']
