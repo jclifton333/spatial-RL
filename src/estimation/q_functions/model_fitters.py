@@ -339,6 +339,7 @@ class SKLogit(object):
     self.condition_on_infection = False
     self.intercept_ = None
     self.coef_ = None
+    self.negative_log_likelihood = None
 
   def fit(self, X, y, weights):
     if is_y_all_1_or_0(y):
@@ -346,6 +347,11 @@ class SKLogit(object):
     else:
       self.reg.fit(X, y, sample_weight=weights)
       self.get_coef()
+
+      # Negative log likelihood
+      phat = self.reg.predict_proba(X)[:, -1]
+      log_likelihood_elements = y * np.log(phat) + (1 - y) * np.log(1 - phat)
+      self.negative_log_likelihood = -np.sum(log_likelihood_elements)
 
   def get_coef(self):
     self.intercept_ = self.reg.intercept_
@@ -365,6 +371,7 @@ class SKLogit2(object):
     self.model_fitted = False
     self.params = None
     self.eb_prob = None
+    self.aic = None
 
   def log_lik_gradient(self, x, y_next, infected):
     x_inf = infected * x
@@ -415,6 +422,12 @@ class SKLogit2(object):
       new_params = np.random.multivariate_normal(np.concatenate((self.inf_params, self.not_inf_params)), cov=cov)
       self.inf_params = new_params[:p]
       self.not_inf_params = new_params[p:]
+
+      # Negative log likelihood
+      phat = self.reg_.predict_proba(X_interaction)[:, -1]
+      log_likelihood_elements = y * np.log(phat) + (1 - y) * np.log(1 - phat)
+      negative_log_likelihood = -np.sum(log_likelihood_elements)
+      self.aic = X_interaction.shape[1] + negative_log_likelihood
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     if self.model_fitted:

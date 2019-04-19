@@ -448,7 +448,7 @@ def policy_search_policy(**kwargs):
     kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget'], kwargs['initial_policy_parameter']
 
   if env.__class__.__name__ == "SIS":
-    beta_mean = fit_infection_prob_model(env, None)
+    beta_mean, _ = fit_infection_prob_model(env, None)
     beta_cov = env.mb_covariance(beta_mean)
 
     def gen_model_posterior():

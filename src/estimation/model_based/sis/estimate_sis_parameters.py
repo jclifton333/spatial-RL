@@ -44,11 +44,14 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
     infected_weights = None
 
   if len(y_infected) > 0:
-    eta_q = fit_q(A_infected.T, y_infected, infected_weights)
+    eta_q, negative_log_lik_q = fit_q(A_infected.T, y_infected, infected_weights)
   else:
     eta_q = np.append([logit(np.mean(y))], [0.0])
-  eta_p = fit_p(env, bootstrap_weights, indices)
-  return np.concatenate((eta_p, eta_q))
+  eta_p, negative_log_lik_p = fit_p(env, bootstrap_weights, indices)
+  eta = np.concatenate((eta_p, eta_q))
+  negative_log_lik = negative_log_lik_p + negative_log_lik_q
+  aic = len(eta) + negative_log_lik
+  return eta, aic
 
 
 def fit_sis_transition_model(env, bootstrap_weights=None, y_next=None, indices=None):
@@ -61,7 +64,8 @@ def fit_q(A_infected, y_infected, infected_weights):
   clf = SKLogit()
   clf.fit(A_infected, 1 - y_infected, infected_weights)
   eta_q = np.append(clf.intercept_, clf.coef_)
-  return eta_q
+  negative_log_lik_q = clf.negative_log_likelihood
+  return eta_q, negative_log_lik_q
 
 
 def fit_p(env, bootstrap_weights, indices=None):
@@ -72,7 +76,8 @@ def fit_p(env, bootstrap_weights, indices=None):
   objective = partial(negative_log_likelihood, counts_for_likelihood=counts_for_likelihood)
   res = minimize(objective, x0=env.eta[:5], method='L-BFGS-B')
   eta_p = res.x
-  return eta_p
+  negative_log_lik_p = objective(eta_p)
+  return eta_p, negative_log_lik_p
 
 
 def collect_counts_for_likelihood(env, indices):
