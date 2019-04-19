@@ -4,8 +4,24 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model, fit_infection_prob_model
 from src.estimation.model_based.Gravity.estimate_ebola_parameters import fit_ebola_transition_model
 from src.policies.policy_search import policy_search, features_for_priority_score
-from src.policies.q_function_policies import two_step
+import src.policies.q_function_policies as qfn_policies
 import numpy as np
+
+
+def sis_aic_one_step(**kwargs):
+  mf_classifier, env = kwargs['classifier'], kwargs['env']
+
+  # Get aic of model-free and model-based estimators
+  infected_locations = np.where(np.vstack(env.X_raw)[:, :-1] == 1)
+  clf = mf_classifier()
+  clf.fit(np.vstack(env.X), np.hstack(env.y), None, False, infected_locations, None)
+  mf_aic = clf.aic
+  beta_mean, mb_aic = fit_infection_prob_model(env, None)
+
+  if mf_aic < mb_aic:
+    return qfn_policies.one_step_policy(**kwargs)
+  else:
+    return qfn_policies.sis_model_based_one_step(**kwargs)
 
 
 def sis_aic_two_step(**kwargs):
@@ -26,7 +42,7 @@ def sis_aic_two_step(**kwargs):
   beta_mean, mb_aic = fit_infection_prob_model(env, None)
 
   if mf_aic < mb_aic:  # Model-free policy
-    return two_step(**kwargs)
+    return qfn_policies.two_step(**kwargs)
   else:  # Model-based policy search
     treatment_budget, remaining_time_horizon, initial_policy_parameter = \
       kwargs['treatment_budget'], kwargs['planning_depth'], kwargs['initial_policy_parameter']
