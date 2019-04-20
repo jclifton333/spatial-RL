@@ -101,7 +101,6 @@ class SIS(SpatialDisease):
     else:
       self.adjacency_matrix = adjacency_matrix
 
-
     self.lambda_ = self.adjacency_matrix
     SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections,
                             construct_features_for_policy_search=construct_features_for_policy_search)
@@ -146,7 +145,7 @@ class SIS(SpatialDisease):
     self.counts_for_likelihood = {count_name: [] for count_name in counts_for_likelihood_names}
 
     if self.regenerate_network:
-      self.adjacency_matrix = self.generate_network(L)
+      self.adjacency_matrix = self.generate_network(self.L)
       self.lambda_ = self.adjacency_matrix
       super(SIS, self).construct_network(self.adjacency_matrix, self.construct_features_for_policy_search)
 

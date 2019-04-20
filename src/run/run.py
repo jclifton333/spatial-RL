@@ -56,6 +56,9 @@ if __name__ == '__main__':
   if args.env_name == 'sis':
     env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': network_dict[args.network],
                   'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
+    if args.network == 'nearestneighbor':
+      env_kwargs['regenerate_network'] = True
+
     network_name = args.network
   elif args.env_name == 'Ebola':
     env_kwargs = {}
