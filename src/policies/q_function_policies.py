@@ -285,7 +285,7 @@ def two_step(**kwargs):
 
   # Fit backup-up q function
   reg = regressor(n_estimators=100)
-  reg.fit(np.vstack(env.X_2[:-1]), np.hstack(backup))
+  reg.fit(np.vstack(env.X[:-1]), np.hstack(backup))
 
   def qfn(a):
     infections = env.Y[-1, :]
@@ -293,8 +293,8 @@ def two_step(**kwargs):
     not_infected_indices = np.where(infections == 0)[0]
     X_ = env.data_block_at_action(-1, a)
     # ToDo: Comment back in after debugging
-    X2 = env.data_block_at_action(-1, a, neighbor_order=2)
-    return clf.predict_proba(X_, infected_indices, not_infected_indices) + gamma * reg.predict(X2)
+    # X = env.data_block_at_action(-1, a, neighbor_order=2)
+    return clf.predict_proba(X_, infected_indices, not_infected_indices) + gamma * reg.predict(X_)
     # return clf.predict_proba(X_, infected_indices, not_infected_indices) 
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
