@@ -3,6 +3,7 @@ import src.policies.q_function_policies as roll
 import src.policies.policy_search as ps
 import src.policies.prefit_policies as prefit
 import src.policies.model_selection_policies as model_selection
+import src.policies.continuation_policies as continuation
 
 
 def policy_factory(policy_type):
@@ -13,6 +14,8 @@ def policy_factory(policy_type):
     return ref.random
   elif policy_type == 'sis_aic_two_step':
     return model_selection.sis_aic_two_step
+  elif policy_type == 'sis_one_step_continuation':
+    return continuation.sis_one_step_continuation
   elif policy_type == 'sis_aic_one_step':
     return model_selection.sis_aic_one_step
   elif policy_type == 'no_action':

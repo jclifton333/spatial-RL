@@ -169,7 +169,7 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
   def objective(eta1, eta2, eta3):
     eta = np.array([eta1, eta2, eta3])
     a_dummy = np.zeros(env.L)
-    score = roll_out_candidate_policy(T, s, a_dummy, y_tpm, beta, eta, treatment_budget, k, env,
+    score = roll_out_candidate_policy(T, s, a_dummy, y, beta, eta, treatment_budget, k, env,
                                       infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
                                       transmission_probs_kwargs, data_depth,
                                       monte_carlo_reps=n_rep_per_gp_opt_iteration, gamma=0.9)
@@ -500,11 +500,26 @@ def policy_parameter_wrapper(**kwargs):
   rho = 3.20
   tau = 0.76
 
+  # ToDo: Write function that dooes this
+  if env.__class__.__name__ == 'SIS':
+    infection_probs_kwargs = {'s': np.zeros(env.L), 'omega': 0.0}
+    transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
+    infection_probs_predictor = sis_inf_probs.sis_infection_probability
+    transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
+  elif env.__class__.__name__ == 'Gravity':
+    infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
+    transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
+                                 'adjacency_matrix': env.ADJACENCY_MATRIX}
+    infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
+    transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
+
   policy_parameter_ = policy_parameter(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
-                                      initial_alpha, initial_zeta, treatment_budget, rho, tau, tol=1e-3,
+                                      initial_alpha, initial_zeta, treatment_budget, rho, tau,
+                                      infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
+                                      transmission_probs_kwargs, tol=1e-3,
                                       maxiter=100, feature_function=features_for_priority_score, k=1,
                                       method='bayes_opt')
-  return policy_parameter_
+  return policy_parameter_, beta_mean
 
 
 def policy_search_policy(**kwargs):
