@@ -16,41 +16,20 @@ ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
 class SpatialDisease(ABC):
   INITIAL_INFECT_PROP = 0.1
   
-  def __init__(self, adjacency_matrix, initial_infections=None, construct_features_for_policy_search=False):
+  def __init__(self, adjacency_matrix, initial_infections=None, construct_features_for_policy_search=False,
+               regenerate_network=False):
     """
     :param adjacency_matrix: 2d binary array corresponding to network for gen model
     :param initial_infections: L-length binary array of initial infections, or None
     """
     
     self.initial_infections = initial_infections
+    self.construct_features_for_policy_search = construct_features_for_policy_search
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
     
     # Adjacency info
-    self.adjacency_matrix = adjacency_matrix
-    self.adjacency_list = np.array([np.array([l_prime for l_prime in range(self.L)
-                                              if self.adjacency_matrix[l, l_prime] == 1])
-                                   for l in range(self.L)])
-
-    network_as_nx_object = nx.from_numpy_matrix(self.adjacency_matrix)
-
-    if construct_features_for_policy_search:
-      pairwise_distance_dictionary = dict(nx.all_pairs_shortest_path_length(network_as_nx_object))
-      self.pairwise_distances = np.zeros((self.L, self.L))  # Entries are omega's in Nick's WNS paper
-      for source_index, targets in pairwise_distance_dictionary.items():
-        for target_index, length in targets.items():
-          self.pairwise_distances[source_index, target_index] = length
-          self.pairwise_distances[target_index, source_index] = length
-
-      data_depth_dictionary = nx.algorithms.centrality.subgraph_centrality(network_as_nx_object)
-      self.data_depth = np.zeros(self.L)
-      for node_ix, subgraph_centrality in data_depth_dictionary.items():
-        self.data_depth[node_ix] = subgraph_centrality
-
-    self.num_neighbors = [len(neighbors) for neighbors in self.adjacency_list]
-    self.num_neighbors_rep = [self.num_neighbors]
-    self.neighbor_interaction_lists = [np.array([[i,j] for i in self.adjacency_list[l] for j in self.adjacency_list[l]])
-                                       for l in range(self.L)]
+    self.construct_network(adjacency_matrix, construct_features_for_policy_search)
 
     # Observation history
     if self.initial_infections is None:
@@ -70,6 +49,36 @@ class SpatialDisease(ABC):
     # Current network status
     self.current_infected = self.Y[-1, :]
     self.T = 0
+
+  def construct_network(self, adjacency_matrix, construct_features_for_policy_search):
+    self.L = adjacency_matrix.shape[0]
+
+    # Adjacency info
+    self.adjacency_matrix = adjacency_matrix
+    self.adjacency_list = np.array([np.array([l_prime for l_prime in range(self.L)
+                                              if self.adjacency_matrix[l, l_prime] == 1])
+                                    for l in range(self.L)])
+
+    network_as_nx_object = nx.from_numpy_matrix(self.adjacency_matrix)
+
+    if construct_features_for_policy_search:
+      pairwise_distance_dictionary = dict(nx.all_pairs_shortest_path_length(network_as_nx_object))
+      self.pairwise_distances = np.zeros((self.L, self.L))  # Entries are omega's in Nick's WNS paper
+      for source_index, targets in pairwise_distance_dictionary.items():
+        for target_index, length in targets.items():
+          self.pairwise_distances[source_index, target_index] = length
+          self.pairwise_distances[target_index, source_index] = length
+
+      data_depth_dictionary = nx.algorithms.centrality.subgraph_centrality(network_as_nx_object)
+      self.data_depth = np.zeros(self.L)
+      for node_ix, subgraph_centrality in data_depth_dictionary.items():
+        self.data_depth[node_ix] = subgraph_centrality
+
+    self.num_neighbors = [len(neighbors) for neighbors in self.adjacency_list]
+    self.num_neighbors_rep = [self.num_neighbors]
+    self.neighbor_interaction_lists = [
+      np.array([[i, j] for i in self.adjacency_list[l] for j in self.adjacency_list[l]])
+      for l in range(self.L)]
 
   def reset(self):
     """

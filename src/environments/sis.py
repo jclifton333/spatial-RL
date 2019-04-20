@@ -67,7 +67,7 @@ class SIS(SpatialDisease):
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
                initial_infections=None, initial_state=None, eta=None, beta=None,
                epsilon=0, contaminator=CONTAMINATOR, construct_features_for_policy_search=False,
-               neighbor_features=True):
+               neighbor_features=True, regenerate_network=False):
     """
     :param omega: parameter in [0,1] for mixing two sis models
     :param generate_network: function that accepts network size L and returns adjacency matrix
@@ -95,15 +95,18 @@ class SIS(SpatialDisease):
     else:
       self.beta = beta
 
+    self.generate_network = generate_network
     if adjacency_matrix is None:
-      self.adjacency_matrix = generate_network(L)
+      self.adjacency_matrix = self.generate_network(L)
     else:
       self.adjacency_matrix = adjacency_matrix
+
 
     self.lambda_ = self.adjacency_matrix
     SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections,
                             construct_features_for_policy_search=construct_features_for_policy_search)
 
+    self.regenerate_network = regenerate_network
     if initial_state is None:
       self.initial_state = np.zeros(self.L)
     else:
@@ -141,6 +144,12 @@ class SIS(SpatialDisease):
     counts_for_likelihood_names = ['n_00_0', 'n_01_0', 'n_10_0', 'n_11_0', 'n_00_1', 'n_01_1', 'n_10_1', 'n_11_1',
                                    'a_0', 'a_1']
     self.counts_for_likelihood = {count_name: [] for count_name in counts_for_likelihood_names}
+
+    if self.regenerate_network:
+      self.adjacency_matrix = self.generate_network(L)
+      self.lambda_ = self.adjacency_matrix
+      super(SIS, self).construct_network(self.adjacency_matrix, self.construct_features_for_policy_search)
+
 
   ##############################################################
   ##            Feature function computation                  ##

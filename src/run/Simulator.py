@@ -46,6 +46,8 @@ class Simulator(object):
     :param policy_kwargs_dict:
     :param env_kwargs: environment-specific keyword arguments to be passed to environment_factory
     """
+    self.env_name = env_name
+    self.env_kwargs = env_kwargs
     self.env = environment_factory(env_name, **env_kwargs)
     self.policy = policy_factory(policy_name)
     self.random_policy = policy_factory('random')
