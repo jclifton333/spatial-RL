@@ -27,7 +27,7 @@ from src.estimation.stacking.bellman_error_bootstrappers import bootstrap_rollou
 
 from src.estimation.q_functions.model_fitters import KerasRegressor, SKLogit, SKLogit2
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 
 import keras.backend as K
 
@@ -63,7 +63,7 @@ class Simulator(object):
         treatment_budget = np.int(np.ceil(0.05 * self.env.L))
     elif env_name == 'Ebola':
         treatment_budget = np.int(np.ceil(0.15 * self.env.L))
-    self.policy_arguments = {'classifier': SKLogit2, 'regressor': RandomForestRegressor, 'env': self.env,
+    self.policy_arguments = {'classifier': SKLogit2, 'regressor': Ridge, 'env': self.env,
                               'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
