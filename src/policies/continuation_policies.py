@@ -51,7 +51,9 @@ def sis_one_step_continuation(**kwargs):
   policy_parameter_, sis_model_parameter_ = ps.policy_parameter_wrapper(**kwargs)
 
   def model_based_v_function(a):
-    number_of_steps_ahead_ = 1
+    # number_of_steps_ahead_ = 1
+    # ToDo: commented out for debugging
+    number_of_steps_ahead_ = 0
     x_raw_current_ = env.data_block_at_action(-1, a, raw=True)
     v = sis_policy_search_continuation(policy_parameter_, number_of_steps_ahead_, env, x_raw_current_,
                                        remaining_time_horizon, treatment_budget, sis_model_parameter_)
@@ -65,9 +67,11 @@ def sis_one_step_continuation(**kwargs):
   clf, predict_proba_kwargs, loss_dict = one_step.fit_one_step_predictor(classifier, env, weights)
 
   def qfn(a):
-    zero_step_q = clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
+    # zero_step_q = clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
     infinite_horizon_q = model_based_v_function(a)
-    return zero_step_q + gamma * infinite_horizon_q
+    # return zero_step_q + gamma * infinite_horizon_q
+    # ToDo: commented out for debugging
+    return infinite_horizon_q
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, loss_dict
