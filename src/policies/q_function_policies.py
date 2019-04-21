@@ -284,7 +284,8 @@ def two_step(**kwargs):
     backup.append(backup_at_t)
 
   # Fit backup-up q function
-  reg = regressor(n_estimators=100)
+  # reg = regressor(n_estimators=100)
+  reg = regressor()
   reg.fit(np.vstack(env.X[:-1]), np.hstack(backup))
 
   def qfn(a):
