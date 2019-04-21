@@ -52,7 +52,7 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
   negative_log_lik = negative_log_lik_p + negative_log_lik_q
   p = len(eta)
   n = X.shape[0]
-  aic = p + negative_log_lik + (p**2 + p) / np.min((1.0, n - p - 1))  # Technically, AICc / 2
+  aic = p + negative_log_lik + (p**2 + p) / np.max((1.0, n - p - 1))  # Technically, AICc / 2
   return eta, aic
 
 

@@ -110,7 +110,6 @@ def fit_ebola_transition_model(env, y_next=None, indices=None, bootstrap=False):
                       distance_matrix=env.DISTANCE_MATRIX, product_matrix=env.PRODUCT_MATRIX,
                       adjacency_matrix=env.ADJACENCY_MATRIX, T=env.T, L=env.L, bootstrap_weights=bootstrap_weights,
                       indices=indices_mask)
-
   x0 = copy.copy(env.ETA)
   # x0[1] = np.log(x0[1] + 0.001)
   # x0[2] = np.log(x0[2] + 0.001)
@@ -118,7 +117,11 @@ def fit_ebola_transition_model(env, y_next=None, indices=None, bootstrap=False):
 
   res = minimize(objective, x0=x0, method='L-BFGS-B')
   eta_hat = res.x
-  return eta_hat
+  negative_log_likelihood_ = objective(eta_hat)
+  p = len(eta_hat)
+  n = env.T * env.L
+  aic = p + negative_log_likelihood_ + (p**2 + p) / np.max((1.0, n - p - 1))
+  return eta_hat,
 
 
 # @njit
