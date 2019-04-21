@@ -50,7 +50,9 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
   eta_p, negative_log_lik_p = fit_p(env, bootstrap_weights, indices)
   eta = np.concatenate((eta_p, eta_q))
   negative_log_lik = negative_log_lik_p + negative_log_lik_q
-  aic = len(eta) + negative_log_lik
+  p = len(eta)
+  n = X.shape[0]
+  aic = p + negative_log_lik + (p**2 + p) / np.min((1.0, n - p - 1))  # Technically, AICc / 2
   return eta, aic
 
 
