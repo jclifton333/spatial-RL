@@ -57,7 +57,7 @@ def sis_one_step_continuation(**kwargs):
     x_raw_current_ = env.data_block_at_action(-1, a, raw=True)
     v = sis_policy_search_continuation(policy_parameter_, number_of_steps_ahead_, env, x_raw_current_,
                                        remaining_time_horizon, treatment_budget, sis_model_parameter_)
-    return v
+    return np.ones(env.L)*v
 
   # Fit one-step model free qfn
   if bootstrap:
