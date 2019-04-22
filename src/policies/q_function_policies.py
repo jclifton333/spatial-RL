@@ -505,7 +505,7 @@ def gravity_model_based_one_step(**kwargs):
   env, argmaxer, evaluation_budget, treatment_budget = \
     kwargs['env'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
   if env.__class__.__name__ == 'Ebola':
-    eta = fit_ebola_transition_model(env)
+    eta, _ = fit_ebola_transition_model(env)
   elif env.__class__.__name__ == 'ContinuousGrav':
     eta = fit_continuous_grav_transition_model(env)
   one_step_q = partial(env.next_infected_probabilities, eta=eta)

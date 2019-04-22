@@ -121,7 +121,7 @@ def fit_ebola_transition_model(env, y_next=None, indices=None, bootstrap=False):
   p = len(eta_hat)
   n = env.T * env.L
   aic = p + negative_log_likelihood_ + (p**2 + p) / np.max((1.0, n - p - 1))
-  return eta_hat,
+  return eta_hat, aic
 
 
 # @njit

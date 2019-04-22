@@ -24,6 +24,22 @@ def sis_aic_one_step(**kwargs):
     return qfn_policies.sis_model_based_one_step(**kwargs)
 
 
+def ebola_aic_one_step(**kwargs):
+  mf_classifier, env = kwargs['classifier'], kwargs['env']
+
+  # Get aic of model-free and model-based estimators
+  infected_locations = np.where(np.vstack(env.X_raw)[:, :-1] == 1)
+  clf = mf_classifier()
+  clf.fit(np.vstack(env.X), np.hstack(env.y), None, False, infected_locations, None)
+  mf_aic = clf.aic
+  beta_mean, mb_aic = fit_ebola_transition_model(env, None)
+
+  if mf_aic < mb_aic:
+    return qfn_policies.one_step_policy(**kwargs)
+  else:
+    return qfn_policies.gravity_model_based_one_step(**kwargs)
+
+
 def sis_aic_two_step(**kwargs):
   """
   Use AIC to select model-free or model-based probability estimator.  If model-based is selected, use policy search.
@@ -46,19 +62,12 @@ def sis_aic_two_step(**kwargs):
   else:  # Model-based policy search
     treatment_budget, remaining_time_horizon, initial_policy_parameter = \
       kwargs['treatment_budget'], kwargs['planning_depth'], kwargs['initial_policy_parameter']
-    if env.__class__.__name__ == "SIS":
-      beta_mean, _ = fit_infection_prob_model(env, None)
-      beta_cov = env.mb_covariance(beta_mean)
+    beta_mean, _ = fit_infection_prob_model(env, None)
+    beta_cov = env.mb_covariance(beta_mean)
 
-      def gen_model_posterior():
-        beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
-        return beta_tilde
-    elif env.__class__.__name__ == "Gravity":
-      # beta_mean = fit_ebola_transition_model(env)
-      # beta_cov = env.mb_covariance(beta_mean)
-      def gen_model_posterior():
-        beta_tilde = fit_ebola_transition_model(env, bootstrap=True)
-        return beta_tilde
+    def gen_model_posterior():
+      beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
+      return beta_tilde
 
     # Settings
     if initial_policy_parameter is None:
