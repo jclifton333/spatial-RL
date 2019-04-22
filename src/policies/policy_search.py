@@ -396,7 +396,7 @@ def policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_para
                                                 transmission_probs_predictor, transmission_probs_kwargs, env.data_depth,
                                                 n_rep_per_gp_opt_iteration=10)
 
-  return policy_parameter
+  return policy_parameter, beta_tilde
 
 
 def policy_search(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
@@ -436,12 +436,14 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
     infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
     transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
 
-  policy_parameter_ = policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha,
-                                       initial_zeta, treatment_budget, rho, tau,
-                                       infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
-                                       transmission_probs_kwargs,
-                                       tol=1e-3, maxiter=100,
-                                       feature_function=features_for_priority_score, k=1, method='bayes_opt')
+  policy_parameter_, beta_tilde = policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_parameter,
+                                                   initial_alpha,
+                                                   initial_zeta, treatment_budget, rho, tau,
+                                                   infection_probs_predictor, infection_probs_kwargs,
+                                                   transmission_probs_predictor,
+                                                   transmission_probs_kwargs,
+                                                   tol=1e-3, maxiter=100,
+                                                   feature_function=features_for_priority_score, k=1, method='bayes_opt')
 
   # Get priority function features
   a_for_transmission_probs = np.zeros(env.L)  # ToDo: Check which action is used to get transmission probs
@@ -514,12 +516,12 @@ def policy_parameter_wrapper(**kwargs):
     infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
     transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
 
-  policy_parameter_ = policy_parameter(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
-                                      initial_alpha, initial_zeta, treatment_budget, rho, tau,
-                                      infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
-                                      transmission_probs_kwargs, tol=1e-3,
-                                      maxiter=100, feature_function=features_for_priority_score, k=1,
-                                      method='bayes_opt')
+  policy_parameter_, beta_tilde = policy_parameter(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
+                                                   initial_alpha, initial_zeta, treatment_budget, rho, tau,
+                                                   infection_probs_predictor, infection_probs_kwargs, transmission_probs_predictor,
+                                                   transmission_probs_kwargs, tol=1e-3,
+                                                   maxiter=100, feature_function=features_for_priority_score, k=1,
+                                                   method='bayes_opt')
   return policy_parameter_, beta_mean
 
 

@@ -75,7 +75,7 @@ def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None
 
 def fit_one_step_sis_mb_q(env, bootstrap_weights=None, y_next=None, indices=None):
   # Get model-based
-  eta, _ = estimate_sis_parameters.fit_sis_transition_model(env, bootstrap_weights=bootstrap_weights, y_next=y_next,
+  eta = estimate_sis_parameters.fit_sis_transition_model(env, bootstrap_weights=bootstrap_weights, y_next=y_next,
                                                          indices=indices)
 
   def q_mb(data_block):

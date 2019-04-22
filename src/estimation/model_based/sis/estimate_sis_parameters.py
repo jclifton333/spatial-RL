@@ -57,7 +57,7 @@ def fit_infection_prob_model(env, bootstrap_weights, y_next=None, indices=None):
 
 
 def fit_sis_transition_model(env, bootstrap_weights=None, y_next=None, indices=None):
-  eta = fit_infection_prob_model(env, bootstrap_weights, y_next=y_next, indices=indices)
+  eta, _ = fit_infection_prob_model(env, bootstrap_weights, y_next=y_next, indices=indices)
   # beta = fit_state_transition_model(env)
   return eta
 
