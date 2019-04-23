@@ -16,20 +16,36 @@ def sis_one_step_dyna(**kwargs):
         feature_combo = tuple(raw_feature_combo + permutation_)
         unique_feature_indicators[feature_combo] = {'count': 0, 'list': []}
 
+  mb_phats = [mb_clf(x) for x in env.X]
+
   # Count number of feature indicators
-  X_indicator = np.vstack(env.X) > 0
-  for x in X_indicator:
-    unique_feature_indicators[tuple(x)]['count'] += 1  
-    unique_feature_indicators[tuple(x)]['list'].append(x) 
+  for t, X_ in enumerate(env.X):
+    for l, x in enumerate(X_):
+      x_indicator = x > 0
+      unique_feature_indicators[tuple(x_indicator)]['count'] += 1  
+      unique_feature_indicators[tuple(x_indicator)]['list'].append((x, t, l)) 
 
   # Supplement features that fall short of quota
   X_synthetic = np.zeros((0, X_indicator.shape[1])) 
+  Y_synthetic = np.zeros(0)
   for feature_info in unique_feature_indicators.values():
-    count = feature_info['count']
+  count = feature_info['count']  # ToDo: what if count=0?
     if count < QUOTA:
       num_fake_data = QUOTA - count 
 
       # Sample with replacement up to desired number
+      feature_list = feature_info['list']
+      synthetic = np.random.choice(feature_list, num_fake_data, replace=T)
+      x_synthetic = [o_[0] for o_ in feature_list]
+      y_synthetic = [mb_phats[o_[1]][o_[2]] for o_ in feature_list]
+
+      # Add to dataset
+      X_synthetic = np.vstack((X_synthetic, x_synthetic))
+      y_synthetic = np.hstack((Y_synthetic, y_synthetic))
+
+   # Fit model-free model on new dataset
+   X_new = np.vstack((np.vstack(env.X), X_synthetic)) 
+   y_new = np.hstack((env.y, y_synthetic))
 
 
       
