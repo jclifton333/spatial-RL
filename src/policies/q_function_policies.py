@@ -484,6 +484,16 @@ def sis_mb_fqi(**kwargs):
   return a, None
 
 
+def sis_one_step_dyna(**kwargs):
+  """
+  Supplement rarely-visited states with synthetic data.
+
+  :param kwargs:
+  :return:
+  """
+  pass
+
+
 def sis_model_based_policy(**kwargs):
   env, treatment_budget, evaluation_budget, argmaxer, planning_depth, bootstrap, \
     rollout_depth, gamma, classifier, regressor = \

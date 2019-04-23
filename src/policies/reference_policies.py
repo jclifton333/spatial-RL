@@ -47,10 +47,10 @@ def true_probs_myopic(**kwargs):
 
 
 def random(**kwargs):
-  treatment_budget, divide_evenly = kwargs['treatment_budget'], kwargs['divide_evenly']
+  env, treatment_budget, divide_evenly = kwargs['env'], kwargs['treatment_budget'], kwargs['divide_evenly']
 
   if divide_evenly: # Split between infected and not-infected states
-    current_infected = kwargs['env'].current_infected
+    current_infected = env.current_infected
     infected_ixs = np.where(current_infected == 1)
     not_infected_ixs = np.where(current_infected == 0)
     try:
@@ -70,11 +70,20 @@ def random(**kwargs):
     a[infected_trts] = 1
     a[not_infected_trts] = 1
   else:
-    L = kwargs['env'].L
+    L = env.L
     assert treatment_budget < L
     dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))
     a = np.random.permutation(dummy_act)
-  return a, None
+
+    # For diagnostic purposes
+    if len(env.X) > 1:
+      X_nonzero = np.vstack(env.X) > 0
+      unique_xs = np.unique(X_nonzero, axis=0)
+      info = {'num_unique_features': unique_xs.shape[0]}
+    else:
+      info = None
+
+  return a, info
 
 
 
