@@ -3,6 +3,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 
 from src.estimation.q_functions.model_fitters import SKLogit2
 from src.estimation.q_functions.one_step import *
+from src.environments.sis import convert_first_order_to_infection_status
 import numpy as np
 
 
@@ -69,7 +70,8 @@ def sis_one_step_dyna(**kwargs):
   # Fit model-free model on new dataset
   X_new = np.vstack((np.vstack(env.X), X_synthetic))
   y_new = np.hstack((env.y, Y_synthetic))
-  infected_indices = None
+  infected_indices = [ix for ix in range(X_new.shape[0]) if convert_first_order_to_infection_status(X_new[ix])]
+
   q0 = SKLogit2()
   q0.fit(X_new, y_new, infected_indices, None)
 
