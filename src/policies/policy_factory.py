@@ -4,6 +4,7 @@ import src.policies.policy_search as ps
 import src.policies.prefit_policies as prefit
 import src.policies.model_selection_policies as model_selection
 import src.policies.continuation_policies as continuation
+import src.policies.dyna_policies as dyna
 
 
 def policy_factory(policy_type):
@@ -12,6 +13,8 @@ def policy_factory(policy_type):
   """
   if policy_type == 'random':
     return ref.random
+  elif policy_type == 'sis_one_step_dyna':
+    return dyna.sis_one_step_dyna
   elif policy_type == 'sis_aic_two_step':
     return model_selection.sis_aic_two_step
   elif policy_type == 'ebola_aic_one_step':

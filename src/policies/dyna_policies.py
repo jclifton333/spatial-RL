@@ -1,29 +1,15 @@
 import os
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
-from src.estimation.q_functions.fqi import fqi
-from src.estimation.q_functions.regressor import AutoRegressor
-from src.estimation.q_functions.q_functions import q, q_max_all_states
-from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_sis_q_fn
-from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
-from src.estimation.model_based.Gravity.estimate_ebola_parameters import fit_ebola_transition_model
-from src.estimation.model_based.Gravity.estimate_continuous_parameters import fit_continuous_grav_transition_model
 from src.estimation.q_functions.model_fitters import SKLogit2
-import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
-from src.utils.misc import random_argsort
-from sklearn.ensemble import RandomForestRegressor, IsolationForest
-from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
-from scipy.special import expit, logit
 import numpy as np
-import keras.backend as K
-from functools import partial
 
 
 def sis_one_step_dyna(**kwargs):
-  env, treatment_budget, evaluation_budget, argmaxer, gamma, regressor = \
+  env, treatment_budget, evaluation_budget, argmaxer, gamma = \
     kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
-    kwargs['gamma'], kwargs['regressor']
+    kwargs['gamma']
   q_mb_one_step, _ = fit_one_step_sis_mb_q(env)
 
   MAX_NUM_NONZERO = np.min((env.max_num_neighbors, 8))
@@ -49,14 +35,25 @@ def sis_one_step_dyna(**kwargs):
     for l, x in enumerate(X_):
       x_indicator = x > 0
       unique_feature_indicators[tuple(x_indicator)]['count'] += 1  
-      unique_feature_indicators[tuple(x_indicator)]['list'].append((x, t, l)) 
+      unique_feature_indicators[tuple(x_indicator)]['list'].append((x, t, l))
+
+  # Add current state, infection info evaluated at treatment and no-treatment
+  X_current_trt = env.data_block_at_action(-1, np.zeros(env.L))
+  X_current_no_trt = env.data_block_at_action(-1, np.ones(env.L))
+  for l in range(env.L):
+    x_current_trt_indicator = X_current_trt[l] > 0
+    x_current_no_trt_indicator = X_current_no_trt[l] > 0
+    unique_feature_indicators[tuple(x_current_trt_indicator)]['count'] += 1
+    unique_feature_indicators[tuple(x_current_trt_indicator)]['list'].append((x_current_trt_indicator, env.T, l))
+    unique_feature_indicators[tuple(x_current_no_trt_indicator)]['count'] += 1
+    unique_feature_indicators[tuple(x_current_no_trt_indicator)]['list'].append((x_current_no_trt_indicator, env.T, l))
 
   # Supplement features that fall short of quota
   X_synthetic = np.zeros((0, env.X[0].shape[1]))
   Y_synthetic = np.zeros(0)
   for feature_info in unique_feature_indicators.values():
-    count = feature_info['count']  # ToDo: what if count=0?
-    if count < QUOTA:
+    count = feature_info['count']
+    if 0 < count < QUOTA:  # ToDo: what if count=0?
       num_fake_data = QUOTA - count
 
       # Sample with replacement up to desired number
@@ -84,3 +81,4 @@ def sis_one_step_dyna(**kwargs):
 
   a_ = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a_, {}
+
