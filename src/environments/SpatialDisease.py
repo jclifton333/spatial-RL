@@ -27,6 +27,7 @@ class SpatialDisease(ABC):
     self.construct_features_for_policy_search = construct_features_for_policy_search
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
+    self.max_number_of_neighbors = int(np.max(np.sum(adjacency_matrix, axis=1)))
     
     # Adjacency info
     self.construct_network(adjacency_matrix, construct_features_for_policy_search)
