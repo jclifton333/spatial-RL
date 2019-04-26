@@ -10,6 +10,69 @@ from itertools import permutations, combinations
 import numpy as np
 
 
+def sis_first_order_space_filler(number_of_neighbors, q_mb_one_step):
+  """
+  Space-filling design matrix for SIS model with first-order neighbor features.
+
+  :param number_of_neighbors: Length-L vector of number of neighbors at each location.
+  :param q_mb_one_step: model based prob estimator
+  :return:
+  """
+  NUM_REP = 100
+  L = len(number_of_neighbors)
+  ALPHA = np.ones(8)
+  dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
+  infected_indices = [4, 5, 6, 7]  # For determining if location is infected
+
+  X_synthetic = np.zeros((0, 16))
+  y_synthetic = np.zeros(0)
+  for rep in range(NUM_REP):
+    X_synthetic_rep = np.zeros((0, 16))
+    for l in range(L):
+      # Draw features at location l
+      features_at_l = np.random.permutation(dummy)
+
+      # Draw features for location l's neighbors
+      neighbors_dummy = np.ones(8) * number_of_neighbors[l]
+      proportions = np.random.dirichlet(ALPHA)
+      neighbor_features = (proportions * neighbors_dummy).round()
+      all_features = np.concatenate((features_at_l, neighbor_features))
+      X_synthetic_rep = np.vstack((X_synthetic_rep, all_features))
+
+    X_synthetic = np.vstack((X_synthetic, X_synthetic_rep))
+    p_synthetic_rep = q_mb_one_step(X_synthetic_rep)
+    y_synthetic_rep = np.random.binomial(1, p=p_synthetic_rep)
+    y_synthetic = np.hstack((y_synthetic, y_synthetic_rep))
+
+  infected_locations = np.where(X_synthetic[:, infected_indices].sum(axis=1) > 0)
+  return X_synthetic, y_synthetic, infected_locations
+
+
+def sis_one_step_dyna_space_filling(**kwargs):
+  env, treatment_budget, evaluation_budget, argmaxer, gamma = \
+    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
+    kwargs['gamma']
+  q_mb_one_step, _ = fit_one_step_sis_mb_q(env)
+
+  MAX_NUM_NONZERO = int(np.min((env.max_number_of_neighbors, 8)))
+  QUOTA = int(np.sqrt(env.L * env.T))
+
+  X_synthetic, y_synthetic, infected_indices = space_filler(env.adjacency_matrix.sum(axis=1))
+  X_new = np.vstack((np.vstack(env.X), X_synthetic))
+  y_new = np.hstack((np.hstack(env.y), y_synthetic))
+  q0 = SKLogit2()
+  q0.fit(X_new, y_new, None, False, infected_indices, None)
+
+  # Define q-function
+  def qfn(a):
+    x = env.data_block_at_action(-1, a)
+    infected_indices = np.where(env.Y[-1, :] == 1)[0]
+    return q0.predict_proba(x, infected_indices, None)
+
+  a_ = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  return a_, {}
+
+
 def sis_one_step_dyna(**kwargs):
   env, treatment_budget, evaluation_budget, argmaxer, gamma = \
     kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
