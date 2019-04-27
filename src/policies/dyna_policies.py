@@ -10,7 +10,7 @@ from itertools import permutations, combinations
 import numpy as np
 
 
-def sis_first_order_space_filler(number_of_neighbors, q_mb_one_step):
+def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   """
   Space-filling design matrix for SIS model with first-order neighbor features.
 
@@ -27,20 +27,10 @@ def sis_first_order_space_filler(number_of_neighbors, q_mb_one_step):
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
   for rep in range(NUM_REP):
-    X_synthetic_rep = np.zeros((0, 16))
-    for l in range(L):
-      # Draw features at location l
-      features_at_l = np.random.permutation(dummy)
-
-      # Draw features for location l's neighbors
-      neighbors_dummy = np.ones(8) * number_of_neighbors[l]
-      proportions = np.random.dirichlet(ALPHA)
-      neighbor_features = (proportions * neighbors_dummy).round()
-      all_features = np.concatenate((features_at_l, neighbor_features))
-      X_synthetic_rep = np.vstack((X_synthetic_rep, all_features))
-
+    X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
+    X_synthetic_rep = env.psi(X_raw_rep)
     X_synthetic = np.vstack((X_synthetic, X_synthetic_rep))
-    p_synthetic_rep = q_mb_one_step(X_synthetic_rep)
+    p_synthetic_rep = q_mb_one_step(X_raw_rep)
     y_synthetic_rep = np.random.binomial(1, p=p_synthetic_rep)
     y_synthetic = np.hstack((y_synthetic, y_synthetic_rep))
 
