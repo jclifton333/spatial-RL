@@ -22,7 +22,6 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   L = len(number_of_neighbors)
   ALPHA = np.ones(8)
   dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
-  infected_indices = [4, 5, 6, 7]  # For determining if location is infected
 
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
@@ -34,8 +33,7 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
     y_synthetic_rep = np.random.binomial(1, p=p_synthetic_rep)
     y_synthetic = np.hstack((y_synthetic, y_synthetic_rep))
 
-  infected_locations = np.where(X_synthetic[:, infected_indices].sum(axis=1) > 0)
-  return X_synthetic, y_synthetic, infected_locations
+  return X_synthetic, y_synthetic
 
 
 def sis_one_step_dyna_space_filling(**kwargs):
@@ -46,19 +44,20 @@ def sis_one_step_dyna_space_filling(**kwargs):
 
   MAX_NUM_NONZERO = int(np.min((env.max_number_of_neighbors, 8)))
   QUOTA = int(np.sqrt(env.L * env.T))
+  infected_indices = [4, 5, 6, 7]
 
-  X_synthetic, y_synthetic, infected_indices = \
-    sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step)
+  X_synthetic, y_synthetic = sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step)
   X_new = np.vstack((np.vstack(env.X), X_synthetic))
   y_new = np.hstack((np.hstack(env.y), y_synthetic))
+  infected_locations = np.where(X_new[:, infected_indices].sum(axis=1) == 1)
   q0 = SKLogit2()
-  q0.fit(X_new, y_new, None, False, infected_indices, None)
+  q0.fit(X_new, y_new, None, False, infected_locations, None)
 
   # Define q-function
   def qfn(a):
     x = env.data_block_at_action(-1, a)
-    infected_indices = np.where(env.Y[-1, :] == 1)[0]
-    return q0.predict_proba(x, infected_indices, None)
+    infected_locations = np.where(env.Y[-1, :] == 1)[0]
+    return q0.predict_proba(x, infected_locations, None)
 
   a_ = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a_, {}
