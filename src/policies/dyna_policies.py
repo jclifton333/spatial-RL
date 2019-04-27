@@ -28,7 +28,7 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   y_synthetic = np.zeros(0)
   for rep in range(NUM_REP):
     X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
-    X_synthetic_rep = env.psi(X_raw_rep)
+    X_synthetic_rep = env.psi(X_raw_rep, neighbor_order=1)
     X_synthetic = np.vstack((X_synthetic, X_synthetic_rep))
     p_synthetic_rep = q_mb_one_step(X_raw_rep)
     y_synthetic_rep = np.random.binomial(1, p=p_synthetic_rep)
@@ -48,7 +48,7 @@ def sis_one_step_dyna_space_filling(**kwargs):
   QUOTA = int(np.sqrt(env.L * env.T))
 
   X_synthetic, y_synthetic, infected_indices = \
-    sis_first_order_space_filler(env.adjacency_matrix.sum(axis=1), q_mb_one_step)
+    sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step)
   X_new = np.vstack((np.vstack(env.X), X_synthetic))
   y_new = np.hstack((np.hstack(env.y), y_synthetic))
   q0 = SKLogit2()
