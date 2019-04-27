@@ -57,7 +57,8 @@ def sis_one_step_dyna_space_filling(**kwargs):
   MAX_NUM_NONZERO = int(np.min((env.max_number_of_neighbors, 8)))
   QUOTA = int(np.sqrt(env.L * env.T))
 
-  X_synthetic, y_synthetic, infected_indices = space_filler(env.adjacency_matrix.sum(axis=1))
+  X_synthetic, y_synthetic, infected_indices = \
+    sis_first_order_space_filler(env.adjacency_matrix.sum(axis=1), q_mb_one_step)
   X_new = np.vstack((np.vstack(env.X), X_synthetic))
   y_new = np.hstack((np.hstack(env.y), y_synthetic))
   q0 = SKLogit2()
