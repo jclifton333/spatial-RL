@@ -18,7 +18,7 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   :param q_mb_one_step: model based prob estimator
   :return:
   """
-  NUM_REP = 100
+  NUM_REP = 1000
   L = len(number_of_neighbors)
   ALPHA = np.ones(8)
   dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
