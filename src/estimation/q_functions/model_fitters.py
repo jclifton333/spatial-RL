@@ -366,8 +366,8 @@ class SKLogit2(object):
   condition_on_infection = True
 
   def __init__(self):
-    self.reg_= LogisticRegression()
-    # self.reg_ = MLPClassifier(hidden_layer_sizes=(50,50))
+    # self.reg_= LogisticRegression()
+    self.reg_ = MLPClassifier(hidden_layer_sizes=(50,50))
     self.model_fitted = False
     self.params = None
     self.eb_prob = None
