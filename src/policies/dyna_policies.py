@@ -10,6 +10,18 @@ from itertools import permutations, combinations
 import numpy as np
 
 
+
+def sis_overlap(XA, XB):
+  """
+  Measure overlap between two networks with sis features.
+
+  :param XA:
+  :param XB:
+  :return:
+  """
+  pass
+
+
 def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   """
   Space-filling design matrix for SIS model with first-order neighbor features.
@@ -19,16 +31,31 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   :return:
   """
   NUM_REP = 100
+  NUM_SWEEPS = 10
+  QUANTILE_TO_KEEP_AT_EACH_SWEEP = 0.95
   L = len(number_of_neighbors)
   ALPHA = np.ones(8)
   dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
 
+
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
-  for rep in range(NUM_REP):
-    X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
-    X_synthetic_rep = env.psi(X_raw_rep, neighbor_order=1)
-    X_synthetic = np.vstack((X_synthetic, X_synthetic_rep))
+  for sweep in range(NUM_SWEEPS):
+    overlaps_for_sweep = []
+    X_raws_for_sweep = []
+    for rep in range(NUM_REP):
+      X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
+
+      # Measure overlap with each observed network
+      # ToDo: implement overlap function
+      overlaps = [sis_overlap(X_raw_rep, x_raw) for x_raw in env.X_raw]
+      min_overlap = np.min(overlaps)
+      overlaps_for_sweep.append(min_overlap)
+      X_raws_for_sweep.append(X_raw_rep)
+
+    # Eliminate high-overlap networks
+    X_raws_to_keep = np.vstack(X_raws_for_sweep[np.argsort(overlaps_for_sweep)[:]])
+    X_synthetic = np.vstack((X_synthetic, X_raws_to_keep))
     p_synthetic_rep = q_mb_one_step(X_raw_rep)
     y_synthetic_rep = np.random.binomial(1, p=p_synthetic_rep)
     y_synthetic = np.hstack((y_synthetic, y_synthetic_rep))
