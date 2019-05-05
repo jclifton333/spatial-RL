@@ -10,7 +10,6 @@ from itertools import permutations, combinations
 import numpy as np
 
 
-
 def sis_overlap(XA, XB):
   """
   Measure overlap between two networks with sis features.
@@ -19,7 +18,10 @@ def sis_overlap(XA, XB):
   :param XB:
   :return:
   """
-  pass
+  overlap = 0
+  for xa, xb in zip(XA, XB):
+    overlap += np.array_equal(xa, xb)
+  return overlap
 
 
 def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
@@ -34,9 +36,9 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   NUM_SWEEPS = 10
   QUANTILE_TO_KEEP_AT_EACH_SWEEP = 0.95
   L = len(number_of_neighbors)
+  NUMBER_TO_KEEP_AT_EACH_SWEEP = int(np.floor(QUANTILE_TO_KEEP_AT_EACH_SWEEP * L))
   ALPHA = np.ones(8)
   dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
-
 
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
@@ -47,16 +49,19 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
       X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
 
       # Measure overlap with each observed network
-      # ToDo: implement overlap function
       overlaps = [sis_overlap(X_raw_rep, x_raw) for x_raw in env.X_raw]
-      min_overlap = np.min(overlaps)
-      overlaps_for_sweep.append(min_overlap)
+      mean_overlap = np.mean(overlaps)
+      overlaps_for_sweep.append(mean_overlap)
       X_raws_for_sweep.append(X_raw_rep)
 
     # Eliminate high-overlap networks
-    X_raws_to_keep = np.vstack(X_raws_for_sweep[np.argsort(overlaps_for_sweep)[:]])
-    X_synthetic = np.vstack((X_synthetic, X_raws_to_keep))
-    p_synthetic_rep = q_mb_one_step(X_raw_rep)
+    ixs_to_keep = np.argsort(overlaps_for_sweep)[:NUMBER_TO_KEEP_AT_EACH_SWEEP]
+    X_raws_to_keep = np.array(X_raws_for_sweep)[ixs_to_keep]
+
+    # Get model predictions on remaining fake networks
+    X_synthetic_rep = [env.psi(xraw, neighbor_order=1) for xraw in X_raws_to_keep]
+    X_synthetic = np.vstack((X_synthetic, np.vstack(X_synthetic_rep)))
+    p_synthetic_rep = np.hstack([q_mb_one_step(xraw) for xraw in X_raws_to_keep])
     y_synthetic_rep = np.random.binomial(1, p=p_synthetic_rep)
     y_synthetic = np.hstack((y_synthetic, y_synthetic_rep))
 
