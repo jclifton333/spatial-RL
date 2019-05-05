@@ -42,6 +42,11 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
 
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
+  for rep in range(num_rep):
+    X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
+    X_synthetic_rep = env.psi(X_raw_rep, neighbor_order=1)
+    X_synthetic = np.vstack((X_synthetic, X_synthetic_rep))
+
   for sweep in range(NUM_SWEEPS):
     overlaps_for_sweep = []
     X_raws_for_sweep = []
@@ -78,7 +83,7 @@ def sis_one_step_dyna_space_filling(**kwargs):
   QUOTA = int(np.sqrt(env.L * env.T))
   infected_indices = [4, 5, 6, 7]
 
-  X_synthetic, y_synthetic = sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step)
+  X_synthetic, y_synthetic = sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step, 10 + int(np.sqrt(env.T)))
   X_new = np.vstack((np.vstack(env.X), X_synthetic))
   y_new = np.hstack((np.hstack(env.y), y_synthetic))
   infected_locations = np.where(X_new[:, infected_indices].sum(axis=1) == 1)
