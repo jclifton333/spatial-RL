@@ -10,7 +10,7 @@ from itertools import permutations, combinations
 import numpy as np
 
 
-def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
+def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step, num_rep):
   """
   Space-filling design matrix for SIS model with first-order neighbor features.
 
@@ -18,14 +18,13 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   :param q_mb_one_step: model based prob estimator
   :return:
   """
-  NUM_REP = 1000
   L = len(number_of_neighbors)
   ALPHA = np.ones(8)
   dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
 
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
-  for rep in range(NUM_REP):
+  for rep in range(num_rep):
     X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
     X_synthetic_rep = env.psi(X_raw_rep, neighbor_order=1)
     X_synthetic = np.vstack((X_synthetic, X_synthetic_rep))
@@ -46,7 +45,7 @@ def sis_one_step_dyna_space_filling(**kwargs):
   QUOTA = int(np.sqrt(env.L * env.T))
   infected_indices = [4, 5, 6, 7]
 
-  X_synthetic, y_synthetic = sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step)
+  X_synthetic, y_synthetic = sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step, 10 + int(np.sqrt(env.T)))
   X_new = np.vstack((np.vstack(env.X), X_synthetic))
   y_new = np.hstack((np.hstack(env.y), y_synthetic))
   infected_locations = np.where(X_new[:, infected_indices].sum(axis=1) == 1)
