@@ -49,49 +49,37 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   :param q_mb_one_step: model based prob estimator
   :return:
   """
+  # ToDo: don't need both reps and sweeps anymore...
   NUM_REP = 100
   NUM_SWEEPS = 10
-  QUANTILE_TO_KEEP_AT_EACH_SWEEP = 0.95
+  QUANTILE_TO_KEEP = 0.95
   L = len(number_of_neighbors)
-  NUMBER_TO_KEEP_AT_EACH_SWEEP = int(np.floor(QUANTILE_TO_KEEP_AT_EACH_SWEEP * L))
+  # NUMBER_TO_KEEP_AT_EACH_SWEEP = int(np.floor(QUANTILE_TO_KEEP_AT_EACH_SWEEP * L))
   ALPHA = np.ones(8)
   dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
 
   X_true = np.vstack(env.X)
   XprimeX = np.dot(X_true.T, X_true)
   XprimeX_inv = np.linalg.inv(XprimeX)
+  vars_at_observed_states = sis_prediction_variance(X_true, XprimeX_inv)  # For comparison
+  var_cutoff = np.quantile(vars_at_observed_states, QUANTILE_TO_KEEP)  # Use fake data for states exceeding this var
 
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
 
-  for sweep in range(NUM_SWEEPS):
+  for sweep in range(NUM_SWEEPS*NUM_REP):
     # overlaps_for_sweep = []
-    vars_for_sweep = []
-    X_raws_for_sweep = []
-    for rep in range(NUM_REP):
-      X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
-      X_rep = env.psi(X_raw_rep, neighbor_order=1)
-      # Measure overlap with each observed network
-      # overlaps = [sis_overlap(X_raw_rep, x_raw) for x_raw in env.X_raw]
-      vars = sis_prediction_variance(X_rep, XprimeX_inv)
-      vars_for_sweep = np.append(vars_for_sweep, vars)
-      # mean_overlap = np.mean(overlaps)
-      # overlaps_for_sweep.append(mean_overlap)
-      X_raws_for_sweep.append(X_raw_rep)
+    X_raw_sweep = np.random.binomial(1, 0.5, (L, 3))
+    X_sweep = env.psi(X_raw_sweep, neighbor_order=1)
+    p_sweep = q_mb_one_step(X_raw_sweep)
+    y_sweep = np.random.binomial(1, p=p_sweep)
 
-    vars_at_observed_states = sis_prediction_variance(X_true, XprimeX_inv)  # For comparison
-    pdb.set_trace()
-    # Eliminate high-overlap networks
-    ixs_to_keep = np.argsort(overlaps_for_sweep)[:NUMBER_TO_KEEP_AT_EACH_SWEEP]
-    X_raws_to_keep = np.array(X_raws_for_sweep)[ixs_to_keep]
+    vars_for_sweep = sis_prediction_variance(X_sweep, XprimeX_inv)
+    locations_over_variance_threshold = np.where(vars_for_sweep > var_cutoff)
+    X_synthetic = np.vstack((X_synthetic, X_sweep[locations_over_variance_threshold]))
+    y_synthetic = np.hstack((y_synthetic, y_sweep[locations_over_variance_threshold]))
 
-    # Get model predictions on remaining fake networks
-    X_synthetic_rep = [env.psi(xraw, neighbor_order=1) for xraw in X_raws_to_keep]
-    X_synthetic = np.vstack((X_synthetic, np.vstack(X_synthetic_rep)))
-    p_synthetic_rep = np.hstack([q_mb_one_step(xraw) for xraw in X_raws_to_keep])
-    y_synthetic_rep = np.random.binomial(1, p=p_synthetic_rep)
-    y_synthetic = np.hstack((y_synthetic, y_synthetic_rep))
-
+  print('num synthetic: {}'.format(len(y_synthetic)))
   return X_synthetic, y_synthetic
 
 
