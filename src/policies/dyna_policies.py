@@ -6,8 +6,25 @@ from src.estimation.q_functions.model_fitters import SKLogit2
 from src.estimation.q_functions.one_step import *
 from src.environments.sis import convert_first_order_to_infection_status
 from itertools import permutations, combinations
+import matplotlib.pyplot as plt
 
 import numpy as np
+
+
+def sis_prediction_variance(X_new, XprimeX_inv):
+  """
+  Compute the variance of predictions at each state in X_new under the (linear) model-free predictor.
+
+  :param X_new:
+  :param XprimeX_inv: Here, 'X' is design matrix!
+  :return:
+  """
+  # Compute prediction variances
+  yhat_vars = np.array([])
+  for x in X_new:
+    var_yhat_x = np.dot(x.T, np.dot(XprimeX_inv, x))
+    yhat_vars = np.append(yhat_vars, var_yhat_x)
+  return yhat_vars
 
 
 def sis_overlap(XA, XB):
@@ -40,25 +57,30 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   ALPHA = np.ones(8)
   dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
 
+  X_true = np.vstack(env.X)
+  XprimeX = np.dot(X_true.T, X_true)
+  XprimeX_inv = np.linalg.inv(XprimeX)
+
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
-  for rep in range(num_rep):
-    X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
-    X_synthetic_rep = env.psi(X_raw_rep, neighbor_order=1)
-    X_synthetic = np.vstack((X_synthetic, X_synthetic_rep))
 
   for sweep in range(NUM_SWEEPS):
-    overlaps_for_sweep = []
+    # overlaps_for_sweep = []
+    vars_for_sweep = []
     X_raws_for_sweep = []
     for rep in range(NUM_REP):
       X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
-
+      X_rep = env.psi(X_raw_rep, neighbor_order=1)
       # Measure overlap with each observed network
-      overlaps = [sis_overlap(X_raw_rep, x_raw) for x_raw in env.X_raw]
-      mean_overlap = np.mean(overlaps)
-      overlaps_for_sweep.append(mean_overlap)
+      # overlaps = [sis_overlap(X_raw_rep, x_raw) for x_raw in env.X_raw]
+      vars = sis_prediction_variance(X_rep, XprimeX_inv)
+      vars_for_sweep = np.append(vars_for_sweep, vars)
+      # mean_overlap = np.mean(overlaps)
+      # overlaps_for_sweep.append(mean_overlap)
       X_raws_for_sweep.append(X_raw_rep)
 
+    vars_at_observed_states = sis_prediction_variance(X_true, XprimeX_inv)  # For comparison
+    pdb.set_trace()
     # Eliminate high-overlap networks
     ixs_to_keep = np.argsort(overlaps_for_sweep)[:NUMBER_TO_KEEP_AT_EACH_SWEEP]
     X_raws_to_keep = np.array(X_raws_for_sweep)[ixs_to_keep]
@@ -83,7 +105,7 @@ def sis_one_step_dyna_space_filling(**kwargs):
   QUOTA = int(np.sqrt(env.L * env.T))
   infected_indices = [4, 5, 6, 7]
 
-  X_synthetic, y_synthetic = sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step, 10 + int(np.sqrt(env.T)))
+  X_synthetic, y_synthetic = sis_first_order_space_filler(env, env.adjacency_matrix.sum(axis=1), q_mb_one_step)
   X_new = np.vstack((np.vstack(env.X), X_synthetic))
   y_new = np.hstack((np.hstack(env.y), y_synthetic))
   infected_locations = np.where(X_new[:, infected_indices].sum(axis=1) == 1)
