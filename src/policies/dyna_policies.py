@@ -60,15 +60,14 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
 
   X_true = np.vstack(env.X)
   XprimeX = np.dot(X_true.T, X_true)
-  XprimeX_inv = np.linalg.inv(XprimeX)
+  XprimeX_inv = np.linalg.inv(XprimeX + 0.01 * np.eye(XprimeX.shape[0]))
   vars_at_observed_states = sis_prediction_variance(X_true, XprimeX_inv)  # For comparison
   var_cutoff = np.quantile(vars_at_observed_states, QUANTILE_TO_KEEP)  # Use fake data for states exceeding this var
 
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
 
-  for sweep in range(NUM_SWEEPS*NUM_REP):
-    # overlaps_for_sweep = []
+  for sweep in range(NUM_SWEEPS):
     X_raw_sweep = np.random.binomial(1, 0.5, (L, 3))
     X_sweep = env.psi(X_raw_sweep, neighbor_order=1)
     p_sweep = q_mb_one_step(X_raw_sweep)
