@@ -44,6 +44,49 @@ def sis_overlap(XA, XB):
 def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   """
   Space-filling design matrix for SIS model with first-order neighbor features.
+  :param number_of_neighbors: Length-L vector of number of neighbors at each location.
+  :param q_mb_one_step: model based prob estimator
+  :return:
+  """
+  NUM_REP = 100
+  NUM_SWEEPS = 10
+  QUANTILE_TO_KEEP_AT_EACH_SWEEP = 0.95
+  L = len(number_of_neighbors)
+  NUMBER_TO_KEEP_AT_EACH_SWEEP = int(np.floor(QUANTILE_TO_KEEP_AT_EACH_SWEEP * L))
+  ALPHA = np.ones(8)
+  dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
+
+  X_synthetic = np.zeros((0, 16))
+  y_synthetic = np.zeros(0)
+  for sweep in range(NUM_SWEEPS):
+    overlaps_for_sweep = []
+    X_raws_for_sweep = []
+    for rep in range(NUM_REP):
+      X_raw_rep = np.random.binomial(1, 0.5, (L, 3))
+
+      # Measure overlap with each observed network
+      overlaps = [sis_overlap(X_raw_rep, x_raw) for x_raw in env.X_raw]
+      mean_overlap = np.mean(overlaps)
+      overlaps_for_sweep.append(mean_overlap)
+      X_raws_for_sweep.append(X_raw_rep)
+
+    # Eliminate high-overlap networks
+    ixs_to_keep = np.argsort(overlaps_for_sweep)[:NUMBER_TO_KEEP_AT_EACH_SWEEP]
+    X_raws_to_keep = np.array(X_raws_for_sweep)[ixs_to_keep]
+
+    # Get model predictions on remaining fake networks
+    X_synthetic_rep = [env.psi(xraw, neighbor_order=1) for xraw in X_raws_to_keep]
+    X_synthetic = np.vstack((X_synthetic, np.vstack(X_synthetic_rep)))
+    p_synthetic_rep = np.hstack([q_mb_one_step(xraw) for xraw in X_raws_to_keep])
+    y_synthetic_rep = np.random.binomial(1, p=p_synthetic_rep)
+    y_synthetic = np.hstack((y_synthetic, y_synthetic_rep))
+
+  return X_synthetic, y_synthetic
+
+
+def sis_first_order_variance_filter(env, number_of_neighbors, q_mb_one_step):
+  """
+  Space-filling design matrix for SIS model with first-order neighbor features.
 
   :param number_of_neighbors: Length-L vector of number of neighbors at each location.
   :param q_mb_one_step: model based prob estimator
