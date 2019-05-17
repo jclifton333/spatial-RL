@@ -55,10 +55,11 @@ def sis_first_order_space_filler(env, number_of_neighbors, q_mb_one_step):
   NUMBER_TO_KEEP_AT_EACH_SWEEP = int(np.floor(QUANTILE_TO_KEEP_AT_EACH_SWEEP * L))
   ALPHA = np.ones(8)
   dummy = np.array([1, 0, 0, 0, 0, 0, 0, 0])
+  t = len(env.X)
 
   X_synthetic = np.zeros((0, 16))
   y_synthetic = np.zeros(0)
-  for sweep in range(NUM_SWEEPS):
+  for sweep in range(int(NUM_SWEEPS / t)):
     overlaps_for_sweep = []
     X_raws_for_sweep = []
     for rep in range(NUM_REP):
