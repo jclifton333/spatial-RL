@@ -4,6 +4,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model, fit_infection_prob_model
 from src.estimation.model_based.Gravity.estimate_ebola_parameters import fit_ebola_transition_model
 import src.environments.sis_infection_probs as sis_infection_probs
+from src.estimation.q_functions.one_step import fit_one_step_predictor
 from src.policies.policy_search import policy_search, features_for_priority_score
 import src.policies.q_function_policies as qfn_policies
 import numpy as np
@@ -26,7 +27,8 @@ def sis_aic_one_step(**kwargs):
 
 
 def sis_local_aic_one_step(**kwargs):
-  mf_classifier, env = kwargs['classifier'], kwargs['env']
+  mf_classifier, env, argmaxer, evaluation_budget, treatment_budget = \
+    kwargs['classifier'], kwargs['env'], kwargs['argmaxer'], kwargs['evaluation_budget'], kwargs['treatment_budget']
 
   # Get weighted likelihood of each observation under sis model and model-free classifier
   beta_, _ = fit_infection_prob_model(env, None)
@@ -67,7 +69,22 @@ def sis_local_aic_one_step(**kwargs):
   local_mb_AIC = -local_mb_log_likelihoods + p_beta
   use_mb_probability = local_mb_AIC < local_mf_AIC
 
+  # Define q-function and get action
+  clf, predict_proba_kwargs, _ = fit_one_step_predictor(mf_classifier, env, None)
+  y_current = env.Y[-1, :]
+  infected_locations = np.where(y_current)
 
+  def qfn(a):
+    x_at_a = env.data_block_at_action(-1, a, neighbor_order=1)
+
+    phat_mf = clf.predict_proba(x_at_a, infected_locations, None)
+    phat_mb = sis_infection_probs.sis_infection_probability(a, y_current, beta_, env.L, env.adjacency_list,
+                                                            **{'omega': 0.0, 's': np.zeros(env.L)})
+    phat = phat_mb * use_mb_probability + phat_mf * (1 - use_mb_probability)
+    return phat
+
+  a_ = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  return a_
 
 
 def ebola_aic_one_step(**kwargs):
