@@ -426,7 +426,7 @@ class SKLogit2(object):
     # Negative log likelihood
     phat = self.reg_.predict_proba(X_interaction)[:, -1]
     self.log_likelihood_elements = y * np.log(phat) + (1 - y) * np.log(1 - phat)
-    negative_log_likelihood = -np.sum(log_likelihood_elements)
+    negative_log_likelihood = -np.sum(self.log_likelihood_elements)
     n, p = X_interaction.shape
     # self.aic = p + negative_log_likelihood + (p**2 + p) / np.max((1.0, n - p - 1))  # Technically, AICc/2
 

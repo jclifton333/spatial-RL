@@ -23,6 +23,8 @@ def policy_factory(policy_type):
     return continuation.sis_one_step_continuation
   elif policy_type == 'sis_aic_one_step':
     return model_selection.sis_aic_one_step
+  elif policy_type == 'sis_local_aic_one_step':
+    return model_selection.sis_local_aic_one_step
   elif policy_type == 'no_action':
     return ref.no_action
   elif policy_type == 'true_probs':
