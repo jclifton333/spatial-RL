@@ -3,6 +3,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 
 from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model, fit_infection_prob_model
 from src.estimation.model_based.Gravity.estimate_ebola_parameters import fit_ebola_transition_model
+import src.environments.sis_infection_probs as sis_infection_probs
 from src.policies.policy_search import policy_search, features_for_priority_score
 import src.policies.q_function_policies as qfn_policies
 import numpy as np
@@ -22,6 +23,51 @@ def sis_aic_one_step(**kwargs):
     return qfn_policies.one_step_policy(**kwargs)
   else:
     return qfn_policies.sis_model_based_one_step(**kwargs)
+
+
+def sis_local_aic_one_step(**kwargs):
+  mf_classifier, env = kwargs['classifier'], kwargs['env']
+
+  # Get weighted likelihood of each observation under sis model and model-free classifier
+  beta_, _ = fit_infection_prob_model(env, None)
+  mb_log_likelihoods = np.array([])
+  # ToDo: check indexing to make sure this is actually the current x
+  x_current = env.X[-1]
+  p_mf = x_current.shape[1]
+  weights = np.zeros((env.L, 0))
+  for x_raw, x, y_next in zip(env.X_raw, env.X, env.y):
+    # Unweighted likelihoods
+    s, a, y = x_raw[:, 0], x_raw[:, 1], x_raw[:, 2]
+    mb_probs = sis_infection_probs.sis_infection_probability(a, y, beta_, env.L, env.adjacency_list,
+                                                             **{'omega': 0.0, 's': s})
+    mb_probs_clipped = np.min((np.max((0.001, mb_probs)), 0.999))  # For stability
+    mb_log_likelihoods_at_x_raw = y * np.log(mb_probs_clipped) + (1 - y) * np.log(1 - mb_probs_clipped)
+    mb_log_likelihoods = np.append((mb_log_likelihoods, mb_log_likelihoods_at_x_raw))
+
+    # Weight by distances to each current x
+    weights_at_x = np.array([[1 - np.sum(x_current[l] == x[lprime])/p for lprime in range(env.L)] for l in range(env.L)])
+    weights = np.column_stack((weights, weights_at_x))
+
+  # MF log likelihoods
+  infected_locations = np.where(np.vstack(env.X_raw)[:, :-1] == 1)
+  clf = mf_classifier()
+  clf.fit(np.vstack(env.X), np.vstack(env.y), None, False, infected_locations, None)
+  mf_log_likelihoods = clf.log_likelihood_elements
+
+  # Weight likelihoods by distances from current observation
+  summed_weights = weights.sum(axis=1)
+  local_mb_log_likelihoods = np.dot(weights, mb_log_likelihoods)
+  local_mb_log_likelihoods /= summed_weights
+  local_mf_log_likelihoods = np.dot(weights, mf_log_likelihoods)
+  local_mf_log_likelihoods /= summed_weights
+
+  # Get local AIC of each model at each current location
+  p_mb = len(beta_)
+  local_mf_AIC = -local_mf_log_likelihoods + p_mf
+  local_mb_AIC = -local_mb_log_likelihoods + p_beta
+  use_mb_probability = local_mb_AIC < local_mf_AIC
+
+
 
 
 def ebola_aic_one_step(**kwargs):
