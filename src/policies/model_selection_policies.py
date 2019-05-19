@@ -33,7 +33,7 @@ def local_aic_model_choices_helper(x_, X, N, L, mf_log_liks, mb_log_liks, p_mb, 
   weights_at_x_ = np.zeros((L, N))
   summed_weights = np.zeros((L))
   for n in range(N):
-    x_obs_n = X_[n, :]
+    x_obs_n = X[n, :]
     for l in range(L):
       x_l = x_[l, :]
       weight = 1 - np.sum(x_l == x_obs_n)/p_mf
