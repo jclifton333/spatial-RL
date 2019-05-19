@@ -428,7 +428,7 @@ class SKLogit2(object):
     self.log_likelihood_elements = y * np.log(phat) + (1 - y) * np.log(1 - phat)
     negative_log_likelihood = -np.sum(self.log_likelihood_elements)
     n, p = X_interaction.shape
-    # self.aic = p + negative_log_likelihood + (p**2 + p) / np.max((1.0, n - p - 1))  # Technically, AICc/2
+    self.aic = p + negative_log_likelihood + (p**2 + p) / np.max((1.0, n - p - 1))  # Technically, AICc/2
 
   def predict_proba(self, X, infected_locations, not_infected_locations):
     if self.model_fitted:
