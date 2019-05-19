@@ -8,6 +8,7 @@ import pdb
 from src.estimation.q_functions.one_step import fit_one_step_predictor
 from src.policies.policy_search import policy_search, features_for_priority_score
 import src.policies.q_function_policies as qfn_policies
+from numba import njit
 import numpy as np
 
 
@@ -25,6 +26,27 @@ def sis_aic_one_step(**kwargs):
     return qfn_policies.one_step_policy(**kwargs)
   else:
     return qfn_policies.sis_model_based_one_step(**kwargs)
+
+
+@njit
+def local_aic_model_choices_helper(x_, X, N, L, mf_log_liks, mb_log_liks, p_mb, p_mf):
+  weights_at_x_ = np.zeros((L, N))
+  summed_weights = np.zeros((L))
+  for n in range(N):
+    x_obs_n = X_[n, :]
+    for l in range(L):
+      x_l = x_[l, :]
+      weight = 1 - np.sum(x_l == x_obs_n)/p_mf
+      weights_at_x_[l, n] = weight
+      summed_weights[l] += weight
+
+  # Weight the mb and mf log likelihoods
+  local_mb_log_likelihoods = np.dot(weights_at_x_, mb_log_liks) / summed_weights
+  local_mf_log_likelihoods = np.dot(weights_at_x_, mf_log_liks) / summed_weights
+  local_mb_AIC = -local_mb_log_likelihoods + p_mb
+  local_mf_AIC = -local_mf_log_likelihoods + p_mf
+  use_mb_probability = local_mb_AIC < local_mf_AIC
+  return use_mb_probability
 
 
 def sis_local_aic_one_step(**kwargs):
@@ -51,23 +73,12 @@ def sis_local_aic_one_step(**kwargs):
 
   p_mb = len(beta_)
   p_mf = env.X[0].shape[1]
+  X_ = np.vstack(env.X)
+  N = X_.shape[0]
 
   def local_aic_model_choices(x_):
-    # Get weights of each observed x
-    weights_at_x_ = np.zeros((env.L, 0))
-    for x_obs in env.X:
-      weights_at_x_x_obs = np.array([[1 - np.sum(x_[l] == x_obs[lprime])/p_mf for lprime in range(env.L)]
-                                     for l in range(env.L)])
-      weights_at_x_ = np.column_stack((weights_at_x_, weights_at_x_x_obs))
-    summed_weights = weights_at_x_.sum(axis=1)
-
-    # Weight the mb and mf log likelihoods
-    local_mb_log_likelihoods = np.dot(weights_at_x_, mb_log_likelihoods) / summed_weights
-    local_mf_log_likelihoods = np.dot(weights_at_x_, mf_log_likelihoods) / summed_weights
-    local_mb_AIC = -local_mb_log_likelihoods + p_mb
-    local_mf_AIC = -local_mf_log_likelihoods + p_mf
-    use_mb_probability = local_mb_AIC < local_mf_AIC
-
+    use_mb_probability = local_aic_model_choices_helper(x_, X_, N, env.L, mf_log_likelihoods, mb_log_likelihoods, p_mb,
+                                                        p_mf)
     return use_mb_probability
 
   # Define q-function and get action
