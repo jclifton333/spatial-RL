@@ -77,7 +77,6 @@ def get_all_gravity_transmission_probs_with_covariate_njit(a, eta, L, distance_m
   return transmission_probs_matrix
 
 
-t sur
 def get_all_gravity_transmission_probs(a, eta, L, **kwargs):
   distance_matrix, adjacency_matrix, product_matrix, x = \
     kwargs['distance_matrix'], kwargs['adjacency_matrix'], kwargs['product_matrix'], kwargs['x']
