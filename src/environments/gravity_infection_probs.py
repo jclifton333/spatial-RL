@@ -16,9 +16,12 @@ def expit2(x):
 
 
 def ebola_infection_probs(a, y, eta, L, adjacency_lists, **kwargs):
-  distance_matrix, adjacency_matrix, product_matrix, x, eta_x_l, eta_x_lprime = \
-    kwargs['distance_matrix'], kwargs['adjacency_matrix'], kwargs['product_matrix'], kwargs['x'], kwargs['eta_x_l'], \
-    kwargs['eta_x_lprime']
+  distance_matrix, adjacency_matrix, product_matrix, x = \
+    kwargs['distance_matrix'], kwargs['adjacency_matrix'], kwargs['product_matrix'], kwargs['x']
+  if x is not None:
+    eta_x_l, eta_x_lprime = kwargs['eta_x_l'], kwargs['eta_x_lprime']
+  else:
+    eta_x_l, eta_x_lprime = None, None
   return np.array([infection_prob_at_location(a, l, eta, y, adjacency_lists, distance_matrix,
                                               product_matrix, x, eta_x_l, eta_x_lprime) for l in range(L)])
 
@@ -75,9 +78,12 @@ def get_all_gravity_transmission_probs_with_covariate_njit(a, eta, L, distance_m
 
 
 def get_all_gravity_transmission_probs(a, eta, L, **kwargs):
-  distance_matrix, adjacency_matrix, product_matrix, x, eta_x_l, eta_x_lprime = \
-    kwargs['distance_matrix'], kwargs['adjacency_matrix'], kwargs['product_matrix'], kwargs['x'], kwargs['eta_x_l'], \
-    kwargs['eta_x_lprime']
+  distance_matrix, adjacency_matrix, product_matrix, x = \
+    kwargs['distance_matrix'], kwargs['adjacency_matrix'], kwargs['product_matrix'], kwargs['x']
+  if x is not None:
+    eta_x_l, eta_x_lprime = kwargs['eta_x_l'], kwargs['eta_x_lprime']
+  else:
+    eta_x_l, eta_x_lprime = None, None
 
   if x is None:
     return get_all_gravity_transmission_probs_without_covariate_njit(a, eta, L, distance_matrix, adjacency_matrix,
@@ -118,7 +124,7 @@ def infection_prob_at_location(a, l, eta, current_infected, adjacency_list, dist
   if current_infected[l]:
     return 1
   else:
-    not_transmitted_prob = np.product([1 - gravity_transmission_probs(a, l, l_prime, eta, distance_matrix,
+    not_transmitted_prob = np.product([1 - gravity_transmission_probs(a, l, l_prime, eta, None, distance_matrix,
                                                                       product_matrix, x, eta_x_l, eta_x_lprime)
                                        for l_prime in adjacency_list[l]])
     inf_prob = 1 - not_transmitted_prob

@@ -430,9 +430,10 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
     infection_probs_predictor = sis_inf_probs.sis_infection_probability
     transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
   elif env.__class__.__name__ == 'Ebola':
-    infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
-    transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
-                                 'adjacency_matrix': env.ADJACENCY_MATRIX}
+    infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
+                              'adjacency_matrix': env.ADJACENCY_MATRIX, 'product_matrix': env.product_matrix,
+                              'x': None}
+    transmission_probs_kwargs = infection_probs_kwargs
     infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
     transmission_probs_predictor = ebola_inf_probs.get_all_gravity_transmission_probs
 
@@ -509,10 +510,11 @@ def policy_parameter_wrapper(**kwargs):
     transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
     infection_probs_predictor = sis_inf_probs.sis_infection_probability
     transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
-  elif env.__class__.__name__ == 'Gravity':
-    infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY}
-    transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
-                                 'adjacency_matrix': env.ADJACENCY_MATRIX}
+  elif env.__class__.__name__ == 'Ebola':
+    infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
+                              'adjacency_matrix': env.ADJACENCY_MATRIX, 'product_matrix': env.product_matrix,
+                              'x': None}
+    transmission_probs_kwargs = infection_probs_kwargs
     infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
     transmission_probs_predictor = ebola_inf_probs.get_all_gravity_transmission_probs
 
