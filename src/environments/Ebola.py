@@ -78,10 +78,11 @@ class Ebola(Gravity):
   # ETA = np.array([ETA_0, np.exp(ETA_1), np.exp(ETA_2), ETA_3, ETA_4])
   # Compute transmission probs
 
-  def __init__(self, eta=None):
+  def __init__(self, eta=None, construct_features_for_policy_search=False):
     super(Ebola, self).__init__(Ebola.DISTANCE_MATRIX, Ebola.PRODUCT_MATRIX, Ebola.ADJACENCY_MATRIX,
                                 Ebola.SUSCEPTIBILITY, Ebola.ETA, None, None, Ebola.ADJACENCY_MATRIX,
-                                initial_infections=Ebola.INITIAL_INFECTIONS)
+                                initial_infections=Ebola.INITIAL_INFECTIONS,
+                                construct_features_for_policy_search=construct_features_for_policy_search)
 
   # Neighbor features
   def second_order_encoding(self, l, raw_data_block):
