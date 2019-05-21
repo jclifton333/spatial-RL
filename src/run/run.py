@@ -26,7 +26,7 @@ VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 
                       'two_step_higher_order', 'two_step_sis_prefit', 'one_step_truth_augmented',
                       'one_step_projection_combo', 'two_step_stacked', 'sis_aic_two_step', 'sis_aic_one_step',
                       'sis_one_step_continuation', 'ebola_aic_one_step', 'sis_one_step_dyna_space_filling',
-                      'sis_local_aic_one_step']
+                      'sis_local_aic_one_step', 'ebola_aic_two_step']
 POLICY_SEARCH_NAMES = ['policy_search', 'sis_aic_two_step', 'sis_one_step_continuation']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx']
 VALID_NETWORK_NAMES = ['lattice', 'barabasi', 'nearestneighbor']
