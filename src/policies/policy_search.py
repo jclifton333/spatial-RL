@@ -434,7 +434,7 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
     transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
                                  'adjacency_matrix': env.ADJACENCY_MATRIX}
     infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
-    transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
+    transmission_probs_predictor = ebola_inf_probs.get_all_gravity_transmission_probs
 
   policy_parameter_, beta_tilde = policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_parameter,
                                                    initial_alpha,
@@ -514,7 +514,7 @@ def policy_parameter_wrapper(**kwargs):
     transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
                                  'adjacency_matrix': env.ADJACENCY_MATRIX}
     infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
-    transmission_probs_predictor = ebola_inf_probs.get_all_ebola_transmission_probs
+    transmission_probs_predictor = ebola_inf_probs.get_all_gravity_transmission_probs
 
   policy_parameter_, beta_tilde = policy_parameter(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
                                                    initial_alpha, initial_zeta, treatment_budget, rho, tau,
