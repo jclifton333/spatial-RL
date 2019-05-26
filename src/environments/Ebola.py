@@ -190,6 +190,15 @@ class Ebola(Gravity):
 
     hess_inv = np.linalg.inv(hess + 0.1 * np.eye(dim))
     cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
+
+    # Check if array is finite
+    try:
+      np.asarray_chkfinite(cov)
+    except ValueError:
+      print('hess inv: {}\ngrad outer: {}'.format(hess_inv, grad_outer))
+      # Some ad-hoc bullshit
+      hess_inv = np.linalg.inv(np.diag(np.diag(hess + 0.1 * np.eye(dim))))
+      cov = np.dot(hess_inv, np.dot(grad_outer, hess_inv)) / float(self.L * self.T)
     return cov
 
     
