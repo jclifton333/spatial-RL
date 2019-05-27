@@ -68,6 +68,7 @@ if __name__ == '__main__':
     env_kwargs = {'L': args.L}
     network_name = 'ContinuousGrav'
   ts = (args.ts == 'True')
+  ignore_errors = (args.ignore_errors == 'True')
   if args.policy_name in POLICY_SEARCH_NAMES:
     env_kwargs['construct_features_for_policy_search'] = True
     if 'sis' in args.policy_name:
@@ -80,7 +81,7 @@ if __name__ == '__main__':
 
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed,
-                  args.error_quantile)
+                  args.error_quantile, ignore_errors=ignore_errors)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:

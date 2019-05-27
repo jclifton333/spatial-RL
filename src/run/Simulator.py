@@ -34,7 +34,7 @@ import keras.backend as K
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile):
+               evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile, ignore_errors=False):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Gravity'
@@ -54,6 +54,7 @@ class Simulator(object):
     self.argmaxer = argmaxer_factory(argmaxer_name)
     self.time_horizon = time_horizon
     self.number_of_replicates = number_of_replicates
+    self.ignore_errors = ignore_errors
     self.scores = []
     self.runtimes = []
     self.seed = seed
@@ -94,7 +95,10 @@ class Simulator(object):
     pool = mp.Pool(processes=num_processes)
     # iterim_results_list = []
     # results_list = []
-    results_list = pool.map_async(self.episode, [i for i in range(self.number_of_replicates)])
+    if self.ignore_errors:
+      results_list = pool.map_async(self.episode_wrapper, [i for i in range(self.number_of_replicates)])
+    else:
+      results_list = pool.map_async(self.episode, [i for i in range(self.number_of_replicates)])
     results_list = results_list.get()
 
     # for rep in range(self.number_of_replicates):
@@ -110,7 +114,7 @@ class Simulator(object):
     # results_list = pool.map(self.episode, range(self.number_of_replicates))
 
     # Save results
-    results_dict = {k: v for d in results_list for k, v in d.items()}
+    results_dict = {k: v for d in results_list for k, v in d.items() if d is not None}
     list_of_scores = [v['score'] for v in results_dict.values()]
     list_of_mean_losses = [v['mean_losses'] for v in results_dict.values()]
     list_of_max_losses = [v['max_losses'] for v in results_dict.values()]
@@ -130,6 +134,12 @@ class Simulator(object):
     self.save_results(results_dict)
     print('mean: {} se: {}'.format(mean, se))
     return
+
+  def episode_wrapper(self, replicate):
+    try:
+      return self.episode()
+    except:
+      return None
 
   def episode(self, replicate):
     np.random.seed(int(self.seed*self.number_of_replicates + replicate))
