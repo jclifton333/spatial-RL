@@ -137,7 +137,7 @@ class Simulator(object):
 
   def episode_wrapper(self, replicate):
     try:
-      return self.episode()
+      return self.episode(replicate)
     except:
       return None
 
