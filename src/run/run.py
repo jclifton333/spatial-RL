@@ -49,6 +49,7 @@ if __name__ == '__main__':
   parser.add_argument('--seed', type=int)
   parser.add_argument('--num_prefit_data', type=float)
   parser.add_argument('--error_quantile', type=float)
+  parser.add_argument('--ignore_errors', type=str)
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
