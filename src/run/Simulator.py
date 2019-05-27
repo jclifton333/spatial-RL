@@ -114,7 +114,12 @@ class Simulator(object):
     # results_list = pool.map(self.episode, range(self.number_of_replicates))
 
     # Save results
-    results_dict = {k: v for d in results_list for k, v in d.items() if d is not None}
+    results_dict = {}
+    for d in results_list:
+      if d is not None:
+        for k, v in d.items():
+          results_dict[k] = v
+    # results_dict = {k: v for d in results_list for k, v in d.items() if d is not None}
     list_of_scores = [v['score'] for v in results_dict.values()]
     list_of_mean_losses = [v['mean_losses'] for v in results_dict.values()]
     list_of_max_losses = [v['max_losses'] for v in results_dict.values()]
