@@ -141,7 +141,10 @@ def ebola_aic_two_step(**kwargs):
     beta_cov = env.mb_covariance(beta_mean)
 
     def gen_model_posterior():
-      beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
+      try:
+        beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
+      except:
+        print('beta mean: {}\beta cov: {}'.format(beta_mean, beta_cov))
       return beta_tilde
 
     # Settings
