@@ -99,7 +99,6 @@ class Simulator(object):
       results_list = pool.map_async(self.episode_wrapper, [i for i in range(self.number_of_replicates)])
     else:
       results_list = pool.map_async(self.episode, [i for i in range(self.number_of_replicates)])
-    results_list = results_list.get()
 
     # for rep in range(self.number_of_replicates):
     #   iterim_results_list.append(pool.apply_async(self.episode, args=(rep,)))
