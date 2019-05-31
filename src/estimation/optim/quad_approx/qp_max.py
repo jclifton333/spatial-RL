@@ -8,11 +8,7 @@ ref: http://www.gurobi.com/documentation/7.0/examples/dense_py.html
 import numpy as np
 from scipy import sparse, linalg, optimize
 import pdb
-try:
-  from gurobipy import *
-  GUROBI = True
-except ImportError:
-  GUROBI = False
+GUROBI = False
 
 try:
   import docplex.mp
