@@ -10,6 +10,7 @@ from scipy import sparse, linalg, optimize
 import pdb
 try:
   from gurobipy import *
+  GUROBI = True
 except:
   GUROBI = False
 
