@@ -2,7 +2,10 @@ from .sweep.argmaxer_sweep import argmaxer_sweep
 import numpy as np
 import logging
 import pdb
-from scipy.misc import comb
+try:
+  from scipy.special import comb
+except ImportError:
+  from scipy.misc import comb
 from itertools import combinations
 
 
