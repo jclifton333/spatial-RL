@@ -6,13 +6,16 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.neural_network import MLPClassifier
 from scipy.linalg import block_diag
 from scipy.special import expit, logit
-from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, Input, Add
-from keras.regularizers import L1L2
-from keras import backend as K
-import tensorflow as tf
-from keras import optimizers
-import talos as ta
+try:
+  from keras.models import Sequential, Model
+  from keras.layers import Dense, Dropout, Input, Add
+  from keras.regularizers import L1L2
+  from keras import backend as K
+  import tensorflow as tf
+  from keras import optimizers
+  import talos as ta
+except ModuleNotFoundError:
+  pass
 
 
 def keras_hyperparameter_search(X, y, model_name, best_params=None, clf=False, test=False):
