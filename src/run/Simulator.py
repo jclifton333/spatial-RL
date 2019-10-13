@@ -219,7 +219,7 @@ class Simulator(object):
       q_fn_policy_params['classifier'] = SKLogit2
       q_fn_policy = policy_factory('one_step')
       _, q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
-      episode_results['q_fn_params'] = q_fn_policy_info['q_fn_params']
+      episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
 
     # print(np.mean(self.env.Y[-1,:]))
     print(episode_results)
