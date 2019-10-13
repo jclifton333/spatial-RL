@@ -35,7 +35,8 @@ import keras.backend as K
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile, fit_qfn_at_end=False,
+               evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile,
+               sampling_dbn_run=False, fit_qfn_at_end=False,
     ignore_errors=False):
     """
     :param lookahead_depth:
@@ -85,7 +86,8 @@ class Simulator(object):
                           'number_of_replicates': self.number_of_replicates})
 
     # Get filename base for saving results
-    to_join = [env_name, policy_name, argmaxer_name, str(self.env.L), network_name]
+    to_join = [env_name, policy_name, argmaxer_name, str(self.env.L), network_name,
+               'sampling-dbn-run={}'.format(sampling_dbn_run)]
     if 'epsilon' in env_kwargs.keys():
       to_join.append(str(env_kwargs['epsilon']))
     self.basename = '_'.join(to_join)
@@ -105,6 +107,7 @@ class Simulator(object):
     for d in results_list:
       if d is not None:
         param_list.append(d['q_fn_params'])
+    self.save_results({'param_list': param_list})
 
     return
 
