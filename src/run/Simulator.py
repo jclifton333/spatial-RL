@@ -24,6 +24,7 @@ from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 from src.estimation.stacking.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
+from scipy.stats import normaltest
 import copy
 
 from src.estimation.q_functions.model_fitters import KerasRegressor, SKLogit, SKLogit2
@@ -95,7 +96,7 @@ class Simulator(object):
   def run_for_sampling_dbn(self):
     # Multiprocess simulation replicates
     np.random.seed(self.seed)
-    num_processes = self.number_of_replicates
+    num_processes = np.min((self.number_of_replicates, 48))
     pool = mp.Pool(processes=num_processes)
     if self.ignore_errors:
       results_list = pool.map(self.episode_wrapper, [i for i in range(self.number_of_replicates)])
@@ -104,10 +105,16 @@ class Simulator(object):
 
     # Save results
     results_dict = {}
+    q_fn_params_list = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
           results_dict[k] = v['q_fn_params']
+          q_fn_params_list.append(v['q_fn_params'])
+    # Test for normality
+    pvals = normaltest(np.array(q_fn_params_list)).pvalue
+    pvals = [float(pval) for pval in pvals]
+    results_dict['pvals'] = pvals
     self.save_results(results_dict)
     return
 
