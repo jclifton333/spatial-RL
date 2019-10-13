@@ -103,12 +103,12 @@ class Simulator(object):
       results_list = pool.map(self.episode, [i for i in range(self.number_of_replicates)])
 
     # Save results
-    param_list = []
+    results_dict = {}
     for d in results_list:
       if d is not None:
-        param_list.append(d['q_fn_params'])
-    self.save_results({'param_list': param_list})
-
+        for k, v in d.items():
+          results_dict[k] = v
+    self.save_results(results_dict)
     return
 
   def run(self):
