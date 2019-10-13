@@ -39,7 +39,13 @@ def one_step_policy(**kwargs):
   # # ToDo: Using random actions for diagnostic purposes!
   # a = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
   # a = np.random.permutation(a)
-  
+
+  # Add parameters to info dictionary if params is an attribute of params (as is the case with SKLogit2)
+  try:
+    loss_dict['q_fn_params'] = clf.params
+  except:
+    pass
+
   return a, loss_dict
 
 

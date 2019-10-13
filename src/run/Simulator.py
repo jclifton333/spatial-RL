@@ -24,6 +24,7 @@ from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 from src.estimation.stacking.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
+import copy
 
 from src.estimation.q_functions.model_fitters import KerasRegressor, SKLogit, SKLogit2
 from sklearn.ensemble import RandomForestRegressor
@@ -34,7 +35,8 @@ import keras.backend as K
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
-               evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile, ignore_errors=False):
+               evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile, fit_qfn_at_end=False,
+    ignore_errors=False):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Gravity'
@@ -58,6 +60,7 @@ class Simulator(object):
     self.scores = []
     self.runtimes = []
     self.seed = seed
+    self.fit_qfn_at_end = fit_qfn_at_end
 
     # Set policy arguments
     if env_name in ['sis', 'ContinuousGrav']:
@@ -86,6 +89,24 @@ class Simulator(object):
     if 'epsilon' in env_kwargs.keys():
       to_join.append(str(env_kwargs['epsilon']))
     self.basename = '_'.join(to_join)
+
+  def run_for_sampling_dbn(self):
+    # Multiprocess simulation replicates
+    np.random.seed(self.seed)
+    num_processes = self.number_of_replicates
+    pool = mp.Pool(processes=num_processes)
+    if self.ignore_errors:
+      results_list = pool.map(self.episode_wrapper, [i for i in range(self.number_of_replicates)])
+    else:
+      results_list = pool.map(self.episode, [i for i in range(self.number_of_replicates)])
+
+    # Save results
+    param_list = []
+    for d in results_list:
+      if d is not None:
+        param_list.append(d['q_fn_params'])
+
+    return
 
   def run(self):
     # Multiprocess simulation replicates
@@ -189,6 +210,14 @@ class Simulator(object):
     episode_results['runtime'] = float(t1 - t0)
     episode_results['mean_losses'] = mean_losses
     episode_results['max_losses'] = max_losses
+
+    if self.fit_qfn_at_end:
+      q_fn_policy_params = copy.deepcopy(self.policy_arguments)
+      q_fn_policy_params['classifier'] = SKLogit2
+      q_fn_policy = policy_factory('one_step')
+      _, q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
+      episode_results['q_fn_params'] = q_fn_policy_info['q_fn_params']
+
     # print(np.mean(self.env.Y[-1,:]))
     print(episode_results)
     return {replicate: episode_results}
