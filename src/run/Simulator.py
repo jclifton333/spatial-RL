@@ -107,7 +107,7 @@ class Simulator(object):
     for d in results_list:
       if d is not None:
         for k, v in d.items():
-          results_dict[k] = v
+          results_dict[k] = v['q_fn_params']
     self.save_results(results_dict)
     return
 
