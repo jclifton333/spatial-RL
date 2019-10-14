@@ -123,7 +123,7 @@ class Simulator(object):
       bootstrap_pvals_rep = []
       bootstrap_dbn = np.array(bootstrap_dbn)
       for param in range(num_params):
-        bootstrap_pvals_rep.append(float(ks_2sample(q_fn_params_list[:, param], bootstrap_dbn[:, param])[0]))
+        bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list[:, param], bootstrap_dbn[:, param])[0]))
       bootstrap_pvals.append(bootstrap_pvals_rep)
 
     # Test for normality
