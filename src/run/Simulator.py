@@ -114,23 +114,37 @@ class Simulator(object):
           q_fn_params_list.append(v['q_fn_params'])
           bootstrap_dbns.append(v['q_fn_bootstrap_dbn'])
 
-    # For each bootstrap distribution, do ks-test against observed dbn
+    # For each bootstrap distribution, do ks-test against observed dbn and get coverage
     # ToDo: using distribution of first parameter only
     q_fn_params_list = np.array(q_fn_params_list)
+    true_q_fn_params = q_fn_params_list.mean(axis=0)  # Treating mean parameter values as truth to compute coverage
     num_params = q_fn_params_list.shape[1]
     bootstrap_pvals = []
+    coverages = []
     for bootstrap_dbn in bootstrap_dbns:
       bootstrap_pvals_rep = []
+      coverages_rep = []
       bootstrap_dbn = np.array(bootstrap_dbn)
       for param in range(num_params):
+        # Do ks-test
         bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list[:, param], bootstrap_dbn[:, param])[0]))
+        # Get coverage
+        conf_interval = np.percentile(bootstrap_dbn[:, param], [2.5, 97.5])
+        if true_q_fn_params[param] >= conf_interval[0] and true_q_fn_params <= conf_interval[1]:
+          coverages_rep.append(1)
+        else:
+          coverages_rep.append(0)
       bootstrap_pvals.append(bootstrap_pvals_rep)
+      coverages.append(coverages_rep)
 
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
     pvals = [float(pval) for pval in pvals]
+    coverages = np.array(coverages).mean(axis=0)
+    coverages = [float(c) for c in coverages]
     results_dict['pvals'] = pvals
     results_dict['bootstrap_pvals'] = bootstrap_pvals
+    results_dict['coverages'] = coverages
     self.save_results(results_dict)
     return
 
