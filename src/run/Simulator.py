@@ -24,7 +24,7 @@ from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 from src.estimation.stacking.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
-from scipy.stats import normaltest
+from scipy.stats import normaltest, ks_2samp
 import copy
 
 from src.estimation.q_functions.model_fitters import KerasRegressor, SKLogit, SKLogit2
@@ -106,15 +106,27 @@ class Simulator(object):
     # Save results
     results_dict = {}
     q_fn_params_list = []
+    bootstrap_dbns = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
           results_dict[k] = v['q_fn_params']
           q_fn_params_list.append(v['q_fn_params'])
+          bootstrap_dbns.append(v['q_fn_parms_bootstrap_dbn'])
+
+    # For each bootstrap distribution, do ks-test against observed dbn
+    # ToDo: using distribution of first parameter only
+    sampling_dbn_0 = np.array(q_fn_params_list)[:, 0]
+    bootstrap_pvals = []
+    for bootstrap_dbn in bootstrap_dbns:
+      bootstrap_dbn_0 = np.array(bootstrap_dbn)[:, 0]
+      bootstrap_pvals.append(float(ks_2samp(sampling_dbn_0, bootstrap_dbn_0)[0]))
+
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
     pvals = [float(pval) for pval in pvals]
     results_dict['pvals'] = pvals
+    results_dict['bootstrap_pvals'] = bootstrap_pvals
     self.save_results(results_dict)
     return
 
