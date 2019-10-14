@@ -116,11 +116,15 @@ class Simulator(object):
 
     # For each bootstrap distribution, do ks-test against observed dbn
     # ToDo: using distribution of first parameter only
-    sampling_dbn_0 = np.array(q_fn_params_list)[:, 0]
+    q_fn_params_list = np.array(q_fn_params_list)
+    num_params = q_fn_params_list.shape[1]
     bootstrap_pvals = []
     for bootstrap_dbn in bootstrap_dbns:
-      bootstrap_dbn_0 = np.array(bootstrap_dbn)[:, 0]
-      bootstrap_pvals.append(float(ks_2samp(sampling_dbn_0, bootstrap_dbn_0)[0]))
+      bootstrap_pvals_rep = []
+      bootstrap_dbn = np.array(bootstrap_dbn)
+      for param in range(num_params):
+        bootstrap_pvals_rep.append(float(ks_2sample(q_fn_params_list[:, param], bootstrap_dbn[:, param])[0]))
+      bootstrap_pvals.append(bootstrap_pvals_rep)
 
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
@@ -234,7 +238,7 @@ class Simulator(object):
     episode_results['max_losses'] = max_losses
 
     if self.fit_qfn_at_end:
-      NUM_BOOTSTRAP_SAMPLES = 100
+      NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
 
       # Get q-function parameters
       q_fn_policy_params = copy.deepcopy(self.policy_arguments)
