@@ -130,7 +130,7 @@ class Simulator(object):
         bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list[:, param], bootstrap_dbn[:, param])[0]))
         # Get coverage
         conf_interval = np.percentile(bootstrap_dbn[:, param], [2.5, 97.5])
-        if true_q_fn_params[param] >= conf_interval[0] and true_q_fn_params <= conf_interval[1]:
+        if true_q_fn_params[param] >= conf_interval[0] and true_q_fn_params[param] <= conf_interval[1]:
           coverages_rep.append(1)
         else:
           coverages_rep.append(0)
