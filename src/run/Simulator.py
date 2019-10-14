@@ -222,11 +222,23 @@ class Simulator(object):
     episode_results['max_losses'] = max_losses
 
     if self.fit_qfn_at_end:
+      NUM_BOOTSTRAP_SAMPLES = 100
+
+      # Get q-function parameters
       q_fn_policy_params = copy.deepcopy(self.policy_arguments)
       q_fn_policy_params['classifier'] = SKLogit2
       q_fn_policy = policy_factory('one_step')
       _, q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
+
+      # Get bootstrap dbn of q-function parameters
+      bootstrap_dbn = []
+      q_fn_policy_params['bootstrap'] = True
+      for sample in range(NUM_BOOTSTRAP_SAMPLES):
+        _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
+        bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
+
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
+      episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
 
     # print(np.mean(self.env.Y[-1,:]))
     print(episode_results)
