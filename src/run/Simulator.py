@@ -112,7 +112,7 @@ class Simulator(object):
         for k, v in d.items():
           results_dict[k] = v['q_fn_params']
           q_fn_params_list.append(v['q_fn_params'])
-          bootstrap_dbns.append(v['q_fn_parms_bootstrap_dbn'])
+          bootstrap_dbns.append(v['q_fn_bootstrap_dbn'])
 
     # For each bootstrap distribution, do ks-test against observed dbn
     # ToDo: using distribution of first parameter only
