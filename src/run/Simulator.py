@@ -134,6 +134,7 @@ class Simulator(object):
           coverages_rep.append(1)
         else:
           coverages_rep.append(0)
+      pdb.set_trace()
       bootstrap_pvals.append(bootstrap_pvals_rep)
       coverages.append(coverages_rep)
 
