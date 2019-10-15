@@ -416,7 +416,7 @@ class SKLogit2(object):
       X_times_infection = np.multiply(X, infection_indicator[:, np.newaxis])
       X_interaction = np.column_stack((X, X_times_infection))
       self.X_train = X_interaction
-      self.reg_.fit(X_interaction, y)
+      self.reg_.fit(X_interaction, y, sample_weight=weights)
       self.model_fitted = True
       self.params = np.concatenate(([self.reg_.intercept_, self.reg_.coef_[0]]))
     if truncate:  # ToDo: modify to reflect not-split model
