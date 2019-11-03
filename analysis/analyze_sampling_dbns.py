@@ -5,6 +5,14 @@ NETWORK_NAMES = ['lattice', 'nearestneighbor']
 
 
 def summarize_sampling_dbns(fname_list):
+  # ToDo: Indices of 0-step q-function that are acting weird are [17, 18, 19, 20]
+  # I think these correspond to infection times
+  # 17: (s, ~a, ~y)
+  # 18: (~s, a, ~y)
+  # 19: (s, a, ~y)
+  # 20: (~s, ~a, y)
+  # which are redundant with features in the main effect component
+
   results_dict = {'L': [], 'policy': [], 'network': [], 'coverages': [], 'min_pvals': []}
   for fname in fname_list:
     d = yaml.load(open('./results/{}'.format(fname), 'rb'))
