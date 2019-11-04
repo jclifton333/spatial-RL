@@ -16,9 +16,9 @@ sys.path.append(pkg_dir)
 from src.environments import generate_network
 from src.run.Simulator import Simulator
 
-POLICY_NAME = 'random'
+POLICY_NAME = 'true_probs_myopic'
 ENV_NAME = 'sis'
-NETWORK = 'lattice'
+NETWORK = 'nearestneighbor'
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -37,7 +37,7 @@ if __name__ == '__main__':
   parser.add_argument('--ignore_errors', type=str)
   args = parser.parse_args()
 
-  env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.lattice,
+  env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.random_nearest_neighbor,
                 'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
 
   ts = (args.ts == 'True')

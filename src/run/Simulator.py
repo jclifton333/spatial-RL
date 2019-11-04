@@ -263,7 +263,7 @@ class Simulator(object):
       # Get bootstrap dbn of q-function parameters
       bootstrap_dbn = []
       q_fn_policy_params['bootstrap'] = True
-      for sample in range(NUM_BOOTSTRAP_SAMPLES)
+      for sample in range(NUM_BOOTSTRAP_SAMPLES):
         _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
         bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
 
