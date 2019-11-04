@@ -16,9 +16,7 @@ sys.path.append(pkg_dir)
 from src.environments import generate_network
 from src.run.Simulator import Simulator
 
-POLICY_NAME = 'true_probs_myopic'
 ENV_NAME = 'sis'
-NETWORK = 'lattice'
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -35,16 +33,21 @@ if __name__ == '__main__':
   parser.add_argument('--num_prefit_data', type=float)
   parser.add_argument('--error_quantile', type=float)
   parser.add_argument('--ignore_errors', type=str)
+  parser.add_argument('--network', type=str)
+  parser.add_argument('--policy', type=str)
   args = parser.parse_args()
 
-  env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': generate_network.random_nearest_neighbor,
+  network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
+                  'nearestneighbor': generate_network.random_nearest_neighbor}
+
+  env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': network_dict[args.network],
                 'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
 
   ts = (args.ts == 'True')
   ignore_errors = (args.ignore_errors == 'True')
 
-  Sim = Simulator(args.rollout_depth, ENV_NAME, args.time_horizon, args.number_of_replicates, POLICY_NAME,
-                  'random', args.gamma, args.evaluation_budget, env_kwargs, NETWORK, ts, args.seed,
+  Sim = Simulator(args.rollout_depth, ENV_NAME, args.time_horizon, args.number_of_replicates, args.policy,
+                  'random', args.gamma, args.evaluation_budget, env_kwargs, args.network, ts, args.seed,
                   args.error_quantile, fit_qfn_at_end=True, sampling_dbn_run=True, ignore_errors=ignore_errors)
   if args.number_of_replicates == 1:
     Sim.episode(0)
