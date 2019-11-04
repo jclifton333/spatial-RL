@@ -18,7 +18,7 @@ from src.run.Simulator import Simulator
 
 POLICY_NAME = 'true_probs_myopic'
 ENV_NAME = 'sis'
-NETWORK = 'nearestneighbor'
+NETWORK = 'lattice'
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()

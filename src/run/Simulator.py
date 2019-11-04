@@ -110,7 +110,7 @@ class Simulator(object):
     for d in results_list:
       if d is not None:
         for k, v in d.items():
-          results_dict[k] = v['q_fn_params']
+          # results_dict[k] = v['q_fn_params']
           q_fn_params_list.append(v['q_fn_params'])
           bootstrap_dbns.append(v['q_fn_bootstrap_dbn'])
 
