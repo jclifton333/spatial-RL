@@ -37,7 +37,7 @@ import keras.backend as K
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
                evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile,
-               sampling_dbn_run=False, fit_qfn_at_end=False,
+               sampling_dbn_run=False, sampling_dbn_estimator=None, fit_qfn_at_end=False,
     ignore_errors=False):
     """
     :param lookahead_depth:
@@ -63,6 +63,7 @@ class Simulator(object):
     self.runtimes = []
     self.seed = seed
     self.fit_qfn_at_end = fit_qfn_at_end
+    self.sampling_dbn_estimator = sampling_dbn_estimator
 
     # Set policy arguments
     if env_name in ['sis', 'ContinuousGrav']:
@@ -257,7 +258,8 @@ class Simulator(object):
       # Get q-function parameters
       q_fn_policy_params = copy.deepcopy(self.policy_arguments)
       q_fn_policy_params['classifier'] = SKLogit2
-      q_fn_policy = policy_factory('one_step')
+      q_fn_policy_params['regressor'] = Ridge
+      q_fn_policy = policy_factory(self.sampling_dbn_estimator)
       _, q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
 
       # Get bootstrap dbn of q-function parameters

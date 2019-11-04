@@ -35,6 +35,7 @@ if __name__ == '__main__':
   parser.add_argument('--ignore_errors', type=str)
   parser.add_argument('--network', type=str)
   parser.add_argument('--policy', type=str)
+  parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step', 'two_step'])
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
@@ -48,7 +49,8 @@ if __name__ == '__main__':
 
   Sim = Simulator(args.rollout_depth, ENV_NAME, args.time_horizon, args.number_of_replicates, args.policy,
                   'random', args.gamma, args.evaluation_budget, env_kwargs, args.network, ts, args.seed,
-                  args.error_quantile, fit_qfn_at_end=True, sampling_dbn_run=True, ignore_errors=ignore_errors)
+                  args.error_quantile, fit_qfn_at_end=True, sampling_dbn_run=True, ignore_errors=ignore_errors,
+                  sampling_dbn_estimator=args.sampling_dbn_estimator)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:

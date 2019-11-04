@@ -303,7 +303,7 @@ def two_step(**kwargs):
     # return clf.predict_proba(X_, infected_indices, not_infected_indices) 
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  return a, None
+  return a, {'q_fn_params': reg.coef_}
 
 
 def two_step_stacked(**kwargs):

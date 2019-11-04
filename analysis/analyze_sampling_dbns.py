@@ -4,6 +4,8 @@ import pdb
 
 NETWORK_NAMES = ['lattice', 'nearestneighbor']
 INDICES_TO_KEEP = [i for i in range(33) if i not in [17, 18, 19, 20]]
+
+
 def summarize_sampling_dbns(fname_list, save=False):
   # ToDo: Indices of 0-step q-function that are acting weird are [17, 18, 19, 20]
   # I think these correspond to infection times
@@ -49,7 +51,11 @@ if __name__ == "__main__":
   fname_list_ = ['sis_true_probs_myopic_random_100_nearestneighbor_sampling-dbn-run=True_0.0_191103_213222.yml', 
                  'sis_true_probs_myopic_random_25_nearestneighbor_sampling-dbn-run=True_0.0_191103_212511.yml', 
                  'sis_true_probs_myopic_random_300_nearestneighbor_sampling-dbn-run=True_0.0_191103_214306.yml', 
-                 'sis_true_probs_myopic_random_50_nearestneighbor_sampling-dbn-run=True_0.0_191103_212808.yml']
+                 'sis_true_probs_myopic_random_50_nearestneighbor_sampling-dbn-run=True_0.0_191103_212808.yml',
+                 'sis_true_probs_myopic_random_100_lattice_sampling-dbn-run=True_0.0_191104_110012.yml',
+                 'sis_true_probs_myopic_random_25_lattice_sampling-dbn-run=True_0.0_191104_105124.yml',
+                 'sis_true_probs_myopic_random_300_lattice_sampling-dbn-run=True_0.0_191104_111133.yml',
+                 'sis_true_probs_myopic_random_50_lattice_sampling-dbn-run=True_0.0_191104_105510.yml']
   summarize_sampling_dbns(fname_list_, save=True)
 
 
