@@ -1,6 +1,7 @@
 import numpy as np
 import yaml
 import pdb
+import pandas as pd
 
 NETWORK_NAMES = ['lattice', 'nearestneighbor']
 INDICES_TO_KEEP = [i for i in range(33) if i not in [17, 18, 19, 20]]
@@ -28,7 +29,7 @@ def summarize_sampling_dbns(fname_list, save=False):
 
     # Get gen model settings
     L = d['settings']['L']
-    policy = d['settings']['policy_name']
+    policy = (len(d['results']['coverages']) == 33)
     for name in NETWORK_NAMES:
       if name in fname:
         network_name = name
@@ -37,8 +38,11 @@ def summarize_sampling_dbns(fname_list, save=False):
     results_dict['L'].append(L)
     results_dict['policy'].append(policy)
     results_dict['network'].append(network_name)
-    results_dict['coverages'].append(coverages)
-    results_dict['bootstrap_pvals'].append(bootstrap_pvals)
+    results_dict['coverages'].append(np.min(coverages))
+    results_dict['bootstrap_pvals'].append(mean_bootstrap_pvals)
+
+  df = pd.DataFrame(results_dict)
+  pdb.set_trace()
 
   if save: 
     savename = 'sampling-dbn-results.yml'
@@ -48,15 +52,26 @@ def summarize_sampling_dbns(fname_list, save=False):
 
 
 if __name__ == "__main__":
-  fname_list_ = ['sis_true_probs_myopic_random_100_nearestneighbor_sampling-dbn-run=True_0.0_191103_213222.yml', 
+  fname_list_0_step = ['sis_true_probs_myopic_random_100_nearestneighbor_sampling-dbn-run=True_0.0_191103_213222.yml',
                  'sis_true_probs_myopic_random_25_nearestneighbor_sampling-dbn-run=True_0.0_191103_212511.yml', 
                  'sis_true_probs_myopic_random_300_nearestneighbor_sampling-dbn-run=True_0.0_191103_214306.yml', 
                  'sis_true_probs_myopic_random_50_nearestneighbor_sampling-dbn-run=True_0.0_191103_212808.yml',
                  'sis_true_probs_myopic_random_100_lattice_sampling-dbn-run=True_0.0_191104_110012.yml',
                  'sis_true_probs_myopic_random_25_lattice_sampling-dbn-run=True_0.0_191104_105124.yml',
                  'sis_true_probs_myopic_random_300_lattice_sampling-dbn-run=True_0.0_191104_111133.yml',
-                 'sis_true_probs_myopic_random_50_lattice_sampling-dbn-run=True_0.0_191104_105510.yml']
-  summarize_sampling_dbns(fname_list_, save=True)
+                 'sis_true_probs_myopic_random_50_lattice_sampling-dbn-run=True_0.0_191104_105510.yml'
+                 ]
+  fname_list_1_step = ['sis_random_random_100_nearestneighbor_sampling-dbn-run=True_0.0_191104_152354.yml',
+                 'sis_random_random_25_nearestneighbor_sampling-dbn-run=True_0.0_191104_151444.yml',
+                 'sis_random_random_300_nearestneighbor_sampling-dbn-run=True_0.0_191104_153606.yml',
+                 'sis_random_random_50_nearestneighbor_sampling-dbn-run=True_0.0_191104_151837.yml',
+                 'sis_true_probs_myopic_random_50_lattice_sampling-dbn-run=True_0.0_191104_170925.yml',
+                 'sis_true_probs_myopic_random_300_lattice_sampling-dbn-run=True_0.0_191104_174921.yml',
+                 'sis_true_probs_myopic_random_25_lattice_sampling-dbn-run=True_0.0_191104_170226.yml',
+                 'sis_true_probs_myopic_random_100_lattice_sampling-dbn-run=True_0.0_191104_172008.yml'
+                 ]
+
+  summarize_sampling_dbns(fname_list_0_step, save=True)
 
 
 
