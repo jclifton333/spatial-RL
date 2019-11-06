@@ -68,5 +68,4 @@ def two_step_random(**kwargs):
     return clf.predict_proba(X_, infected_indices, not_infected_indices) + gamma * reg.predict(X_)
     # return clf.predict_proba(X_, infected_indices, not_infected_indices)
 
-  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  return a, {'q_fn_params': reg.coef_}
+  return None, {'q_fn_params': reg.coef_}

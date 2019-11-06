@@ -5,6 +5,7 @@ import src.policies.prefit_policies as prefit
 import src.policies.model_selection_policies as model_selection
 import src.policies.continuation_policies as continuation
 import src.policies.dyna_policies as dyna
+import src.policies.evaluation_policies as eval
 
 
 def policy_factory(policy_type):
@@ -71,5 +72,7 @@ def policy_factory(policy_type):
     return roll.one_step_truth_augmented
   elif policy_type == 'one_step_projection_combo':
     return roll.one_step_projection_combo
+  elif policy_type == 'two_step_random':
+    return eval.two_step_random
   else:
     raise ValueError('Argument does not match any policy.')
