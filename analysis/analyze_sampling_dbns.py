@@ -7,7 +7,7 @@ NETWORK_NAMES = ['lattice', 'nearestneighbor']
 INDICES_TO_KEEP = [i for i in range(33) if i not in [17, 18, 19, 20]]
 
 
-def summarize_sampling_dbns(fname_list, save=False):
+def summarize_sampling_dbns(fname_list, outname=None, save=False):
   # ToDo: Indices of 0-step q-function that are acting weird are [17, 18, 19, 20]
   # I think these correspond to infection times
   # 17: (s, ~a, ~y)
@@ -51,10 +51,9 @@ def summarize_sampling_dbns(fname_list, save=False):
 
   df = pd.DataFrame(results_dict)
   df.sort_values(by=['network', 'policy', 'L'], inplace=True)
-  pdb.set_trace()
 
   if save: 
-    savename = 'sampling-dbn-results.yml'
+    savename = 'sampling-dbn-results-{}.yml'.format(outname)
     with open(savename, 'w') as outfile:
       yaml.dump(results_dict, outfile)
   return 
@@ -76,17 +75,32 @@ if __name__ == "__main__":
                  'sis_random_random_300_nearestneighbor_sampling-dbn-run=True_0.0_191104_153606.yml',
                  'sis_random_random_50_lattice_sampling-dbn-run=True_0.0_191104_145633.yml', 
                  'sis_random_random_50_nearestneighbor_sampling-dbn-run=True_0.0_191104_151837.yml', 
-                 'sis_random_random_100_lattice_sampling-dbn-run=True_0.0_191104_150118.yml'
+                 'sis_random_random_100_lattice_sampling-dbn-run=True_0.0_191104_150118.yml', 
+                 'sis_random_random_1000_lattice_sampling-dbn-run=True_0.0_191105_200724.yml', 
+                 'sis_random_random_1000_nearestneighbor_sampling-dbn-run=True_0.0_191105_204542.yml', 
+		 'sis_random_random_500_nearestneighbor_sampling-dbn-run=True_0.0_191105_201740.yml', 
+		 'sis_random_random_500_lattice_sampling-dbn-run=True_0.0_191105_193149.yml', 
+		 'sis_true_probs_myopic_random_1000_lattice_sampling-dbn-run=True_0.0_191105_192112.yml', 
+		 'sis_true_probs_myopic_random_1000_nearestneighbor_sampling-dbn-run=True_0.0_191105_212810.yml', 
+		 'sis_true_probs_myopic_random_500_lattice_sampling-dbn-run=True_0.0_191105_185341.yml', 
+		 'sis_true_probs_myopic_random_500_nearestneighbor_sampling-dbn-run=True_0.0_191105_205547.yml'
                  ]
 
   # ToDo: double check that these are all 1-step (not 0-step)
-  fname_list_1_step = ['sis_true_probs_myopic_random_50_lattice_sampling-dbn-run=True_0.0_191104_170925.yml',
+  fname_list_1_step_max = ['sis_true_probs_myopic_random_50_lattice_sampling-dbn-run=True_0.0_191104_170925.yml',
                  'sis_true_probs_myopic_random_300_lattice_sampling-dbn-run=True_0.0_191104_174921.yml',
                  'sis_true_probs_myopic_random_25_lattice_sampling-dbn-run=True_0.0_191104_170226.yml',
-                 'sis_true_probs_myopic_random_100_lattice_sampling-dbn-run=True_0.0_191104_172008.yml'
-                 ]
+                 'sis_true_probs_myopic_random_100_lattice_sampling-dbn-run=True_0.0_191104_172008.yml',
+                 'sis_random_random_1000_lattice_sampling-dbn-run=True_0.0_191105_145035.yml', 
+		 'sis_random_random_500_lattice_sampling-dbn-run=True_0.0_191105_130059.yml', 
+                 'sis_random_random_500_nearestneighbor_sampling-dbn-run=True_0.0_191105_154222.yml', 
+                 'sis_true_probs_myopic_random_1000_lattice_sampling-dbn-run=True_0.0_191105_122930.yml',
+                 'sis_true_probs_myopic_random_500_lattice_sampling-dbn-run=True_0.0_191105_111508.yml',
+                 'sis_true_probs_myopic_random_500_nearestneighbor_sampling-dbn-run=True_0.0_191105_172232.yml',
+                 'sis_true_probs_myopic_random_1000_nearestneighbor_sampling-dbn-run=True_0.0_191105_183232.yml',
+                 'sis_random_random_1000_nearestneighbor_sampling-dbn-run=True_0.0_191105_165429.yml']
 
-  summarize_sampling_dbns(fname_list_1_step, save=False)
+  summarize_sampling_dbns(fname_list_0_step, outname='0_step', save=True)
 
 
 

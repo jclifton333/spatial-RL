@@ -82,7 +82,8 @@ class Simulator(object):
                      'regressor': self.policy_arguments['regressor'].__name__,
                      'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                      'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
-                     'divide_evenly': self.policy_arguments['divide_evenly'], 'argmaxer': argmaxer_name}
+                     'divide_evenly': self.policy_arguments['divide_evenly'], 'argmaxer': argmaxer_name,
+                     'evaluation_policy': self.sampling_dbn_estimator}
     self.settings.update({'env_name': env_name, 'L': self.env.L, 'policy_name': policy_name,
                           'argmaxer_name': argmaxer_name, 'time_horizon': self.time_horizon,
                           'number_of_replicates': self.number_of_replicates})
@@ -90,6 +91,8 @@ class Simulator(object):
     # Get filename base for saving results
     to_join = [env_name, policy_name, argmaxer_name, str(self.env.L), network_name,
                'sampling-dbn-run={}'.format(sampling_dbn_run)]
+    if sampling_dbn_run:
+      to_join.append('eval={}'.format(self.sampling_dbn_estimator))
     if 'epsilon' in env_kwargs.keys():
       to_join.append(str(env_kwargs['epsilon']))
     self.basename = '_'.join(to_join)
