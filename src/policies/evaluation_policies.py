@@ -71,20 +71,40 @@ def two_step_random(**kwargs):
   return None, {'q_fn_params': reg.coef_}
 
 
-def two_step_mb_eval(**kwargs):
-  env, treatment_budget, evaluation_budget, argmaxer, gamma, regressor = \
-    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer'], \
-    kwargs['gamma'], kwargs['regressor']
+def two_step_mb_myopic(**kwargs):
+  classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['bootstrap'], kwargs['gamma']
 
-  # Compute backup
-  q_mb_one_step, _ = fit_one_step_sis_mb_q(env)
-  mb_backup = mse_combo.sis_mb_backup(env, gamma, q_mb_one_step, q_mb_one_step, argmaxer, evaluation_budget,
-                                      treatment_budget)
+  if bootstrap:
+    weights = np.random.exponential(size=len(env.X)*env.L)
+    weights_1 = weights[env.L:]
+  else:
+    weights = None
+    weights_1 = None
 
-  # Fit q-function
-  X_2 = np.vstack(env.X_2[:-1])
+  # One step
+  clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
+  def qfn_at_block(block_index, a):
+    return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
+
+  # Back up once
+  backup = []
+  for t in range(1, env.T):
+    # Get myopic action using true probs
+    x_raw = env.X_raw[t]
+    probs_t = env.infection_probability(np.zeros(env.L), x_raw[:, 2], x_raw[:, 0])
+    a_myopic_t = np.zeros(env.L)
+    a_myopic_t[np.argsort(probs_t)[-treatment_budget:]] = 1
+
+    # Evaluate q0 at myopic action
+    backup_at_t = qfn_at_block(t, a_myopic_t)
+    backup.append(backup_at_t)
+
+  # Fit backup-up q function
+  # reg = regressor(n_estimators=100)
   reg = regressor()
-  reg.fit(X_2, mb_backup)
+  reg.fit(np.vstack(env.X[:-1]), np.hstack(backup), sample_weight=weights_1)
 
   return None, {'q_fn_params': reg.coef_}
 

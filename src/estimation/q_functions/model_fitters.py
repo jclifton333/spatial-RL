@@ -14,7 +14,7 @@ try:
   import tensorflow as tf
   from keras import optimizers
   import talos as ta
-except ModuleNotFoundError:
+except:
   pass
 
 
