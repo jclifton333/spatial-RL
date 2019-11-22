@@ -74,5 +74,7 @@ def policy_factory(policy_type):
     return roll.one_step_projection_combo
   elif policy_type == 'two_step_random':
     return eval.two_step_random
+  elif policy_type == 'two_step_mb_eval':
+    return eval.two_step_mb_eval
   else:
     raise ValueError('Argument does not match any policy.')
