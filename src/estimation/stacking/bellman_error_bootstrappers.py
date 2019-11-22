@@ -7,7 +7,7 @@ from src.estimation.model_based.sis.estimate_sis_q_fn import estimate_sis_q_fn
 from src.estimation.stacking.compute_sample_bellman_error import compute_sample_squared_bellman_error
 from src.estimation.q_functions.regressor import AutoRegressor
 from src.estimation.q_functions.fqi import fqi
-from keras import backend as K
+# from keras import backend as K
 
 
 def bootstrap_SIS_mb_qfn(env, classifier, regressor, rollout_depth, gamma, planning_depth,

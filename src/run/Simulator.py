@@ -31,7 +31,7 @@ from src.estimation.q_functions.model_fitters import KerasRegressor, SKLogit, SK
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 
-import keras.backend as K
+# import keras.backend as K
 
 
 class Simulator(object):

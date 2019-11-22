@@ -51,7 +51,7 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
 
   df = pd.DataFrame(results_dict)
   df.sort_values(by=['network', 'policy', 'L'], inplace=True)
-
+  print(df)
   if save: 
     savename = 'sampling-dbn-results-{}.yml'.format(outname)
     with open(savename, 'w') as outfile:
@@ -100,8 +100,16 @@ if __name__ == "__main__":
                  'sis_true_probs_myopic_random_1000_nearestneighbor_sampling-dbn-run=True_0.0_191105_183232.yml',
                  'sis_random_random_1000_nearestneighbor_sampling-dbn-run=True_0.0_191105_165429.yml']
 
-  summarize_sampling_dbns(fname_list_0_step, outname='0_step', save=True)
-
+  fname_list_1_step_random = ['sis_true_probs_myopic_random_25_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191107_144645.yml', 
+                              'sis_true_probs_myopic_random_50_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191107_182922.yml', 
+                              'sis_true_probs_myopic_random_300_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191108_092426.yml',
+                              'sis_random_random_50_nearestneighbor_sampling-dbn-run=True_eval=two_step_random_0.0_191109_080552.yml', 
+                              'sis_random_random_300_nearestneighbor_sampling-dbn-run=True_eval=two_step_random_0.0_191110_023608.yml', 
+                              'sis_true_probs_myopic_random_50_nearestneighbor_sampling-dbn-run=True_eval=two_step_random_0.0_191110_054358.yml',
+                              'sis_true_probs_myopic_random_500_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191111_175443.yml',
+                              'sis_true_probs_myopic_random_1000_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191115_055426.yml',
+                              'sis_random_random_1000_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191120_071226.yml']
+  summarize_sampling_dbns(fname_list_1_step_random, outname=None, save=False)
 
 
 
