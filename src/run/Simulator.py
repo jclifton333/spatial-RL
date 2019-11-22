@@ -102,10 +102,13 @@ class Simulator(object):
     np.random.seed(self.seed)
     num_processes = np.min((self.number_of_replicates, 48))
     pool = mp.Pool(processes=num_processes)
-    if self.ignore_errors:
-      results_list = pool.map(self.episode_wrapper, [i for i in range(self.number_of_replicates)])
+    if self.number_of_replicates > 1:
+      if self.ignore_errors:
+        results_list = pool.map(self.episode_wrapper, [i for i in range(self.number_of_replicates)])
+      else:
+        results_list = pool.map(self.episode, [i for i in range(self.number_of_replicates)])
     else:
-      results_list = pool.map(self.episode, [i for i in range(self.number_of_replicates)])
+      results_list = [self.episode(0)]
 
     # Save results
     results_dict = {}
@@ -274,9 +277,9 @@ class Simulator(object):
 
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
+      print('GOT HERE')
 
     # print(np.mean(self.env.Y[-1,:]))
-    print(episode_results)
     return {replicate: episode_results}
 
   def run_for_profiling(self):
