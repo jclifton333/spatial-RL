@@ -36,7 +36,8 @@ if __name__ == '__main__':
   parser.add_argument('--network', type=str)
   parser.add_argument('--policy', type=str)
   parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step', 'two_step', 'two_step_random',
-                                                                     'two_step_mb_myopic'])
+                                                                     'two_step_mb_myopic',
+                                                                     'two_step_constant_cutoff'])
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,

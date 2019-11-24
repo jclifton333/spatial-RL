@@ -90,6 +90,7 @@ def two_step_mb_myopic(**kwargs):
 
   # Back up once
   backup = []
+  # ToDo: check that argsort is in descending order
   for t in range(1, env.T):
     # Get myopic action using true probs
     x_raw = env.X_raw[t]
@@ -107,4 +108,45 @@ def two_step_mb_myopic(**kwargs):
   reg.fit(np.vstack(env.X[:-1]), np.hstack(backup), sample_weight=weights_1)
 
   return None, {'q_fn_params': reg.coef_}
+
+
+def two_step_mb_constant_cutoff(**kwargs):
+  CUTOFF = 0.5
+  classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['bootstrap'], kwargs['gamma']
+
+  if bootstrap:
+    weights = np.random.exponential(size=len(env.X)*env.L)
+    weights_1 = weights[env.L:]
+  else:
+    weights = None
+    weights_1 = None
+
+  # One step
+  clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
+  def qfn_at_block(block_index, a):
+    return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
+
+  # Back up once
+  backup = []
+
+  for t in range(1, env.T):
+    # Get myopic action using true probs
+    x_raw = env.X_raw[t]
+    probs_t = env.infection_probability(np.zeros(env.L), x_raw[:, 2], x_raw[:, 0])
+    a_myopic_t = np.zeros(env.L)
+    a_myopic_t[np.where(probs_t) > CUTOFF] = 1
+
+    # Evaluate q0 at myopic action
+    backup_at_t = qfn_at_block(t, a_myopic_t)
+    backup.append(backup_at_t)
+
+  # Fit backup-up q function
+  # reg = regressor(n_estimators=100)
+  reg = regressor()
+  reg.fit(np.vstack(env.X[:-1]), np.hstack(backup), sample_weight=weights_1)
+
+  return None, {'q_fn_params': reg.coef_}
+
 
