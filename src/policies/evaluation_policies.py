@@ -136,7 +136,7 @@ def two_step_mb_constant_cutoff(**kwargs):
     x_raw = env.X_raw[t]
     probs_t = env.infection_probability(np.zeros(env.L), x_raw[:, 2], x_raw[:, 0])
     a_myopic_t = np.zeros(env.L)
-    a_myopic_t[np.where(probs_t) > CUTOFF] = 1
+    a_myopic_t[np.where(probs_t > CUTOFF)] = 1
 
     # Evaluate q0 at myopic action
     backup_at_t = qfn_at_block(t, a_myopic_t)

@@ -76,7 +76,7 @@ def policy_factory(policy_type):
     return eval.two_step_random
   elif policy_type == 'two_step_mb_myopic':
     return eval.two_step_mb_myopic
-  elif policy_type == 'two_step_constant_cutoff':
+  elif policy_type == 'two_step_mb_constant_cutoff':
     return eval.two_step_mb_constant_cutoff
   else:
     raise ValueError('Argument does not match any policy.')
