@@ -156,7 +156,7 @@ class Simulator(object):
     results_dict['pvals'] = pvals
     results_dict['bootstrap_pvals'] = bootstrap_pvals
     results_dict['coverages'] = coverages
-    resulst_dict['mean_counts'] = mean_counts
+    results_dict['mean_counts'] = mean_counts
     self.save_results(results_dict)
     return
 
