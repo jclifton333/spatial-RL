@@ -109,7 +109,28 @@ if __name__ == "__main__":
                               'sis_true_probs_myopic_random_500_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191111_175443.yml',
                               'sis_true_probs_myopic_random_1000_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191115_055426.yml',
                               'sis_random_random_1000_lattice_sampling-dbn-run=True_eval=two_step_random_0.0_191120_071226.yml']
-  summarize_sampling_dbns(fname_list_1_step_random, outname=None, save=False)
+
+  fname_list_1_step_cutoff = ['sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191124_225649.yml',
+                              'sis_random_quad_approx_50_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191124_224915.yml',
+                              'sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191125_003117.yml',
+                              'sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191125_003117.yml', 
+                              'sis_random_quad_approx_1000_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191125_173330.yml', 
+                              'sis_random_quad_approx_100_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191125_155347.yml',
+                              'sis_random_quad_approx_2000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191125_154038.yml', 
+                              'sis_random_quad_approx_50_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191125_154535.yml',
+                              'sis_true_probs_myopic_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191126_062513.yml',
+                              'sis_true_probs_myopic_quad_approx_1000_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191126_044124.yml',
+                              'sis_true_probs_myopic_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191126_045352.yml',
+                              'sis_true_probs_myopic_quad_approx_100_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191126_030437.yml',
+                              'sis_true_probs_myopic_quad_approx_50_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191126_044556.yml',
+                              'sis_true_probs_myopic_quad_approx_50_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191126_025616.yml',
+                              'sis_random_quad_approx_3000_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191126_235827.yml']
+  fname_list_1_step_cutoff_more_reps = ['sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191127_050259.yml',
+                                        'sis_random_quad_approx_100_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191127_031803.yml', 
+                                        'sis_random_quad_approx_300_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191127_111855.yml']
+
+  summarize_sampling_dbns(fname_list_1_step_cutoff, outname=None, save=False)
+  summarize_sampling_dbns(fname_list_1_step_cutoff_more_reps, outname=None, save=False)
 
 
 
