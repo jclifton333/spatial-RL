@@ -145,8 +145,13 @@ def two_step_mb_constant_cutoff(**kwargs):
   # Fit backup-up q function
   # reg = regressor(n_estimators=100)
   reg = regressor()
-  reg.fit(np.vstack(env.X[:-1]), np.hstack(backup), sample_weight=weights_1)
+  X_stack = np.vstack(env.X[:-1])
+  reg.fit(X_stack, np.hstack(backup), sample_weight=weights_1)
 
-  return None, {'q_fn_params': reg.coef_}
+  # Count number of nonzero params
+  X_nonzero = X_stack > 0
+  X_nonzero_counts = X_nonzero.sum(axis=0)
+
+  return None, {'q_fn_params': reg.coef_, 'nonzero_counts': X_nonzero_counts}
 
 

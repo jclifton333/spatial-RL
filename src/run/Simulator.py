@@ -114,12 +114,16 @@ class Simulator(object):
     results_dict = {}
     q_fn_params_list = []
     bootstrap_dbns = []
+    counts = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
           # results_dict[k] = v['q_fn_params']
           q_fn_params_list.append(v['q_fn_params'])
           bootstrap_dbns.append(v['q_fn_bootstrap_dbn'])
+          counts.append(v['nonzero_counts'])
+    mean_counts = np.array(counts).mean(axis=0)
+    mean_counts = [float(m) for m in mean_counts]
 
     # For each bootstrap distribution, do ks-test against observed dbn and get coverage
     # ToDo: using distribution of first parameter only
@@ -152,6 +156,7 @@ class Simulator(object):
     results_dict['pvals'] = pvals
     results_dict['bootstrap_pvals'] = bootstrap_pvals
     results_dict['coverages'] = coverages
+    resulst_dict['mean_counts'] = mean_counts
     self.save_results(results_dict)
     return
 
@@ -249,7 +254,6 @@ class Simulator(object):
       #   self.policy_arguments['initial_policy_parameter'] = info['initial_policy_parameter']
 
       self.env.step(a)
-      print('{} info {}'.format(t, info))
     t1 = time.time()
     # score = np.mean(self.env.Y)
     score = np.mean(self.env.current_infected)
@@ -277,6 +281,8 @@ class Simulator(object):
 
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
+      episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
+
       print('GOT HERE')
 
     # print(np.mean(self.env.Y[-1,:]))
