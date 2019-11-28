@@ -2,6 +2,7 @@ import numpy as np
 import yaml
 import pdb
 import pandas as pd
+from scipy.stats import pearsonr
 
 NETWORK_NAMES = ['lattice', 'nearestneighbor']
 INDICES_TO_KEEP = [i for i in range(33) if i not in [17, 18, 19, 20]]
@@ -17,7 +18,7 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
   # which are redundant with features in the main effect component
 
   results_dict = {'L': [], 'policy': [], 'network': [], 'min_coverages': [], 'median_coverages': [], 
-                  'max_coverages': []}
+                  'max_coverages': [], 'nonzero_corr': []}
   for fname in fname_list:
     d = yaml.load(open('./results/{}'.format(fname), 'rb'))
 
@@ -46,6 +47,7 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
     results_dict['network'].append(network_name)
     results_dict['min_coverages'].append(np.min(coverages))
     results_dict['median_coverages'].append(np.median(coverages))
+    results_dict['nonzero_corr'].append(pearsonr(d['results']['mean_counts'], coverages)[1])
     results_dict['max_coverages'].append(np.max(coverages))
     # results_dict['bootstrap_pvals'].append(mean_bootstrap_pvals)
 
@@ -128,9 +130,24 @@ if __name__ == "__main__":
   fname_list_1_step_cutoff_more_reps = ['sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191127_050259.yml',
                                         'sis_random_quad_approx_100_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191127_031803.yml', 
                                         'sis_random_quad_approx_300_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191127_111855.yml']
+  fname_list_1_step_cutoff_nonzero_corr = ['sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_041339.yml', 
+  'sis_random_quad_approx_1000_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_023937.yml', 
+  'sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_001455.yml', 
+  'sis_random_quad_approx_100_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_000700.yml', 
+  'sis_random_quad_approx_300_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_010057.yml', 
+  'sis_random_quad_approx_300_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_003855.yml',
+  'sis_true_probs_myopic_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_095304.yml',
+  'sis_true_probs_myopic_quad_approx_100_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_094511.yml',
+  'sis_true_probs_myopic_quad_approx_300_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_120120.yml',
+  'sis_true_probs_myopic_quad_approx_300_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_113727.yml',
+  'sis_true_probs_myopic_quad_approx_500_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_103131.yml',
+  'sis_true_probs_myopic_quad_approx_500_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_111305.yml',
+  'sis_true_probs_myopic_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_151241.yml',
+  'sis_true_probs_myopic_quad_approx_1000_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_133959.yml']
 
-  summarize_sampling_dbns(fname_list_1_step_cutoff, outname=None, save=False)
-  summarize_sampling_dbns(fname_list_1_step_cutoff_more_reps, outname=None, save=False)
+  # summarize_sampling_dbns(fname_list_1_step_cutoff, outname=None, save=False)
+  # summarize_sampling_dbns(fname_list_1_step_cutoff_more_reps, outname=None, save=False)
+  summarize_sampling_dbns(fname_list_1_step_cutoff_nonzero_corr, outname=None, save=False)
 
 
 
