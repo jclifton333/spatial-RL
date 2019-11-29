@@ -47,7 +47,7 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
     results_dict['network'].append(network_name)
     results_dict['min_coverages'].append(np.min(coverages))
     results_dict['median_coverages'].append(np.median(coverages))
-    results_dict['nonzero_corr'].append(pearsonr(d['results']['mean_counts'], coverages)[1])
+    results_dict['nonzero_corr'].append(pearsonr(d['results']['mean_counts'], coverages)[0])
     results_dict['max_coverages'].append(np.max(coverages))
     # results_dict['bootstrap_pvals'].append(mean_bootstrap_pvals)
 
