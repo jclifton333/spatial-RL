@@ -145,9 +145,16 @@ if __name__ == "__main__":
   'sis_true_probs_myopic_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_151241.yml',
   'sis_true_probs_myopic_quad_approx_1000_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_133959.yml']
 
+  fname_list_1_step_cutoff_nonzero_corr_no_ridge = ['sis_true_probs_myopic_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_194918.yml',
+                                                    'sis_true_probs_myopic_quad_approx_100_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191128_194133.yml'
+]
+
+
   # summarize_sampling_dbns(fname_list_1_step_cutoff, outname=None, save=False)
   # summarize_sampling_dbns(fname_list_1_step_cutoff_more_reps, outname=None, save=False)
   summarize_sampling_dbns(fname_list_1_step_cutoff_nonzero_corr, outname=None, save=False)
+  summarize_sampling_dbns(fname_list_1_step_cutoff_nonzero_corr_no_ridge, outname=None, save=False)
+
 
 
 

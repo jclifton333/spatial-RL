@@ -145,7 +145,7 @@ def two_step_mb_constant_cutoff(**kwargs):
   # Fit backup-up q function
   # reg = regressor(n_estimators=100)
   # reg = regressor()
-  reg = LinearRegression()
+  reg = Ridge(alpha=2.0)
   X_stack = np.vstack(env.X[:-1])
   reg.fit(X_stack, np.hstack(backup), sample_weight=weights_1)
 
