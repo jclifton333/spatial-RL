@@ -119,10 +119,12 @@ def two_step_mb_constant_cutoff(**kwargs):
   if bootstrap:
     weights = np.random.exponential(size=len(env.X)*env.L)
     weights_1 = weights[env.L:]
+    random_penalty_correction = np.sum(weights_1) / len(weights_1)
   else:
     weights = None
     weights_1 = None
-
+    random_penalty_correction = 1.
+    
   # One step
   clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
   def qfn_at_block(block_index, a):
@@ -145,8 +147,7 @@ def two_step_mb_constant_cutoff(**kwargs):
   # Fit backup-up q function
   # reg = regressor(n_estimators=100)
   # reg = regressor()
-  random_penalty_correction = np.sum(weights_1) / len(weights_1)
-  reg = Ridge(alpha=1.0*random_penalty_correction)
+    reg = Ridge(alpha=1.0*random_penalty_correction)
   # reg = LinearRegression()
   X_stack = np.vstack(env.X[:-1])
   reg.fit(X_stack, np.hstack(backup), sample_weight=weights_1)
@@ -154,7 +155,6 @@ def two_step_mb_constant_cutoff(**kwargs):
   # Count number of nonzero params
   X_nonzero = X_stack > 0
   X_nonzero_counts = X_nonzero.sum(axis=0)
-
   return None, {'q_fn_params': reg.coef_, 'nonzero_counts': X_nonzero_counts}
 
 
