@@ -148,13 +148,10 @@ def two_step_mb_constant_cutoff(**kwargs):
   # Fit backup-up q function
   # reg = regressor(n_estimators=100)
   # reg = regressor()
-  # reg = Ridge(alpha=1.0*random_penalty_correction)
-  reg = LinearRegression()
+  reg = Ridge(alpha=5.0*random_penalty_correction)
   X_stack = np.vstack(env.X[:-1])
-  pca = PCA(n_components=8)
-  pca.fit(X_stack)
-  X_reduced = pca.transform(X_stack)
-  reg.fit(X_reduced, np.hstack(backup), sample_weight=weights_1)
+  X_stack = X_stack[:, 1:-1]
+  reg.fit(X_stack, np.hstack(backup), sample_weight=weights_1)
 
   # Count number of nonzero params
   X_nonzero = X_stack > 0

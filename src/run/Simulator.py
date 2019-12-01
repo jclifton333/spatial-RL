@@ -132,6 +132,8 @@ class Simulator(object):
     num_params = q_fn_params_list.shape[1]
     bootstrap_pvals = []
     coverages = []
+    biases = np.array([p - true_q_fn_params for p in q_fn_params_list])
+    bias = biases.mean(axis=0) 
     for bootstrap_dbn in bootstrap_dbns:
       bootstrap_pvals_rep = []
       coverages_rep = []
@@ -157,6 +159,7 @@ class Simulator(object):
     results_dict['bootstrap_pvals'] = bootstrap_pvals
     results_dict['coverages'] = coverages
     results_dict['mean_counts'] = mean_counts
+    results_dict['bias'] = [float(b) for b in bias]
     self.save_results(results_dict)
     return
 
