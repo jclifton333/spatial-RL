@@ -67,7 +67,13 @@ if __name__ == "__main__":
                'sis_random_quad_approx_500_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191201_011039.yml', 
                'sis_true_probs_myopic_quad_approx_5000_nearestneighbor_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191201_093239.yml']
 
-  summarize_sampling_dbns(big_ridge, outname=None, save=False)
+  small_features = ['sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191203_164743.yml',
+'sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191203_020444.yml', 
+'sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191203_133047.yml',
+'sis_random_quad_approx_500_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191203_145034.yml',
+'sis_random_quad_approx_2000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191203_215711.yml'
+]
+  summarize_sampling_dbns(small_features, outname=None, save=False)
 
 
 
