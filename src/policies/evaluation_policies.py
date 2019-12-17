@@ -149,9 +149,10 @@ def two_step_mb_constant_cutoff(**kwargs):
   # reg = regressor(n_estimators=100)
   # reg = regressor()
   reg = Ridge(alpha=5.0*random_penalty_correction)
-  # X_stack = np.vstack(env.X[:-1])
-  # X_stack = X_stack[:, 1:-1]
-  X_stack = np.vstack(env.X_raw[:-1])
+  X_stack = np.vstack(env.X[:-1])
+  keep_ixs = [i for i in range(16) if i not in [7, 15]]
+  X_stack = X_stack[:, keep_ixs]
+  # X_stack = np.vstack(env.X_raw[:-1])
   reg.fit(X_stack, np.hstack(backup), sample_weight=weights_1)
 
   # Count number of nonzero params
