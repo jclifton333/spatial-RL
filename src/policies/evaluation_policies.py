@@ -153,7 +153,7 @@ def two_step_mb_constant_cutoff(**kwargs):
   X_stack = np.vstack(env.X[:-1])
   keep_ixs = [i for i in range(16) if i not in [0, 8]]
   X_stack = X_stack[:, keep_ixs]
-  alpha_ = np.max(np.linalg.eig(np.dot(X_stack.T, X_stack)))
+  alpha_ = np.max(np.linalg.eig(np.dot(X_stack.T, X_stack))[0])
   
   # Fit regression
   reg = Ridge(alpha=alpha_*random_penalty_correction)
