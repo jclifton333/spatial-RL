@@ -148,11 +148,15 @@ def two_step_mb_constant_cutoff(**kwargs):
   # Fit backup-up q function
   # reg = regressor(n_estimators=100)
   # reg = regressor()
-  reg = Ridge(alpha=5.0*random_penalty_correction)
+
+  # Adaptively choose ridge penalty based on eigenvals 
   X_stack = np.vstack(env.X[:-1])
-  keep_ixs = [i for i in range(16) if i not in [7, 15]]
+  keep_ixs = [i for i in range(16) if i not in [0, 8]]
   X_stack = X_stack[:, keep_ixs]
-  # X_stack = np.vstack(env.X_raw[:-1])
+  alpha_ = np.max(np.linalg.eig(np.dot(X_stack.T, X_stack)))
+  
+  # Fit regression
+  reg = Ridge(alpha=alpha_*random_penalty_correction)
   reg.fit(X_stack, np.hstack(backup), sample_weight=weights_1)
 
   # Count number of nonzero params
