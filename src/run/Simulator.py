@@ -293,7 +293,7 @@ class Simulator(object):
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
       episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
-      episode_results['eigs'] = q_fn_policy_infoeigs)
+      episode_results['eigs'] = q_fn_policy_info['eigs']
 
       print('GOT HERE')
 
