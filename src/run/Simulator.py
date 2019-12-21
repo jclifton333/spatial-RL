@@ -115,6 +115,7 @@ class Simulator(object):
     q_fn_params_list = []
     bootstrap_dbns = []
     counts = []
+    eigs_list = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
@@ -122,6 +123,7 @@ class Simulator(object):
           q_fn_params_list.append(v['q_fn_params'])
           bootstrap_dbns.append(v['q_fn_bootstrap_dbn'])
           counts.append(v['nonzero_counts'])
+          eigs.append(v['eigs'])
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
 
@@ -140,7 +142,7 @@ class Simulator(object):
       bootstrap_dbn = np.array(bootstrap_dbn)
       for param in range(num_params):
         # Do ks-test
-        bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list[:, param], bootstrap_dbn[:, param])[0]))
+        bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list[:, param], bootstrap_dbn[:, param])[1]))
         # Get coverage
         conf_interval = np.percentile(bootstrap_dbn[:, param], [2.5, 97.5])
         if true_q_fn_params[param] >= conf_interval[0] and true_q_fn_params[param] <= conf_interval[1]:
@@ -153,11 +155,17 @@ class Simulator(object):
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
     pvals = [float(pval) for pval in pvals]
+    eig_vars = np.var(eigs_list, axis=0)
+    eig_vars = [float(v) for v in eig_vars]
+    beta_vars = np.var(np.array(q_fn_params_list))
+    beta_vars = [float(b) for b in beta_vars]
     coverages = np.array(coverages).mean(axis=0)
     coverages = [float(c) for c in coverages]
     results_dict['pvals'] = pvals
     results_dict['bootstrap_pvals'] = bootstrap_pvals
     results_dict['coverages'] = coverages
+    results_dict['eig_vars'] = eig_vars
+    results_dict['beta_vars'] = beta_vars 
     results_dict['mean_counts'] = mean_counts
     results_dict['bias'] = [float(b) for b in bias]
     self.save_results(results_dict)
@@ -285,6 +293,7 @@ class Simulator(object):
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
       episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
+      episode_results['eigs'] = q_fn_policy_infoeigs)
 
       print('GOT HERE')
 

@@ -153,7 +153,10 @@ def two_step_mb_constant_cutoff(**kwargs):
   X_stack = np.vstack(env.X[:-1])
   keep_ixs = [i for i in range(16) if i not in [0, 8]]
   X_stack = X_stack[:, keep_ixs]
-  alpha_ = np.max(np.linalg.eig(np.dot(X_stack.T, X_stack))[0])
+  XpX = np.dot(X_stack.T, X_stack)
+  eigs = np.linalg.eig(XpX)[0]
+  # alpha_ = np.max(eigs)
+  alpha_ = 5
   
   # Fit regression
   reg = Ridge(alpha=alpha_*random_penalty_correction)
@@ -162,6 +165,6 @@ def two_step_mb_constant_cutoff(**kwargs):
   # Count number of nonzero params
   X_nonzero = X_stack > 0
   X_nonzero_counts = X_nonzero.sum(axis=0)
-  return None, {'q_fn_params': reg.coef_, 'nonzero_counts': X_nonzero_counts}
+  return None, {'q_fn_params': reg.coef_, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs}
 
 

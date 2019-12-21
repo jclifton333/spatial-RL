@@ -73,7 +73,12 @@ if __name__ == "__main__":
 'sis_random_quad_approx_500_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191203_145034.yml',
 'sis_random_quad_approx_2000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191203_215711.yml'
 ]
-  summarize_sampling_dbns(small_features, outname=None, save=False)
+
+  ridge = ['sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_033702.yml',
+           'sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_060631.yml',
+           'sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_140037.yml',
+           'sis_random_quad_approx_2000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_130940.yml']
+  summarize_sampling_dbns(ridge, outname=None, save=False)
 
 
 
