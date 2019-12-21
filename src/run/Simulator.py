@@ -123,7 +123,7 @@ class Simulator(object):
           q_fn_params_list.append(v['q_fn_params'])
           bootstrap_dbns.append(v['q_fn_bootstrap_dbn'])
           counts.append(v['nonzero_counts'])
-          eigs.append(v['eigs'])
+          eigs_list.append(v['eigs'])
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
 
