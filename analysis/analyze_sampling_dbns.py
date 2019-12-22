@@ -79,9 +79,10 @@ if __name__ == "__main__":
            'sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_060631.yml',
            'sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_140037.yml',
            'sis_random_quad_approx_2000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_130940.yml']
-  eigs = ['sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191221_222857.yml',
-          'sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191221_205307.yml']
-  summarize_sampling_dbns(eigs, outname=None, save=False)
+  eigs = ['sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191221_235341.yml',
+'sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191222_012809.yml',
+'sis_random_quad_approx_2000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191222_060207.yml']
+  summarize_sampling_dbns(small_features, outname=None, save=False)
 
 
 

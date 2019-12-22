@@ -159,7 +159,7 @@ def two_step_mb_constant_cutoff(**kwargs):
   alpha_ = 1
   
   # Fit regression
-  reg = Ridge(alpha=alpha_*random_penalty_correction)
+  reg = Ridge(alpha=alpha_*random_penalty_correction, fit_intercept=False)
   reg.fit(X_stack, np.hstack(backup), sample_weight=weights_1)
 
   # Count number of nonzero params
