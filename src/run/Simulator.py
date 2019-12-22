@@ -157,7 +157,7 @@ class Simulator(object):
     pvals = [float(pval) for pval in pvals]
     eig_vars = np.var(eigs_list, axis=0)
     eig_vars = [float(v) for v in eig_vars]
-    beta_vars = np.var(np.array(q_fn_params_list))
+    beta_vars = np.var(np.array(q_fn_params_list), axis=0)
     beta_vars = [float(b) for b in beta_vars]
     coverages = np.array(coverages).mean(axis=0)
     coverages = [float(c) for c in coverages]
@@ -168,6 +168,7 @@ class Simulator(object):
     results_dict['beta_vars'] = beta_vars 
     results_dict['mean_counts'] = mean_counts
     results_dict['bias'] = [float(b) for b in bias]
+    results_dict['betas'] = [float(b) for b in true_q_fn_params]
     self.save_results(results_dict)
     return
 

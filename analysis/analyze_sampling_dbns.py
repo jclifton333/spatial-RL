@@ -21,6 +21,7 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
                   'max_coverages': [], 'nonzero_corr': []}
   for fname in fname_list:
     d = yaml.load(open('./results/{}'.format(fname), 'rb'))
+    pdb.set_trace()
 
     # Get summaries of sampling dbn comparison with bootstrap dbns
     coverages = d['results']['coverages'] # Coverages of bootstrap naive conf intervals
@@ -78,7 +79,9 @@ if __name__ == "__main__":
            'sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_060631.yml',
            'sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_140037.yml',
            'sis_random_quad_approx_2000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191220_130940.yml']
-  summarize_sampling_dbns(ridge, outname=None, save=False)
+  eigs = ['sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191221_222857.yml',
+          'sis_random_quad_approx_100_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191221_205307.yml']
+  summarize_sampling_dbns(eigs, outname=None, save=False)
 
 
 
