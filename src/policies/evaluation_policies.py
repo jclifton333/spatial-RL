@@ -112,6 +112,34 @@ def two_step_mb_myopic(**kwargs):
   return None, {'q_fn_params': reg.coef_}
 
 
+def one_step_eval(**kwargs):
+  classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['bootstrap'], kwargs['gamma']
+
+  if bootstrap:
+    weights = np.random.exponential(size=len(env.X)*env.L)
+    weights_1 = weights[env.L:]
+    random_penalty_correction = np.sum(weights_1) / len(weights_1)
+  else:
+    weights = None
+    weights_1 = None
+    random_penalty_correction = 1.
+    
+  # One step
+  # clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
+  clf = LogisticRegression(C=1/random_penalty_correction, fit_intercept=False)
+  X = np.vstack(env.X)[:, :8]
+  clf.fit(X, np.hstack(env.y), sample_weight=weights)
+
+  XpX = np.dot(X.T, X)
+  eigs = np.linalg.eig(XpX / XpX.shape[0])[0]
+  X_nonzero = X > 0
+  X_nonzero_counts = X_nonzero.sum(axis=0)
+
+  return None, {'q_fn_params': clf.coef_[0], 'nonzero_counts': X_nonzero_counts, 'eigs': eigs}
+
+
 def two_step_mb_constant_cutoff(**kwargs):
   CUTOFF = 0.5
   classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma = \
@@ -130,7 +158,7 @@ def two_step_mb_constant_cutoff(**kwargs):
   # One step
   # clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
   clf = LogisticRegression(C=1/random_penalty_correction, fit_intercept=False)
-  clf.fit(np.vstack(env.X)[:, :8], np.hstack(env.y))
+  clf.fit(np.vstack(env.X)[:, :8], np.hstack(env.y), sample_weight=weights)
   def qfn_at_block(block_index, a):
     # return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
     return clf.predict_proba(env.data_block_at_action(block_index, a)[:, :8])[:, -1]
@@ -165,16 +193,9 @@ def two_step_mb_constant_cutoff(**kwargs):
   # Fit regression
   # reg = Ridge(alpha=alpha_*random_penalty_correction, fit_intercept=False)
   # ys = np.hstack(backup)
-  reg = LogisticRegression(C=1/(alpha_*random_penalty_correction), fit_intercept=False)
-  ys = np.hstack(env.y[:-1])
-  reg.fit(X_stack, ys, sample_weight=weights_1)
-  coefs = []
-  for it in range(1000):
-    weights = np.random.exponential(size=len(ys))
-    reg = LogisticRegression(C=1/(alpha_*np.mean(weights)), fit_intercept=False)
-    # reg = Ridge(alpha=alpha_*np.mean(weights), fit_intercept=False)
-    reg.fit(X_stack, ys, sample_weight=weights)
-    coefs.append(reg.coef_)
+  reg = Ridge(alpha_*random_penalty_correction, fit_intercept=False)
+  backup = np.hstack(backup)
+  reg.fit(X_stack, backup, sample_weight=weights_1)
 
   # Count number of nonzero params
   X_nonzero = X_stack > 0

@@ -80,6 +80,7 @@ def policy_factory(policy_type):
     return eval.two_step_mb_constant_cutoff
   elif policy_type == 'two_step_mb_constant_cutoff_test':
     return eval.two_step_mb_constant_cutoff_test
-
+  elif policy_type == 'one_step_eval':
+    return eval.one_step_eval
   else:
     raise ValueError('Argument does not match any policy.')
