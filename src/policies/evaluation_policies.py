@@ -157,24 +157,31 @@ def one_step_bins(**kwargs):
   q_fn_params = np.zeros(0)
   X = np.vstack(env.X)[:, :8]
   y = np.hstack(env.y)
+
+  # Fit binned model
   for i in range(8):
     loc_i = np.where(X[:, i] > 0)
     y_i = y[loc_i]
     w_i = weights[loc_i]
     q_fn_params = np.hstack((q_fn_params, np.dot(y_i, w_i) / np.sum(w_i))) 
-   
+
+  # Fit raw feature model
+  X_raw = np.vstack(env.X_raw)
+  clf = LogisticRegression(C=1/np.mean(w_i), fit_intercept=True)
+  clf.fit(X_raw, y, sample_weight=weights)
+
   XpX = np.dot(X.T, X)
   eigs = np.linalg.eig(XpX / X.shape[0])[0]
   X_nonzero = X > 0
   X_nonzero_counts = X_nonzero.sum(axis=0)
 
-  # Get autocorrelations for location 1 
-  ixs_for_loc_1 = [int(ix) for ix in np.linspace(0, env.L*(env.T-1), env.T-1)]
+  # Get autocorrelations for location 0
+  ixs_for_loc_1 = [int(ix) for ix in np.linspace(0, env.L-1+env.L*(env.T-2), env.T-1)]
   y_loc_1 = y[ixs_for_loc_1] 
   acfs = [acf(y_loc_1, lag) for lag in range(1, 10)]
   
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs, 
-                'acfs': acfs}
+                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_[0]}
 
 
 

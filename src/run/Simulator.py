@@ -33,6 +33,29 @@ from sklearn.linear_model import LinearRegression, Ridge
 
 # import keras.backend as K
 
+def bootstrap_coverages(bootstrap_dbns_, q_fn_params_list_):
+  q_fn_params_list_ = np.array(q_fn_params_list_)
+  true_q_fn_params_ = q_fn_params_list_.mean(axis=0)
+  num_params = len(true_q_fn_params_)
+  bootstrap_pvals = []
+  coverages = []
+  for bootstrap_dbn in bootstrap_dbns_:
+    bootstrap_pvals_rep = []
+    coverages_rep = []
+    bootstrap_dbn = np.array(bootstrap_dbn)
+    for param in range(num_params):
+      # Do ks-test
+      bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list_[:, param], bootstrap_dbn[:, param])[1]))
+      # Get coverage
+      conf_interval = np.percentile(bootstrap_dbn[:, param], [2.5, 97.5])
+      if true_q_fn_params_[param] >= conf_interval[0] and true_q_fn_params_[param] <= conf_interval[1]:
+        coverages_rep.append(1)
+      else:
+        coverages_rep.append(0)
+    coverages.append(coverages_rep)
+    bootstrap_pvals.append(bootstrap_pvals_rep)
+  return bootstrap_pvals, np.array(coverages).mean(axis=0)
+
 
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
@@ -113,19 +136,25 @@ class Simulator(object):
     # Save results
     results_dict = {}
     q_fn_params_list = []
+    q_fn_params_raw_list = []
     bootstrap_dbns = []
+    raw_bootstrap_dbns = []
     counts = []
     eigs_list = []
     acfs_list = []
+    ys_list = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
           # results_dict[k] = v['q_fn_params']
           q_fn_params_list.append(v['q_fn_params'])
+          q_fn_params_raw_list.append(v['q_fn_params_raw'])
           bootstrap_dbns.append(v['q_fn_bootstrap_dbn'])
+          raw_bootstrap_dbns.append(v['q_fn_bootstrap_dbn_raw'])
           counts.append(v['nonzero_counts'])
           eigs_list.append(v['eigs'])
           acfs_list.append(v['acfs'])
+          ys_list.append(v['ys'])
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
     acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
@@ -135,25 +164,12 @@ class Simulator(object):
     q_fn_params_list = np.array(q_fn_params_list)
     true_q_fn_params = q_fn_params_list.mean(axis=0)  # Treating mean parameter values as truth to compute coverage
     num_params = q_fn_params_list.shape[1]
-    bootstrap_pvals = []
-    coverages = []
     biases = np.array([p - true_q_fn_params for p in q_fn_params_list])
     bias = biases.mean(axis=0) 
-    for bootstrap_dbn in bootstrap_dbns:
-      bootstrap_pvals_rep = []
-      coverages_rep = []
-      bootstrap_dbn = np.array(bootstrap_dbn)
-      for param in range(num_params):
-        # Do ks-test
-        bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list[:, param], bootstrap_dbn[:, param])[1]))
-        # Get coverage
-        conf_interval = np.percentile(bootstrap_dbn[:, param], [2.5, 97.5])
-        if true_q_fn_params[param] >= conf_interval[0] and true_q_fn_params[param] <= conf_interval[1]:
-          coverages_rep.append(1)
-        else:
-          coverages_rep.append(0)
-      bootstrap_pvals.append(bootstrap_pvals_rep)
-      coverages.append(coverages_rep)
+    
+    bootstrap_pvals, coverages = bootstrap_coverages(bootstrap_dbns, q_fn_params_list)
+    raw_bootstrap_pvals, raw_coverages = bootstrap_coverages(raw_bootstrap_dbns, q_fn_params_raw_list)
+    pdb.set_trace()
 
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
@@ -162,7 +178,6 @@ class Simulator(object):
     eig_vars = [float(v) for v in eig_vars]
     beta_vars = np.var(np.array(q_fn_params_list), axis=0)
     beta_vars = [float(b) for b in beta_vars]
-    coverages = np.array(coverages).mean(axis=0)
     coverages = [float(c) for c in coverages]
     results_dict['pvals'] = pvals
     results_dict['bootstrap_pvals'] = bootstrap_pvals
@@ -290,17 +305,22 @@ class Simulator(object):
 
       # Get bootstrap dbn of q-function parameters
       bootstrap_dbn = []
+      raw_bootstrap_dbn = []
       q_fn_policy_params['bootstrap'] = True
       for sample in range(NUM_BOOTSTRAP_SAMPLES):
         _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
         bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
+        raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
 
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
+      episode_results['q_fn_params_raw'] = [float(t) for t in q_fn_policy_info['q_fn_params_raw']]
       episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
+      episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
       episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
       episode_results['eigs'] = q_fn_policy_info['eigs']
       episode_results['acfs'] = q_fn_policy_info['acfs']
-
+      episode_results['ys'] = q_fn_policy_info['ys']
+      
       print('GOT HERE')
 
     # print(np.mean(self.env.Y[-1,:]))
