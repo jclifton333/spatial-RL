@@ -133,11 +133,40 @@ def one_step_eval(**kwargs):
   clf.fit(X, np.hstack(env.y), sample_weight=weights)
 
   XpX = np.dot(X.T, X)
-  eigs = np.linalg.eig(XpX / XpX.shape[0])[0]
+  eigs = np.linalg.eig(XpX / X.shape[0])[0]
   X_nonzero = X > 0
   X_nonzero_counts = X_nonzero.sum(axis=0)
 
   return None, {'q_fn_params': clf.coef_[0], 'nonzero_counts': X_nonzero_counts, 'eigs': eigs}
+
+
+def one_step_bins(**kwargs):
+  classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['bootstrap'], kwargs['gamma']
+
+  N = len(env.X)*env.L
+  if bootstrap:
+    weights = np.random.exponential(size=N)
+  else:
+    weights = np.ones(N)
+
+  q_fn_params = np.zeros(0)
+  X = np.vstack(env.X)[:, :8]
+  y = np.hstack(env.y)
+  for i in range(8):
+    loc_i = np.where(X[:, i] > 0)
+    y_i = y[loc_i]
+    w_i = weights[loc_i]
+    q_fn_params = np.hstack((q_fn_params, np.dot(y_i, w_i) / np.sum(w_i))) 
+   
+  XpX = np.dot(X.T, X)
+  eigs = np.linalg.eig(XpX / X.shape[0])[0]
+  X_nonzero = X > 0
+  X_nonzero_counts = X_nonzero.sum(axis=0)
+
+  return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs}
+
 
 
 def two_step_mb_constant_cutoff(**kwargs):

@@ -35,7 +35,9 @@ if __name__ == '__main__':
   parser.add_argument('--ignore_errors', type=str)
   parser.add_argument('--network', type=str)
   parser.add_argument('--policy', type=str)
-  parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step_eval', 'two_step', 'two_step_random',
+  parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step_eval', 
+                                                                     'one_step_bins', 
+                                                                     'two_step', 'two_step_random',
                                                                      'two_step_mb_myopic',
                                                                      'two_step_mb_constant_cutoff',
                                                                      'two_step_mb_constant_cutoff_test'])

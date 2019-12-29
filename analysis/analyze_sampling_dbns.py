@@ -21,8 +21,8 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
                   'max_coverages': [], 'nonzero_corr': []}
   for fname in fname_list:
     d = yaml.load(open('./results/{}'.format(fname), 'rb'))
-    pdb.set_trace()
-
+    res = d['results']
+    
     # Get summaries of sampling dbn comparison with bootstrap dbns
     coverages = d['results']['coverages'] # Coverages of bootstrap naive conf intervals
     bootstrap_pvals = d['results']['bootstrap_pvals'] # Pvals of ks comparisons of bootstrap and sampling dbns
@@ -33,6 +33,7 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
     # Get gen model settings
     # ToDo: store these in results so we dont have to do this hacky shit
     L = d['settings']['L']
+    pdb.set_trace()
     policy = (len(d['results']['coverages']) == 33)
     for name in NETWORK_NAMES:
       if name in fname:
@@ -83,10 +84,19 @@ if __name__ == "__main__":
 'sis_random_quad_approx_1000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191222_012809.yml',
 'sis_random_quad_approx_2000_lattice_sampling-dbn-run=True_eval=two_step_mb_constant_cutoff_0.0_191222_060207.yml']
 
+
+  simple_models_0_step = ['sis_random_quad_approx_50_lattice_eval-policy=one_step_eval_eval=one_step_eval_0.0_191228_172614.yml', 
+'sis_random_quad_approx_100_lattice_eval-policy=one_step_eval_eval=one_step_eval_0.0_191228_172636.yml', 
+'sis_random_quad_approx_500_lattice_eval-policy=one_step_eval_eval=one_step_eval_0.0_191228_172810.yml',
+'sis_random_quad_approx_1000_lattice_eval-policy=one_step_eval_eval=one_step_eval_0.0_191228_173145.yml']
   simple_models = ['sis_random_quad_approx_500_lattice_eval-policy=two_step_mb_constant_cutoff_eval=two_step_mb_constant_cutoff_0.0_191228_165229.yml',
 'sis_random_quad_approx_50_lattice_eval-policy=two_step_mb_constant_cutoff_eval=two_step_mb_constant_cutoff_0.0_191228_161827.yml',
+'sis_random_quad_approx_2000_lattice_eval-policy=two_step_mb_constant_cutoff_eval=two_step_mb_constant_cutoff_0.0_191228_204424.yml', 
+'sis_random_quad_approx_1000_lattice_eval-policy=two_step_mb_constant_cutoff_eval=two_step_mb_constant_cutoff_0.0_191228_214927.yml', 
 'sis_random_quad_approx_100_lattice_eval-policy=two_step_mb_constant_cutoff_eval=two_step_mb_constant_cutoff_0.0_191228_162416.yml'] 
-  summarize_sampling_dbns(simple_models, outname=None, save=False)
+  summarize_sampling_dbns(simple_models_0_step, outname=None, save=False)
+  # summarize_sampling_dbns(simple_models, outname=None, save=False)
+
 
 
 
