@@ -116,6 +116,7 @@ class Simulator(object):
     bootstrap_dbns = []
     counts = []
     eigs_list = []
+    acfs_list = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
@@ -124,8 +125,10 @@ class Simulator(object):
           bootstrap_dbns.append(v['q_fn_bootstrap_dbn'])
           counts.append(v['nonzero_counts'])
           eigs_list.append(v['eigs'])
+          acfs_list.append(v['acfs'])
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
+    acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
 
     # For each bootstrap distribution, do ks-test against observed dbn and get coverage
     # ToDo: using distribution of first parameter only
@@ -169,6 +172,7 @@ class Simulator(object):
     results_dict['mean_counts'] = mean_counts
     results_dict['bias'] = [float(b) for b in bias]
     results_dict['betas'] = [float(b) for b in true_q_fn_params]
+    results_dict['acfs'] = [float(a) for a in acfs]
     self.save_results(results_dict)
     return
 
@@ -295,6 +299,7 @@ class Simulator(object):
       episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
       episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
       episode_results['eigs'] = q_fn_policy_info['eigs']
+      episode_results['acfs'] = q_fn_policy_info['acfs']
 
       print('GOT HERE')
 

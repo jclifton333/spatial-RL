@@ -94,7 +94,17 @@ if __name__ == "__main__":
 'sis_random_quad_approx_2000_lattice_eval-policy=two_step_mb_constant_cutoff_eval=two_step_mb_constant_cutoff_0.0_191228_204424.yml', 
 'sis_random_quad_approx_1000_lattice_eval-policy=two_step_mb_constant_cutoff_eval=two_step_mb_constant_cutoff_0.0_191228_214927.yml', 
 'sis_random_quad_approx_100_lattice_eval-policy=two_step_mb_constant_cutoff_eval=two_step_mb_constant_cutoff_0.0_191228_162416.yml'] 
-  summarize_sampling_dbns(simple_models_0_step, outname=None, save=False)
+  one_step_binned = ['sis_random_quad_approx_50_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_012132.yml',
+'sis_random_quad_approx_50_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_012132.yml',
+'sis_random_quad_approx_100_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_012215.yml',
+'sis_random_quad_approx_1000_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_012426.yml', 
+'sis_treat_first_quad_approx_50_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_024142.yml',
+'sis_treat_first_quad_approx_500_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_024459.yml']
+
+  one_step_binned_more_reps = ['sis_random_quad_approx_50_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_021113.yml',
+'sis_random_quad_approx_1000_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_021622.yml']
+
+  summarize_sampling_dbns(one_step_binned, outname=None, save=False)
   # summarize_sampling_dbns(simple_models, outname=None, save=False)
 
 

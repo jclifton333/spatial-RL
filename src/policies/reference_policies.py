@@ -25,6 +25,12 @@ def true_probs(**kwargs):
   a = argmaxer(env.next_infected_probabilities, evaluation_budget, treatment_budget, env)
   return a, None
 
+def treat_first(**kwargs):
+  env, treatment_budget, evaluation_budget, argmaxer = \
+    kwargs['env'], kwargs['treatment_budget'], kwargs['evaluation_budget'], kwargs['argmaxer']
+  a = np.concatenate((np.ones(treatment_budget), np.zeros(env.L-treatment_budget)))
+  return a, None
+
 
 def true_probs_myopic(**kwargs):
   env, treatment_budget, divide_evenly = kwargs['env'], kwargs['treatment_budget'], kwargs['divide_evenly']

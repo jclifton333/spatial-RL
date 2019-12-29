@@ -14,6 +14,8 @@ def policy_factory(policy_type):
   """
   if policy_type == 'random':
     return ref.random
+  elif policy_type == 'treat_first':
+    return ref.treat_first
   elif policy_type == 'sis_one_step_dyna_space_filling':
     return dyna.sis_one_step_dyna_space_filling
   elif policy_type == 'sis_aic_two_step':

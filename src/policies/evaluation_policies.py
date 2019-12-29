@@ -25,6 +25,9 @@ import numpy as np
 from functools import partial
 
 
+def acf(x, length):
+    cc = np.corrcoef(x[:-length], x[length:])[0, 1]
+    return cc
 def two_step_random(**kwargs):
   NUM_RANDOM_DRAWS = 100
   classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma = \
@@ -165,7 +168,13 @@ def one_step_bins(**kwargs):
   X_nonzero = X > 0
   X_nonzero_counts = X_nonzero.sum(axis=0)
 
-  return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs}
+  # Get autocorrelations for location 1 
+  ixs_for_loc_1 = [int(ix) for ix in np.linspace(0, env.L*(env.T-1), env.T-1)]
+  y_loc_1 = y[ixs_for_loc_1] 
+  acfs = [acf(y_loc_1, lag) for lag in range(1, 10)]
+  
+  return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs, 
+                'acfs': acfs}
 
 
 
@@ -296,7 +305,7 @@ def two_step_mb_constant_cutoff_test(**kwargs):
   coefs_1 = np.array(coefs_1)
   eigs_var = np.var(eigs, axis=0)
   eigs_var_1 = np.var(eigs_1, axis=0)
-  pdb.set_trace()
+
   # Count number of nonzero params
   X_nonzero = X_stack > 0
   X_nonzero_counts = X_nonzero.sum(axis=0)
