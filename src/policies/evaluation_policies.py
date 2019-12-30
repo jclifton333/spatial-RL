@@ -147,7 +147,7 @@ def one_step_bins(**kwargs):
   classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma = \
     kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
     kwargs['bootstrap'], kwargs['gamma']
-
+  
   N = len(env.X)*env.L
   if bootstrap:
     weights = np.random.exponential(size=N)
@@ -167,8 +167,8 @@ def one_step_bins(**kwargs):
 
   # Fit raw feature model
   X_raw = np.vstack(env.X_raw)
-  # clf = Ridge(alpha=np.mean(w_i), fit_intercept=True)
-  clf = LinearRegression(fit_intercept=True)
+  clf = Ridge(alpha=np.mean(w_i), fit_intercept=True)
+  # clf = LinearRegression(fit_intercept=True)
   clf.fit(X_raw, y, sample_weight=weights)
 
   XpX = np.dot(X_raw.T, X_raw)
@@ -181,18 +181,17 @@ def one_step_bins(**kwargs):
   y_loc_1 = y[ixs_for_loc_1] 
   acfs = [acf(y_loc_1, lag) for lag in range(1, 10)]
 
-  # For checking assumptions of first lemma
   yhat = clf.predict(X_raw)
-  error = y - yhat
+  X_raw = np.column_stack((np.ones(X_raw.shape[0]), X_raw))
+  error = y - yhat 
   X_times_y = np.multiply(X_raw.T, error)
   zbar = np.dot(X_raw.T, y) / np.sqrt(X_raw.shape[0])
   # zvar = (X_times_y*X_times_y).mean(axis=1)
   zvar = np.dot(X_times_y, X_times_y.T) / X_raw.shape[0]
 
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs, 
-                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_, 'zbar': zbar, 
+                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': np.concatenate(([clf.intercept_], clf.coef_)), 'zbar': (X_raw, y), 
                 'zvar': zvar}
-
 
 
 def two_step_mb_constant_cutoff(**kwargs):

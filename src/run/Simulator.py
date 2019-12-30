@@ -176,8 +176,16 @@ class Simulator(object):
     bootstrap_pvals, coverages = bootstrap_coverages(bootstrap_dbns, q_fn_params_list)
     raw_bootstrap_pvals, raw_coverages = bootstrap_coverages(raw_bootstrap_dbns, q_fn_params_raw_list)
     zvars = np.array(zvar_list)
-    zbars = np.array(zbar_list)
-    pdb.set_trace()
+    zbars = [] 
+    true_q_fn_params_raw= np.array(q_fn_params_raw_list).mean(axis=0)
+    for X_raw, y in zbar_list:
+      y_hat = np.dot(X_raw, true_q_fn_params_raw) # ToDo: need intercept, or don't fit
+      zbars.append(np.dot(X_raw.T, y-y_hat) / np.sqrt(X_raw.shape[0])) 
+    zbars = np.array(zbars)
+
+    true_cov = np.cov(zbars.T)[1:, 1:]
+    est_cov = np.mean(zvars, axis=0)[1:, 1:]
+    pdb.set_trace() 
 
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
