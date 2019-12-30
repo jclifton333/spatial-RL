@@ -14,6 +14,7 @@ from src.estimation.model_based.Gravity.estimate_continuous_parameters import fi
 from src.estimation.q_functions.model_fitters import SKLogit2
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
+from scipy.spatial.distance import cdist
 from src.utils.misc import random_argsort
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
 from sklearn.decomposition import PCA
@@ -141,6 +142,73 @@ def one_step_eval(**kwargs):
   X_nonzero_counts = X_nonzero.sum(axis=0)
 
   return None, {'q_fn_params': clf.coef_[0], 'nonzero_counts': X_nonzero_counts, 'eigs': eigs}
+
+
+def one_step_wild(**kwargs):
+  classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['bootstrap'], kwargs['gamma']
+
+  N = len(env.X)*env.L
+  if bootstrap:
+    # Construct pairwise distance matrices
+    pairwise_t = cdist(np.arange(env.T).reshape(-1,1), np.arange(env.T).reshape(-1,1))
+    pairwise_t /= np.max(pairwise_t)
+    pairwise_l = env.pairwise_distances
+    pairwise_l /= np.max(pairwise_l)
+
+    # Construct kernels and cross-products
+    K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*10)
+    K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*10)
+    K_tl = np.exp(-2*np.kron(pairwise_t, pairwise_l)*10)
+    K = np.multiply(np.kron(K_t, K_l), K_tl)
+
+    # Draw weights
+    weights = np.random.multivariate_normal(mean=np.zeros(K.shape[0]), cov=K)
+  else:
+    weights = np.ones(N)
+
+  q_fn_params = np.zeros(0)
+  X = np.vstack(env.X)[:, :8]
+  y = np.hstack(env.y)
+
+  # Fit binned model
+  for i in range(8):
+    loc_i = np.where(X[:, i] > 0)
+    y_i = y[loc_i]
+    q_fn_params = np.hstack((q_fn_params, np.mean(y_i)))
+
+  # Fit raw feature model
+  X_raw = np.vstack(env.X_raw)
+  clf = Ridge(alpha=1, fit_intercept=True)
+  # clf = LinearRegression(fit_intercept=True)
+  clf.fit(X_raw, y)
+
+  # Refit on bootstrapped residuals
+  yhat = clf.predict(X_raw)
+  y_wild = yhat + np.multiply(weights, y - yhat)
+  clf.fit(X_raw, y_wild)
+
+  ## Diagnostic information
+  XpX = np.dot(X_raw.T, X_raw)
+  eigs = np.linalg.eig(XpX / X.shape[0])[0]
+  X_nonzero = X > 0
+  X_nonzero_counts = X_nonzero.sum(axis=0)
+
+  # Get autocorrelations for location 0
+  ixs_for_loc_1 = [int(ix) for ix in np.linspace(0, env.L-1+env.L*(env.T-2), env.T-1)]
+  y_loc_1 = y[ixs_for_loc_1]
+  acfs = [acf(y_loc_1, lag) for lag in range(1, 10)]
+
+  # Covariance estimate information
+  X_raw = np.column_stack((np.ones(X_raw.shape[0]), X_raw))
+  error = y - yhat
+  X_times_y = np.multiply(X_raw.T, error)
+  zvar = np.dot(X_times_y, X_times_y.T) / X_raw.shape[0]
+
+  return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs,
+                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': np.concatenate(([clf.intercept_], clf.coef_)), 'zbar': (X_raw, y),
+                'zvar': zvar}
 
 
 def one_step_bins(**kwargs):

@@ -17,7 +17,7 @@ class SpatialDisease(ABC):
   INITIAL_INFECT_PROP = 0.1
   
   def __init__(self, adjacency_matrix, initial_infections=None, construct_features_for_policy_search=False,
-               regenerate_network=False):
+               regenerate_network=False, compute_pairwise_distances=False):
     """
     :param adjacency_matrix: 2d binary array corresponding to network for gen model
     :param initial_infections: L-length binary array of initial infections, or None
@@ -25,12 +25,13 @@ class SpatialDisease(ABC):
     
     self.initial_infections = initial_infections
     self.construct_features_for_policy_search = construct_features_for_policy_search
+    self.compute_pairwise_distances = compute_pairwise_distances
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
     self.max_number_of_neighbors = int(np.max(np.sum(adjacency_matrix, axis=1)))
     
     # Adjacency info
-    self.construct_network(adjacency_matrix, construct_features_for_policy_search)
+    self.construct_network(adjacency_matrix, construct_features_for_policy_search, compute_pairwise_distances)
 
     # Observation history
     if self.initial_infections is None:
@@ -51,7 +52,7 @@ class SpatialDisease(ABC):
     self.current_infected = self.Y[-1, :]
     self.T = 0
 
-  def construct_network(self, adjacency_matrix, construct_features_for_policy_search):
+  def construct_network(self, adjacency_matrix, construct_features_for_policy_search, compute_pairwise_distances):
     self.L = adjacency_matrix.shape[0]
 
     # Adjacency info
@@ -62,7 +63,7 @@ class SpatialDisease(ABC):
 
     network_as_nx_object = nx.from_numpy_matrix(self.adjacency_matrix)
 
-    if construct_features_for_policy_search:
+    if construct_features_for_policy_search or compute_pairwise_distances:
       pairwise_distance_dictionary = dict(nx.all_pairs_shortest_path_length(network_as_nx_object))
       self.pairwise_distances = np.zeros((self.L, self.L))  # Entries are omega's in Nick's WNS paper
       for source_index, targets in pairwise_distance_dictionary.items():

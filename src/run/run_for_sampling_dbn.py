@@ -36,7 +36,8 @@ if __name__ == '__main__':
   parser.add_argument('--network', type=str)
   parser.add_argument('--policy', type=str)
   parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step_eval', 
-                                                                     'one_step_bins', 
+                                                                     'one_step_bins',
+                                                                     'one_step_wild',
                                                                      'two_step', 'two_step_random',
                                                                      'two_step_mb_myopic',
                                                                      'two_step_mb_constant_cutoff',
@@ -46,8 +47,10 @@ if __name__ == '__main__':
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
                   'nearestneighbor': generate_network.random_nearest_neighbor}
 
+  # ToDo: compute_pairiwse_distances = True b/c we need these for dependent bootstrap; make option for dependent
   env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': network_dict[args.network],
-                'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
+                'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon,
+                'compute_pairwise_distances': True}
 
   ts = (args.ts == 'True')
   ignore_errors = (args.ignore_errors == 'True')

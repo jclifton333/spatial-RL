@@ -67,6 +67,7 @@ class SIS(SpatialDisease):
   def __init__(self, L, omega, generate_network, add_neighbor_sums=False, adjacency_matrix=None,
                initial_infections=None, initial_state=None, eta=None, beta=None,
                epsilon=0, contaminator=CONTAMINATOR, construct_features_for_policy_search=False,
+               compute_pairwise_distances=False,
                neighbor_features=True, regenerate_network=False):
     """
     :param omega: parameter in [0,1] for mixing two sis models
@@ -103,7 +104,8 @@ class SIS(SpatialDisease):
 
     self.lambda_ = self.adjacency_matrix
     SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections,
-                            construct_features_for_policy_search=construct_features_for_policy_search)
+                            construct_features_for_policy_search=construct_features_for_policy_search,
+                            compute_pairwise_distances=compute_pairwise_distances)
 
     self.regenerate_network = regenerate_network
     if initial_state is None:

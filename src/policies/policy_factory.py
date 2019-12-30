@@ -86,5 +86,7 @@ def policy_factory(policy_type):
     return eval.one_step_eval
   elif policy_type == 'one_step_bins':
     return eval.one_step_bins
+  elif policy_type == 'one_step_wild':
+    return eval.one_step_wild
   else:
     raise ValueError('Argument does not match any policy.')
