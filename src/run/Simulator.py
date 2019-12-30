@@ -36,6 +36,7 @@ from sklearn.linear_model import LinearRegression, Ridge
 def bootstrap_coverages(bootstrap_dbns_, q_fn_params_list_):
   q_fn_params_list_ = np.array(q_fn_params_list_)
   true_q_fn_params_ = q_fn_params_list_.mean(axis=0)
+  q_fn_params_list_ = q_fn_params_list_ - true_q_fn_params_
   num_params = len(true_q_fn_params_)
   bootstrap_pvals = []
   coverages = []
@@ -48,7 +49,8 @@ def bootstrap_coverages(bootstrap_dbns_, q_fn_params_list_):
       bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list_[:, param], bootstrap_dbn[:, param])[1]))
       # Get coverage
       conf_interval = np.percentile(bootstrap_dbn[:, param], [2.5, 97.5])
-      if true_q_fn_params_[param] >= conf_interval[0] and true_q_fn_params_[param] <= conf_interval[1]:
+      # if true_q_fn_params_[param] >= conf_interval[0] and true_q_fn_params_[param] <= conf_interval[1]:
+      if 0 >= conf_interval[0] and 0 <= conf_interval[1]:
         coverages_rep.append(1)
       else:
         coverages_rep.append(0)
@@ -143,6 +145,7 @@ class Simulator(object):
     eigs_list = []
     acfs_list = []
     ys_list = []
+    zbar_list = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
@@ -155,9 +158,11 @@ class Simulator(object):
           eigs_list.append(v['eigs'])
           acfs_list.append(v['acfs'])
           ys_list.append(v['ys'])
+          zbar_list.append(v['zbar'])
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
     acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
+    zbar_var = np.array(zbar_list).var(axis=0)
 
     # For each bootstrap distribution, do ks-test against observed dbn and get coverage
     # ToDo: using distribution of first parameter only
@@ -311,7 +316,9 @@ class Simulator(object):
         _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
         bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
         raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
-
+      
+      bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params']) 
+      raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw']) 
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_params_raw'] = [float(t) for t in q_fn_policy_info['q_fn_params_raw']]
       episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
@@ -320,6 +327,7 @@ class Simulator(object):
       episode_results['eigs'] = q_fn_policy_info['eigs']
       episode_results['acfs'] = q_fn_policy_info['acfs']
       episode_results['ys'] = q_fn_policy_info['ys']
+      episode_results['zbar'] = q_fn_policy_info['zbar']
       
       print('GOT HERE')
 

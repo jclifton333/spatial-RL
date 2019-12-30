@@ -167,10 +167,11 @@ def one_step_bins(**kwargs):
 
   # Fit raw feature model
   X_raw = np.vstack(env.X_raw)
-  clf = LogisticRegression(C=1/np.mean(w_i), fit_intercept=True)
+  # clf = Ridge(alpha=np.mean(w_i), fit_intercept=True)
+  clf = LinearRegression(fit_intercept=True)
   clf.fit(X_raw, y, sample_weight=weights)
 
-  XpX = np.dot(X.T, X)
+  XpX = np.dot(X_raw.T, X_raw)
   eigs = np.linalg.eig(XpX / X.shape[0])[0]
   X_nonzero = X > 0
   X_nonzero_counts = X_nonzero.sum(axis=0)
@@ -179,9 +180,14 @@ def one_step_bins(**kwargs):
   ixs_for_loc_1 = [int(ix) for ix in np.linspace(0, env.L-1+env.L*(env.T-2), env.T-1)]
   y_loc_1 = y[ixs_for_loc_1] 
   acfs = [acf(y_loc_1, lag) for lag in range(1, 10)]
-  
+
+  # For checking assumptions of first lemma
+  X_times_y = np.multiply(X_raw.T, y)
+  # zbar = np.dot(X_raw.T, y) / np.sqrt(X_raw.shape[0])
+  zbar = X_times_y.var(axis=1)
+
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs, 
-                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_[0]}
+                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_, 'zbar': zbar}
 
 
 
