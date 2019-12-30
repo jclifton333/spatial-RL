@@ -40,7 +40,7 @@ def bootstrap_coverages(bootstrap_dbns_, q_fn_params_list_):
   num_params = len(true_q_fn_params_)
   bootstrap_pvals = []
   coverages = []
-  for bootstrap_dbn in bootstrap_dbns_:
+  for it, bootstrap_dbn in enumerate(bootstrap_dbns_):
     bootstrap_pvals_rep = []
     coverages_rep = []
     bootstrap_dbn = np.array(bootstrap_dbn)
@@ -49,8 +49,8 @@ def bootstrap_coverages(bootstrap_dbns_, q_fn_params_list_):
       bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list_[:, param], bootstrap_dbn[:, param])[1]))
       # Get coverage
       conf_interval = np.percentile(bootstrap_dbn[:, param], [2.5, 97.5])
-      # if true_q_fn_params_[param] >= conf_interval[0] and true_q_fn_params_[param] <= conf_interval[1]:
-      if 0 >= conf_interval[0] and 0 <= conf_interval[1]:
+      if q_fn_params_list_[it, param] >= conf_interval[0] and q_fn_params_list_[it, param] <= conf_interval[1]:
+      # if 0 >= conf_interval[0] and 0 <= conf_interval[1]:
         coverages_rep.append(1)
       else:
         coverages_rep.append(0)
@@ -146,6 +146,7 @@ class Simulator(object):
     acfs_list = []
     ys_list = []
     zbar_list = []
+    zvar_list = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
@@ -159,10 +160,10 @@ class Simulator(object):
           acfs_list.append(v['acfs'])
           ys_list.append(v['ys'])
           zbar_list.append(v['zbar'])
+          zvar_list.append(v['zvar'])
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
     acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
-    zbar_var = np.array(zbar_list).var(axis=0)
 
     # For each bootstrap distribution, do ks-test against observed dbn and get coverage
     # ToDo: using distribution of first parameter only
@@ -174,6 +175,8 @@ class Simulator(object):
     
     bootstrap_pvals, coverages = bootstrap_coverages(bootstrap_dbns, q_fn_params_list)
     raw_bootstrap_pvals, raw_coverages = bootstrap_coverages(raw_bootstrap_dbns, q_fn_params_raw_list)
+    zvars = np.array(zvar_list)
+    zbars = np.array(zbar_list)
     pdb.set_trace()
 
     # Test for normality
@@ -328,6 +331,7 @@ class Simulator(object):
       episode_results['acfs'] = q_fn_policy_info['acfs']
       episode_results['ys'] = q_fn_policy_info['ys']
       episode_results['zbar'] = q_fn_policy_info['zbar']
+      episode_results['zvar'] = q_fn_policy_info['zvar']
       
       print('GOT HERE')
 

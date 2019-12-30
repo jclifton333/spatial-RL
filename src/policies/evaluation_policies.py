@@ -182,12 +182,16 @@ def one_step_bins(**kwargs):
   acfs = [acf(y_loc_1, lag) for lag in range(1, 10)]
 
   # For checking assumptions of first lemma
-  X_times_y = np.multiply(X_raw.T, y)
-  # zbar = np.dot(X_raw.T, y) / np.sqrt(X_raw.shape[0])
-  zbar = X_times_y.var(axis=1)
+  yhat = clf.predict(X_raw)
+  error = y - yhat
+  X_times_y = np.multiply(X_raw.T, error)
+  zbar = np.dot(X_raw.T, y) / np.sqrt(X_raw.shape[0])
+  # zvar = (X_times_y*X_times_y).mean(axis=1)
+  zvar = np.dot(X_times_y, X_times_y.T) / X_raw.shape[0]
 
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs, 
-                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_, 'zbar': zbar}
+                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_, 'zbar': zbar, 
+                'zvar': zvar}
 
 
 
