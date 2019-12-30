@@ -32,7 +32,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 
 # import keras.backend as K
-
 def bootstrap_coverages(bootstrap_dbns_, q_fn_params_list_):
   q_fn_params_list_ = np.array(q_fn_params_list_)
   true_q_fn_params_ = q_fn_params_list_.mean(axis=0)
@@ -62,8 +61,8 @@ def bootstrap_coverages(bootstrap_dbns_, q_fn_params_list_):
 class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
                evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile,
-               sampling_dbn_run=False, sampling_dbn_estimator=None, fit_qfn_at_end=False,
-    ignore_errors=False):
+               sampling_dbn_run=False, sampling_dbn_estimator=None, fit_qfn_at_end=False, variance_only=False,
+               ignore_errors=False):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Gravity'
@@ -89,6 +88,7 @@ class Simulator(object):
     self.seed = seed
     self.fit_qfn_at_end = fit_qfn_at_end
     self.sampling_dbn_estimator = sampling_dbn_estimator
+    self.variance_only = variance_only
 
     # Set policy arguments
     if env_name in ['sis', 'ContinuousGrav']:
@@ -121,6 +121,79 @@ class Simulator(object):
     if 'epsilon' in env_kwargs.keys():
       to_join.append(str(env_kwargs['epsilon']))
     self.basename = '_'.join(to_join)
+
+  def run_for_variance(self):
+    # Multiprocess simulation replicates
+    np.random.seed(self.seed)
+    num_processes = np.min((self.number_of_replicates, 48))
+    pool = mp.Pool(processes=num_processes)
+    if self.number_of_replicates > 1:
+      if self.ignore_errors:
+        results_list = pool.map(self.episode_wrapper, [i for i in range(self.number_of_replicates)])
+      else:
+        results_list = pool.map(self.episode, [i for i in range(self.number_of_replicates)])
+    else:
+      results_list = [self.episode(0)]
+
+    # Save results
+    results_dict = {}
+    q_fn_params_list = []
+    q_fn_params_raw_list = []
+    counts = []
+    eigs_list = []
+    acfs_list = []
+    ys_list = []
+    zbar_list = []
+    zvar_list = []
+    for d in results_list:
+      if d is not None:
+        for k, v in d.items():
+          # results_dict[k] = v['q_fn_params']
+          q_fn_params_list.append(v['q_fn_params'])
+          q_fn_params_raw_list.append(v['q_fn_params_raw'])
+          counts.append(v['nonzero_counts'])
+          eigs_list.append(v['eigs'])
+          acfs_list.append(v['acfs'])
+          ys_list.append(v['ys'])
+          zbar_list.append(v['zbar'])
+          zvar_list.append(v['zvar'])
+    mean_counts = np.array(counts).mean(axis=0)
+    mean_counts = [float(m) for m in mean_counts]
+    acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
+
+    # For each bootstrap distribution, do ks-test against observed dbn and get coverage
+    q_fn_params_list = np.array(q_fn_params_list)
+    true_q_fn_params = q_fn_params_list.mean(axis=0)  # Treating mean parameter values as truth to compute coverage
+    num_params = q_fn_params_list.shape[1]
+    biases = np.array([p - true_q_fn_params for p in q_fn_params_list])
+    bias = biases.mean(axis=0)
+
+    zvars = np.array(zvar_list)
+    zbars = []
+    true_q_fn_params_raw = np.array(q_fn_params_raw_list).mean(axis=0)
+    for X_raw, y in zbar_list:
+      y_hat = np.dot(X_raw, true_q_fn_params_raw)
+      zbars.append(np.dot(X_raw.T, y - y_hat) / np.sqrt(X_raw.shape[0]))
+    zbars = np.array(zbars)
+    true_cov = np.cov(zbars.T)[1:, 1:]
+    est_cov = np.mean(zvars, axis=0)[1:, 1:]
+    pdb.set_trace()
+
+    # Test for normality
+    pvals = normaltest(np.array(q_fn_params_list)).pvalue
+    pvals = [float(pval) for pval in pvals]
+    eig_vars = np.var(eigs_list, axis=0)
+    eig_vars = [float(v) for v in eig_vars]
+    beta_vars = np.var(np.array(q_fn_params_list), axis=0)
+    beta_vars = [float(b) for b in beta_vars]
+    results_dict['pvals'] = pvals
+    results_dict['eig_vars'] = eig_vars
+    results_dict['beta_vars'] = beta_vars
+    results_dict['mean_counts'] = mean_counts
+    results_dict['bias'] = [float(b) for b in bias]
+    results_dict['betas'] = [float(b) for b in true_q_fn_params]
+    results_dict['acfs'] = [float(a) for a in acfs]
+    self.save_results(results_dict)
 
   def run_for_sampling_dbn(self):
     # Multiprocess simulation replicates
@@ -310,7 +383,6 @@ class Simulator(object):
     episode_results['max_losses'] = max_losses
 
     if self.fit_qfn_at_end:
-      NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
 
       # Get q-function parameters
       q_fn_policy_params = copy.deepcopy(self.policy_arguments)
@@ -318,29 +390,31 @@ class Simulator(object):
       q_fn_policy_params['regressor'] = Ridge
       q_fn_policy = policy_factory(self.sampling_dbn_estimator)
       _, q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
-
-      # Get bootstrap dbn of q-function parameters
-      bootstrap_dbn = []
-      raw_bootstrap_dbn = []
-      q_fn_policy_params['bootstrap'] = True
-      for sample in range(NUM_BOOTSTRAP_SAMPLES):
-        _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
-        bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
-        raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
-      
-      bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params']) 
-      raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw']) 
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_params_raw'] = [float(t) for t in q_fn_policy_info['q_fn_params_raw']]
-      episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
-      episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
       episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
       episode_results['eigs'] = q_fn_policy_info['eigs']
       episode_results['acfs'] = q_fn_policy_info['acfs']
       episode_results['ys'] = q_fn_policy_info['ys']
       episode_results['zbar'] = q_fn_policy_info['zbar']
       episode_results['zvar'] = q_fn_policy_info['zvar']
-      
+
+      if not self.variance_only:
+        NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
+        # Get bootstrap dbn of q-function parameters
+        bootstrap_dbn = []
+        raw_bootstrap_dbn = []
+        q_fn_policy_params['bootstrap'] = True
+        for sample in range(NUM_BOOTSTRAP_SAMPLES):
+          _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
+          bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
+          raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
+
+          bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
+          raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
+        episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
+        episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
+
       print('GOT HERE')
 
     # print(np.mean(self.env.Y[-1,:]))

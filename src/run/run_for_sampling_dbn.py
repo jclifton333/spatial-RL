@@ -35,6 +35,7 @@ if __name__ == '__main__':
   parser.add_argument('--ignore_errors', type=str)
   parser.add_argument('--network', type=str)
   parser.add_argument('--policy', type=str)
+  parser.add_argument('--variance_only', type=str, choices=['True', 'False'])
   parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step_eval', 
                                                                      'one_step_bins',
                                                                      'one_step_wild',
@@ -53,14 +54,18 @@ if __name__ == '__main__':
                 'compute_pairwise_distances': True}
 
   ts = (args.ts == 'True')
+  variance_only = (args.variance_only == 'True')
   ignore_errors = (args.ignore_errors == 'True')
 
   Sim = Simulator(args.rollout_depth, ENV_NAME, args.time_horizon, args.number_of_replicates, args.policy,
                   'quad_approx', args.gamma, args.evaluation_budget, env_kwargs, args.network, ts, args.seed,
                   args.error_quantile, fit_qfn_at_end=True, sampling_dbn_run=True, ignore_errors=ignore_errors,
-                  sampling_dbn_estimator=args.sampling_dbn_estimator)
+                  sampling_dbn_estimator=args.sampling_dbn_estimator, variance_only=variance_only)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:
-    Sim.run_for_sampling_dbn()
+    if variance_only:
+      Sim.run_for_variance()
+    else:
+      Sim.run_for_sampling_dbn()
 

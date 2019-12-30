@@ -21,6 +21,7 @@ from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
 from scipy.special import expit, logit
 from scipy.stats import normaltest
+from statsmodels.tsa.stattools import acovf
 import numpy as np
 # import keras.backend as K
 from functools import partial
@@ -150,21 +151,21 @@ def one_step_wild(**kwargs):
     kwargs['bootstrap'], kwargs['gamma']
 
   N = len(env.X)*env.L
+  BANDWIDTH = 1
+  # Construct pairwise distance matrices
+  pairwise_t = cdist(np.arange(env.T).reshape(-1, 1), np.arange(env.T).reshape(-1, 1))
+  pairwise_t /= (np.max(pairwise_t) / BANDWIDTH)
+  pairwise_l = env.pairwise_distances
+  pairwise_l /= (np.max(pairwise_l) / BANDWIDTH)
+
+  # Construct kernels
+  # K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*100) # Gaussian kernel
+  # K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*100)
+  K_l = np.multiply(1 - pairwise_l, pairwise_l <= 1)  # Bartlett kernel
+  K_t = np.multiply(1 - pairwise_t, pairwise_t <= 1)
+  K = np.kron(K_t, K_l)
+
   if bootstrap:
-    BANDWIDTH = 0.5 
-    # Construct pairwise distance matrices
-    pairwise_t = cdist(np.arange(env.T).reshape(-1,1), np.arange(env.T).reshape(-1,1))
-    pairwise_t /= (np.max(pairwise_t) / BANDWIDTH)
-    pairwise_l = env.pairwise_distances
-    pairwise_l /= (np.max(pairwise_l) / BANDWIDTH)
-
-    # Construct kernels and cross-products
-    # K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*100) # Gaussian kernel
-    # K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*100)
-    K_l = np.multiply(1 - pairwise_l, pairwise_l <= 1) # Bartlett kernel 
-    K_t = np.multiply(1 - pairwise_t, pairwise_t <= 1)
-    K = np.kron(K_t, K_l)
-
     # Draw weights
     weights = np.random.multivariate_normal(mean=np.zeros(K.shape[0]), cov=K)
   else:
@@ -205,8 +206,16 @@ def one_step_wild(**kwargs):
   # Covariance estimate information
   X_raw = np.column_stack((np.ones(X_raw.shape[0]), X_raw))
   error = y - yhat
-  X_times_y = np.multiply(X_raw.T, error)
-  zvar = np.dot(X_times_y, X_times_y.T) / X_raw.shape[0]
+  X_times_y = np.multiply(X_raw.T, error).T
+  if bootstrap:  # ToDo: fix this
+    zvar = np.dot(X_times_y.T, X_times_y) / X_raw.shape[0]
+  else:
+    zvar = 0.
+    zvar_naive = 0.
+    for i, x_i in enumerate(X_times_y):
+      zvar_naive += np.outer(x_i, x_i) / X_raw.shape[0]
+      for j, x_j in enumerate(X_times_y):
+        zvar += K[i, j]*np.outer(x_i, x_j) / X_raw.shape[0]
 
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs,
                 'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': np.concatenate(([clf.intercept_], clf.coef_)), 'zbar': (X_raw, y),
