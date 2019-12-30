@@ -151,17 +151,19 @@ def one_step_wild(**kwargs):
 
   N = len(env.X)*env.L
   if bootstrap:
+    BANDWIDTH = 0.5 
     # Construct pairwise distance matrices
     pairwise_t = cdist(np.arange(env.T).reshape(-1,1), np.arange(env.T).reshape(-1,1))
-    pairwise_t /= np.max(pairwise_t)
+    pairwise_t /= (np.max(pairwise_t) / BANDWIDTH)
     pairwise_l = env.pairwise_distances
-    pairwise_l /= np.max(pairwise_l)
+    pairwise_l /= (np.max(pairwise_l) / BANDWIDTH)
 
     # Construct kernels and cross-products
-    K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*10)
-    K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*10)
-    K_tl = np.exp(-2*np.kron(pairwise_t, pairwise_l)*10)
-    K = np.multiply(np.kron(K_t, K_l), K_tl)
+    # K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*100) # Gaussian kernel
+    # K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*100)
+    K_l = np.multiply(1 - pairwise_l, pairwise_l <= 1) # Bartlett kernel 
+    K_t = np.multiply(1 - pairwise_t, pairwise_t <= 1)
+    K = np.kron(K_t, K_l)
 
     # Draw weights
     weights = np.random.multivariate_normal(mean=np.zeros(K.shape[0]), cov=K)
