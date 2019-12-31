@@ -145,6 +145,7 @@ class Simulator(object):
     ys_list = []
     zbar_list = []
     zvar_list = []
+    zvar_naive_list = []
     for d in results_list:
       if d is not None:
         for k, v in d.items():
@@ -157,6 +158,7 @@ class Simulator(object):
           ys_list.append(v['ys'])
           zbar_list.append(v['zbar'])
           zvar_list.append(v['zvar'])
+          zvar_naive_list.append(v['zvar_naive'])
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
     acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
@@ -177,6 +179,7 @@ class Simulator(object):
     zbars = np.array(zbars)
     true_cov = np.cov(zbars.T)[1:, 1:]
     est_cov = np.mean(zvars, axis=0)[1:, 1:]
+    est_cov_naive = np.mean(np.array(zvar_naive_list), axis=0)[1:, 1:]
     pdb.set_trace()
 
     # Test for normality
@@ -398,6 +401,7 @@ class Simulator(object):
       episode_results['ys'] = q_fn_policy_info['ys']
       episode_results['zbar'] = q_fn_policy_info['zbar']
       episode_results['zvar'] = q_fn_policy_info['zvar']
+      episode_results['zvar_naive'] = q_fn_policy_info['zvar_naive']
 
       if not self.variance_only:
         NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates

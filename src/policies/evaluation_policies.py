@@ -219,7 +219,7 @@ def one_step_wild(**kwargs):
 
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs,
                 'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': np.concatenate(([clf.intercept_], clf.coef_)), 'zbar': (X_raw, y),
-                'zvar': zvar}
+                'zvar': zvar, 'zvar_naive': zvar_naive}
 
 
 def one_step_bins(**kwargs):
