@@ -180,16 +180,18 @@ class Simulator(object):
     for X_raw, y in zbar_list:
       # Compute variances
       y_hat = np.dot(X_raw, true_q_fn_params_raw)
-      zbars.append(np.dot(X_raw.T, y - y_hat) / np.sqrt(X_raw.shape[0]))
+      error = y - y_hat
+      zbars.append(np.dot(X_raw.T, error) / np.sqrt(X_raw.shape[0]))
       
       # Compute autocovariances
       for i, x_raw in enumerate(X_raw):
+        x_raw *= error[i]
         if i % self.env.L == 0: 
           max_eig_at_each_k = np.zeros(max_dist)
           x_raw_0 = x_raw
         l = i % self.env.L
         k = int(self.env.pairwise_distances[0, l])
-        autocov_dict[k][l] += k**2 * np.outer(x_raw, x_raw_0) / (self.time_horizon* len(zbar_list))
+        autocov_dict[k][l] += np.outer(x_raw, x_raw_0) / (self.time_horizon* len(zbar_list))
     
     # Get autocov sum
     autocovs = []
