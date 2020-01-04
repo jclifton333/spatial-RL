@@ -68,7 +68,7 @@ class SIS(SpatialDisease):
                initial_infections=None, initial_state=None, eta=None, beta=None,
                epsilon=0, contaminator=CONTAMINATOR, construct_features_for_policy_search=False,
                compute_pairwise_distances=False,
-               neighbor_features=True, regenerate_network=False):
+               neighbor_features=True, regenerate_network=False, dummy=False):
     """
     :param omega: parameter in [0,1] for mixing two sis models
     :param generate_network: function that accepts network size L and returns adjacency matrix
@@ -85,6 +85,7 @@ class SIS(SpatialDisease):
     self.add_neighbor_sums = add_neighbor_sums
     self.epsilon = epsilon
     self.contaminator = contaminator
+    self.dummy = dummy
 
     if eta is None:
       self.eta = SIS.ETA
@@ -193,7 +194,10 @@ class SIS(SpatialDisease):
     :return next_state: self.L-length array of new states
     """
     super(SIS, self).next_state()
-    next_state = np.random.normal(loc=self.beta[0]*self.current_state, scale=self.beta[1])
+    if not self.dummy:
+      next_state = np.random.normal(loc=self.beta[0]*self.current_state, scale=self.beta[1])
+    else:
+      next_state = np.random.normal(loc=np.zeros(self.L), scale=self.beta[1])
     self.add_state(next_state)
     return next_state
 
@@ -226,11 +230,14 @@ class SIS(SpatialDisease):
     :param a: self.L-length binary array of actions at each state
     """
     super(SIS, self).next_infections(a)
-    if eta is None:
-      next_infected_probabilities = self.next_infected_probabilities(a, eta=self.ETA)
+    if not self.dummy:
+      if eta is None:
+        next_infected_probabilities = self.next_infected_probabilities(a, eta=self.ETA)
+      else:
+        next_infected_probabilities = self.next_infected_probabilities(a, eta=eta)
     else:
-      next_infected_probabilities = self.next_infected_probabilities(a, eta=eta)
-    next_infections = np.random.binomial(n=[1]*self.L, p=next_infected_probabilities)
+      next_infected_probabilities = np.ones(self.L)*self.INITIAL_INFECT_PROB
+    next_infections = np.random.binomial(n=[1] * self.L, p=next_infected_probabilities)
     self.true_infection_probs.append(next_infected_probabilities)
     self.add_infections(next_infections)
 
