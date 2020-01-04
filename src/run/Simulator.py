@@ -170,12 +170,36 @@ class Simulator(object):
     biases = np.array([p - true_q_fn_params for p in q_fn_params_list])
     bias = biases.mean(axis=0)
 
+    # Get 'true' and estimated covariance matrices
     zvars = np.array(zvar_list)
     zbars = []
+    # autocovariance = np.zeros((int(np.max(self.env.pairwise_distances)), 4, 4))  # For checking assumption 2.1.a in dependent wild bootstrap paper
+    max_dist = int(np.max(self.env.pairwise_distances))
+    autocov_dict = {k_: {l_: np.zeros((4, 4)) for l_ in range(self.env.L) if self.env.pairwise_distances[0, l_] == k_} for k_ in range(max_dist+1)}
     true_q_fn_params_raw = np.array(q_fn_params_raw_list).mean(axis=0)
     for X_raw, y in zbar_list:
+      # Compute variances
       y_hat = np.dot(X_raw, true_q_fn_params_raw)
-      zbars.append(np.dot(X_raw.T, y - y_hat) / np.sqrt(X_raw.shape[0]))
+      error = y - y_hat
+      zbars.append(np.dot(X_raw.T, error) / np.sqrt(X_raw.shape[0]))
+      
+      # Compute autocovariances
+      for i, x_raw in enumerate(X_raw):
+        x_raw *= error[i]
+        if i % self.env.L == 0: 
+          max_eig_at_each_k = np.zeros(max_dist)
+          x_raw_0 = x_raw
+        l = i % self.env.L
+        k = int(self.env.pairwise_distances[0, l])
+        autocov_dict[k][l] += np.outer(x_raw, x_raw_0) / (self.time_horizon* len(zbar_list))
+    
+    # Get autocov sum
+    autocovs = []
+    for k in autocov_dict.keys():
+      eigs_k = [np.real(np.linalg.eig(C)[0]).max() for C in autocov_dict[k].values()]
+      autocovs.append(np.max(eigs_k))
+
+    autocovs_cum = np.cumsum(autocovs)
     zbars = np.array(zbars)
     true_cov = np.cov(zbars.T)[1:, 1:]
     est_cov = np.mean(zvars, axis=0)[1:, 1:]
