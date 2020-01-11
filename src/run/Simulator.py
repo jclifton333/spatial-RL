@@ -18,7 +18,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
-from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model
+from src.estimation.model_based.sis.estimate_sis_parameters import fit_sis_transition_model, fit_infection_prob_model
 from src.estimation.model_based.sis.simulate_from_sis import simulate_from_SIS
 from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
@@ -128,14 +128,55 @@ class Simulator(object):
       self.run_for_parametric_bootstrap()
     else:
       if self.variance_only:
-        self.run_for_variance()
+        self.run_for_nonparametric_boot_variance()
       else:
-        self.run_for_sampling_dbn()
+        self.run_for_nonparametric_boot_sampling_dbn()
 
   def run_for_parametric_bootstrap(self):
-    pass
+    # ToDo: Assuming model is SIS!
 
-  def run_for_variance(self):
+    # Multiprocess simulation replicates
+    np.random.seed(self.seed)
+    num_processes = np.min((self.number_of_replicates, 48))
+    pool = mp.Pool(processes=num_processes)
+    if self.number_of_replicates > 1:
+      if self.ignore_errors:
+        results_list = pool.map(self.episode_wrapper, [i for i in range(self.number_of_replicates)])
+      else:
+        results_list = pool.map(self.episode, [i for i in range(self.number_of_replicates)])
+    else:
+      results_list = [self.episode(0)]
+
+    # Save results
+    results_dict = {}
+    q_fn_params_list = []
+    q_fn_params_raw_list = []
+
+    for d in results_list:
+      if d is not None:
+        for k, v in d.items():
+          # results_dict[k] = v['q_fn_params']
+          q_fn_params_list.append(v['q_fn_params'])
+          q_fn_params_raw_list.append(v['q_fn_params_raw'])
+
+      # For each bootstrap distribution, do ks-test against observed dbn and get coverage
+      q_fn_params_list = np.array(q_fn_params_list)
+      true_q_fn_params = q_fn_params_list.mean(
+        axis=0)  # Treating mean parameter values as truth to compute coverage
+      biases = np.array([p - true_q_fn_params for p in q_fn_params_list])
+      bias = biases.mean(axis=0)
+
+      # Test for normality
+      pvals = normaltest(np.array(q_fn_params_list)).pvalue
+      pvals = [float(pval) for pval in pvals]
+      beta_vars = np.var(np.array(q_fn_params_list), axis=0)
+      beta_vars = [float(b) for b in beta_vars]
+      results_dict['pvals'] = pvals
+      results_dict['beta_vars'] = beta_vars
+      results_dict['bias'] = [float(b) for b in bias]
+      self.save_results(results_dict)
+
+  def run_for_nonparametric_boot_variance(self):
     # Multiprocess simulation replicates
     np.random.seed(self.seed)
     num_processes = np.min((self.number_of_replicates, 48))
@@ -235,7 +276,7 @@ class Simulator(object):
     results_dict['acfs'] = [float(a) for a in acfs]
     self.save_results(results_dict)
 
-  def run_for_sampling_dbn(self):
+  def run_for_nonparametric_boot_sampling_dbn(self):
     # Multiprocess simulation replicates
     np.random.seed(self.seed)
     num_processes = np.min((self.number_of_replicates, 48))
@@ -423,9 +464,12 @@ class Simulator(object):
     episode_results['max_losses'] = max_losses
 
     if self.fit_qfn_at_end:
-
       # Get q-function parameters
       q_fn_policy_params = copy.deepcopy(self.policy_arguments)
+      q_fn_policy_params['rollout'] = False
+      q_fn_policy_params['rollout_env'] = None
+      q_fn_policy_params['rollout_policy'] = None
+      q_fn_policy_params['time_horizon'] = self.time_horizon
       q_fn_policy_params['classifier'] = SKLogit2
       q_fn_policy_params['regressor'] = Ridge
       q_fn_policy = policy_factory(self.sampling_dbn_estimator)
@@ -434,7 +478,35 @@ class Simulator(object):
       episode_results['q_fn_params_raw'] = [float(t) for t in q_fn_policy_info['q_fn_params_raw']]
 
       if self.parametric_bootstrap:
-        pass
+        NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
+
+        # Fit transition model and get rollout_env for parametric boot
+        eta_hat, _ = fit_infection_prob_model(self.env, None)
+        eta_hat_cov = self.env.mb_covariance(eta_hat)
+        rollout_env_kwargs = {'L': self.env.L, 'omega': self.env.omega, 'generate_network': self.env.generate_network,
+                              'initial_infections': self.env.initial_infections,
+                              'add_neighbor_sums': self.env.add_neighbor_sums, 'epsilon': self.env.epsilon,
+                              'compute_pairwise_distances': self.env.compute_pairwise_distances,
+                              'dummy': self.env.dummy, 'eta': eta_hat}
+        rollout_env = environment_factory('sis', **rollout_env_kwargs)
+        q_fn_policy_params['rollout'] = True
+        q_fn_policy_params['rollout_env'] = rollout_env
+        q_fn_policy_params['rollout_policy'] = None # ToDo: assuming rollout_policy is random
+
+        # Get bootstrap dbn of q-function parameters
+        bootstrap_dbn = []
+        raw_bootstrap_dbn = []
+        q_fn_policy_params['bootstrap'] = True
+
+        for sample in range(NUM_BOOTSTRAP_SAMPLES):
+          _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
+          bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
+          raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
+
+        bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
+        raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
+        episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
+        episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
       else:
         episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
         episode_results['eigs'] = q_fn_policy_info['eigs']

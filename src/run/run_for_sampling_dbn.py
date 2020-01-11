@@ -37,13 +37,15 @@ if __name__ == '__main__':
   parser.add_argument('--policy', type=str)
   parser.add_argument('--variance_only', type=str, choices=['True', 'False'])
   parser.add_argument('--dummy', type=str, choices=['True', 'False'])
+  parser.add_argument('--parametric_bootstrap', type=str, choices=['True', 'False'])
   parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step_eval', 
                                                                      'one_step_bins',
                                                                      'one_step_wild',
                                                                      'two_step', 'two_step_random',
                                                                      'two_step_mb_myopic',
                                                                      'two_step_mb_constant_cutoff',
-                                                                     'two_step_mb_constant_cutoff_test'])
+                                                                     'two_step_mb_constant_cutoff_test',
+                                                                     'one_step_parametric'])
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
@@ -58,16 +60,15 @@ if __name__ == '__main__':
   ts = (args.ts == 'True')
   variance_only = (args.variance_only == 'True')
   ignore_errors = (args.ignore_errors == 'True')
+  parametric_bootstrap = (args.parametric_bootstrap == 'True')
 
   Sim = Simulator(args.rollout_depth, ENV_NAME, args.time_horizon, args.number_of_replicates, args.policy,
                   'quad_approx', args.gamma, args.evaluation_budget, env_kwargs, args.network, ts, args.seed,
                   args.error_quantile, fit_qfn_at_end=True, sampling_dbn_run=True, ignore_errors=ignore_errors,
-                  sampling_dbn_estimator=args.sampling_dbn_estimator, variance_only=variance_only)
+                  sampling_dbn_estimator=args.sampling_dbn_estimator, variance_only=variance_only,
+                  parametric_bootstrap=parametric_bootstrap)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:
-    if variance_only:
-      Sim.run_for_variance()
-    else:
-      Sim.run_for_sampling_dbn()
+    Sim.run_for_bootstrap()
 

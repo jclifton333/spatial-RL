@@ -147,27 +147,35 @@ def one_step_eval(**kwargs):
 
 def one_step_parametric(**kwargs):
   # ToDo: ASSUMING RANDOM ROLLOUT POLICY!
-  classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma, rollout_env, rollout_policy,\
-    time_horizon = \
+  classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma, rollout, rollout_env, \
+  rollout_policy, time_horizon = \
     kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
-    kwargs['bootstrap'], kwargs['gamma'], kwargs['rollout_env'], kwargs['rollout_policy'], kwargs['time_horizon']
+    kwargs['bootstrap'], kwargs['gamma'], kwargs['rollout'], kwargs['rollout_env'], kwargs['rollout_policy'], \
+    kwargs['time_horizon']
 
-  # Collect data by rolling out rollout_policy with estimated transition model rollout_env
-  rollout_env.reset()  # Initial steps
-  rollout_env.step(np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L-treatment_budget)))))
-  rollout_env.step(np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L-treatment_budget)))))
+  if rollout:
+    # Collect data by rolling out rollout_policy with estimated transition model rollout_env
+    rollout_env.reset()  # Initial steps
+    rollout_env.step(np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L-treatment_budget)))))
+    rollout_env.step(np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L-treatment_budget)))))
 
-  for t in range(time_horizon-2):
-    rollout_env.step(
-      np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))))
+    for t in range(time_horizon-2):
+      rollout_env.step(
+        np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))))
 
-  # Fit raw one-step Q-function on generated data
-  X_raw = np.vstack(rollout_env.X_raw)
-  clf = Ridge(alpha=1, fit_intercept=True)
+    # Fit raw one-step Q-function on generated data
+    y = np.hstack(rollout_env.y)
+    X_raw = np.vstack(rollout_env.X_raw)
+    clf = Ridge(alpha=1, fit_intercept=True)
+  else:
+    # Fit raw one-step Q-function on generated data
+    y = np.hstack(env.y)
+    X_raw = np.vstack(env.X_raw)
+    clf = Ridge(alpha=1, fit_intercept=True)
+
   clf.fit(X_raw, y)
-  q_fn_params = q_fn_params_raw = np.concatenate((clf.intercept_, clf.coef_))
-
-  return {'q_fn_params': q_fn_params, 'q_fn_params_raw': q_fn_params_raw}
+  q_fn_params = q_fn_params_raw = np.concatenate(([clf.intercept_], clf.coef_))
+  return None, {'q_fn_params': q_fn_params, 'q_fn_params_raw': q_fn_params_raw}
 
 
 def one_step_wild(**kwargs):
