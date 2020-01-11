@@ -62,7 +62,7 @@ class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
                evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile,
                sampling_dbn_run=False, sampling_dbn_estimator=None, fit_qfn_at_end=False, variance_only=False,
-               ignore_errors=False):
+               parametric_bootstrap=False, ignore_errors=False):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Gravity'
@@ -89,6 +89,7 @@ class Simulator(object):
     self.fit_qfn_at_end = fit_qfn_at_end
     self.sampling_dbn_estimator = sampling_dbn_estimator
     self.variance_only = variance_only
+    self.parametric_bootstrap = parametric_bootstrap
 
     # Set policy arguments
     if env_name in ['sis', 'ContinuousGrav']:
@@ -121,6 +122,18 @@ class Simulator(object):
     if 'epsilon' in env_kwargs.keys():
       to_join.append(str(env_kwargs['epsilon']))
     self.basename = '_'.join(to_join)
+
+  def run_for_bootstrap(self):
+    if self.parametric_bootstrap:
+      self.run_for_parametric_bootstrap()
+    else:
+      if self.variance_only:
+        self.run_for_variance()
+      else:
+        self.run_for_sampling_dbn()
+
+  def run_for_parametric_bootstrap(self):
+    pass
 
   def run_for_variance(self):
     # Multiprocess simulation replicates
@@ -419,34 +432,38 @@ class Simulator(object):
       _, q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_params_raw'] = [float(t) for t in q_fn_policy_info['q_fn_params_raw']]
-      episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
-      episode_results['eigs'] = q_fn_policy_info['eigs']
-      episode_results['acfs'] = q_fn_policy_info['acfs']
-      episode_results['ys'] = q_fn_policy_info['ys']
-      episode_results['zbar'] = q_fn_policy_info['zbar']
-      episode_results['zvar'] = q_fn_policy_info['zvar']
-      episode_results['zvar_naive'] = q_fn_policy_info['zvar_naive']
 
-      if not self.variance_only:
-        NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
-        # Get bootstrap dbn of q-function parameters
-        bootstrap_dbn = []
-        raw_bootstrap_dbn = []
-        q_fn_policy_params['bootstrap'] = True
-        for sample in range(NUM_BOOTSTRAP_SAMPLES):
-          _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
-          bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
-          raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
+      if self.parametric_bootstrap:
+        pass
+      else:
+        episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
+        episode_results['eigs'] = q_fn_policy_info['eigs']
+        episode_results['acfs'] = q_fn_policy_info['acfs']
+        episode_results['ys'] = q_fn_policy_info['ys']
+        episode_results['zbar'] = q_fn_policy_info['zbar']
+        episode_results['zvar'] = q_fn_policy_info['zvar']
+        episode_results['zvar_naive'] = q_fn_policy_info['zvar_naive']
 
-          bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
-          raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
-        episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
-        episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
+        if not self.variance_only:
+          NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
+          # Get bootstrap dbn of q-function parameters
+          bootstrap_dbn = []
+          raw_bootstrap_dbn = []
+          q_fn_policy_params['bootstrap'] = True
+          for sample in range(NUM_BOOTSTRAP_SAMPLES):
+            _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
+            bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
+            raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
 
-      print('GOT HERE')
+            bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
+            raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
+          episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
+          episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
 
-    # print(np.mean(self.env.Y[-1,:]))
-    return {replicate: episode_results}
+        print('GOT HERE')
+
+      # print(np.mean(self.env.Y[-1,:]))
+      return {replicate: episode_results}
 
   def run_for_profiling(self):
     """
