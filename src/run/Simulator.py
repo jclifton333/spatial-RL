@@ -48,7 +48,7 @@ def bootstrap_coverages(bootstrap_dbns_, q_fn_params_list_):
       bootstrap_pvals_rep.append(float(ks_2samp(q_fn_params_list_[:, param], bootstrap_dbn[:, param])[1]))
       # Get coverage
       conf_interval = np.percentile(bootstrap_dbn[:, param], [2.5, 97.5])
-      if q_fn_params_list_[it, param] >= conf_interval[0] and q_fn_params_list_[it, param] <= conf_interval[1]:
+      if true_q_fn_params_[param] >= conf_interval[0] and true_q_fn_params_[param] <= conf_interval[1]:
       # if 0 >= conf_interval[0] and 0 <= conf_interval[1]:
         coverages_rep.append(1)
       else:
@@ -266,7 +266,6 @@ class Simulator(object):
     true_cov = np.cov(zbars.T)[1:, 1:]
     est_cov = np.mean(zvars, axis=0)[1:, 1:]
     est_cov_naive = np.mean(np.array(zvar_naive_list), axis=0)[1:, 1:]
-    pdb.set_trace()
 
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
@@ -347,7 +346,6 @@ class Simulator(object):
 
     true_cov = np.cov(zbars.T)[1:, 1:]
     est_cov = np.mean(zvars, axis=0)[1:, 1:]
-    pdb.set_trace() 
 
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
@@ -491,16 +489,15 @@ class Simulator(object):
         # Fit transition model and get rollout_env for parametric boot
         eta_hat, _ = fit_infection_prob_model(self.env, None)
         eta_hat_cov = self.env.mb_covariance(eta_hat)
-        eta_hat = self.env.eta # ToDo: using true parameter for debugging
         rollout_env_kwargs = {'L': self.env.L, 'omega': self.env.omega, 'generate_network': self.env.generate_network,
                               'initial_infections': self.env.initial_infections,
-                              'add_neighbor_sums': self.env.add_neighbor_sums, 'epsilon': self.env.epsilon,
+                              'add_neighbor_sums': self.env.add_neighbor_sums, 'epsilon': 0.0,
                               'compute_pairwise_distances': self.env.compute_pairwise_distances,
                               'dummy': self.env.dummy, 'eta': eta_hat}
         rollout_env = environment_factory('sis', **rollout_env_kwargs)
         q_fn_policy_params['rollout'] = True
         q_fn_policy_params['rollout_env'] = rollout_env
-        q_fn_policy_params['rollout_policy'] = None # ToDo: assuming rollout_policy is random
+        q_fn_policy_params['rollout_policy'] = None 
 
         # Get bootstrap dbn of q-function parameters
         bootstrap_dbn = []
@@ -512,8 +509,8 @@ class Simulator(object):
           bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
           raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
 
-        bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
-        raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
+        # bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
+        # raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
         episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
         episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
       else:
