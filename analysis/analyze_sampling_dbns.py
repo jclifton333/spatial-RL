@@ -18,7 +18,7 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
   # which are redundant with features in the main effect component
 
   results_dict = {'L': [], 'policy': [], 'network': [], 'min_coverages': [], 'median_coverages': [], 
-                  'max_coverages': [], 'nonzero_corr': []}
+                  'max_coverages': []}
   for fname in fname_list:
     d = yaml.load(open('./results/{}'.format(fname), 'rb'))
     res = d['results']
@@ -33,7 +33,6 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
     # Get gen model settings
     # ToDo: store these in results so we dont have to do this hacky shit
     L = d['settings']['L']
-    pdb.set_trace()
     policy = (len(d['results']['coverages']) == 33)
     for name in NETWORK_NAMES:
       if name in fname:
@@ -49,7 +48,7 @@ def summarize_sampling_dbns(fname_list, outname=None, save=False):
     results_dict['network'].append(network_name)
     results_dict['min_coverages'].append(np.min(coverages))
     results_dict['median_coverages'].append(np.median(coverages))
-    results_dict['nonzero_corr'].append(pearsonr(d['results']['mean_counts'], coverages)[0])
+    # results_dict['nonzero_corr'].append(pearsonr(d['results']['mean_counts'], coverages)[0])
     results_dict['max_coverages'].append(np.max(coverages))
     # results_dict['bootstrap_pvals'].append(mean_bootstrap_pvals)
 
@@ -103,8 +102,13 @@ if __name__ == "__main__":
 
   one_step_binned_more_reps = ['sis_random_quad_approx_50_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_021113.yml',
 'sis_random_quad_approx_1000_lattice_eval-policy=one_step_bins_eval=one_step_bins_0.0_191229_021622.yml']
-
-  summarize_sampling_dbns(one_step_binned, outname=None, save=False)
+ 
+  one_step_parametric = ['sis_random_quad_approx_50_lattice_eval-policy=one_step_parametric_eval=one_step_parametric_0.0_200111_230907.yml',
+			 'sis_random_quad_approx_100_lattice_eval-policy=one_step_parametric_eval=one_step_parametric_0.0_200111_230922.yml', 
+ 			 'sis_random_quad_approx_500_lattice_eval-policy=one_step_parametric_eval=one_step_parametric_0.0_200111_232241.yml', 
+			 'sis_random_quad_approx_1000_lattice_eval-policy=one_step_parametric_eval=one_step_parametric_0.0_200111_232931.yml']
+  one_step_parametric_true_model = ['sis_random_quad_approx_100_lattice_eval-policy=one_step_parametric_true_model_eval=one_step_parametric_true_model_0.0_200111_234750.yml']
+  summarize_sampling_dbns(one_step_parametric_true_model, outname=None, save=False)
   # summarize_sampling_dbns(simple_models, outname=None, save=False)
 
 

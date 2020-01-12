@@ -45,7 +45,8 @@ if __name__ == '__main__':
                                                                      'two_step_mb_myopic',
                                                                      'two_step_mb_constant_cutoff',
                                                                      'two_step_mb_constant_cutoff_test',
-                                                                     'one_step_parametric'])
+                                                                     'one_step_parametric',
+                                                                     'one_step_parametric_true_model'])
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,

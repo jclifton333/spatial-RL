@@ -90,5 +90,7 @@ def policy_factory(policy_type):
     return eval.one_step_wild
   elif policy_type == 'one_step_parametric':
     return eval.one_step_parametric
+  elif policy_type == 'one_step_parametric_true_model':
+    return eval.one_step_parametric_true_model
   else:
     raise ValueError('Argument does not match any policy.')

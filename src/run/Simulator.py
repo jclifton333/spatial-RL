@@ -62,7 +62,7 @@ class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
                evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile,
                sampling_dbn_run=False, sampling_dbn_estimator=None, fit_qfn_at_end=False, variance_only=False,
-               parametric_bootstrap=False, ignore_errors=False):
+               parametric_bootstrap=False, ignore_errors=False, fname_addendum=None):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Gravity'
@@ -121,6 +121,8 @@ class Simulator(object):
       to_join.append('eval={}'.format(self.sampling_dbn_estimator))
     if 'epsilon' in env_kwargs.keys():
       to_join.append(str(env_kwargs['epsilon']))
+    if fname_addendum is not None:
+      to_join.append(fname_addendum)
     self.basename = '_'.join(to_join)
 
   def run_for_bootstrap(self):
@@ -151,30 +153,36 @@ class Simulator(object):
     results_dict = {}
     q_fn_params_list = []
     q_fn_params_raw_list = []
+    bootstrap_dbns = []
+    raw_bootstrap_dbns = []
 
-    for d in results_list:
-      if d is not None:
-        for k, v in d.items():
-          # results_dict[k] = v['q_fn_params']
-          q_fn_params_list.append(v['q_fn_params'])
-          q_fn_params_raw_list.append(v['q_fn_params_raw'])
+    for ix, d_ in enumerate(results_list):
+      q_fn_params_list.append(d_[ix]['q_fn_params'])
+      q_fn_params_raw_list.append(d_[ix]['q_fn_params_raw'])
+      bootstrap_dbns.append(d_[ix]['q_fn_bootstrap_dbn'])
+      raw_bootstrap_dbns.append(d_[ix]['q_fn_bootstrap_dbn_raw'])
 
-      # For each bootstrap distribution, do ks-test against observed dbn and get coverage
-      q_fn_params_list = np.array(q_fn_params_list)
-      true_q_fn_params = q_fn_params_list.mean(
-        axis=0)  # Treating mean parameter values as truth to compute coverage
-      biases = np.array([p - true_q_fn_params for p in q_fn_params_list])
-      bias = biases.mean(axis=0)
+    # For each bootstrap distribution, do ks-test against observed dbn and get coverage
+    q_fn_params_list = np.array(q_fn_params_list)
+    true_q_fn_params = q_fn_params_list.mean(
+      axis=0)  # Treating mean parameter values as truth to compute coverage
+    biases = np.array([p - true_q_fn_params for p in q_fn_params_list])
+    bias = biases.mean(axis=0)
+ 
+    bootstrap_pvals, coverages = bootstrap_coverages(bootstrap_dbns, q_fn_params_list)
+    raw_bootstrap_pvals, raw_coverages = bootstrap_coverages(raw_bootstrap_dbns, q_fn_params_raw_list)
 
-      # Test for normality
-      pvals = normaltest(np.array(q_fn_params_list)).pvalue
-      pvals = [float(pval) for pval in pvals]
-      beta_vars = np.var(np.array(q_fn_params_list), axis=0)
-      beta_vars = [float(b) for b in beta_vars]
-      results_dict['pvals'] = pvals
-      results_dict['beta_vars'] = beta_vars
-      results_dict['bias'] = [float(b) for b in bias]
-      self.save_results(results_dict)
+    # Test for normality
+    pvals = normaltest(np.array(q_fn_params_list)).pvalue
+    pvals = [float(pval) for pval in pvals]
+    beta_vars = np.var(np.array(q_fn_params_list), axis=0)
+    beta_vars = [float(b) for b in beta_vars]
+    results_dict['pvals'] = pvals
+    results_dict['beta_vars'] = beta_vars
+    results_dict['bias'] = [float(b) for b in bias]
+    results_dict['coverages'] = [float(c) for c in coverages]
+    results_dict['bootstrap_pvals'] = bootstrap_pvals
+    self.save_results(results_dict)
 
   def run_for_nonparametric_boot_variance(self):
     # Multiprocess simulation replicates
@@ -483,6 +491,7 @@ class Simulator(object):
         # Fit transition model and get rollout_env for parametric boot
         eta_hat, _ = fit_infection_prob_model(self.env, None)
         eta_hat_cov = self.env.mb_covariance(eta_hat)
+        eta_hat = self.env.eta # ToDo: using true parameter for debugging
         rollout_env_kwargs = {'L': self.env.L, 'omega': self.env.omega, 'generate_network': self.env.generate_network,
                               'initial_infections': self.env.initial_infections,
                               'add_neighbor_sums': self.env.add_neighbor_sums, 'epsilon': self.env.epsilon,

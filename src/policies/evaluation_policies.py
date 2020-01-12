@@ -144,6 +144,36 @@ def one_step_eval(**kwargs):
 
   return None, {'q_fn_params': clf.coef_[0], 'nonzero_counts': X_nonzero_counts, 'eigs': eigs}
 
+def one_step_parametric_true_model(**kwargs):
+  # ToDo: ASSUMING RANDOM ROLLOUT POLICY!
+  classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma, rollout, rollout_env, \
+  rollout_policy, time_horizon = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['bootstrap'], kwargs['gamma'], kwargs['rollout'], kwargs['rollout_env'], kwargs['rollout_policy'], \
+    kwargs['time_horizon']
+
+  if rollout:
+    env.reset()  # Initial steps
+    env.step(np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L-treatment_budget)))))
+    env.step(np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L-treatment_budget)))))
+
+    for t in range(time_horizon-2):
+      env.step(
+        np.random.permutation(np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))))
+
+    # Fit raw one-step Q-function on generated data
+    y = np.hstack(env.y)
+    X_raw = np.vstack(env.X_raw)
+    clf = Ridge(alpha=1, fit_intercept=True)
+  else:
+    # Fit raw one-step Q-function on generated data
+    y = np.hstack(env.y)
+    X_raw = np.vstack(env.X_raw)
+    clf = Ridge(alpha=1, fit_intercept=True)
+
+  clf.fit(X_raw, y)
+  q_fn_params = q_fn_params_raw = np.concatenate(([clf.intercept_], clf.coef_))
+  return None, {'q_fn_params': q_fn_params, 'q_fn_params_raw': q_fn_params_raw}
 
 def one_step_parametric(**kwargs):
   # ToDo: ASSUMING RANDOM ROLLOUT POLICY!
