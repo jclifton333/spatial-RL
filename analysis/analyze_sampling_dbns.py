@@ -108,7 +108,9 @@ if __name__ == "__main__":
  			 'sis_random_quad_approx_500_lattice_eval-policy=one_step_parametric_eval=one_step_parametric_0.0_200111_232241.yml', 
 			 'sis_random_quad_approx_1000_lattice_eval-policy=one_step_parametric_eval=one_step_parametric_0.0_200111_232931.yml']
   one_step_parametric_true_model = ['sis_random_quad_approx_100_lattice_eval-policy=one_step_parametric_true_model_eval=one_step_parametric_true_model_0.0_200111_234750.yml']
-  summarize_sampling_dbns(one_step_parametric_true_model, outname=None, save=False)
+  one_step_parametric_misspec = ['sis_random_quad_approx_100_lattice_eval-policy=one_step_parametric_eval=one_step_parametric_0.5_200112_003917.yml',
+'sis_random_quad_approx_100_lattice_eval-policy=one_step_parametric_eval=one_step_parametric_1.0_200112_003931.yml']
+  summarize_sampling_dbns(one_step_parametric_misspec, outname=None, save=False)
   # summarize_sampling_dbns(simple_models, outname=None, save=False)
 
 
