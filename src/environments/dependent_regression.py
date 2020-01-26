@@ -91,6 +91,7 @@ def evaluate_sampling_dbns(L=100, T=25, bandwidth=1., num_bootstrap_samples=100,
 
 
 if __name__ == "__main__":
+  np.random.seed(3)
   bandwidths = [0.1, 1., 10]
   coverages_dict = {}
   for bandwidth in bandwidths:

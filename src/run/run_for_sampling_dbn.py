@@ -36,7 +36,7 @@ if __name__ == '__main__':
   parser.add_argument('--network', type=str)
   parser.add_argument('--policy', type=str)
   parser.add_argument('--variance_only', type=str, choices=['True', 'False'])
-  parser.add_argument('--dummy', type=str, choices=['True', 'False'])
+  parser.add_argument('--independence_parameter', type=float)
   parser.add_argument('--parametric_bootstrap', type=str, choices=['True', 'False'])
   parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step_eval', 
                                                                      'one_step_bins',
@@ -53,10 +53,9 @@ if __name__ == '__main__':
                   'nearestneighbor': generate_network.random_nearest_neighbor}
 
   # ToDo: compute_pairiwse_distances = True b/c we need these for dependent bootstrap; make option for dependent
-  dummy = (args.dummy == 'True')
   env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': network_dict[args.network],
                 'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon,
-                'compute_pairwise_distances': True, 'dummy': dummy}
+                'compute_pairwise_distances': True, 'independence_parameter': args.independence_parameter}
 
   ts = (args.ts == 'True')
   variance_only = (args.variance_only == 'True')
