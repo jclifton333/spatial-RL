@@ -116,7 +116,8 @@ class Simulator(object):
 
     # Get filename base for saving results
     to_join = [env_name, policy_name, argmaxer_name, str(self.env.L), network_name,
-               'eval-policy={}'.format(self.sampling_dbn_estimator)]
+               'eval-policy={}'.format(self.sampling_dbn_estimator),
+               'ind={}'.format(self.env.independence_parameter)]
     if sampling_dbn_run:
       to_join.append('eval={}'.format(self.sampling_dbn_estimator))
     if 'epsilon' in env_kwargs.keys():
@@ -269,6 +270,8 @@ class Simulator(object):
 
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
+    raw_pvals = normaltest(np.array(q_fn_params_raw_list)).pvalue
+    pdb.set_trace()
     pvals = [float(pval) for pval in pvals]
     eig_vars = np.var(eigs_list, axis=0)
     eig_vars = [float(v) for v in eig_vars]
