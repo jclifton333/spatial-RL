@@ -194,7 +194,8 @@ class SIS(SpatialDisease):
     :return next_state: self.L-length array of new states
     """
     super(SIS, self).next_state()
-    next_state = np.random.normal(loc=self.beta[0]*self.current_state, scale=self.beta[1])
+    state_mean = self.current_state * (1 - self.independence_parameter)
+    next_state = np.random.normal(loc=self.beta[0]*state_mean, scale=self.beta[1])
     self.add_state(next_state)
     return next_state
 

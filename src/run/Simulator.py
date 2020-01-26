@@ -239,8 +239,9 @@ class Simulator(object):
     # autocovariance = np.zeros((int(np.max(self.env.pairwise_distances)), 4, 4))  # For checking assumption 2.1.a in dependent wild bootstrap paper
     max_dist = int(np.max(self.env.pairwise_distances))
     autocov_dict = {k_: {l_: np.zeros((4, 4)) for l_ in range(self.env.L) if self.env.pairwise_distances[0, l_] == k_} for k_ in range(max_dist+1)}
-    autocov_sq_dict = {k_: {l_: 0.0 for l_ in range(self.env.L) if self.env.pairwise_distances[0, l_] == k_} for k_ in range(max_dist+1)}
     true_q_fn_params_raw = np.array(q_fn_params_raw_list).mean(axis=0)
+    sq_residual_means = np.zeros(zbar_list[0][0].shape[0])
+    sq_residual_vars = np.zeros_like(sq_residual_means) 
     for X_raw, y in zbar_list:
       # Compute variances
       y_hat = np.dot(X_raw, true_q_fn_params_raw)
@@ -258,8 +259,29 @@ class Simulator(object):
         l = i % self.env.L
         k = int(self.env.pairwise_distances[0, l])
         autocov_dict[k][l] += np.outer(x_raw, x_raw_0) / (self.time_horizon* len(zbar_list))
-        autocov_sq_dict[k][l] += (x_raw_sq * x_raw_0_sq) /(self.time_horizon* len(zbar_list))
+        sq_residual_means[i] += x_raw_sq / len(zbar_list)         
  
+    # Second pass for autocovariancs of squared residuals 
+    autocov_sq_dict = {k_: {l_: 0.0 for l_ in range(self.env.L) if self.env.pairwise_distances[0, l_] == k_} for k_ in range(max_dist+1)}
+    for X_raw, y in zbar_list:
+      y_hat = np.dot(X_raw, true_q_fn_params_raw)
+      error = y - y_hat
+      zbars.append(np.dot(X_raw.T, error) / np.sqrt(X_raw.shape[0]))
+      
+      # Compute autocovariances and autocovariances of squared residuals 
+      for i, x_raw in enumerate(X_raw):
+        x_raw *= error[i]
+        x_raw_sq = np.dot(x_raw, np.ones_like(x_raw))**2 # Wald device 
+        if i % self.env.L == 0: 
+          x_raw_0 = x_raw
+          x_raw_0_sq = np.dot(x_raw_0, np.ones_like(x_raw_0))**2 # Wald device
+          x_raw_0_sq_mean = sq_residual_means[i] 
+        l = i % self.env.L
+        k = int(self.env.pairwise_distances[0, l])
+        x_raw_sq_mean = sq_residual_means[i]
+        sq_residual_vars[i] += (x_raw_sq - x_raw_sq_mean)**2 / len(zbar_list)
+        autocov_sq_dict[k][l] += ((x_raw_sq - x_raw_sq_mean) * (x_raw_0_sq - x_raw_0_sq_mean)) / len(zbar_list)
+
     # Get autocov sum
     autocovs = []
     autocovs_sq = []
