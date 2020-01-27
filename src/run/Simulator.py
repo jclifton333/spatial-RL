@@ -255,7 +255,7 @@ class Simulator(object):
       x_raw_0 = X_raw[0] * error[0]
       x_raw_0_sq = np.dot(x_raw_0, np.ones_like(x_raw_0))**2 # Wald device
 
-      # Compute autocovariances and autocovariances of squared residuals 
+      # Compute autocovariances and means of squared residuals 
       for i, x_raw in enumerate(X_raw):
         x_raw *= error[i]
         x_raw_sq = np.dot(x_raw, np.ones_like(x_raw))**2 # Wald device 
