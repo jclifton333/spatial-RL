@@ -25,6 +25,7 @@ from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 from src.estimation.stacking.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
 from scipy.stats import normaltest, ks_2samp
+import itertools
 import copy
 
 from src.estimation.q_functions.model_fitters import KerasRegressor, SKLogit, SKLogit2
@@ -238,7 +239,9 @@ class Simulator(object):
     zbars = []
     # autocovariance = np.zeros((int(np.max(self.env.pairwise_distances)), 4, 4))  # For checking assumption 2.1.a in dependent wild bootstrap paper
     max_dist = int(np.max(self.env.pairwise_distances))
-    autocov_dict = {k_: {l_: np.zeros((4, 4)) for l_ in range(self.env.L) if self.env.pairwise_distances[0, l_] == k_} for k_ in range(max_dist+1)}
+    autocov_dict = {k_: {int(l_ + t_): np.zeros((4, 4))
+                         for l_, t_ in itertools.product(range(self.env.L), range(self.env.T))
+                         if self.env.pairwise_distances[0, l_] == k_} for k_ in range(max_dist+1)}
     true_q_fn_params_raw = np.array(q_fn_params_raw_list).mean(axis=0)
     sq_residual_means = np.zeros(zbar_list[0][0].shape[0])
     sq_residual_vars = np.zeros_like(sq_residual_means) 
@@ -257,12 +260,16 @@ class Simulator(object):
           x_raw_0 = x_raw
           x_raw_0_sq = np.dot(x_raw_0, np.ones_like(x_raw_0))**2 # Wald device
         l = i % self.env.L
+        t = i // self.env.T
+        d = int(l + t)
         k = int(self.env.pairwise_distances[0, l])
-        autocov_dict[k][l] += np.outer(x_raw, x_raw_0) / (self.time_horizon* len(zbar_list))
+        autocov_dict[k][d] += np.outer(x_raw, x_raw_0) / (self.time_horizon* len(zbar_list))
         sq_residual_means[i] += x_raw_sq / len(zbar_list)         
  
-    # Second pass for autocovariancs of squared residuals 
-    autocov_sq_dict = {k_: {l_: 0.0 for l_ in range(self.env.L) if self.env.pairwise_distances[0, l_] == k_} for k_ in range(max_dist+1)}
+    # Second pass for autocovariancs of squared residuals
+    autocov_sq_dict = {k_: {int(l_ + t_): 0.0
+                               for l_, t_ in itertools.product(range(self.env.L), range(self.env.T))
+                               if self.env.pairwise_distances[0, l_] == k_} for k_ in range(max_dist + 1)}
     for X_raw, y in zbar_list:
       y_hat = np.dot(X_raw, true_q_fn_params_raw)
       error = y - y_hat
@@ -277,10 +284,12 @@ class Simulator(object):
           x_raw_0_sq = np.dot(x_raw_0, np.ones_like(x_raw_0))**2 # Wald device
           x_raw_0_sq_mean = sq_residual_means[i] 
         l = i % self.env.L
+        t = i // self.env.T
+        d = int(l + t)
         k = int(self.env.pairwise_distances[0, l])
         x_raw_sq_mean = sq_residual_means[i]
         sq_residual_vars[i] += (x_raw_sq - x_raw_sq_mean)**2 / len(zbar_list)
-        autocov_sq_dict[k][l] += ((x_raw_sq - x_raw_sq_mean) * (x_raw_0_sq - x_raw_0_sq_mean)) / len(zbar_list)
+        autocov_sq_dict[k][d] += ((x_raw_sq - x_raw_sq_mean) * (x_raw_0_sq - x_raw_0_sq_mean)) / len(zbar_list)
 
     # Get autocov sum
     autocovs = []
