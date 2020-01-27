@@ -44,12 +44,13 @@
 #       --network='lattice' --policy='random' --sampling_dbn_estimator='one_step_wild' --variance_only='True' \
 #       --independence_parameter=0.0 --parametric_bootstrap='False'
 # 
-python3 ../src/run/run_for_sampling_dbn.py  --omega=0.0 --number_of_replicates=48 --rollout_depth=1 --time_horizon=10 \
-      --L=30 --gamma=0.9 --evaluation_budget=100 --epsilon=0.0 --seed=8 --error_quantile=0.95 --ignore_errors='False' \
-      --network='lattice' --policy='random' --sampling_dbn_estimator='one_step_wild' --variance_only='True' \
-      --independence_parameter=0.5 --parametric_bootstrap='False'
 
-# python3 ../src/run/run_for_sampling_dbn.py  --omega=0.0 --number_of_replicates=384 --rollout_depth=1 --time_horizon=10 \
-#       --L=100 --gamma=0.9 --evaluation_budget=100 --epsilon=0.0 --seed=8 --error_quantile=0.95 --ignore_errors='False' \
-#       --network='lattice' --policy='random' --sampling_dbn_estimator='one_step_wild' --variance_only='True' \
-#       --independence_parameter=1.0 --parametric_bootstrap='False'
+python3 ../src/run/run_for_sampling_dbn.py  --omega=0.0 --number_of_replicates=48 --rollout_depth=1 --time_horizon=10 \
+      --L=100 --gamma=0.9 --evaluation_budget=100 --epsilon=0.0 --seed=8 --error_quantile=0.95 --ignore_errors='False' \
+      --network='lattice' --policy='random' --sampling_dbn_estimator='one_step_wild' --variance_only='True' \
+      --independence_parameter=0.0 --parametric_bootstrap='False'
+
+python3 ../src/run/run_for_sampling_dbn.py  --omega=0.0 --number_of_replicates=48 --rollout_depth=1 --time_horizon=10 \
+      --L=100 --gamma=0.9 --evaluation_budget=100 --epsilon=0.0 --seed=8 --error_quantile=0.95 --ignore_errors='False' \
+      --network='lattice' --policy='random' --sampling_dbn_estimator='one_step_wild' --variance_only='True' \
+      --independence_parameter=1.0 --parametric_bootstrap='False'
