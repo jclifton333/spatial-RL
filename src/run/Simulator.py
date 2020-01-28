@@ -309,7 +309,7 @@ class Simulator(object):
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
     raw_pvals = normaltest(np.array(q_fn_params_raw_list)).pvalue
-    pdb.set_trace()
+
     pvals = [float(pval) for pval in pvals]
     eig_vars = np.var(eigs_list, axis=0)
     eig_vars = [float(v) for v in eig_vars]
@@ -322,6 +322,7 @@ class Simulator(object):
     results_dict['bias'] = [float(b) for b in bias]
     results_dict['betas'] = [float(b) for b in true_q_fn_params]
     results_dict['acfs'] = [float(a) for a in acfs]
+    results_dict['autocovs_sq'] = [float(a) for a in autocovs_sq]
     self.save_results(results_dict)
 
   def run_for_nonparametric_boot_sampling_dbn(self):
