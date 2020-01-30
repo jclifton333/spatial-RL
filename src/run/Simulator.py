@@ -294,14 +294,18 @@ class Simulator(object):
 
     # Get autocov sum
     autocovs = []
-    autocovs_sq = []
+    autocovs_sq_max = []
+    autocovs_sq_mean = []
     for k in autocov_dict.keys():
       eigs_k = [np.real(np.linalg.eig(C)[0]).max() for C in autocov_dict[k].values()]
       autocovs.append(np.max(eigs_k))
-      autocovs_sq.append(np.max([C for C in autocov_sq_dict[k].values()]))
+      autocovs_sq_k = [C for C in autocov_sq_dict[k].values()]
+      autocovs_sq_max.append(np.max(autocovs_sq_k))
+      autocovs_sq_mean.append(np.mean(autocovs_sq_k))
 
+    pdb.set_trace()
     autocovs_cum = np.cumsum(autocovs)
-    autocovs_sq_cum = np.cumsum(autocovs_sq)
+    autocovs_sq_cum = np.cumsum(autocovs_sq_max)
     zbars = np.array(zbars)
     true_cov = np.cov(zbars.T)[1:, 1:]
     est_cov = np.mean(zvars, axis=0)[1:, 1:]
@@ -322,7 +326,7 @@ class Simulator(object):
     results_dict['bias'] = [float(b) for b in bias]
     results_dict['betas'] = [float(b) for b in true_q_fn_params]
     results_dict['acfs'] = [float(a) for a in acfs]
-    results_dict['autocovs_sq'] = [float(a) for a in autocovs_sq]
+    results_dict['autocovs_sq'] = [float(a) for a in autocovs_sq_max]
     self.save_results(results_dict)
 
   def run_for_nonparametric_boot_sampling_dbn(self):
