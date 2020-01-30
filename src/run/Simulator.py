@@ -252,20 +252,20 @@ class Simulator(object):
       error = y - y_hat
       zbars.append(np.dot(X_raw.T, error) / np.sqrt(X_raw.shape[0]))
       
-      x_raw_0 = X_raw[0] * error[0]
-      x_raw_0_sq = np.dot(x_raw_0, np.ones_like(x_raw_0))**2 # Wald device
+      x_raw_e_0 = X_raw[0] * error[0]
+      x_raw_0_e_sq = np.dot(x_raw_e_0, np.ones_like(x_raw_e_0))**2 # Wald device
 
       # Compute autocovariances and means of squared residuals 
       for i, x_raw in enumerate(X_raw):
-        x_raw *= error[i]
-        x_raw_sq = np.dot(x_raw, np.ones_like(x_raw))**2 # Wald device 
+        x_raw_e = x_raw * error[i]
+        x_raw_e_sq = np.dot(x_raw_e, np.ones_like(x_raw_e))**2 # Wald device 
 
         l = i % self.env.L
         t = i // self.env.L
         d = (l, t)
         k = int(self.env.pairwise_distances[0, l] + t)
-        autocov_dict[k][d] += np.outer(x_raw, x_raw_0) / (self.time_horizon* len(zbar_list))
-        sq_residual_means[i] += x_raw_sq / len(zbar_list)         
+        autocov_dict[k][d] += np.outer(x_raw_e, x_raw_e_0) / (self.time_horizon* len(zbar_list))
+        sq_residual_means[i] += x_raw_e_sq / len(zbar_list)         
  
     # Second pass for autocovariancs of squared residuals
     autocov_sq_dict = {k_: {(l_, t_): 0.0
@@ -276,21 +276,21 @@ class Simulator(object):
       error = y - y_hat
       zbars.append(np.dot(X_raw.T, error) / np.sqrt(X_raw.shape[0]))
       
-      x_raw_0 = X_raw[0] * error[0] 
-      x_raw_0_sq = np.dot(x_raw_0, np.ones_like(x_raw_0))**2 # Wald device
-      x_raw_0_sq_mean = sq_residual_means[0] 
+      x_raw_e_0 = X_raw[0] * error[0] 
+      x_raw_e_0_sq = np.dot(x_raw_e_0, np.ones_like(x_raw_e_0))**2 # Wald device
+      x_raw_e_0_sq_mean = sq_residual_means[0] 
 
       # Compute autocovariances and autocovariances of squared residuals 
       for i, x_raw in enumerate(X_raw):
-        x_raw *= error[i]
-        x_raw_sq = np.dot(x_raw, np.ones_like(x_raw))**2 # Wald device 
+        x_raw_e = x_raw * error[i]
+        x_raw_e_sq = np.dot(x_raw_e, np.ones_like(x_raw_e))**2 # Wald device 
         l = i % self.env.L
         t = i // self.env.L
         d = (l,  t)
         k = int(self.env.pairwise_distances[0, l]) + t
-        x_raw_sq_mean = sq_residual_means[i]
-        sq_residual_vars[i] += (x_raw_sq - x_raw_sq_mean)**2 / len(zbar_list)
-        autocov_sq_dict[k][d] += ((x_raw_sq - x_raw_sq_mean) * (x_raw_0_sq - x_raw_0_sq_mean)) / len(zbar_list)
+        x_raw_e_sq_mean = sq_residual_means[i]
+        sq_residual_vars[i] += (x_raw_e_sq - x_raw_e_sq_mean)**2 / len(zbar_list)
+        autocov_sq_dict[k][d] += ((x_raw_e_sq - x_raw_e_sq_mean) * (x_raw_e_0_sq - x_raw_e_0_sq_mean)) / len(zbar_list)
 
     # Get autocov sum
     autocovs = []
