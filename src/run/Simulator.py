@@ -268,8 +268,8 @@ class Simulator(object):
         sq_residual_means[i] += x_raw_e_sq / len(zbar_list)         
  
     # Second pass for autocovariancs of squared residuals
-    autocov_sq_dict = {k_: {(l_, t_): 0.0
-                               for l_, t_ in itertools.product(range(self.env.L), range(self.time_horizon+1))
+    autocov_sq_dict = {k_: {(l_, t_): [] 
+                               for l_, t_ in itertools.product(range(self.env.L), range(self.time_horizon))
                                if t_ + self.env.pairwise_distances[0, l_] == k_} for k_ in range(self.time_horizon + max_dist + 1)}
     for X_raw, y in zbar_list:
       y_hat = np.dot(X_raw, true_q_fn_params_raw)
@@ -290,7 +290,7 @@ class Simulator(object):
         k = int(self.env.pairwise_distances[0, l]) + t
         x_raw_e_sq_mean = sq_residual_means[i]
         sq_residual_vars[i] += (x_raw_e_sq - x_raw_e_sq_mean)**2 / len(zbar_list)
-        autocov_sq_dict[k][d] += ((x_raw_e_sq - x_raw_e_sq_mean) * (x_raw_e_0_sq - x_raw_e_0_sq_mean)) / len(zbar_list)
+        autocov_sq_dict[k][d].append((x_raw_e_sq - x_raw_e_sq_mean) * (x_raw_e_0_sq - x_raw_e_0_sq_mean))
 
     # Get autocov sum
     autocovs = []
@@ -299,11 +299,13 @@ class Simulator(object):
     for k in autocov_dict.keys():
       eigs_k = [np.real(np.linalg.eig(C)[0]).max() for C in autocov_dict[k].values()]
       autocovs.append(np.max(eigs_k))
-      autocovs_sq_k = [C for C in autocov_sq_dict[k].values()]
-      autocovs_sq_max.append(np.max(autocovs_sq_k))
-      autocovs_sq_mean.append(np.mean(autocovs_sq_k))
+      autocovs_sq_k = [np.abs(np.mean(C)) for C in autocov_sq_dict[k].values() if C]
+      if autocovs_sq_k:
+        autocovs_sq_max.append(np.max(autocovs_sq_k))
+        autocovs_sq_mean.append(np.mean(autocovs_sq_k))
 
-    pdb.set_trace()
+    autocovs_sq_max = np.round(autocovs_sq_max, 2)
+    autocovs_sq_mean = np.round(autocovs_sq_mean, 2)
     autocovs_cum = np.cumsum(autocovs)
     autocovs_sq_cum = np.cumsum(autocovs_sq_max)
     zbars = np.array(zbars)
@@ -524,6 +526,7 @@ class Simulator(object):
       q_fn_policy_params['time_horizon'] = self.time_horizon
       q_fn_policy_params['classifier'] = SKLogit2
       q_fn_policy_params['regressor'] = Ridge
+      q_fn_policy_params['bootstrap'] = False
       q_fn_policy = policy_factory(self.sampling_dbn_estimator)
       _, q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]

@@ -51,6 +51,11 @@ def true_probs_myopic(**kwargs):
     a[treat_ixs] = 1
   return a, None
 
+def random_no_replace(**kwargs):
+  env, treatment_budget = kwargs['env'], kwargs['treatment_budget']  
+  treat_prob = treatment_budget / env.L
+  a = np.random.binomial([1], treat_prob*np.ones(env.L))
+  return a, None  
 
 def random(**kwargs):
   env, treatment_budget, divide_evenly = kwargs['env'], kwargs['treatment_budget'], kwargs['divide_evenly']
