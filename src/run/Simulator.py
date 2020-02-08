@@ -264,7 +264,7 @@ class Simulator(object):
         t = i // self.env.L
         d = (l, t)
         k = int(self.env.pairwise_distances[0, l] + t)
-        autocov_dict[k][d] += np.outer(x_raw_e, x_raw_e_0) / (self.time_horizon* len(zbar_list))
+        autocov_dict[k][d] += np.outer(x_raw_e_sq, x_raw_0_e_sq) / (self.time_horizon* len(zbar_list))
         sq_residual_means[i] += x_raw_e_sq / len(zbar_list)         
  
     # Second pass for autocovariancs of squared residuals
