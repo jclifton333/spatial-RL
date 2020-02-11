@@ -270,19 +270,13 @@ def one_step_wild(**kwargs):
   X_raw = np.column_stack((np.ones(X_raw.shape[0]), X_raw))
   error = y - yhat
   X_times_y = np.multiply(X_raw.T, error).T
-  if bootstrap:  # ToDo: fix this
-    zvar = np.dot(X_times_y.T, X_times_y) / X_raw.shape[0]
-  else:
-    zvar = 0.
-    zvar_naive = 0.
-    for i, x_i in enumerate(X_times_y):
-      zvar_naive += np.outer(x_i, x_i) / X_raw.shape[0]
-      for j, x_j in enumerate(X_times_y):
-        zvar += K[i, j]*np.outer(x_i, x_j) / X_raw.shape[0]
+  wald_multiplier = np.ones(X_times_y.shape[1])
+  X_times_y_w = np.dot(X_times_y, wald_multiplier)
+  zvar_naive = np.var(X_times_y_w)  # ToDo: change for bootstrap
 
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs,
                 'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': np.concatenate(([clf.intercept_], clf.coef_)), 'zbar': (X_raw, y),
-                'zvar': zvar, 'zvar_naive': zvar_naive}
+                'zvar': zvar_naive, 'zvar_naive': zvar_naive}
 
 
 def one_step_bins(**kwargs):

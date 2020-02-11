@@ -223,6 +223,7 @@ class Simulator(object):
           zbar_list.append(v['zbar'])
           zvar_list.append(v['zvar'])
           zvar_naive_list.append(v['zvar_naive'])
+    pdb.set_trace()
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
     acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
