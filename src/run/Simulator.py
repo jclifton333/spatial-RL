@@ -290,7 +290,10 @@ class Simulator(object):
         k = int(self.env.pairwise_distances[0, l]) + t
         x_raw_e_sq_mean = sq_residual_means[i]
         sq_residual_vars[i] += (x_raw_e_sq - x_raw_e_sq_mean)**2 / len(zbar_list)
-        autocov_sq_dict[k][d].append((x_raw_e_sq - x_raw_e_sq_mean) * (x_raw_e_0_sq - x_raw_e_0_sq_mean))
+        cross_product = (x_raw_e_sq - x_raw_e_sq_mean) * (x_raw_e_0_sq - x_raw_e_0_sq_mean)
+        if np.abs(cross_product) > 0.5:
+          pdb.set_trace()
+        autocov_sq_dict[k][d].append(cross_product)
 
     # Get autocov sum
     autocovs = []
