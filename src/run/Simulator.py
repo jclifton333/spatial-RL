@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-N
 """
 Created on Fri May  4 21:49:40 2018
 
@@ -24,7 +24,9 @@ from src.environments.environment_factory import environment_factory
 from src.estimation.optim.argmaxer_factory import argmaxer_factory
 from src.policies.policy_factory import policy_factory
 from src.estimation.stacking.bellman_error_bootstrappers import bootstrap_rollout_qfn, bootstrap_SIS_mb_qfn
+from scipy.spatial.distance import cdist
 from scipy.stats import normaltest, ks_2samp
+from scipy.linalg import sqrtm as sqrtm
 import itertools
 import copy
 
@@ -173,7 +175,7 @@ class Simulator(object):
  
     bootstrap_pvals, coverages = bootstrap_coverages(bootstrap_dbns, q_fn_params_list)
     raw_bootstrap_pvals, raw_coverages = bootstrap_coverages(raw_bootstrap_dbns, q_fn_params_raw_list)
-
+    
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
     pvals = [float(pval) for pval in pvals]
@@ -182,7 +184,7 @@ class Simulator(object):
     results_dict['pvals'] = pvals
     results_dict['beta_vars'] = beta_vars
     results_dict['bias'] = [float(b) for b in bias]
-    results_dict['coverages'] = [float(c) for c in coverages]
+    results_dict['coverages'] = [float(c) for c in raw_coverages]
     results_dict['bootstrap_pvals'] = bootstrap_pvals
     self.save_results(results_dict)
 
@@ -223,7 +225,7 @@ class Simulator(object):
           zbar_list.append(v['zbar'])
           zvar_list.append(v['zvar'])
           zvar_naive_list.append(v['zvar_naive'])
-    pdb.set_trace()
+
     mean_counts = np.array(counts).mean(axis=0)
     mean_counts = [float(m) for m in mean_counts]
     acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
@@ -251,7 +253,6 @@ class Simulator(object):
       # Compute variances
       y_hat = np.dot(X_raw, true_q_fn_params_raw)
       error = y - y_hat
-      zbars.append(np.dot(X_raw.T, error) / np.sqrt(X_raw.shape[0]))
       
       x_raw_e_0 = X_raw[0] * error[0]
       x_raw_0_e_sq = np.dot(x_raw_e_0, np.ones_like(x_raw_e_0))**2 # Wald device
@@ -272,10 +273,14 @@ class Simulator(object):
     autocov_sq_dict = {k_: {(l_, t_): [] 
                                for l_, t_ in itertools.product(range(self.env.L), range(self.time_horizon))
                                if t_ + self.env.pairwise_distances[0, l_] == k_} for k_ in range(self.time_horizon + max_dist + 1)}
+    zbar_autocovs = []
     for X_raw, y in zbar_list:
       y_hat = np.dot(X_raw, true_q_fn_params_raw)
       error = y - y_hat
-      zbars.append(np.dot(X_raw.T, error) / np.sqrt(X_raw.shape[0]))
+      # zbars.append(np.dot(np.ones(X_raw.shape[1]), np.multiply(X_raw.T, error)).sum() / X_raw.shape[0])
+      X_raw_dot_y = np.dot(np.ones(X_raw.shape[1]), np.multiply(X_raw.T, error))
+      zbars.append(X_raw_dot_y.sum() / np.sqrt(X_raw.shape[0]))
+      zbar_autocovs.append([X_raw_dot_y[0]*x for x in X_raw_dot_y]) 
       
       x_raw_e_0 = X_raw[0] * error[0] 
       x_raw_e_0_sq = np.dot(x_raw_e_0, np.ones_like(x_raw_e_0))**2 # Wald device
@@ -292,8 +297,6 @@ class Simulator(object):
         x_raw_e_sq_mean = sq_residual_means[i]
         sq_residual_vars[i] += (x_raw_e_sq - x_raw_e_sq_mean)**2 / len(zbar_list)
         cross_product = (x_raw_e_sq - x_raw_e_sq_mean) * (x_raw_e_0_sq - x_raw_e_0_sq_mean)
-        if np.abs(cross_product) > 0.5:
-          pdb.set_trace()
         autocov_sq_dict[k][d].append(cross_product)
 
     # Get autocov sum
@@ -312,6 +315,7 @@ class Simulator(object):
     autocovs_sq_mean = np.round(autocovs_sq_mean, 2)
     autocovs_cum = np.cumsum(autocovs)
     autocovs_sq_cum = np.cumsum(autocovs_sq_max)
+
     zbars = np.array(zbars)
     true_cov = np.cov(zbars.T)[1:, 1:]
     est_cov = np.mean(zvars, axis=0)[1:, 1:]
@@ -388,34 +392,21 @@ class Simulator(object):
     
     bootstrap_pvals, coverages = bootstrap_coverages(bootstrap_dbns, q_fn_params_list)
     raw_bootstrap_pvals, raw_coverages = bootstrap_coverages(raw_bootstrap_dbns, q_fn_params_raw_list)
-    zvars = np.array(zvar_list)
-    zbars = [] 
-    true_q_fn_params_raw= np.array(q_fn_params_raw_list).mean(axis=0)
-    for X_raw, y in zbar_list:
-      y_hat = np.dot(X_raw, true_q_fn_params_raw) 
-      zbars.append(np.dot(X_raw.T, y-y_hat) / np.sqrt(X_raw.shape[0])) 
-    zbars = np.array(zbars)
 
-    true_cov = np.cov(zbars.T)[1:, 1:]
-    est_cov = np.mean(zvars, axis=0)[1:, 1:]
-
+    pdb.set_trace()
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
     pvals = [float(pval) for pval in pvals]
-    eig_vars = np.var(eigs_list, axis=0)
-    eig_vars = [float(v) for v in eig_vars]
     beta_vars = np.var(np.array(q_fn_params_list), axis=0)
     beta_vars = [float(b) for b in beta_vars]
     coverages = [float(c) for c in coverages]
     results_dict['pvals'] = pvals
-    results_dict['bootstrap_pvals'] = bootstrap_pvals
-    results_dict['coverages'] = coverages
-    results_dict['eig_vars'] = eig_vars
+    results_dict['bootstrap_pvals'] = raw_bootstrap_pvals
+    results_dict['coverages'] = [float(c) for c in raw_coverages]
     results_dict['beta_vars'] = beta_vars 
     results_dict['mean_counts'] = mean_counts
     results_dict['bias'] = [float(b) for b in bias]
     results_dict['betas'] = [float(b) for b in true_q_fn_params]
-    results_dict['acfs'] = [float(a) for a in acfs]
     self.save_results(results_dict)
     return
 
@@ -468,7 +459,6 @@ class Simulator(object):
     results_dict['mean_mean_losses'] = mean_mean_losses
     results_dict['mean_max_losses'] = mean_max_losses
     self.save_results(results_dict)
-    print('mean: {} se: {}'.format(mean, se))
     return
 
   def episode_wrapper(self, replicate):
@@ -581,19 +571,32 @@ class Simulator(object):
           bootstrap_dbn = []
           raw_bootstrap_dbn = []
           q_fn_policy_params['bootstrap'] = True
+
+          if 'wild' in self.sampling_dbn_estimator: # ToDo: encapsulate in separate function
+            N = len(self.env.X)*self.env.L
+            BANDWIDTH = 0.1 
+            
+            # Construct pairwise distances matrices
+            pairwise_t = cdist(np.arange(self.env.T).reshape(-1, 1), np.arange(self.env.T).reshape(-1, 1))
+            pairwise_t /= (np.max(pairwise_t) / BANDWIDTH)
+            pairwise_l = self.env.pairwise_distances
+            pairwise_l /= (np.max(pairwise_l) / BANDWIDTH)
+       
+            # Construct kernels
+            K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*100)
+            K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*100)
+            K = np.kron(K_t, K_l)  
+            q_fn_policy_params['cov_sqrt'] = np.real(sqrtm(K))
+         
           for sample in range(NUM_BOOTSTRAP_SAMPLES):
             _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
             bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
             raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
-
-            bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
-            raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
           episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
           episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
 
         print('GOT HERE')
 
-      # print(np.mean(self.env.Y[-1,:]))
       return {replicate: episode_results}
 
   def run_for_profiling(self):

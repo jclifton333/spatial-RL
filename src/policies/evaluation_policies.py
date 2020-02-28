@@ -213,26 +213,15 @@ def one_step_wild(**kwargs):
     kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
     kwargs['bootstrap'], kwargs['gamma']
 
-  N = len(env.X)*env.L
-  BANDWIDTH = 1
-  # Construct pairwise distance matrices
-  pairwise_t = cdist(np.arange(env.T).reshape(-1, 1), np.arange(env.T).reshape(-1, 1))
-  pairwise_t /= (np.max(pairwise_t) / BANDWIDTH)
-  pairwise_l = env.pairwise_distances
-  pairwise_l /= (np.max(pairwise_l) / BANDWIDTH)
-
-  # Construct kernels
-  # K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*100) # Gaussian kernel
-  # K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*100)
-  K_l = np.multiply(1 - pairwise_l, pairwise_l <= 1)  # Bartlett kernel
-  K_t = np.multiply(1 - pairwise_t, pairwise_t <= 1)
-  K = np.kron(K_t, K_l)
-
   if bootstrap:
     # Draw weights
-    weights = np.random.multivariate_normal(mean=np.zeros(K.shape[0]), cov=K)
+    # weights = np.random.multivariate_normal(mean=np.zeros(K.shape[0]), cov=K)
+    cov_sqrt = kwargs['cov_sqrt']
+    weights = np.random.normal(size=cov_sqrt.shape[0])
+    weights = np.dot(cov_sqrt, weights)
   else:
-    weights = np.ones(N)
+    weights = np.ones(len(env.X)*env.L)
+    # weights = np.random.multivariate_normal(mean=np.zeros(K.shape[0]), cov=K)
 
   q_fn_params = np.zeros(0)
   X = np.vstack(env.X)[:, :8]
@@ -246,7 +235,8 @@ def one_step_wild(**kwargs):
 
   # Fit raw feature model
   X_raw = np.vstack(env.X_raw)
-  clf = Ridge(alpha=1, fit_intercept=True)
+  X_raw = np.column_stack((np.ones(X_raw.shape[0]), 1 - X_raw[:, -2] + X_raw[:, -1]))
+  clf = Ridge(alpha=1, fit_intercept=False)
   # clf = LinearRegression(fit_intercept=True)
   clf.fit(X_raw, y)
 
@@ -264,18 +254,18 @@ def one_step_wild(**kwargs):
   # Get autocorrelations for location 0
   ixs_for_loc_1 = [int(ix) for ix in np.linspace(0, env.L-1+env.L*(env.T-2), env.T-1)]
   y_loc_1 = y[ixs_for_loc_1]
-  acfs = [acf(y_loc_1, lag) for lag in range(1, 10)]
+  acfs = [acf(y_loc_1, 1)]
 
   # Covariance estimate information
-  X_raw = np.column_stack((np.ones(X_raw.shape[0]), X_raw))
   error = y - yhat
   X_times_y = np.multiply(X_raw.T, error).T
   wald_multiplier = np.ones(X_times_y.shape[1])
   X_times_y_w = np.dot(X_times_y, wald_multiplier)
-  zvar_naive = np.var(X_times_y_w)  # ToDo: change for bootstrap
+  zvar_naive = np.var(X_times_y_w)   # ToDo: change for bootstrap
+  # zvar_naive = (K[:, 0] * zvar_naive).sum()
 
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs,
-                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': np.concatenate(([clf.intercept_], clf.coef_)), 'zbar': (X_raw, y),
+                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_, 'zbar': (X_raw, y),
                 'zvar': zvar_naive, 'zvar_naive': zvar_naive}
 
 
@@ -302,8 +292,7 @@ def one_step_bins(**kwargs):
     q_fn_params = np.hstack((q_fn_params, np.dot(y_i, w_i) / np.sum(w_i))) 
 
   # Fit raw feature model
-  X_raw = np.vstack(env.X_raw)
-  clf = Ridge(alpha=np.mean(w_i), fit_intercept=True)
+  clf = Ridge(alpha=np.mean(w_i), fit_intercept=False)
   # clf = LinearRegression(fit_intercept=True)
   clf.fit(X_raw, y, sample_weight=weights)
 
@@ -318,7 +307,6 @@ def one_step_bins(**kwargs):
   acfs = [acf(y_loc_1, lag) for lag in range(1, 10)]
 
   yhat = clf.predict(X_raw)
-  X_raw = np.column_stack((np.ones(X_raw.shape[0]), X_raw))
   error = y - yhat 
   X_times_y = np.multiply(X_raw.T, error)
   zbar = np.dot(X_raw.T, y) / np.sqrt(X_raw.shape[0])
@@ -326,7 +314,7 @@ def one_step_bins(**kwargs):
   zvar = np.dot(X_times_y, X_times_y.T) / X_raw.shape[0]
 
   return None, {'q_fn_params': q_fn_params, 'nonzero_counts': X_nonzero_counts, 'eigs': eigs, 
-                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': np.concatenate(([clf.intercept_], clf.coef_)), 'zbar': (X_raw, y), 
+                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_, 'zbar': (X_raw, y), 
                 'zvar': zvar}
 
 
