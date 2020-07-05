@@ -526,76 +526,76 @@ class Simulator(object):
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_params_raw'] = [float(t) for t in q_fn_policy_info['q_fn_params_raw']]
 
-      if self.parametric_bootstrap:
-        NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
+      # if self.parametric_bootstrap:
+      #   NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
 
-        # Fit transition model and get rollout_env for parametric boot
-        eta_hat, _ = fit_infection_prob_model(self.env, None)
-        eta_hat_cov = self.env.mb_covariance(eta_hat)
-        rollout_env_kwargs = {'L': self.env.L, 'omega': self.env.omega, 'generate_network': self.env.generate_network,
-                              'initial_infections': self.env.initial_infections,
-                              'add_neighbor_sums': self.env.add_neighbor_sums, 'epsilon': 0.0,
-                              'compute_pairwise_distances': self.env.compute_pairwise_distances,
-                              'dummy': self.env.dummy, 'eta': eta_hat}
-        rollout_env = environment_factory('sis', **rollout_env_kwargs)
-        q_fn_policy_params['rollout'] = True
-        q_fn_policy_params['rollout_env'] = rollout_env
-        q_fn_policy_params['rollout_policy'] = None 
+      #   # Fit transition model and get rollout_env for parametric boot
+      #   eta_hat, _ = fit_infection_prob_model(self.env, None)
+      #   eta_hat_cov = self.env.mb_covariance(eta_hat)
+      #   rollout_env_kwargs = {'L': self.env.L, 'omega': self.env.omega, 'generate_network': self.env.generate_network,
+      #                         'initial_infections': self.env.initial_infections,
+      #                         'add_neighbor_sums': self.env.add_neighbor_sums, 'epsilon': 0.0,
+      #                         'compute_pairwise_distances': self.env.compute_pairwise_distances,
+      #                         'dummy': self.env.dummy, 'eta': eta_hat}
+      #   rollout_env = environment_factory('sis', **rollout_env_kwargs)
+      #   q_fn_policy_params['rollout'] = True
+      #   q_fn_policy_params['rollout_env'] = rollout_env
+      #   q_fn_policy_params['rollout_policy'] = None
 
-        # Get bootstrap dbn of q-function parameters
-        bootstrap_dbn = []
-        raw_bootstrap_dbn = []
-        q_fn_policy_params['bootstrap'] = True
+      #   # Get bootstrap dbn of q-function parameters
+      #   bootstrap_dbn = []
+      #   raw_bootstrap_dbn = []
+      #   q_fn_policy_params['bootstrap'] = True
 
-        for sample in range(NUM_BOOTSTRAP_SAMPLES):
-          _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
-          bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
-          raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
+      #   for sample in range(NUM_BOOTSTRAP_SAMPLES):
+      #     _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
+      #     bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
+      #     raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
 
-        # bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
-        # raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
-        episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
-        episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
-      else:
-        episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
-        episode_results['eigs'] = q_fn_policy_info['eigs']
-        episode_results['acfs'] = q_fn_policy_info['acfs']
-        episode_results['ys'] = q_fn_policy_info['ys']
-        episode_results['zbar'] = q_fn_policy_info['zbar']
-        episode_results['zvar'] = q_fn_policy_info['zvar']
-        episode_results['zvar_naive'] = q_fn_policy_info['zvar_naive']
+      #   # bootstrap_dbn = np.array(bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params'])
+      #   # raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
+      #   episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
+      #   episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
+      # else:
+      #   episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
+      #   episode_results['eigs'] = q_fn_policy_info['eigs']
+      #   episode_results['acfs'] = q_fn_policy_info['acfs']
+      #   episode_results['ys'] = q_fn_policy_info['ys']
+      #   episode_results['zbar'] = q_fn_policy_info['zbar']
+      #   episode_results['zvar'] = q_fn_policy_info['zvar']
+      #   episode_results['zvar_naive'] = q_fn_policy_info['zvar_naive']
 
-        if not self.variance_only:
-          NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
-          # Get bootstrap dbn of q-function parameters
-          bootstrap_dbn = []
-          raw_bootstrap_dbn = []
-          q_fn_policy_params['bootstrap'] = True
+      #   if not self.variance_only:
+      #     NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
+      #     # Get bootstrap dbn of q-function parameters
+      #     bootstrap_dbn = []
+      #     raw_bootstrap_dbn = []
+      #     q_fn_policy_params['bootstrap'] = True
 
-          if 'wild' in self.sampling_dbn_estimator: # ToDo: encapsulate in separate function
-            N = len(self.env.X)*self.env.L
-            BANDWIDTH = 0.1 
-            
-            # Construct pairwise distances matrices
-            pairwise_t = cdist(np.arange(self.env.T).reshape(-1, 1), np.arange(self.env.T).reshape(-1, 1))
-            pairwise_t /= (np.max(pairwise_t) / BANDWIDTH)
-            pairwise_l = self.env.pairwise_distances
-            pairwise_l /= (np.max(pairwise_l) / BANDWIDTH)
-       
-            # Construct kernels
-            K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*100)
-            K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*100)
-            K = np.kron(K_t, K_l)  
-            q_fn_policy_params['cov_sqrt'] = np.real(sqrtm(K))
-         
-          for sample in range(NUM_BOOTSTRAP_SAMPLES):
-            _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
-            bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
-            raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
-          episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
-          episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
+      #     if 'wild' in self.sampling_dbn_estimator: # ToDo: encapsulate in separate function
+      #       N = len(self.env.X)*self.env.L
+      #       BANDWIDTH = 0.1
+      #
+      #       # Construct pairwise distances matrices
+      #       pairwise_t = cdist(np.arange(self.env.T).reshape(-1, 1), np.arange(self.env.T).reshape(-1, 1))
+      #       pairwise_t /= (np.max(pairwise_t) / BANDWIDTH)
+      #       pairwise_l = self.env.pairwise_distances
+      #       pairwise_l /= (np.max(pairwise_l) / BANDWIDTH)
+      #
+      #       # Construct kernels
+      #       K_l = np.exp(-np.multiply(pairwise_l, pairwise_l)*100)
+      #       K_t = np.exp(-np.multiply(pairwise_t, pairwise_t)*100)
+      #       K = np.kron(K_t, K_l)
+      #       q_fn_policy_params['cov_sqrt'] = np.real(sqrtm(K))
+      #
+      #     for sample in range(NUM_BOOTSTRAP_SAMPLES):
+      #       _, bootstrap_q_fn_policy_info = q_fn_policy(**q_fn_policy_params)
+      #       bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params']])
+      #       raw_bootstrap_dbn.append([float(t) for t in bootstrap_q_fn_policy_info['q_fn_params_raw']])
+      #     episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
+      #     episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
 
-        print('GOT HERE')
+      #   print('GOT HERE')
 
       return {replicate: episode_results}
 
