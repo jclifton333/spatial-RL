@@ -7,6 +7,7 @@ try:
 except ImportError:
   from scipy.misc import comb
 from itertools import combinations
+from .nonlinear.nonlinear import argmaxer_nonlinear
 
 
 def argmaxer_random(q_fn, evaluation_budget, treatment_budget, env, ixs=None):
@@ -57,5 +58,7 @@ def argmaxer_factory(choice):
   elif choice == 'global':
     logging.warning('Using global argmaxer; this may be especially slow.')
     return argmaxer_global
+  elif choice == 'nonlinear':
+    return argmaxer_nonlinear
   else:
     raise ValueError('Argument is not a valid argmaxer name.')
