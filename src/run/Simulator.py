@@ -435,36 +435,33 @@ class Simulator(object):
     # results_list = pool.map(self.episode, range(self.number_of_replicates))
 
     # Save results
-    results_dict = {}
-    for d in results_list:
-      if d is not None:
-        for k, v in d.items():
-          results_dict[k] = v
-    # results_dict = {k: v for d in results_list for k, v in d.items() if d is not None}
-    list_of_scores = [v['score'] for v in results_dict.values()]
-    list_of_mean_losses = [v['mean_losses'] for v in results_dict.values()]
-    list_of_max_losses = [v['max_losses'] for v in results_dict.values()]
+    # results_dict = {}
+    # for d in results_list:
+    #   if d is not None:
+    #     for k, v in d.items():
+    #       results_dict[k] = v
+    results_dict = {k: v for d in results_list for k, v in d.items() if d is not None}
+    # list_of_scores = [v['score'] for v in results_dict.values()]
+    # list_of_mean_losses = [v['mean_losses'] for v in results_dict.values()]
+    # list_of_max_losses = [v['max_losses'] for v in results_dict.values()]
 
-    if list_of_mean_losses[0][0] is not None:
-      mean_mean_losses = np.array(list_of_mean_losses).mean(axis=0)
-      mean_max_losses = np.array(list_of_max_losses).mean(axis=0)
-    else:
-      mean_mean_losses = None
-      mean_max_losses = None
+    # if list_of_mean_losses[0][0] is not None:
+    #   mean_mean_losses = np.array(list_of_mean_losses).mean(axis=0)
+    #   mean_max_losses = np.array(list_of_max_losses).mean(axis=0)
+    # else:
+    #   mean_mean_losses = None
+    #   mean_max_losses = None
 
-    mean, se = float(np.mean(list_of_scores)), float(np.std(list_of_scores) / np.sqrt(len(list_of_scores)))
-    results_dict['mean'] = mean
-    results_dict['se'] = se
-    results_dict['mean_mean_losses'] = mean_mean_losses
-    results_dict['mean_max_losses'] = mean_max_losses
+    # mean, se = float(np.mean(list_of_scores)), float(np.std(list_of_scores) / np.sqrt(len(list_of_scores)))
+    # results_dict['mean'] = mean
+    # results_dict['se'] = se
+    # results_dict['mean_mean_losses'] = mean_mean_losses
+    # results_dict['mean_max_losses'] = mean_max_losses
     self.save_results(results_dict)
     return
 
   def episode_wrapper(self, replicate):
-    try:
-      return self.episode(replicate)
-    except:
-      return None
+    return self.episode(replicate)
 
   def episode(self, replicate):
     np.random.seed(int(self.seed*self.number_of_replicates + replicate))
