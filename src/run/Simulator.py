@@ -593,7 +593,7 @@ class Simulator(object):
 
       #   print('GOT HERE')
 
-      return {replicate: episode_results}
+    return {replicate: episode_results}
 
   def run_for_profiling(self):
     """

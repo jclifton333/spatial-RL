@@ -78,7 +78,7 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200):
   X_list = [torch.FloatTensor(X) for X in X_list]
   y_list = [torch.LongTensor(y) for y in y_list]
   adjacency_mat = torch.FloatTensor(adjacency_mat)
-  model = GCN(nfeat=p, nhid=2, nclass=2, dropout=0.5)
+  model = GCN(nfeat=p, nhid=10, nclass=2, dropout=0.5)
   optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=16)
 
   # Train
@@ -94,7 +94,7 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200):
 
   def model_wrapper(X_):
     X_ = torch.FloatTensor(X_)
-    E = model.forward(X_, adjacency_mat)
+    E = F.relu(model.gc1(X_, adjacency_mat))
     return E.detach().numpy()
 
   return model_wrapper
