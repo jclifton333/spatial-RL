@@ -165,6 +165,18 @@ class SIS(SpatialDisease):
                                                     self.L)
     return np.concatenate((psi_l, psi_neighbors_l))
 
+  def binary_psi(self, raw_data_block, neighbor_order):
+    if neighbor_order == 1:
+      psi = np.zeros((0, 16))
+      # psi = np.zeros((0, 11))
+    elif neighbor_order == 2:
+      psi = np.zeros((0, 72))
+
+    for l in range(self.L):
+      psi_l = self.psi_at_location(l, raw_data_block, neighbor_order)
+      psi = np.vstack((psi, psi_l))
+    return psi
+
   def psi(self, raw_data_block, neighbor_order):
     """
     :param raw_data_block:
@@ -173,15 +185,7 @@ class SIS(SpatialDisease):
     if self.learn_embedding:  # ToDo: doesn't distinguish between neighbor orders
       psi = self.embedder(raw_data_block)
     else:
-      if neighbor_order == 1:
-        psi = np.zeros((0, 16))
-        # psi = np.zeros((0, 11))
-      elif neighbor_order == 2:
-        psi = np.zeros((0, 72))
-
-      for l in range(self.L):
-        psi_l = self.psi_at_location(l, raw_data_block, neighbor_order)
-        psi = np.vstack((psi, psi_l))
+      psi = self.binary_psi(raw_data_block, neighbor_order)
     return psi
 
   ##############################################################
@@ -210,7 +214,7 @@ class SIS(SpatialDisease):
   def next_infected_probabilities(self, a, eta=ETA):
     if self.contaminator is not None and self.epsilon > 0:
       current_X_raw_at_action = np.column_stack((self.current_state > 0, a, self.current_infected))
-      current_X_at_action = self.psi(current_X_raw_at_action, neighbor_order=1)
+      current_X_at_action = self.binary_psi(current_X_raw_at_action, neighbor_order=1)
       contaminator_probs = self.contaminator.predict_proba(current_X_at_action)
       if self.epsilon == 1.0:
         return contaminator_probs
@@ -275,10 +279,11 @@ class SIS(SpatialDisease):
     # Main features
     self.X_raw.append(raw_data_block)
     self.y.append(self.current_infected)
+    data_block_1 = self.binary_psi(raw_data_block, neighbor_order=1)
     if not self.learn_embedding:
-      data_block_1 = self.psi(raw_data_block, neighbor_order=1)
       self.X.append(data_block_1)
     else:
+      self.fit_embedding()
       self.X = [self.embedder(x_raw) for x_raw in self.X_raw]
 
     if self.neighbor_features:

@@ -95,7 +95,7 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200):
   def model_wrapper(X_):
     X_ = torch.FloatTensor(X_)
     E = model.forward(X_, adjacency_mat)
-    return E
+    return E.detach().numpy()
 
   return model_wrapper
 

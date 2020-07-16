@@ -27,6 +27,7 @@ class SpatialDisease(ABC):
     self.initial_infections = initial_infections
     self.construct_features_for_policy_search = construct_features_for_policy_search
     self.compute_pairwise_distances = compute_pairwise_distances
+    self.embedder = None
     self.learn_embedding = learn_embedding
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
@@ -132,10 +133,6 @@ class SpatialDisease(ABC):
     self.A = np.vstack((self.A, a))
     self.next_infections(a, eta)
     self.next_state()
-
-    if self.learn_embedding:
-      self.fit_embedding()
-
     self.update_obs_history(a)
     self.T += 1
 

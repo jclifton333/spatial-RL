@@ -50,6 +50,7 @@ if __name__ == '__main__':
   parser.add_argument('--num_prefit_data', type=float)
   parser.add_argument('--error_quantile', type=float)
   parser.add_argument('--ignore_errors', type=str)
+  parser.add_argument('--learn_embedding', type=str, choices=['True', 'False'])
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
@@ -57,10 +58,10 @@ if __name__ == '__main__':
 
   if args.env_name == 'sis':
     env_kwargs = {'L': args.L, 'omega': args.omega, 'generate_network': network_dict[args.network],
-                  'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon}
+                  'initial_infections': None, 'add_neighbor_sums': False, 'epsilon': args.epsilon,
+                  'learn_embedding': (args.learn_embedding == 'True')}
     if args.network == 'nearestneighbor':
       env_kwargs['regenerate_network'] = True
-
     network_name = args.network
   elif args.env_name == 'Ebola':
     env_kwargs = {}
