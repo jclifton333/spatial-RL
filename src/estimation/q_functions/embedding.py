@@ -9,6 +9,12 @@ import numpy as np
 from itertools import permutations
 from src.environments.generate_network import lattice
 from scipy.optimize import minimize
+from scipy.special import expit
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+from pygcn.utils import accuracy
+from pygcn.models import GCN
 import pdb
 
 
@@ -65,20 +71,37 @@ def learn_one_dimensional_h(X, y, adjacency_list, g, h, J):
   return res.x
 
 
+def learn_gcn(X, y, adjacency_mat):
+  # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
+  # Specify model
+  p = X.shape[1]
+  X = torch.FloatTensor(X)
+  y = torch.LongTensor(y)
+  adjacency_mat = torch.FloatTensor(adjacency_mat)
+  model = GCN(nfeat=p, nhid=2, nclass=2, dropout=0.5)
+  optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=16)
+
+  # Train
+  model.train()
+  optimizer.zero_grad()
+  output = model(X, adjacency_mat)
+  loss_train = F.nll_loss(output, y)
+  acc_train = accuracy(output, y)
+  loss_train.backward()
+  optimizer.step()
+
+  return model
+
+
 if __name__ == "__main__":
   # Test
   adjacency_mat = lattice(16)
   adjacency_list = [[j for j in range(16) if adjacency_mat[i, j]] for i in range(16)]
   neighbor_counts = adjacency_mat.sum(axis=1)
   X = np.random.normal(size=(16, 2))
-  y = np.random.normal(loc=np.array([np.sum(X[adjacency_list[l]]) for l in range(16)]))
-
-  g = lambda a, b: a + b
-  h = lambda a, h_param: [np.dot(a, h_param)]
-  J = 1
-
-  estimated_h_param = learn_one_dimensional_h(X, y, adjacency_list, g, h, J)
-  print(estimated_h_param)
+  y_probs = np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(16)])
+  y = np.array([np.random.binomial(1, prob) for prob in y_probs])
+  fitted_gcn = learn_gcn(X, y, adjacency_mat)
 
 
 
