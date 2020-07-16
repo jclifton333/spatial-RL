@@ -71,26 +71,33 @@ def learn_one_dimensional_h(X, y, adjacency_list, g, h, J):
   return res.x
 
 
-def learn_gcn(X, y, adjacency_mat):
+def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
-  p = X.shape[1]
-  X = torch.FloatTensor(X)
-  y = torch.LongTensor(y)
+  p = X_list[0].shape[1]
+  X_list = [torch.FloatTensor(X) for X in X_list]
+  y_list = [torch.LongTensor(y) for y in y_list]
   adjacency_mat = torch.FloatTensor(adjacency_mat)
   model = GCN(nfeat=p, nhid=2, nclass=2, dropout=0.5)
   optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=16)
 
   # Train
-  model.train()
-  optimizer.zero_grad()
-  output = model(X, adjacency_mat)
-  loss_train = F.nll_loss(output, y)
-  acc_train = accuracy(output, y)
-  loss_train.backward()
-  optimizer.step()
+  for _ in range(n_epoch):
+    for X, y in zip(X_list, y_list):
+      model.train()
+      optimizer.zero_grad()
+      output = model(X, adjacency_mat)
+      loss_train = F.nll_loss(output, y)
+      acc_train = accuracy(output, y)
+      loss_train.backward()
+      optimizer.step()
 
-  return model
+  def model_wrapper(X_):
+    X_ = torch.FloatTensor(X_)
+    E = model.forward(X_, adjacency_mat)
+    return E
+
+  return model_wrapper
 
 
 if __name__ == "__main__":
@@ -98,10 +105,11 @@ if __name__ == "__main__":
   adjacency_mat = lattice(16)
   adjacency_list = [[j for j in range(16) if adjacency_mat[i, j]] for i in range(16)]
   neighbor_counts = adjacency_mat.sum(axis=1)
-  X = np.random.normal(size=(16, 2))
-  y_probs = np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(16)])
-  y = np.array([np.random.binomial(1, prob) for prob in y_probs])
-  fitted_gcn = learn_gcn(X, y, adjacency_mat)
+  n = 2
+  X_list = np.array([np.random.normal(size=(16, 2)) for _ in range(2)])
+  y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(16)]) for X in X_list])
+  y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
+  fitted_gcn = learn_gcn(X_list, y_list, adjacency_mat)
 
 
 

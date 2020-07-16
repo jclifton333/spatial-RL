@@ -119,8 +119,7 @@ class Simulator(object):
 
     # Get filename base for saving results
     to_join = [env_name, policy_name, argmaxer_name, str(self.env.L), network_name,
-               'eval-policy={}'.format(self.sampling_dbn_estimator),
-               'ind={}'.format(self.env.independence_parameter)]
+               'eval-policy={}'.format(self.sampling_dbn_estimator)]
     if sampling_dbn_run:
       to_join.append('eval={}'.format(self.sampling_dbn_estimator))
     if 'epsilon' in env_kwargs.keys():

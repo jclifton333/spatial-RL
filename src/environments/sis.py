@@ -68,7 +68,8 @@ class SIS(SpatialDisease):
                initial_infections=None, initial_state=None, eta=None, beta=None,
                epsilon=0, contaminator=CONTAMINATOR, construct_features_for_policy_search=False,
                compute_pairwise_distances=False,
-               neighbor_features=True, regenerate_network=False, independence_parameter=0.0):
+               neighbor_features=True, regenerate_network=False, independence_parameter=0.0,
+               learn_embedding=False):
     """
     :param omega: parameter in [0,1] for mixing two sis models
     :param generate_network: function that accepts network size L and returns adjacency matrix
@@ -106,7 +107,8 @@ class SIS(SpatialDisease):
     self.lambda_ = self.adjacency_matrix
     SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections,
                             construct_features_for_policy_search=construct_features_for_policy_search,
-                            compute_pairwise_distances=compute_pairwise_distances)
+                            compute_pairwise_distances=compute_pairwise_distances,
+                            learn_embedding=learn_embedding)
 
     self.regenerate_network = regenerate_network
     if initial_state is None:
@@ -168,15 +170,18 @@ class SIS(SpatialDisease):
     :param raw_data_block:
     :return:
     """
-    if neighbor_order == 1:
-      psi = np.zeros((0, 16))
-      # psi = np.zeros((0, 11))
-    elif neighbor_order == 2:
-      psi = np.zeros((0, 72))
+    if self.learn_embedding:  # ToDo: doesn't distinguish between neighbor orders
+      psi = self.embedder(raw_data_block)
+    else:
+      if neighbor_order == 1:
+        psi = np.zeros((0, 16))
+        # psi = np.zeros((0, 11))
+      elif neighbor_order == 2:
+        psi = np.zeros((0, 72))
 
-    for l in range(self.L):
-      psi_l = self.psi_at_location(l, raw_data_block, neighbor_order)
-      psi = np.vstack((psi, psi_l))
+      for l in range(self.L):
+        psi_l = self.psi_at_location(l, raw_data_block, neighbor_order)
+        psi = np.vstack((psi, psi_l))
     return psi
 
   ##############################################################
@@ -269,9 +274,12 @@ class SIS(SpatialDisease):
 
     # Main features
     self.X_raw.append(raw_data_block)
-    data_block_1 = self.psi(raw_data_block, neighbor_order=1)
-    self.X.append(data_block_1)
     self.y.append(self.current_infected)
+    if not self.learn_embedding:
+      data_block_1 = self.psi(raw_data_block, neighbor_order=1)
+      self.X.append(data_block_1)
+    else:
+      self.X = [self.embedder(x_raw) for x_raw in self.X_raw]
 
     if self.neighbor_features:
       data_block_2 = self.psi(raw_data_block, neighbor_order=2)

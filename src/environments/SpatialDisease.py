@@ -8,6 +8,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 import networkx as nx
 import pdb
+from ..estimation.q_functions.embedding import learn_gcn
 
 # Create ABC base class compatible with Python 2.7 and 3.x
 ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
@@ -15,21 +16,22 @@ ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
 
 class SpatialDisease(ABC):
   INITIAL_INFECT_PROP = 0.1
-  
+
   def __init__(self, adjacency_matrix, initial_infections=None, construct_features_for_policy_search=False,
-               regenerate_network=False, compute_pairwise_distances=False):
+               regenerate_network=False, compute_pairwise_distances=False, learn_embedding=False):
     """
     :param adjacency_matrix: 2d binary array corresponding to network for gen model
     :param initial_infections: L-length binary array of initial infections, or None
     """
-    
+
     self.initial_infections = initial_infections
     self.construct_features_for_policy_search = construct_features_for_policy_search
     self.compute_pairwise_distances = compute_pairwise_distances
+    self.learn_embedding = learn_embedding
     # Generative model parameters
     self.L = adjacency_matrix.shape[0]
     self.max_number_of_neighbors = int(np.max(np.sum(adjacency_matrix, axis=1)))
-    
+
     # Adjacency info
     self.construct_network(adjacency_matrix, construct_features_for_policy_search, compute_pairwise_distances)
 
@@ -47,7 +49,7 @@ class SpatialDisease(ABC):
     self.X_2 = []
     self.y = []  # Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = []
-    
+
     # Current network status
     self.current_infected = self.Y[-1, :]
     self.T = 0
@@ -100,7 +102,7 @@ class SpatialDisease(ABC):
     self.X_2 = []
     self.y = [] # Will hold blocks [Y_tp1] for each time t
     self.true_infection_probs = []
-    
+
     # Current network status
     self.current_infected = self.Y[-1, :]
     self.T = 0
@@ -108,15 +110,19 @@ class SpatialDisease(ABC):
   @abstractmethod
   def update_obs_history(self, a):
     pass
-  
+
   @abstractmethod
   def next_state(self):
     pass
-  
+
   @abstractmethod
   def next_infections(self, a, eta=None):
     pass
-  
+
+  def fit_embedding(self):
+    # ToDo: Assuming semi-supervised learning with binary target, using GCN
+    self.embedder = learn_gcn(self.X_raw, self.y, self.adjacency_matrix)
+
   def step(self, a, eta=None):
     """
     Move model forward according to action a. 
@@ -126,6 +132,10 @@ class SpatialDisease(ABC):
     self.A = np.vstack((self.A, a))
     self.next_infections(a, eta)
     self.next_state()
+
+    if self.learn_embedding:
+      self.fit_embedding()
+
     self.update_obs_history(a)
     self.T += 1
 

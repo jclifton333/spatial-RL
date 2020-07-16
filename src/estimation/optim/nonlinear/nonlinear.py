@@ -1,16 +1,22 @@
 import xpress as xp
 import numpy as np
+from ..quad_approx.fit_quad_approx import get_quadratic_program_from_q
 import pdb
+import math
 
 
 def solve_nonlinear_program(q, treatment_budget, L):
+  def obj(a):
+    # return xp.Sum([a_[i]*a_[j]*q[i, j] for i in range(L) for j in range(L)])
+    return a[0]*q[0,0] + a[1]*q[0,1]
+
   # Specify
   problem = xp.problem()
-  a = np.array([xp.var(vartype=xp.binary) for _ in range(L)], dtype=xp.npvar)
+  a = [xp.var() for _ in range(L)]
   problem.addVariable(a)
-  constr = (xp.Sum([a[i] for i in range(L)]) <= treatment_budget)
-  problem.setObjective(xp.user(q, a), sense=xp.maximize)
-  problem.addConstraint(constr)
+  problem.addConstraint(xp.Sum([a[i] for i in range(L)]) <= treatment_budget)
+  f = xp.user(obj, a[:2])
+  problem.setObjective(f)
 
   # Solve
   problem.solve()
@@ -20,7 +26,14 @@ def solve_nonlinear_program(q, treatment_budget, L):
 
 
 def argmaxer_nonlinear(q, evaluation_budget, treatment_budget, env):
-  def q_sum(a_):
-    return np.sum(q(a_))
-  a = solve_nonlinear_program(q_sum, treatment_budget, env.L)
+  # def q_sum(a_):
+  #   q_ = 0.
+  #   for i in range(L):
+  #     for j in range(L):
+  #       q_ += a_[i] * a_[j] * q[i, j]
+  #   return q_
+
+  # ToDo: using a quadratic approximation for testing
+  quadratic_parameters, _ = get_quadratic_program_from_q(q, treatment_budget, evaluation_budget, env, None)
+  a = solve_nonlinear_program(quadratic_parameters, treatment_budget, env.L)
   return a
