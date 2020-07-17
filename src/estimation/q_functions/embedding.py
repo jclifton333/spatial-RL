@@ -92,12 +92,18 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200):
       loss_train.backward()
       optimizer.step()
 
+  def embedding_wrapper(X_):
+    X_ = torch.FloatTensor(X_)
+    E = F.relu(model.gc1(X_, adjacency_mat)).detach().numpy()
+    return E
+
   def model_wrapper(X_):
     X_ = torch.FloatTensor(X_)
-    E = F.relu(model.gc1(X_, adjacency_mat))
-    return E.detach().numpy()
+    y_ = model.forward(X_, adjacency_mat).detach().numpy()
+    y1 = np.exp(y_[:, 1])
+    return y1
 
-  return model_wrapper
+  return embedding_wrapper, model_wrapper
 
 
 if __name__ == "__main__":
@@ -109,7 +115,8 @@ if __name__ == "__main__":
   X_list = np.array([np.random.normal(size=(16, 2)) for _ in range(2)])
   y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(16)]) for X in X_list])
   y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
-  fitted_gcn = learn_gcn(X_list, y_list, adjacency_mat)
+  _, predictor = learn_gcn(X_list, y_list, adjacency_mat)
+  predictor(X_list[0])
 
 
 

@@ -475,6 +475,7 @@ class Simulator(object):
     mean_losses = []
     max_losses = []
     for t in range(self.time_horizon-2):
+      print(t)
       a, info = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
 

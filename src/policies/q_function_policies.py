@@ -30,21 +30,23 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+  if env.learn_embedding:
+    loss_dict = {}
+    def qfn(a):
+      return env.predictor(env.data_block_at_action(-1, a, raw=True))
+  else:
+    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+    # Add parameters to info dictionary if params is an attribute of clf (as is the case with SKLogit2)
+    if 'params' in clf.__dict__.keys():
+      loss_dict['q_fn_params'] = clf.params
 
-  def qfn(a):
-    return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
+    def qfn(a):
+      return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
  
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   # # ToDo: Using random actions for diagnostic purposes!
   # a = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
   # a = np.random.permutation(a)
-
-  # Add parameters to info dictionary if params is an attribute of params (as is the case with SKLogit2)
-  try:
-    loss_dict['q_fn_params'] = clf.params
-  except:
-    pass
 
   return a, loss_dict
 

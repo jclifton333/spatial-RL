@@ -66,6 +66,7 @@ def fit_one_step_predictor(classifier, env, weights, truncate=False, y_next=None
 
   if weights is not None:
     weights = weights.flatten()
+
   clf.fit(features, target, weights, truncate, **clf_kwargs)
 
   # mean_loss, max_loss, high_error_count = compare_with_true_probs(env, clf.predict_proba, False)

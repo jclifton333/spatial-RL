@@ -122,7 +122,7 @@ class SpatialDisease(ABC):
 
   def fit_embedding(self):
     # ToDo: Assuming semi-supervised learning with binary target, using GCN
-    self.embedder = learn_gcn(self.X_raw, self.y, self.adjacency_matrix)
+    self.embedder, self.predictor = learn_gcn(self.X_raw, self.y, self.adjacency_matrix)
 
   def step(self, a, eta=None):
     """
