@@ -25,8 +25,9 @@ class GGCN(nn.Module):
   """
   def __init__(self, nfeat, J, neighbor_subset_limit=2):
     super(GGCN, self).__init__()
-    self.g1 = nn.Linear(2*J, 10)
-    self.g2 = nn.Linear(10, J)
+    if neighbor_subset_limit > 1:
+      self.g1 = nn.Linear(2*J, 10)
+      self.g2 = nn.Linear(10, J)
     self.h1 = nn.Linear(nfeat, 10)
     self.h2 = nn.Linear(10, J)
     self.final = nn.Linear(J, 1)
@@ -35,9 +36,7 @@ class GGCN(nn.Module):
 
   def h(self, b):
     b = self.h1(b)
-    b = F.relu(b)
     b = self.h2(b)
-    b = F.relu(b)
     return b
 
   def g(self, bvec):
@@ -59,7 +58,7 @@ class GGCN(nn.Module):
         # ToDo: allow sampling
         permutations_k = list(permutations(neighbors_l, int(k)))
         if k == 1:
-          return self.h(torch.tensor(b[0]))
+          return self.h(b[0])
         else:
           result = torch.zeros(self.J)
           for perm in permutations_k:
@@ -72,23 +71,28 @@ class GGCN(nn.Module):
             result += g_val / len(permutations_k)
           return result
 
-      E_l = fk(X_[neighbors_l, :], N_l)
+      if N_l > 1:
+        E_l = fk(X_[neighbors_l, :], N_l)
+      else:
+        E_l = fk([X_[l, :]], N_l)
       final_l = self.final(E_l)
       final_ = torch.cat((final_, final_l))
+
     params = list(self.parameters())
     yhat = F.sigmoid(final_)
     return yhat
 
 
-def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=5, verbose=False):
+def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=5, verbose=False,
+               neighbor_subset_limit=2):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
   T = len(X_list)
   X_list = [torch.FloatTensor(X) for X in X_list]
   y_list = [torch.FloatTensor(y) for y in y_list]
-  model = GGCN(nfeat=p, J=nhid)
-  optimizer = optim.Adam(model.parameters(), lr=0.1, weight_decay=16)
+  model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit)
+  optimizer = optim.Adam(model.parameters(), lr=0.01)
 
   # Train
   for epoch in range(n_epoch):
@@ -100,7 +104,8 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
       model.train()
       optimizer.zero_grad()
       output = model(X, adjacency_list)
-      loss_train = F.binary_cross_entropy(output, y)
+      criterion = nn.BCELoss()
+      loss_train = criterion(output, y)
       acc = ((output > 0.5) == y).float().mean()
       loss_train.backward()
       optimizer.step()
@@ -185,7 +190,7 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200, nhid=10, verbose=False
   y_list = [torch.LongTensor(y) for y in y_list]
   adjacency_mat = torch.FloatTensor(adjacency_mat)
   model = GCN(nfeat=p, nhid=nhid, nclass=2, dropout=0.5)
-  optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=16)
+  optimizer = optim.Adam(model.parameters(), lr=0.01)
 
   # Train
   for epoch in range(n_epoch):

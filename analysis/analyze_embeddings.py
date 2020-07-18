@@ -11,14 +11,15 @@ from sklearn.linear_model import LogisticRegression
 import pdb
 
 if __name__ == "__main__":
-  fit_gcn = False
-  fit_naive = False
-  fit_ggcn = True
+  fit_gcn = True
+  fit_naive = True
+  fit_ggcn = False
 
   fname = os.path.join('observations', os.listdir('./observations')[0])
   data = np.load(fname, allow_pickle=True)
   X_raw_list = data[()]['X_raw']
   y_list = data[()]['y']
+  y = np.hstack(y_list)
   adjacency_mat = data[()]['adjacency_mat']
   L = adjacency_mat.shape[0]
   adjacency_list = [[lprime for lprime in range(L) if adjacency_mat[l, lprime]] for l in range(L)]
@@ -50,5 +51,7 @@ if __name__ == "__main__":
     print('Naive embedded logit: {}'.format(clf2.score(X_naive_embedded, y)))
 
   if fit_ggcn:
-    embed.learn_ggcn([X_raw_list[2]], [y_list[2]], adjacency_list, n_epoch=100, verbose=True, batch_size=1)
+    embed.learn_ggcn(X_raw_list, y_list, adjacency_list, n_epoch=100, verbose=True, batch_size=10,
+                     neighbor_subset_limit=2)
+
 
