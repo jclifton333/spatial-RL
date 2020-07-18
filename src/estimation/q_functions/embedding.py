@@ -26,13 +26,12 @@ def embed_location(X_raw, neighbors_list, g, h, l, J):
   """
   x_l = X_raw[l, :]
   neighbors_list_l = [l] + neighbors_list[l]  # ToDo: check that neighbors_list doesn't include l
-  N_l = len(neighbors_list[l])
-
+  N_l = np.min((len(neighbors_list[l]), 2))  # ToDo: restricting neighbor subset size
   f1 = lambda b: h(b)
 
   def fk(b, k):
     # ToDo: allow sampling
-    permutations_k = list(permutations(neighbors_list_l, k))
+    permutations_k = list(permutations(neighbors_list_l, int(k)))
     if k == 1:
       return f1(b)
     else:
