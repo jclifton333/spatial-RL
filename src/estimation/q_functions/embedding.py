@@ -60,8 +60,36 @@ class GGCN(nn.Module):
       final_l = self.final(E_l)
       final_ = torch.cat((final_, final_l))
 
-    yhat = F.sigmoid(final_)
+    yhat = F.log_softmax(final_, dim=0)
     return yhat
+
+
+def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, verbose=False):
+  # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
+  # Specify model
+  p = X_list[0].shape[1]
+  T = len(X_list)
+  X_list = [torch.FloatTensor(X) for X in X_list]
+  y_list = [torch.LongTensor(y) for y in y_list]
+  model = GGCN(nfeat=p, J=nhid)
+  optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=16)
+
+  # Train
+  for epoch in range(n_epoch):
+    avg_acc_train = 0.
+    for X, y in zip(X_list, y_list):
+      model.train()
+      optimizer.zero_grad()
+      output = model(X, adjacency_list)
+      loss_train = F.nll_loss(output, y)
+      acc_train = accuracy(output, y)
+      loss_train.backward()
+      optimizer.step()
+      avg_acc_train += acc_train.item() / T
+
+    if verbose:
+      print('Epoch: {:04d}'.format(epoch+1),
+            'acc_train: {:.4f}'.format(avg_acc_train))
 
 
 def embed_location(X_raw, neighbors_list, g, h, l, J):
