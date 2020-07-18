@@ -12,6 +12,8 @@ import pdb
 
 if __name__ == "__main__":
   fit_gcn = False
+  fit_naive = False
+  fit_ggcn = True
 
   fname = os.path.join('observations', os.listdir('./observations')[0])
   data = np.load(fname, allow_pickle=True)
@@ -31,19 +33,23 @@ if __name__ == "__main__":
     clf1.fit(X_embedded, y)
     print('Embedded logit: {}'.format(clf1.score(X_embedded, y)))
 
-  # Naive baseline
-  clf = LogisticRegression()
-  X_raw = np.vstack(X_raw_list)
-  y = np.hstack(y_list)
-  clf.fit(X_raw, y)
-  print('Naive logit: {}'.format(clf.score(X_raw, y)))
+  if fit_naive:
+    # Naive baseline
+    clf = LogisticRegression()
+    X_raw = np.vstack(X_raw_list)
+    y = np.hstack(y_list)
+    clf.fit(X_raw, y)
+    print('Naive logit: {}'.format(clf.score(X_raw, y)))
 
-  # Logit with naive embeddings
-  h = lambda x_: x_
-  g = lambda x_, y_: x_ + y_
-  X_naive_embedded = np.vstack([embed.embed_network(x_raw, adjacency_list, g, h, 3) for x_raw in X_raw_list])
-  clf2 = LogisticRegression()
-  clf2.fit(X_naive_embedded, y)
-  print('Naive embedded logit: {}'.format(clf2.score(X_naive_embedded, y)))
+    # Logit with naive embeddings
+    h = lambda x_: x_
+    g = lambda x_, y_: x_ + y_
+    X_naive_embedded = np.vstack([embed.embed_network(x_raw, adjacency_list, g, h, 3) for x_raw in X_raw_list])
+    clf2 = LogisticRegression()
+    clf2.fit(X_naive_embedded, y)
+    print('Naive embedded logit: {}'.format(clf2.score(X_naive_embedded, y)))
 
+  if fit_ggcn:
+    ggcn = embed.GGCN(3, 10)
+    ggcn.forward(X_raw_list[0], adjacency_list)
 

@@ -13,9 +13,55 @@ from scipy.special import expit
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import torch.nn as nn
 from pygcn.utils import accuracy
 from pygcn.models import GCN
 import pdb
+
+
+class GGCN(nn.Module):
+  """
+  Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
+  """
+  def __init__(self, nfeat, J, neighbor_subset_limit=2):
+    super(GGCN, self).__init__()
+    self.g = nn.Linear(2*J, J)
+    self.h = nn.Linear(nfeat, J)
+    self.final = nn.Linear(J, 1)
+    self.neighbor_subset_limit = neighbor_subset_limit
+    self.J = J
+
+  def forward(self, X_, adjacency_lst):
+    L = X_.shape[0]
+    final_ = torch.tensor([])
+    X_ = torch.tensor(X_).float()
+    for l in range(L):
+      neighbors_l = adjacency_lst[l]
+      N_l = np.min((len(neighbors_l), self.neighbor_subset_limit))
+
+      def fk(b, k):
+        # ToDo: allow sampling
+        permutations_k = list(permutations(neighbors_l, int(k)))
+        if k == 1:
+          return self.h(torch.tensor(b[0]))
+        else:
+          result = torch.zeros(self.J)
+          for perm in permutations_k:
+            x_l1 = torch.tensor(X_[perm[0], :])
+            x_list = X_[perm[1:], :]
+            fkm1_val = fk(x_list, k - 1)
+            h_val = self.h(x_l1)
+            h_val_cat_fkm1_val = torch.cat((h_val, fkm1_val))
+            g_val = self.g(h_val_cat_fkm1_val)
+            result += g_val / len(permutations_k)
+          return result
+
+      E_l = torch.tensor(fk(X_[neighbors_l, :], N_l))
+      final_l = self.final(E_l)
+      final_ = torch.cat((final_, final_l))
+
+    yhat = F.sigmoid(final_)
+    return yhat
 
 
 def embed_location(X_raw, neighbors_list, g, h, l, J):
