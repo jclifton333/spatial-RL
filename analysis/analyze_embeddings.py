@@ -50,5 +50,5 @@ if __name__ == "__main__":
     print('Naive embedded logit: {}'.format(clf2.score(X_naive_embedded, y)))
 
   if fit_ggcn:
-    embed.learn_ggcn(X_raw_list[:2], y_list[:2], adjacency_list, n_epoch=1)
+    embed.learn_ggcn([X_raw_list[2]], [y_list[2]], adjacency_list, n_epoch=100, verbose=True, batch_size=1)
 

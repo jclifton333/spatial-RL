@@ -25,11 +25,27 @@ class GGCN(nn.Module):
   """
   def __init__(self, nfeat, J, neighbor_subset_limit=2):
     super(GGCN, self).__init__()
-    self.g = nn.Linear(2*J, J)
-    self.h = nn.Linear(nfeat, J)
+    self.g1 = nn.Linear(2*J, 10)
+    self.g2 = nn.Linear(10, J)
+    self.h1 = nn.Linear(nfeat, 10)
+    self.h2 = nn.Linear(10, J)
     self.final = nn.Linear(J, 1)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
+
+  def h(self, b):
+    b = self.h1(b)
+    b = F.relu(b)
+    b = self.h2(b)
+    b = F.relu(b)
+    return b
+
+  def g(self, bvec):
+    bvec = self.g1(bvec)
+    bvec = F.relu(bvec)
+    bvec = self.g2(bvec)
+    bvec = F.relu(bvec)
+    return bvec
 
   def forward(self, X_, adjacency_lst):
     L = X_.shape[0]
@@ -56,40 +72,56 @@ class GGCN(nn.Module):
             result += g_val / len(permutations_k)
           return result
 
-      E_l = torch.tensor(fk(X_[neighbors_l, :], N_l))
+      E_l = fk(X_[neighbors_l, :], N_l)
       final_l = self.final(E_l)
       final_ = torch.cat((final_, final_l))
-
-    yhat = F.log_softmax(final_, dim=0)
+    params = list(self.parameters())
+    yhat = F.sigmoid(final_)
     return yhat
 
 
-def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, verbose=False):
+def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=5, verbose=False):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
   T = len(X_list)
   X_list = [torch.FloatTensor(X) for X in X_list]
-  y_list = [torch.LongTensor(y) for y in y_list]
+  y_list = [torch.FloatTensor(y) for y in y_list]
   model = GGCN(nfeat=p, J=nhid)
-  optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=16)
+  optimizer = optim.Adam(model.parameters(), lr=0.1, weight_decay=16)
 
   # Train
   for epoch in range(n_epoch):
     avg_acc_train = 0.
-    for X, y in zip(X_list, y_list):
+    batch_ixs = np.random.choice(T, size=batch_size)
+    X_batch = [X_list[ix] for ix in batch_ixs]
+    y_batch = [y_list[ix] for ix in batch_ixs]
+    for X, y in zip(X_batch, y_batch):
       model.train()
       optimizer.zero_grad()
       output = model(X, adjacency_list)
-      loss_train = F.nll_loss(output, y)
-      acc_train = accuracy(output, y)
+      loss_train = F.binary_cross_entropy(output, y)
+      acc = ((output > 0.5) == y).float().mean()
       loss_train.backward()
       optimizer.step()
-      avg_acc_train += acc_train.item() / T
+      avg_acc_train += acc / batch_size
+
+    # Tracking diagnostics
+    grad_norm = np.sqrt(np.sum([param.grad.data.norm(2).item()**2 for param in model.parameters()]))
+    yhat0 = model(X_list[0], adjacency_list)
 
     if verbose:
       print('Epoch: {:04d}'.format(epoch+1),
-            'acc_train: {:.4f}'.format(avg_acc_train))
+            'acc_train: {:.4f}'.format(avg_acc_train),
+            'grad_norm: {:.4f}'.format(grad_norm))
+
+  if verbose:
+    final_acc_train = 0.
+    for X, y in zip(X_list, y_list):
+      output = model(X, adjacency_list)
+      acc = ((output > 0.5) == y).float().mean()
+      final_acc_train += acc / T
+    print('final_acc_train: {:.4f}'.format(final_acc_train))
 
 
 def embed_location(X_raw, neighbors_list, g, h, l, J):
