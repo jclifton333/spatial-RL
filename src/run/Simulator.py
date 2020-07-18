@@ -65,7 +65,7 @@ class Simulator(object):
   def __init__(self, lookahead_depth, env_name, time_horizon, number_of_replicates, policy_name, argmaxer_name, gamma,
                evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile,
                sampling_dbn_run=False, sampling_dbn_estimator=None, fit_qfn_at_end=False, variance_only=False,
-               parametric_bootstrap=False, ignore_errors=False, fname_addendum=None):
+               parametric_bootstrap=False, ignore_errors=False, fname_addendum=None, save_features=False):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Gravity'
@@ -93,6 +93,7 @@ class Simulator(object):
     self.sampling_dbn_estimator = sampling_dbn_estimator
     self.variance_only = variance_only
     self.parametric_bootstrap = parametric_bootstrap
+    self.save_features = save_features
 
     # Set policy arguments
     if env_name in ['sis', 'ContinuousGrav']:
@@ -593,6 +594,16 @@ class Simulator(object):
       #     episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
 
       #   print('GOT HERE')
+
+    if self.save_features and self.number_of_replicates == 1:  # Save raw features, responses, adjacency matrix
+      X_raw = self.env.X_raw
+      y = self.env.y
+      adjacency_mat = self.env.adjacency_matrix
+      save_dict = {'X_raw': X_raw, 'y': y, 'adjacency_mat': adjacency_mat}
+      prefix = os.path.join(pkg_dir, 'analysis', 'observations', self.basename)
+      suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+      filename = '{}_{}.npy'.format(prefix, suffix)
+      np.save(filename, save_dict)
 
     return {replicate: episode_results}
 

@@ -51,6 +51,7 @@ if __name__ == '__main__':
   parser.add_argument('--error_quantile', type=float)
   parser.add_argument('--ignore_errors', type=str)
   parser.add_argument('--learn_embedding', type=str, choices=['True', 'False'])
+  parser.add_argument('--save_features', type=str, choices=['True', 'False'])
   args = parser.parse_args()
 
   network_dict = {'lattice': generate_network.lattice, 'barabasi': generate_network.Barabasi_Albert,
@@ -83,8 +84,11 @@ if __name__ == '__main__':
 
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed,
-                  args.error_quantile, ignore_errors=ignore_errors)
+                  args.error_quantile, save_features=(args.save_features == 'True'), ignore_errors=ignore_errors)
   if args.number_of_replicates == 1:
     Sim.episode(0)
   else:
-    Sim.run()
+    if args.save_features == 'True':
+      raise ValueError("Must have number_of_replicates=1 if save_features==True")
+    else:
+      Sim.run()

@@ -71,18 +71,20 @@ def learn_one_dimensional_h(X, y, adjacency_list, g, h, J):
   return res.x
 
 
-def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200):
+def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200, nhid=10, verbose=False):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
+  T = len(X_list)
   X_list = [torch.FloatTensor(X) for X in X_list]
   y_list = [torch.LongTensor(y) for y in y_list]
   adjacency_mat = torch.FloatTensor(adjacency_mat)
-  model = GCN(nfeat=p, nhid=10, nclass=2, dropout=0.5)
+  model = GCN(nfeat=p, nhid=nhid, nclass=2, dropout=0.5)
   optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=16)
 
   # Train
-  for _ in range(n_epoch):
+  for epoch in range(n_epoch):
+    avg_acc_train = 0.
     for X, y in zip(X_list, y_list):
       model.train()
       optimizer.zero_grad()
@@ -91,6 +93,11 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200):
       acc_train = accuracy(output, y)
       loss_train.backward()
       optimizer.step()
+      avg_acc_train += acc_train.item() / T
+
+    if verbose:
+      print('Epoch: {:04d}'.format(epoch+1),
+            'acc_train: {:.4f}'.format(avg_acc_train))
 
   def embedding_wrapper(X_):
     X_ = torch.FloatTensor(X_)
