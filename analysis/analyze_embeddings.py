@@ -11,9 +11,9 @@ from sklearn.linear_model import LogisticRegression
 import pdb
 
 if __name__ == "__main__":
-  fit_gcn = True
-  fit_naive = True
-  fit_ggcn = False
+  fit_gcn = False
+  fit_naive = False
+  fit_ggcn = True
 
   fname = os.path.join('observations', os.listdir('./observations')[0])
   data = np.load(fname, allow_pickle=True)
@@ -51,7 +51,9 @@ if __name__ == "__main__":
     print('Naive embedded logit: {}'.format(clf2.score(X_naive_embedded, y)))
 
   if fit_ggcn:
+    nhid = 20
+    # embed.learn_ggcn(X_raw_list, y_list, adjacency_list, n_epoch=100, verbose=True, batch_size=10,
+    #                  neighbor_subset_limit=1, nhid=nhid)
     embed.learn_ggcn(X_raw_list, y_list, adjacency_list, n_epoch=100, verbose=True, batch_size=10,
-                     neighbor_subset_limit=2)
-
+                     neighbor_subset_limit=3, nhid=nhid, samples_per_k=2)
 

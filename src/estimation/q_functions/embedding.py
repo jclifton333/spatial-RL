@@ -23,16 +23,17 @@ class GGCN(nn.Module):
   """
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
   """
-  def __init__(self, nfeat, J, neighbor_subset_limit=2):
+  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1:
-      self.g1 = nn.Linear(2*J, 10)
-      self.g2 = nn.Linear(10, J)
-    self.h1 = nn.Linear(nfeat, 10)
-    self.h2 = nn.Linear(10, J)
+      self.g1 = nn.Linear(2*J, 100)
+      self.g2 = nn.Linear(100, J)
+    self.h1 = nn.Linear(nfeat, 100)
+    self.h2 = nn.Linear(100, J)
     self.final = nn.Linear(J, 1)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
+    self.samples_per_k = samples_per_k
 
   def h(self, b):
     b = self.h1(b)
@@ -51,12 +52,15 @@ class GGCN(nn.Module):
     final_ = torch.tensor([])
     X_ = torch.tensor(X_).float()
     for l in range(L):
-      neighbors_l = adjacency_lst[l]
+      neighbors_l = adjacency_lst[l] + [l]
       N_l = np.min((len(neighbors_l), self.neighbor_subset_limit))
 
       def fk(b, k):
         # ToDo: allow sampling
         permutations_k = list(permutations(neighbors_l, int(k)))
+        if self.samples_per_k is not None:
+          permutations_k_ixs = np.random.choice(len(permutations_k), size=self.samples_per_k, replace=False)
+          permutations_k = [permutations_k[ix] for ix in permutations_k_ixs]
         if k == 1:
           return self.h(b[0])
         else:
@@ -84,14 +88,14 @@ class GGCN(nn.Module):
 
 
 def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=5, verbose=False,
-               neighbor_subset_limit=2):
+               neighbor_subset_limit=2, samples_per_k=None):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
   T = len(X_list)
   X_list = [torch.FloatTensor(X) for X in X_list]
   y_list = [torch.FloatTensor(y) for y in y_list]
-  model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit)
+  model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k)
   optimizer = optim.Adam(model.parameters(), lr=0.01)
 
   # Train
