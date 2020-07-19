@@ -30,7 +30,7 @@ class GGCN(nn.Module):
       self.g2 = nn.Linear(100, J)
     self.h1 = nn.Linear(nfeat, 100)
     self.h2 = nn.Linear(100, J)
-    self.final = nn.Linear(J, 1)
+    self.final = nn.Linear(J + nfeat*(neighbor_subset_limit > 1), 1)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
     self.samples_per_k = samples_per_k
@@ -76,7 +76,8 @@ class GGCN(nn.Module):
           return result
 
       if N_l > 1:
-        E_l = fk(X_[neighbors_l, :], N_l)
+        x_l = X_[l, :]
+        E_l = torch.cat((x_l, fk(X_[neighbors_l, :], N_l)))
       else:
         E_l = fk([X_[l, :]], N_l)
       final_l = self.final(E_l)

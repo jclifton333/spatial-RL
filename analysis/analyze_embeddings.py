@@ -55,5 +55,5 @@ if __name__ == "__main__":
     # embed.learn_ggcn(X_raw_list, y_list, adjacency_list, n_epoch=100, verbose=True, batch_size=10,
     #                  neighbor_subset_limit=1, nhid=nhid)
     embed.learn_ggcn(X_raw_list, y_list, adjacency_list, n_epoch=100, verbose=True, batch_size=10,
-                     neighbor_subset_limit=3, nhid=nhid, samples_per_k=2)
+                     neighbor_subset_limit=2, nhid=nhid)
 
