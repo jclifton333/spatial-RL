@@ -11,9 +11,9 @@ from sklearn.linear_model import LogisticRegression
 import pdb
 
 if __name__ == "__main__":
-  fit_gcn = False
-  fit_naive = False
-  fit_ggcn = True
+  fit_gcn = True
+  fit_naive = True
+  fit_ggcn = False
 
   fname = os.path.join('observations', os.listdir('./observations')[0])
   data = np.load(fname, allow_pickle=True)

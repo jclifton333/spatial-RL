@@ -189,10 +189,11 @@ def learn_one_dimensional_h(X, y, adjacency_list, g, h, J):
 def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200, nhid=10, verbose=False):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
-  p = X_list[0].shape[1]
+  L, p = X_list[0].shape
   T = len(X_list)
   X_list = [torch.FloatTensor(X) for X in X_list]
   y_list = [torch.LongTensor(y) for y in y_list]
+  adjacency_mat += np.eye(L)
   adjacency_mat = torch.FloatTensor(adjacency_mat)
   model = GCN(nfeat=p, nhid=nhid, nclass=2, dropout=0.5)
   optimizer = optim.Adam(model.parameters(), lr=0.01)
