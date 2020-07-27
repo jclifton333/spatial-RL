@@ -56,7 +56,6 @@ class GGCN(nn.Module):
       N_l = np.min((len(neighbors_l), self.neighbor_subset_limit))
 
       def fk(b, k):
-        # ToDo: allow sampling
         permutations_k = list(permutations(neighbors_l, int(k)))
         if self.samples_per_k is not None:
           permutations_k_ixs = np.random.choice(len(permutations_k), size=self.samples_per_k, replace=False)
