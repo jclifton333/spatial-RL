@@ -19,6 +19,8 @@ from pygcn.models import GCN
 import pdb
 
 
+
+
 class GGCN(nn.Module):
   """
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
