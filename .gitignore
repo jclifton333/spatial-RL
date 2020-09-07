@@ -1,3 +1,4 @@
+*.npy
 .idea/
 profile_output
 *.p
