@@ -317,9 +317,12 @@ class Simulator(object):
     autocovs_sq_cum = np.cumsum(autocovs_sq_max)
 
     zbars = np.array(zbars)
-    true_cov = np.cov(zbars.T)[1:, 1:]
-    est_cov = np.mean(zvars, axis=0)[1:, 1:]
-    est_cov_naive = np.mean(np.array(zvar_naive_list), axis=0)[1:, 1:]
+    true_cov = np.var(zbars.T)
+    est_cov = np.mean(zvars)
+    est_cov_naive = np.mean(np.array(zvar_naive_list))
+
+    pdb.set_trace()
+
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
     raw_pvals = normaltest(np.array(q_fn_params_raw_list)).pvalue
@@ -524,7 +527,8 @@ class Simulator(object):
       episode_results['q_fn_params'] = [float(t) for t in q_fn_policy_info['q_fn_params']]
       episode_results['q_fn_params_raw'] = [float(t) for t in q_fn_policy_info['q_fn_params_raw']]
 
-      # if self.parametric_bootstrap:
+      if self.parametric_bootstrap:
+        pass
       #   NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates
 
       #   # Fit transition model and get rollout_env for parametric boot
@@ -554,14 +558,14 @@ class Simulator(object):
       #   # raw_bootstrap_dbn = np.array(raw_bootstrap_dbn) - np.array(q_fn_policy_info['q_fn_params_raw'])
       #   episode_results['q_fn_bootstrap_dbn'] = bootstrap_dbn
       #   episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
-      # else:
-      #   episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
-      #   episode_results['eigs'] = q_fn_policy_info['eigs']
-      #   episode_results['acfs'] = q_fn_policy_info['acfs']
-      #   episode_results['ys'] = q_fn_policy_info['ys']
-      #   episode_results['zbar'] = q_fn_policy_info['zbar']
-      #   episode_results['zvar'] = q_fn_policy_info['zvar']
-      #   episode_results['zvar_naive'] = q_fn_policy_info['zvar_naive']
+      else:
+        # episode_results['nonzero_counts'] = q_fn_policy_info['nonzero_counts']
+        episode_results['eigs'] = q_fn_policy_info['eigs']
+        episode_results['acfs'] = q_fn_policy_info['acfs']
+        episode_results['ys'] = q_fn_policy_info['ys']
+        episode_results['zbar'] = q_fn_policy_info['zbar']
+        episode_results['zvar'] = q_fn_policy_info['zvar']
+        episode_results['zvar_naive'] = q_fn_policy_info['zvar_naive']
 
       #   if not self.variance_only:
       #     NUM_BOOTSTRAP_SAMPLES = self.number_of_replicates

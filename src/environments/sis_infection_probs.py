@@ -107,24 +107,24 @@ def one_minus_p_llprime(a, a_times_indicator, not_infected_indices, infected_ind
   :return:
   """
   product_vector = []
-  for l in not_infected_indices:
-    product_l = 1.0
-    neighbors = adjacency_lists[l]
-    for lprime in neighbors:
-      if lprime in infected_indices:
-        # logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*(a_times_indicator[lprime] - omega * a[lprime])
-        logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*(a_times_indicator[lprime])
-        product_l *= 1 - expit(logit_p_llprime)
-    product_vector.append(product_l)
+  # for l in not_infected_indices:
+  #   product_l = 1.0
+  #   neighbors = adjacency_lists[l]
+  #   for lprime in neighbors:
+  #     if lprime in infected_indices:
+  #       # logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*(a_times_indicator[lprime] - omega * a[lprime])
+  #       logit_p_llprime = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*(a_times_indicator[lprime])
+  #       product_l *= 1 - expit(logit_p_llprime)
+  #   product_vector.append(product_l)
 
-  # for l in not_infected_indices.tolist():
-  #   # Get infected neighbors
-  #   infected_neighbor_indices = np.intersect1d(adjacency_lists[l], infected_indices)
-  #   a_times_indicator_lprime = a_times_indicator[infected_neighbor_indices]
-  #   logit_p_l = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*a_times_indicator_lprime
-  #   p_l = expit(logit_p_l)
-  #   product_l = np.product(1 - p_l)
-  #   product_vector = np.append(product_vector, product_l)
+  for l in not_infected_indices.tolist():
+    # Get infected neighbors
+    infected_neighbor_indices = np.intersect1d(adjacency_lists[l], infected_indices)
+    a_times_indicator_lprime = a_times_indicator[infected_neighbor_indices]
+    logit_p_l = eta[2] + eta[3]*a_times_indicator[l] + eta[4]*a_times_indicator_lprime
+    p_l = expit(logit_p_l)
+    product_l = np.product(1 - p_l)
+    product_vector = np.append(product_vector, product_l)
 
   return product_vector
 
