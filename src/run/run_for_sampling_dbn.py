@@ -38,7 +38,8 @@ if __name__ == '__main__':
   parser.add_argument('--variance_only', type=str, choices=['True', 'False'])
   parser.add_argument('--independence_parameter', type=float)
   parser.add_argument('--parametric_bootstrap', type=str, choices=['True', 'False'])
-  parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step_eval', 
+  parser.add_argument('--sampling_dbn_estimator', type=str, choices=['one_step_eval',
+                                                                     'one_step_var_only',
                                                                      'one_step_bins',
                                                                      'one_step_wild',
                                                                      'two_step', 'two_step_random',

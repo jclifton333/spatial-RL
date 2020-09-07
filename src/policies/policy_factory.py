@@ -94,5 +94,7 @@ def policy_factory(policy_type):
     return eval.one_step_parametric
   elif policy_type == 'one_step_parametric_true_model':
     return eval.one_step_parametric_true_model
+  elif policy_type == 'one_step_var_only':
+    return eval.one_step_var_only
   else:
     raise ValueError('Argument does not match any policy.')

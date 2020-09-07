@@ -218,7 +218,7 @@ class Simulator(object):
           # results_dict[k] = v['q_fn_params']
           q_fn_params_list.append(v['q_fn_params'])
           q_fn_params_raw_list.append(v['q_fn_params_raw'])
-          counts.append(v['nonzero_counts'])
+          # counts.append(v['nonzero_counts'])
           eigs_list.append(v['eigs'])
           acfs_list.append(v['acfs'])
           ys_list.append(v['ys'])
@@ -226,8 +226,8 @@ class Simulator(object):
           zvar_list.append(v['zvar'])
           zvar_naive_list.append(v['zvar_naive'])
 
-    mean_counts = np.array(counts).mean(axis=0)
-    mean_counts = [float(m) for m in mean_counts]
+    # mean_counts = np.array(counts).mean(axis=0)
+    # mean_counts = [float(m) for m in mean_counts]
     acfs = [float(acf) for acf in np.array(acfs_list).mean(axis=0)]
 
     # For each bootstrap distribution, do ks-test against observed dbn and get coverage
@@ -332,7 +332,7 @@ class Simulator(object):
     results_dict['pvals'] = pvals
     results_dict['eig_vars'] = eig_vars
     results_dict['beta_vars'] = beta_vars
-    results_dict['mean_counts'] = mean_counts
+    # results_dict['mean_counts'] = mean_counts
     results_dict['bias'] = [float(b) for b in bias]
     results_dict['betas'] = [float(b) for b in true_q_fn_params]
     results_dict['acfs'] = [float(a) for a in acfs]

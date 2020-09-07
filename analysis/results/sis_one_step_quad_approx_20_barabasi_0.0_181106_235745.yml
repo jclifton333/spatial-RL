@@ -1,9 +1,0 @@
-results:
-  0: {runtime: 1.573721170425415, score: 0.15}
-  1: {runtime: 1.5843970775604248, score: 0.3}
-  mean: 0.22499999999999998
-  se: 0.05303300858899106
-settings: {L: 20, argmaxer: quad_approx, argmaxer_name: quad_approx, classifier: SKLogit2,
-  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 2,
-  planning_depth: 10, policy_name: one_step, regressor: RandomForestRegressor, rollout_depth: 1,
-  time_horizon: 10, treatment_budget: 1}

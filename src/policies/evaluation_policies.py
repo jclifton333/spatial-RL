@@ -144,6 +144,7 @@ def one_step_eval(**kwargs):
 
   return None, {'q_fn_params': clf.coef_[0], 'nonzero_counts': X_nonzero_counts, 'eigs': eigs}
 
+
 def one_step_parametric_true_model(**kwargs):
   # ToDo: ASSUMING RANDOM ROLLOUT POLICY!
   classifier, regressor, env, evaluation_budget, treatment_budget, bootstrap, gamma, rollout, rollout_env, \
@@ -206,6 +207,46 @@ def one_step_parametric(**kwargs):
   clf.fit(X_raw, y)
   q_fn_params = q_fn_params_raw = np.concatenate(([clf.intercept_], clf.coef_))
   return None, {'q_fn_params': q_fn_params, 'q_fn_params_raw': q_fn_params_raw}
+
+
+def one_step_var_only(**kwargs):
+  classifier, regressor, env, evaluation_budget, treatment_budget, gamma = \
+    kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
+    kwargs['gamma']
+
+  q_fn_params = np.zeros(0)
+  X_raw = np.vstack(env.X_raw)[:, :8]
+  y = np.hstack(env.y)
+
+  # Fit raw feature model
+  X_raw = np.vstack(env.X_raw)
+  # X_raw = np.column_stack((np.ones(X_raw.shape[0]), 1 - X_raw[:, -2] + X_raw[:, -1]))
+  clf = Ridge(alpha=1, fit_intercept=False)
+  clf.fit(X_raw, y)
+
+  # Refit on bootstrapped residuals
+  yhat = clf.predict(X_raw)
+
+  # Diagnostic information
+  XpX = np.dot(X_raw.T, X_raw)
+  eigs = np.linalg.eig(XpX / X_raw.shape[0])[0]
+
+  # Get autocorrelations for location 0
+  # ToDo: should be acf for y times X, right?
+  ixs_for_loc_1 = [int(ix) for ix in np.linspace(0, env.L-1+env.L*(env.T-2), env.T-1)]
+  y_loc_1 = y[ixs_for_loc_1]
+  acfs = [acf(y_loc_1, 1)]
+
+  # Covariance estimate information
+  error = y - yhat
+  X_times_y = np.multiply(X_raw.T, error).T
+  wald_multiplier = np.ones(X_times_y.shape[1])
+  X_times_y_w = np.dot(X_times_y, wald_multiplier)
+  zvar_naive = np.var(X_times_y_w)
+
+  return None, {'q_fn_params': q_fn_params, 'eigs': eigs,
+                'acfs': acfs, 'ys': y_loc_1, 'q_fn_params_raw': clf.coef_, 'zbar': (X_raw, y),
+                'zvar': zvar_naive, 'zvar_naive': zvar_naive}
 
 
 def one_step_wild(**kwargs):

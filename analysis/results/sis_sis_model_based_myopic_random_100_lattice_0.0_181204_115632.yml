@@ -1,9 +1,0 @@
-results:
-  0: {runtime: 7.706071853637695, score: 0.55}
-  1: {runtime: 8.10669469833374, score: 0.57}
-  se: 0.0070710678118654415
-  mean: 0.56
-settings: {L: 100, argmaxer: random, argmaxer_name: random, classifier: SKLogit2,
-  divide_evenly: false, env_name: sis, evaluation_budget: 100, gamma: 0.9, number_of_replicates: 2,
-  planning_depth: 50, policy_name: sis_model_based_myopic, regressor: RandomForestRegressor,
-  rollout_depth: 1, time_horizon: 50, treatment_budget: 5}
