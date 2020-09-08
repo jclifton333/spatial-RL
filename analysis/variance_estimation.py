@@ -44,10 +44,10 @@ def get_autocov_sq_sequence(observations, pairwise_distances):
   max_dist = np.max(pairwise_distances).astype(int)
   n_rep, L = observations.shape
   length = np.sqrt(L).astype(int)
-  max_autocov_sq_sequence = np.zeros(max_dist)
+  max_autocov_sq_sequence = np.zeros(max_dist+1)
 
   # Need mean squared residuals for computing covariances between squared residuals
-  sample_means = observations.mean(axis=1)
+  sample_means = observations.mean(axis=1)[:, None]
   squared_residuals = (observations - sample_means)**2
   mean_squared_residuals = squared_residuals.mean(axis=0)
   centered_squared_residuals = squared_residuals - mean_squared_residuals
@@ -56,7 +56,7 @@ def get_autocov_sq_sequence(observations, pairwise_distances):
   res_sq_0 = centered_squared_residuals[:, 0]
   for i in range(length):
     for j in range(length):
-      d = i + j - 1
+      d = i + j
       ix = length*i + j
       res_sq_ix = centered_squared_residuals[:, ix]
       autocov = np.abs(np.dot(res_sq_0, res_sq_ix) / n_rep)
@@ -67,8 +67,8 @@ def get_autocov_sq_sequence(observations, pairwise_distances):
 
 
 if __name__ == "__main__":
-  n_rep = 100
-  grid_size = 100
+  n_rep = 10000
+  grid_size = 2500
   naive_var_estimates = np.zeros(0)
   observations = np.zeros((0, grid_size))
   beta1 = 10
