@@ -25,7 +25,7 @@ def get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=100):
           pairwise_distances[index_1, index_2] = distance
           cov[index_1, index_2] = np.exp(-weighted_distance)
 
-  root_cov = la.sqrtm(cov)
+  root_cov = np.real(la.sqrtm(cov))
   return root_cov, pairwise_distances
 
 
@@ -66,31 +66,65 @@ def get_autocov_sq_sequence(observations, pairwise_distances):
   return max_autocov_sq_sequence
 
 
-if __name__ == "__main__":
-  n_rep = 10000
-  grid_size = 2500
+def get_sigma_sq_infty(observations):
+  """
+  sigma_sq_infty as defined in DWB paper.
+  """
+  num_rep, L = observations.shape
+  x_bar = observations.mean(axis=0)
+  x_0 = observations[:, 0] - x_bar[0]
+  sigma_sq_infty = 0.
+
+  for l in range(L):
+    x_l = observations[:, l] - x_bar[l]
+    cov_0l = np.dot(x_0, x_l) / num_rep
+    sigma_sq_infty += cov_0l
+
+  return sigma_sq_infty
+
+
+def get_var_estimate_mse(beta1, beta2, kernel, n_rep=10000, grid_size=100):
+  var_estimates = np.zeros(0)
   naive_var_estimates = np.zeros(0)
   observations = np.zeros((0, grid_size))
-  beta1 = 10
-  beta2 = 10
   root_cov, pairwise_distances = get_exponential_gaussian_covariance(beta1=beta1, beta2=beta2, grid_size=grid_size)
+
+  # Construct kernel weight matrix
+  kernel_weights = np.zeros((grid_size, grid_size))
+  for i in range(grid_size):
+    for j in range(grid_size):
+      kernel_weights[i, j] = kernel(pairwise_distances[i, j])
 
   for _ in range(n_rep):
     y = generate_gaussian(root_cov)
-    sigma_sq_hat = np.var(y)
-    naive_var_estimates = np.hstack((naive_var_estimates, sigma_sq_hat))
+
+    # Products of centered residuals
+    y_centered = y - np.mean(y)
+    cross_raw = np.outer(y_centered, y_centered)
+
+    cross_kernel = np.multiply(cross_raw, kernel_weights)
+    sigma_sq_hat = cross_kernel.sum() / grid_size
+    var_estimates = np.hstack((var_estimates, sigma_sq_hat))
+
+    naive_sigma_sq_hat = np.var(y)
+    naive_var_estimates = np.hstack((naive_var_estimates, naive_sigma_sq_hat))
     observations = np.vstack((observations, y))
 
-  autocovs = get_autocov_sq_sequence(observations, pairwise_distances)
+  # autocovs = get_autocov_sq_sequence(observations, pairwise_distances)
+  sigma_sq_infty = get_sigma_sq_infty(observations)
+  mse_naive = np.mean((naive_var_estimates - sigma_sq_infty)**2)
+  mse_kernel = np.mean((var_estimates - sigma_sq_infty)**2)
+  print('naive: {} kernel: {}'.format(mse_naive, mse_kernel))
 
 
+if __name__ == "__main__":
+  def bartlett(x, bandwidth):
+    x_abs = np.abs(x) / bandwidth
+    k = (1 - x_abs) * (x_abs <= 1)
+    return k
 
-
-
-
-
-
-
-
-
-
+  bandwidths = [5, 10]
+  beta = 0.1
+  for b in bandwidths:
+    kernel = lambda k: bartlett(k, b)
+    get_var_estimate_mse(beta1=beta, beta2=beta, kernel=kernel, grid_size=100, n_rep=10000)
