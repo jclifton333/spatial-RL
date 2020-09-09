@@ -123,8 +123,16 @@ if __name__ == "__main__":
     k = (1 - x_abs) * (x_abs <= 1)
     return k
 
-  bandwidths = [5, 10]
-  beta = 0.1
-  for b in bandwidths:
-    kernel = lambda k: bartlett(k, b)
-    get_var_estimate_mse(beta1=beta, beta2=beta, kernel=kernel, grid_size=100, n_rep=10000)
+  def constant(x):
+    return 1
+
+  bandwidths = [5, 10, 15]
+  betas = [0.1, 1]
+  for beta in betas:
+    print('beta: {}'.format(beta))
+    for b in bandwidths:
+      kernel = lambda k: bartlett(k, b)
+      get_var_estimate_mse(beta1=beta, beta2=beta, kernel=kernel, grid_size=900, n_rep=10000)
+
+    get_var_estimate_mse(beta1=beta, beta2=beta, kernel=constant, grid_size=900, n_rep=10000)
+
