@@ -26,7 +26,7 @@ def get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=100):
           cov[index_1, index_2] = np.exp(-weighted_distance)
 
   root_cov = np.real(la.sqrtm(cov))
-  return root_cov, pairwise_distances
+  return cov, root_cov, pairwise_distances
 
 
 def generate_gaussian(root_cov):
@@ -83,11 +83,11 @@ def get_sigma_sq_infty(observations):
   return sigma_sq_infty
 
 
-def get_var_estimate_mse(beta1, beta2, kernel, n_rep=10000, grid_size=100):
+def get_var_estimate_mse(kernel, root_cov, pairwise_distances, n_rep=10000):
   var_estimates = np.zeros(0)
-  naive_var_estimates = np.zeros(0)
   observations = np.zeros((0, grid_size))
-  root_cov, pairwise_distances = get_exponential_gaussian_covariance(beta1=beta1, beta2=beta2, grid_size=grid_size)
+  grid_size = root_cov.shape[0]
+
 
   # Construct kernel weight matrix
   kernel_weights = np.zeros((grid_size, grid_size))
@@ -106,33 +106,47 @@ def get_var_estimate_mse(beta1, beta2, kernel, n_rep=10000, grid_size=100):
     sigma_sq_hat = cross_kernel.sum() / grid_size
     var_estimates = np.hstack((var_estimates, sigma_sq_hat))
 
-    naive_sigma_sq_hat = np.var(y)
-    naive_var_estimates = np.hstack((naive_var_estimates, naive_sigma_sq_hat))
     observations = np.vstack((observations, y))
 
   # autocovs = get_autocov_sq_sequence(observations, pairwise_distances)
   sigma_sq_infty = get_sigma_sq_infty(observations)
-  mse_naive = np.mean((naive_var_estimates - sigma_sq_infty)**2)
   mse_kernel = np.mean((var_estimates - sigma_sq_infty)**2)
-  print('naive: {} kernel: {}'.format(mse_naive, mse_kernel))
+  print('mse: {}'.format(mse_kernel))
+
+
+def bartlett(x, bandwidth):
+  x_abs = np.abs(x) / bandwidth
+  k = (1 - x_abs) * (x_abs <= 1)
+  return k
+
+
+def constant(x):
+  return 1
+
+
+def var_estimates(bandwidths=(5, 15, 25), betas=(0.1,), grid_size=100):
+  for beta in betas:
+    print('beta: {}'.format(beta))
+    _, root_cov, pairwise_distances = get_exponential_gaussian_covariance(beta1=beta, beta2=beta, grid_size=grid_size)
+    for b in bandwidths:
+      kernel = lambda k: bartlett(k, b)
+      get_var_estimate_mse(kernel=kernel, root_cov=root_cov, pairwise_distances=pairwise_distances, n_rep=1000)
+
+  return
+
+
+def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
+  cov, _, _ = get_exponential_gaussian_covariance(beta1=beta1, beta2=beta2, grid_size=grid_size)
+  sigma_sq_infty = cov[0, :].sum()
+  squared_residuals_sum = (cov[0, :]**2).sum()
+  print('sigma sq infty: {} sq resid sum: {}'.format(sigma_sq_infty, squared_residuals_sum))
+  return
 
 
 if __name__ == "__main__":
-  def bartlett(x, bandwidth):
-    x_abs = np.abs(x) / bandwidth
-    k = (1 - x_abs) * (x_abs <= 1)
-    return k
+  var_sigma_infty_from_exp_kernel(grid_size=100)
+  var_sigma_infty_from_exp_kernel(grid_size=1600)
+  var_sigma_infty_from_exp_kernel(grid_size=2500)
 
-  def constant(x):
-    return 1
 
-  bandwidths = [5, 10, 15]
-  betas = [0.1, 1]
-  for beta in betas:
-    print('beta: {}'.format(beta))
-    for b in bandwidths:
-      kernel = lambda k: bartlett(k, b)
-      get_var_estimate_mse(beta1=beta, beta2=beta, kernel=kernel, grid_size=900, n_rep=10000)
-
-    get_var_estimate_mse(beta1=beta, beta2=beta, kernel=constant, grid_size=900, n_rep=10000)
 
