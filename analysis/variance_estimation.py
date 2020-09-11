@@ -247,7 +247,7 @@ def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat
     c_hat = np.dot(Xprime_X_inv, Xy)
 
     c_dbn = np.vstack((c_dbn, c_hat))
-    Xprime_X_lst[n, :] = Xprime_X
+    Xprime_X_lst[n, :] = Xprime_X / grid_size
 
   return c_dbn, Xprime_X_lst
 
@@ -274,7 +274,7 @@ def regress_on_summary_statistic():
 
 if __name__ == "__main__":
   grid_size = 900
-  beta = 1.
+  beta = 0.1
   c_dbn, Xprime_Xs = simple_action_sampling_dbn(grid_size, beta1=beta, beta2=beta, n_rep=100, pct_treat=0.1)
 
 
