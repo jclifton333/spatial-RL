@@ -3,6 +3,26 @@ import scipy.linalg as la
 import pdb
 import multiprocessing as mp
 from functools import partial
+import yaml
+import datetime
+
+import os
+this_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+def get_pairwise_distances(grid_size):
+  length = np.floor(np.sqrt(grid_size)).astype(int)
+  true_grid_size = length ** 2
+  pairwise_distances = np.zeros((true_grid_size, true_grid_size))
+  for i in range(length):
+    for j in range(length):
+      for iprime in range(length):
+        for jprime in range(length):
+          index_1 = length * i + j
+          index_2 = length * iprime + jprime
+          distance = np.abs(i - iprime) + np.abs(j - jprime)
+          pairwise_distances[index_1, index_2] = distance
+  return pairwise_distances
 
 
 def get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=100):
@@ -11,10 +31,9 @@ def get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=100):
 
   :param grid_size: Will sample observations on floor(sqrt(grid_size)) x floor(sqrt(grid_size)) lattice
   """
-  # Get pairwise distances and covariance matrix
+  # Get covariance matrix
   length = np.floor(np.sqrt(grid_size)).astype(int)
   true_grid_size = length**2
-  pairwise_distances = np.zeros((true_grid_size, true_grid_size))
   cov = np.zeros((true_grid_size, true_grid_size))
   for i in range(length):
     for j in range(length):
@@ -22,13 +41,11 @@ def get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=100):
         for jprime in range(length):
           index_1 = length*i + j
           index_2 = length*iprime + jprime
-          distance = np.abs(i - iprime) + np.abs(j - jprime)
           weighted_distance = beta1*np.abs(i - iprime) + beta2*np.abs(j - jprime)
-          pairwise_distances[index_1, index_2] = distance
           cov[index_1, index_2] = np.exp(-weighted_distance)
 
   root_cov = np.real(la.sqrtm(cov))
-  return cov, root_cov, pairwise_distances
+  return cov, root_cov
 
 
 def generate_gaussian(root_cov):
@@ -137,6 +154,7 @@ def get_var_estimate_mse(kernel, root_cov, pairwise_distances, n_rep=10000, pct_
   mse_kernel = np.mean((var_estimates - sigma_sq_infty)**2)
   print('sq residual cov: {}'.format(sq_residual_cov))
   print('mse: {}'.format(mse_kernel))
+  return mse_kernel
 
 
 def bartlett(x, bandwidth):
@@ -149,22 +167,49 @@ def constant(x):
   return 1
 
 
-def var_estimates(bandwidths=(5,), betas=(0.1,), grid_size=100, n_rep=1000, pct_cores=0.25):
+def var_estimates(n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_cores=0.25):
+  """
+  :param n_bandwidths: Bandwidths will be n_bandwidths values log-spaced between 1 and max(pairwise_distances).
+  """
+
+  pairwise_distances = get_pairwise_distances(grid_size)
+  max_dist = np.max(pairwise_distances)
+  bandwidths = np.logspace(np.log10(1.), np.log10(max_dist), n_bandwidths)
+
+  results_dict = {'grid_size': grid_size,
+                  'betas':
+                    {float(beta_): {
+                     'sigma_sq_infty_closed_form': None,
+                      'bandwidth_mses': {float(bandwidth_): None for bandwidth_ in bandwidths}
+                    } for beta_ in betas}
+                  }
+
+  # Compute mse for each covariance parameter beta and bandwidth
   for beta in betas:
     print('beta: {}'.format(beta))
-    cov, root_cov, pairwise_distances = get_exponential_gaussian_covariance(beta1=beta, beta2=beta, grid_size=grid_size)
-    closed_form_sq_resid_sum = 2*(cov[0, :]**2).sum()
-    print('closed form sq resid sum: {}'.format(closed_form_sq_resid_sum))
+    cov, root_cov = get_exponential_gaussian_covariance(beta1=beta, beta2=beta, grid_size=grid_size)
+    sigma_sq_infty_closed_form = cov[0, :].sum()
+    results_dict['betas'][beta]['sigma_sq_infty_closed_form'] = float(sigma_sq_infty_closed_form)
     for b in bandwidths:
+      print('bandwidth: '.format(b))
       kernel = lambda k: bartlett(k, b)
-      get_var_estimate_mse(kernel=kernel, root_cov=root_cov, pairwise_distances=pairwise_distances, n_rep=n_rep,
-                           pct_cores=pct_cores)
+      mse = get_var_estimate_mse(kernel=kernel, root_cov=root_cov, pairwise_distances=pairwise_distances, n_rep=n_rep,
+                                 pct_cores=pct_cores)
+      results_dict['betas'][beta]['bandwidth_mses'][b] = float(mse)
+
+  # Save results
+  prefix = os.path.join(this_dir, 'variance_estimates')
+  info = 'size={}'.format(grid_size)
+  suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+  filename = '{}/{}_{}.yml'.format(prefix, info, suffix)
+  with open(filename, 'w') as outfile:
+    yaml.dump(results_dict, outfile)
 
   return
 
 
 def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
-  cov, _, _ = get_exponential_gaussian_covariance(beta1=beta1, beta2=beta2, grid_size=grid_size)
+  cov, _ = get_exponential_gaussian_covariance(beta1=beta1, beta2=beta2, grid_size=grid_size)
   sigma_sq_infty = cov[0, :].sum()
   squared_residuals_sum = 2*(cov[0, :]**2).sum()
   print('sigma sq infty: {} sq resid sum: {}'.format(sigma_sq_infty, squared_residuals_sum))
@@ -172,6 +217,7 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
 
 
 if __name__ == "__main__":
-  bandwidths = (5, 10, 20, 40)
-  var_estimates(bandwidths=bandwidths, grid_size=10000, n_rep=10000)
+  var_estimates(grid_size=100, n_rep=10000)
+  var_estimates(grid_size=1600, n_rep=10000)
+  var_estimates(grid_size=10000, n_rep=10000)
 
