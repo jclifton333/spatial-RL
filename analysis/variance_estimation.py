@@ -5,6 +5,7 @@ import multiprocessing as mp
 from functools import partial
 import yaml
 import datetime
+import matplotlib.pyplot as plt
 
 import os
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -216,8 +217,65 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
+def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat=0.1):
+  """
+  Treat pct_treat largest observations.
+
+  X ~ N(0, Cov)
+  Y_i = c1*X_i + c2*1[ X_i > X_{(1-pct_treat)*L}
+
+  Calculate sampling dbn of [c1_hat, c2_hat].
+  """
+  c1, c2 = 1., 1.
+
+  n_cutoff = int((1-pct_treat)*grid_size)
+  _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
+  c_dbn = np.zeros((0, 2))
+  Xprime_X_lst = np.zeros((n_rep, 2, 2))
+  for n in range(n_rep):
+    # Generate data
+    x = generate_gaussian(root_cov)
+    x_cutoff = np.sort(x)[n_cutoff]
+    x_indicator = (x > x_cutoff)
+    y = c1*x + c2*x_indicator + np.random.normal(scale=0.5, size=grid_size)
+
+    # Regression
+    X = np.column_stack((x, x_indicator))
+    Xprime_X = np.dot(X.T, X)
+    Xprime_X_inv = np.linalg.inv(Xprime_X)
+    Xy = np.dot(X.T, y)
+    c_hat = np.dot(Xprime_X_inv, Xy)
+
+    c_dbn = np.vstack((c_dbn, c_hat))
+    Xprime_X_lst[n, :] = Xprime_X
+
+  return c_dbn, Xprime_X_lst
+
+
+def regress_on_summary_statistic():
+  pct_treat = 0.1
+  z_list = []
+  n_rep = 100
+  for grid_size in [100, 1000, 10000]:
+    y_cutoffs = np.zeros(n_rep)
+    z_list_grid_size = np.zeros(n_rep)
+    n_cutoff = int((1 - pct_treat) * grid_size)
+    _, root_cov = get_exponential_gaussian_covariance(beta1=1, beta2=1, grid_size=grid_size)
+    for n in range(n_rep):
+      y = generate_gaussian(root_cov)
+      y_cutoff = np.sort(y)[n_cutoff]
+      y_cutoffs[n] = y_cutoff
+      z = np.multiply(y, y > y_cutoff)
+      z_list_grid_size[n] = np.mean(z)
+    plt.scatter(y_cutoffs, z_list_grid_size, label=str(grid_size))
+  plt.legend()
+  plt.show()
+
+
 if __name__ == "__main__":
-  var_estimates(grid_size=100, n_rep=10000)
-  var_estimates(grid_size=1600, n_rep=10000)
-  var_estimates(grid_size=10000, n_rep=10000)
+  grid_size = 900
+  beta = 1.
+  c_dbn, Xprime_Xs = simple_action_sampling_dbn(grid_size, beta1=beta, beta2=beta, n_rep=100, pct_treat=0.1)
+
+
 
