@@ -166,8 +166,8 @@ def get_var_estimate_mse(kernel, sigma_sq_infty, root_cov, pairwise_distances, n
 
     # Compute CI
     y_bar = np.mean(y, axis=0)
-    ci_upper = y_bar + 1.96*sigma_sq_hat
-    ci_lower = y_bar - 1.96*sigma_sq_hat
+    ci_upper = y_bar + 1.96*sigma_sq_hat / np.sqrt(grid_size)
+    ci_lower = y_bar - 1.96*sigma_sq_hat / np.sqrt(grid_size)
     ci = np.column_stack((ci_lower, ci_upper))
     confidence_intervals = np.vstack((ci, confidence_intervals))
 
@@ -303,7 +303,8 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  var_estimates(cov_name='exponential', grid_size=400, n_rep=5000)
+  var_estimates(cov_name='exponential', grid_size=900, n_rep=5000)
+  var_estimates(cov_name='exponential', grid_size=1600, n_rep=5000)
   # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
   # get_pairwise_distances(6400)
   # grid_size = 900
