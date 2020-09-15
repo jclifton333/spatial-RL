@@ -6,13 +6,15 @@ from functools import partial
 import yaml
 import datetime
 import matplotlib.pyplot as plt
+from numba import njit
 
 import os
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
 
+@njit
 def get_pairwise_distances(grid_size):
-  length = np.floor(np.sqrt(grid_size)).astype(int)
+  length = int(np.floor(np.sqrt(grid_size)))
   true_grid_size = length ** 2
   pairwise_distances = np.zeros((true_grid_size, true_grid_size))
   for i in range(length):
@@ -26,14 +28,15 @@ def get_pairwise_distances(grid_size):
   return pairwise_distances
 
 
-def get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=100):
+@njit
+def get_exponential_gaussian_covariance_helper(beta1=1, beta2=2, grid_size=100):
   """
   Using gen model from "Optimal block size for variance estimation by a spatial block bootstrap method".
 
   :param grid_size: Will sample observations on floor(sqrt(grid_size)) x floor(sqrt(grid_size)) lattice
   """
   # Get covariance matrix
-  length = np.floor(np.sqrt(grid_size)).astype(int)
+  length = int(np.floor(np.sqrt(grid_size)))
   true_grid_size = length**2
   cov = np.zeros((true_grid_size, true_grid_size))
   for i in range(length):
@@ -45,6 +48,11 @@ def get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=100):
           weighted_distance = beta1*np.abs(i - iprime) + beta2*np.abs(j - jprime)
           cov[index_1, index_2] = np.exp(-weighted_distance)
 
+  return cov
+
+
+def get_exponential_gaussian_covariance(beta1=1, beta2=1, grid_size=100):
+  cov = get_exponential_gaussian_covariance_helper(beta1=beta1, beta2=beta2, grid_size=grid_size)
   root_cov = np.real(la.sqrtm(cov))
   return cov, root_cov
 
@@ -273,9 +281,11 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  grid_size = 900
-  beta = 0.1
-  c_dbn, Xprime_Xs = simple_action_sampling_dbn(grid_size, beta1=beta, beta2=beta, n_rep=100, pct_treat=0.1)
+  get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
+  # get_pairwise_distances(6400)
+  # grid_size = 900
+  # beta = 0.1
+  # c_dbn, Xprime_Xs = simple_action_sampling_dbn(grid_size, beta1=beta, beta2=beta, n_rep=100, pct_treat=0.1)
 
 
 
