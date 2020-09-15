@@ -182,8 +182,7 @@ def var_estimates(n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_
   """
 
   pairwise_distances = get_pairwise_distances(grid_size)
-  max_dist = np.max(pairwise_distances)
-  bandwidths = np.logspace(np.log10(1.), np.log10(max_dist), n_bandwidths)
+  bandwidths = np.logspace(np.log10(1.), np.log10(grid_size/3), n_bandwidths)
 
   results_dict = {'grid_size': grid_size,
                   'betas':
@@ -281,7 +280,9 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
+  var_estimates(grid_size=1600)
+  var_estimates(grid_size=6400)
+  # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
   # get_pairwise_distances(6400)
   # grid_size = 900
   # beta = 0.1
