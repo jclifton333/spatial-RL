@@ -180,7 +180,7 @@ def get_var_estimate_mse(kernel, sigma_sq_infty, root_cov, pairwise_distances, n
   mse_kernel = np.mean((var_estimates/sigma_sq_infty - 1)**2)
   # print('sigma sq infty: {}'.format(sigma_sq_infty))
   print('mse: {} coverage: {}'.format(mse_kernel, mean_coverage))
-  return mse_kernel
+  return mse_kernel, mean_coverage
 
 
 def bartlett(x, bandwidth):
@@ -206,7 +206,7 @@ def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_si
                   'betas':
                     {float(beta_): {
                      'sigma_sq_infty_closed_form': None,
-                      'bandwidth_mses': {float(bandwidth_): None for bandwidth_ in bandwidths}
+                      'bandwidths': {float(bandwidth_): {'mse': None, 'coverage': None} for bandwidth_ in bandwidths},
                     } for beta_ in betas}
                   }
 
@@ -223,10 +223,11 @@ def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_si
     for b in bandwidths:
       print('bandwidth: {}'.format(b))
       kernel = lambda k: bartlett(k, b)
-      mse = get_var_estimate_mse(kernel=kernel, sigma_sq_infty=sigma_sq_infty_closed_form,
-                                 root_cov=root_cov, pairwise_distances=pairwise_distances, n_rep=n_rep,
-                                 pct_cores=pct_cores)
-      results_dict['betas'][beta]['bandwidth_mses'][b] = float(mse)
+      mse, coverage = get_var_estimate_mse(kernel=kernel, sigma_sq_infty=sigma_sq_infty_closed_form,
+                                           root_cov=root_cov, pairwise_distances=pairwise_distances, n_rep=n_rep,
+                                           pct_cores=pct_cores)
+      results_dict['betas'][beta]['bandwidths'][b]['mse'] = float(mse)
+      results_dict['betas'][beta]['bandwidths'][b]['coverage'] = float(coverage)
 
   # Save results
   prefix = os.path.join(this_dir, 'variance_estimates')
@@ -303,8 +304,10 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
+  # var_estimates(cov_name='exponential', grid_size=100, n_rep=100)
   var_estimates(cov_name='exponential', grid_size=900, n_rep=5000)
   var_estimates(cov_name='exponential', grid_size=1600, n_rep=5000)
+  var_estimates(cov_name='exponential', grid_size=6400, n_rep=5000)
   # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
   # get_pairwise_distances(6400)
   # grid_size = 900
