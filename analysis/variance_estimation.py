@@ -176,7 +176,7 @@ def constant(x):
   return 1
 
 
-def var_estimates(n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_cores=0.25):
+def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_cores=0.25):
   """
   :param n_bandwidths: Bandwidths will be n_bandwidths values log-spaced between 1 and max(pairwise_distances).
   """
@@ -185,6 +185,7 @@ def var_estimates(n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_
   bandwidths = np.logspace(np.log10(1.), np.log10(grid_size/3), n_bandwidths)
 
   results_dict = {'grid_size': grid_size,
+                  'cov': cov_name,
                   'betas':
                     {float(beta_): {
                      'sigma_sq_infty_closed_form': None,
@@ -195,7 +196,10 @@ def var_estimates(n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_
   # Compute mse for each covariance parameter beta and bandwidth
   for beta in betas:
     print('beta: {}'.format(beta))
-    cov, root_cov = get_exponential_gaussian_covariance(beta1=beta, beta2=beta, grid_size=grid_size)
+    if cov_name == 'exponential':
+      cov, root_cov = get_exponential_gaussian_covariance(beta1=beta, beta2=beta, grid_size=grid_size)
+    elif cov_name == 'identity':
+      cov, root_cov = np.eye(grid_size), np.eye(grid_size)
     sigma_sq_infty_closed_form = cov[0, :].sum()
     results_dict['betas'][beta]['sigma_sq_infty_closed_form'] = float(sigma_sq_infty_closed_form)
     for b in bandwidths:
@@ -207,7 +211,7 @@ def var_estimates(n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_
 
   # Save results
   prefix = os.path.join(this_dir, 'variance_estimates')
-  info = 'size={}'.format(grid_size)
+  info = 'cov_name={}-size={}'.format(cov_name, grid_size)
   suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
   filename = '{}/{}_{}.yml'.format(prefix, info, suffix)
   with open(filename, 'w') as outfile:
@@ -280,8 +284,7 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  var_estimates(grid_size=1600)
-  var_estimates(grid_size=6400)
+  var_estimates(cov_name='identity', grid_size=900)
   # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
   # get_pairwise_distances(6400)
   # grid_size = 900
