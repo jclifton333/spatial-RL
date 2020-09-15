@@ -122,7 +122,12 @@ def get_sigma_sq_infty(observations):
 
 def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size):
   y = generate_gaussian(root_cov)
+  sigma_sq_hat = estimate_var(y, kernel_weights, grid_size)
 
+  return y, sigma_sq_hat
+
+
+def estimate_var(y, kernel_weights, grid_size):
   # Products of centered residuals
   y_centered = y - np.mean(y)
   cross_raw = np.outer(y_centered, y_centered)
@@ -130,13 +135,14 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
   cross_kernel = np.multiply(cross_raw, kernel_weights)
   sigma_sq_hat = cross_kernel.sum() / grid_size
 
-  return y, sigma_sq_hat
+  return sigma_sq_hat
 
 
 def get_var_estimate_mse(kernel, sigma_sq_infty, root_cov, pairwise_distances, n_rep=10000, pct_cores=0.25):
   var_estimates = np.zeros(0)
   grid_size = root_cov.shape[0]
   observations = np.zeros((0, grid_size))
+  confidence_intervals = np.zeros((0, 2))
 
   # Construct kernel weight matrix
   kernel_weights = np.zeros((grid_size, grid_size))
@@ -158,9 +164,22 @@ def get_var_estimate_mse(kernel, sigma_sq_infty, root_cov, pairwise_distances, n
     observations = np.vstack((observations, y))
     var_estimates = np.hstack((var_estimates, sigma_sq_hat))
 
+    # Compute CI
+    y_bar = np.mean(y, axis=0)
+    ci_upper = y_bar + 1.96*sigma_sq_hat
+    ci_lower = y_bar - 1.96*sigma_sq_hat
+    ci = np.column_stack((ci_lower, ci_upper))
+    confidence_intervals = np.vstack((ci, confidence_intervals))
+
+  # Compute coverage
+  upper_coverage = confidence_intervals[:, 1] > 0
+  lower_coverage = confidence_intervals[:, 0] < 0
+  coverage = upper_coverage * lower_coverage
+  mean_coverage = np.mean(coverage)
+
   mse_kernel = np.mean((var_estimates/sigma_sq_infty - 1)**2)
-  print('sigma sq infty: {}'.format(sigma_sq_infty))
-  print('mse: {}'.format(mse_kernel))
+  # print('sigma sq infty: {}'.format(sigma_sq_infty))
+  print('mse: {} coverage: {}'.format(mse_kernel, mean_coverage))
   return mse_kernel
 
 
@@ -284,8 +303,7 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  var_estimates(cov_name='exponential', grid_size=1600, n_rep=1000)
-  var_estimates(cov_name='exponential', grid_size=6400, n_rep=1000)
+  var_estimates(cov_name='exponential', grid_size=400, n_rep=5000)
   # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
   # get_pairwise_distances(6400)
   # grid_size = 900
