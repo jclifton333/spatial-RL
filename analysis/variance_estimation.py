@@ -158,7 +158,7 @@ def get_var_estimate_mse(kernel, sigma_sq_infty, root_cov, pairwise_distances, n
     observations = np.vstack((observations, y))
     var_estimates = np.hstack((var_estimates, sigma_sq_hat))
 
-  mse_kernel = np.mean((var_estimates - sigma_sq_infty)**2)
+  mse_kernel = np.mean((var_estimates/sigma_sq_infty - 1)**2)
   print('sigma sq infty: {}'.format(sigma_sq_infty))
   print('mse: {}'.format(mse_kernel))
   return mse_kernel
@@ -284,7 +284,8 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  var_estimates(cov_name='identity', grid_size=400, n_rep=5000)
+  var_estimates(cov_name='exponential', grid_size=1600, n_rep=1000)
+  var_estimates(cov_name='exponential', grid_size=6400, n_rep=1000)
   # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
   # get_pairwise_distances(6400)
   # grid_size = 900
