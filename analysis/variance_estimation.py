@@ -133,7 +133,7 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
   return y, sigma_sq_hat
 
 
-def get_var_estimate_mse(kernel, root_cov, pairwise_distances, n_rep=10000, pct_cores=0.25):
+def get_var_estimate_mse(kernel, sigma_sq_infty, root_cov, pairwise_distances, n_rep=10000, pct_cores=0.25):
   var_estimates = np.zeros(0)
   grid_size = root_cov.shape[0]
   observations = np.zeros((0, grid_size))
@@ -158,10 +158,8 @@ def get_var_estimate_mse(kernel, root_cov, pairwise_distances, n_rep=10000, pct_
     observations = np.vstack((observations, y))
     var_estimates = np.hstack((var_estimates, sigma_sq_hat))
 
-  # autocovs = get_autocov_sq_sequence(observations, pairwise_distances)
-  sigma_sq_infty, sq_residual_cov = get_sigma_sq_infty(observations)
   mse_kernel = np.mean((var_estimates - sigma_sq_infty)**2)
-  print('sq residual cov: {}'.format(sq_residual_cov))
+  print('sigma sq infty: {}'.format(sigma_sq_infty))
   print('mse: {}'.format(mse_kernel))
   return mse_kernel
 
@@ -198,14 +196,16 @@ def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_si
     print('beta: {}'.format(beta))
     if cov_name == 'exponential':
       cov, root_cov = get_exponential_gaussian_covariance(beta1=beta, beta2=beta, grid_size=grid_size)
+    # ToDo: shouldn't have to pass any covariance if identity
     elif cov_name == 'identity':
       cov, root_cov = np.eye(grid_size), np.eye(grid_size)
     sigma_sq_infty_closed_form = cov[0, :].sum()
     results_dict['betas'][beta]['sigma_sq_infty_closed_form'] = float(sigma_sq_infty_closed_form)
     for b in bandwidths:
-      print('bandwidth: '.format(b))
+      print('bandwidth: {}'.format(b))
       kernel = lambda k: bartlett(k, b)
-      mse = get_var_estimate_mse(kernel=kernel, root_cov=root_cov, pairwise_distances=pairwise_distances, n_rep=n_rep,
+      mse = get_var_estimate_mse(kernel=kernel, sigma_sq_infty=sigma_sq_infty_closed_form,
+                                 root_cov=root_cov, pairwise_distances=pairwise_distances, n_rep=n_rep,
                                  pct_cores=pct_cores)
       results_dict['betas'][beta]['bandwidth_mses'][b] = float(mse)
 
@@ -284,7 +284,7 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  var_estimates(cov_name='identity', grid_size=900)
+  var_estimates(cov_name='identity', grid_size=400, n_rep=5000)
   # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
   # get_pairwise_distances(6400)
   # grid_size = 900
