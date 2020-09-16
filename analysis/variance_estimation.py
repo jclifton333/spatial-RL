@@ -127,11 +127,10 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
   return y, sigma_sq_hat
 
 
-def estimate_matrix_var(Y, kernel_weights):
-  # Estimate covariance from a list of vectors Y
-  Y_bar = np.mean(Y, axis=0)
-  Y_centered = Y - Y_bar
-  L, p = Y.shape
+@njit
+def estimate_matrix_var(Y_centered, kernel_weights):
+  # Estimate covariance from a list of mean-zero vectors Y_centered
+  L, p = Y_centered.shape
 
   cov_hat = np.zeros((p, p))
   for i in range(L):
@@ -289,16 +288,19 @@ def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat
 
   n_cutoff = int((1-pct_treat)*grid_size)
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
+  identity_root_cov = np.eye(grid_size)
   c_dbn = np.zeros((0, 2))
   Xprime_X_lst = np.zeros((n_rep, 2, 2))
   coverage = 0.
+  chat_var_lst = []
 
   for n in range(n_rep):
     # Generate data
-    x = generate_gaussian(root_cov)
+    x = generate_gaussian(identity_root_cov)
     x_cutoff = np.sort(x)[n_cutoff]
     x_indicator = (x > x_cutoff)
-    y = c1*x + c2*x_indicator + np.random.normal(scale=0.5, size=grid_size)
+    errors = generate_gaussian(root_cov)
+    y = c1*x + c2*x_indicator + errors
 
     # Regression
     X = np.column_stack((x, x_indicator))
@@ -311,16 +313,19 @@ def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat
     Xprime_X_lst[n, :] = Xprime_X / grid_size
 
     # Estimate covariance and construct CI
-    X_times_y = np.multiply(X.T, y)
+    X_times_y = np.multiply(X, y[:, np.newaxis])
+    X_times_y = X_times_y - X_times_y.mean(axis=0)
     inner_cov_hat = estimate_matrix_var(X_times_y, kernel_weights)
-    cov_hat = np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
+    cov_hat = grid_size*np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
     c2_hat = c_hat[1]
     c2_var_hat = cov_hat[1, 1]
-    ci_upper = c2_hat + 1.96*c2_var_hat/np.sqrt(grid_size)
-    ci_lower = c2_hat - 1.96*c2_var_hat/np.sqrt(grid_size)
+    ci_upper = c2_hat + 1.96*np.sqrt(c2_var_hat)
+    ci_lower = c2_hat - 1.96*np.sqrt(c2_var_hat)
     contains_truth = (ci_lower < c2 < ci_upper)
     coverage += contains_truth / n_rep
+    chat_var_lst.append(c2_var_hat)
 
+  # c2_population_var_hat = np.var(c_dbn[:, 1])
   return c_dbn, Xprime_X_lst, coverage
 
 
@@ -345,7 +350,8 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  simple_action_sampling_dbn(grid_size=100, beta1=1, beta2=1, n_rep=100, pct_treat=0.1)
+  _, _, coverage = simple_action_sampling_dbn(grid_size=100, beta1=1, beta2=1, n_rep=100, pct_treat=0.1)
+  print(coverage)
   # var_estimates(cov_name='exponential', grid_size=100, n_rep=100)
   # var_estimates(cov_name='exponential', grid_size=900, n_rep=5000)
   # var_estimates(cov_name='exponential', grid_size=1600, n_rep=5000)
