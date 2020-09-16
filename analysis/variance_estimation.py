@@ -155,18 +155,22 @@ def estimate_var(y, kernel_weights, grid_size):
   return sigma_sq_hat
 
 
+def construct_kernel_matrix_from_distances(kernel, pairwise_distances):
+  grid_size = pairwise_distances.shape[0]
+  kernel_weights = np.zeros((grid_size, grid_size))
+  for i in range(grid_size):
+    for j in range(grid_size):
+      kernel_weights[i, j] = kernel(pairwise_distances[i, j])
+  return kernel_weights
+
+
 def get_var_estimate_mse(kernel, sigma_sq_infty, root_cov, pairwise_distances, n_rep=10000, pct_cores=0.25):
   var_estimates = np.zeros(0)
   grid_size = root_cov.shape[0]
   observations = np.zeros((0, grid_size))
   confidence_intervals = np.zeros((0, 2))
 
-  # Construct kernel weight matrix
-  kernel_weights = np.zeros((grid_size, grid_size))
-  for i in range(grid_size):
-    for j in range(grid_size):
-      kernel_weights[i, j] = kernel(pairwise_distances[i, j])
-
+  kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
   replicate = partial(draw_from_gaussian_and_estimate_var, root_cov=root_cov, kernel_weights=kernel_weights,
                       grid_size=grid_size)
 
@@ -265,7 +269,7 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
-def simple_action_sampling_dbn(grid_size, kernel_weights, beta1=1, beta2=1, n_rep=100, pct_treat=0.1):
+def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat=0.1):
   """
   Treat pct_treat largest observations.
 
@@ -274,7 +278,14 @@ def simple_action_sampling_dbn(grid_size, kernel_weights, beta1=1, beta2=1, n_re
 
   Calculate sampling dbn of [c1_hat, c2_hat].
   """
+  # ToDo: assuming bartlett kernel, bandwidth=grid_size/3
   c1, c2 = 1., 1.
+
+  # Construct kernel weight matrix
+  bandwidth = grid_size / 3
+  kernel = lambda x: bartlett(x, bandwidth)
+  pairwise_distances = get_pairwise_distances(grid_size)
+  kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
 
   n_cutoff = int((1-pct_treat)*grid_size)
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
@@ -300,7 +311,8 @@ def simple_action_sampling_dbn(grid_size, kernel_weights, beta1=1, beta2=1, n_re
     Xprime_X_lst[n, :] = Xprime_X / grid_size
 
     # Estimate covariance and construct CI
-    inner_cov_hat = estimate_matrix_var(Xy, kernel_weights)
+    X_times_y = np.multiply(X.T, y)
+    inner_cov_hat = estimate_matrix_var(X_times_y, kernel_weights)
     cov_hat = np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
     c2_hat = c_hat[1]
     c2_var_hat = cov_hat[1, 1]
@@ -333,10 +345,11 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
+  simple_action_sampling_dbn(grid_size=100, beta1=1, beta2=1, n_rep=100, pct_treat=0.1)
   # var_estimates(cov_name='exponential', grid_size=100, n_rep=100)
-  var_estimates(cov_name='exponential', grid_size=900, n_rep=5000)
-  var_estimates(cov_name='exponential', grid_size=1600, n_rep=5000)
-  var_estimates(cov_name='exponential', grid_size=6400, n_rep=5000)
+  # var_estimates(cov_name='exponential', grid_size=900, n_rep=5000)
+  # var_estimates(cov_name='exponential', grid_size=1600, n_rep=5000)
+  # var_estimates(cov_name='exponential', grid_size=6400, n_rep=5000)
   # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
   # get_pairwise_distances(6400)
   # grid_size = 900
