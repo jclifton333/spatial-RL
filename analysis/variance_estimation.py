@@ -127,6 +127,23 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
   return y, sigma_sq_hat
 
 
+def estimate_matrix_var(Y, kernel_weights):
+  # Estimate covariance from a list of vectors Y
+  Y_bar = np.mean(Y, axis=0)
+  Y_centered = Y - Y_bar
+  L, p = Y.shape
+
+  cov_hat = np.zeros((p, p))
+  for i in range(L):
+    for j in range(L):
+      y_i = Y_centered[i]
+      y_j = Y_centered[j]
+      weighted_outer = np.outer(y_i, y_j)*kernel_weights[i, j]
+      cov_hat += weighted_outer / L
+
+  return cov_hat
+
+
 def estimate_var(y, kernel_weights, grid_size):
   # Products of centered residuals
   y_centered = y - np.mean(y)
@@ -248,7 +265,7 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
-def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat=0.1):
+def simple_action_sampling_dbn(grid_size, kernel_weights, beta1=1, beta2=1, n_rep=100, pct_treat=0.1):
   """
   Treat pct_treat largest observations.
 
@@ -263,6 +280,8 @@ def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
   c_dbn = np.zeros((0, 2))
   Xprime_X_lst = np.zeros((n_rep, 2, 2))
+  coverage = 0.
+
   for n in range(n_rep):
     # Generate data
     x = generate_gaussian(root_cov)
@@ -280,7 +299,17 @@ def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat
     c_dbn = np.vstack((c_dbn, c_hat))
     Xprime_X_lst[n, :] = Xprime_X / grid_size
 
-  return c_dbn, Xprime_X_lst
+    # Estimate covariance and construct CI
+    inner_cov_hat = estimate_matrix_var(Xy, kernel_weights)
+    cov_hat = np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
+    c2_hat = c_hat[1]
+    c2_var_hat = cov_hat[1, 1]
+    ci_upper = c2_hat + 1.96*c2_var_hat/np.sqrt(grid_size)
+    ci_lower = c2_hat - 1.96*c2_var_hat/np.sqrt(grid_size)
+    contains_truth = (ci_lower < c2 < ci_upper)
+    coverage += contains_truth / n_rep
+
+  return c_dbn, Xprime_X_lst, coverage
 
 
 def regress_on_summary_statistic():
