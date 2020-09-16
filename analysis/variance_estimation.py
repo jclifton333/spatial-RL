@@ -268,7 +268,7 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
-def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat=0.1):
+def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1):
   """
   Treat pct_treat largest observations.
 
@@ -277,12 +277,13 @@ def simple_action_sampling_dbn(grid_size, beta1=1, beta2=1, n_rep=100, pct_treat
 
   Calculate sampling dbn of [c1_hat, c2_hat].
   """
-  # ToDo: assuming bartlett kernel, bandwidth=grid_size/3
   c1, c2 = 1., 1.
 
   # Construct kernel weight matrix
-  bandwidth = grid_size / 3
-  kernel = lambda x: bartlett(x, bandwidth)
+  if kernel_name == 'bartlett':
+    kernel = lambda x: bartlett(x, bandwidth)
+  elif kernel_name == 'delta':
+    kernel = lambda x: x == 0
   pairwise_distances = get_pairwise_distances(grid_size)
   kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
 
@@ -350,8 +351,15 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  _, _, coverage = simple_action_sampling_dbn(grid_size=100, beta1=1, beta2=1, n_rep=100, pct_treat=0.1)
-  print(coverage)
+  grid_size = 100
+  kernel_name = 'delta'
+  bandwidths = np.linspace(grid_size/10, grid_size/5, 10)
+  for bandwidth in bandwidths:
+    _, _, coverage = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
+                                                kernel_name=kernel_name,
+                                                beta1=1, beta2=1, n_rep=100,
+                                                pct_treat=0.1)
+    print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
   # var_estimates(cov_name='exponential', grid_size=100, n_rep=100)
   # var_estimates(cov_name='exponential', grid_size=900, n_rep=5000)
   # var_estimates(cov_name='exponential', grid_size=1600, n_rep=5000)
