@@ -128,6 +128,27 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
 
 
 @njit
+def estimate_spatiotemporal_matrix_var(Y_centered, spatial_kernel_weights, temporal_kernel_weights, L):
+  N, p = Y_centered.shape
+
+  cov_hat = np.zeros((p, p))
+  for i in range(N):
+    t_i = i // L
+    l_i = i % L
+    y_i = Y_centered[i]
+    for j in range(N):
+      t_j = j // L
+      l_j = j % L
+      y_j = Y_centered[j]
+      spatial_kernel = spatial_kernel_weights[l_i, l_j]
+      temporal_kernel = temporal_kernel_weights[t_i, t_j]
+      kernel_weight = np.max((spatial_kernel, temporal_kernel))
+      weighted_outer = np.outer(y_i, y_j)*kernel_weight
+      cov_hat += weighted_outer / N
+  return cov_hat
+
+
+@njit
 def estimate_matrix_var(Y_centered, kernel_weights):
   # Estimate covariance from a list of mean-zero vectors Y_centered
   L, p = Y_centered.shape
@@ -213,6 +234,10 @@ def constant(x):
   return 1
 
 
+def block(x, bandwidth):
+  return np.abs(x) / bandwidth <= 1
+
+
 def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_cores=0.25):
   """
   :param n_bandwidths: Bandwidths will be n_bandwidths values log-spaced between 1 and max(pairwise_distances).
@@ -242,7 +267,7 @@ def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_si
     results_dict['betas'][beta]['sigma_sq_infty_closed_form'] = float(sigma_sq_infty_closed_form)
     for b in bandwidths:
       print('bandwidth: {}'.format(b))
-      kernel = lambda k: bartlett(k, b)
+      kernel = lambda k: block(k, b)
       mse, coverage = get_var_estimate_mse(kernel=kernel, sigma_sq_infty=sigma_sq_infty_closed_form,
                                            root_cov=root_cov, pairwise_distances=pairwise_distances, n_rep=n_rep,
                                            pct_cores=pct_cores)
@@ -268,7 +293,8 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
-def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1):
+def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
+                               time_horizon=10):
   """
   Treat pct_treat largest observations.
 
@@ -277,15 +303,18 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
 
   Calculate sampling dbn of [c1_hat, c2_hat].
   """
-  c1, c2 = 1., 1.
+  c1, c2 = 0.5, 1.
 
   # Construct kernel weight matrix
   if kernel_name == 'bartlett':
     kernel = lambda x: bartlett(x, bandwidth)
   elif kernel_name == 'delta':
     kernel = lambda x: x == 0
+  elif kernel_name == 'block':
+    kernel = lambda x: block(x, bandwidth)
+
   pairwise_distances = get_pairwise_distances(grid_size)
-  kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
+  spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
 
   n_cutoff = int((1-pct_treat)*grid_size)
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
@@ -295,16 +324,26 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
   coverage = 0.
   chat_var_lst = []
 
+  y = np.zeros(0)
+  X = np.zeros((0, 2))
+
   for n in range(n_rep):
     # Generate data
     x = generate_gaussian(identity_root_cov)
-    x_cutoff = np.sort(x)[n_cutoff]
-    x_indicator = (x > x_cutoff)
-    errors = generate_gaussian(root_cov)
-    y = c1*x + c2*x_indicator + errors
+    for t in range(time_horizon):
+      x_cutoff = np.sort(x)[n_cutoff]
+      x_indicator = (x > x_cutoff)
+      errors = generate_gaussian(root_cov)
+      x_new = c1*x + c2*x_indicator + errors
+
+      # Append to dataset
+      y = np.hstack((y, x_new))
+      X_t = np.column_stack((x, x_indicator))
+      X = np.vstack((X, X_t))
+
+      x = x_new
 
     # Regression
-    X = np.column_stack((x, x_indicator))
     Xprime_X = np.dot(X.T, X)
     Xprime_X_inv = np.linalg.inv(Xprime_X)
     Xy = np.dot(X.T, y)
@@ -316,7 +355,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
     # Estimate covariance and construct CI
     X_times_y = np.multiply(X, y[:, np.newaxis])
     X_times_y = X_times_y - X_times_y.mean(axis=0)
-    inner_cov_hat = estimate_matrix_var(X_times_y, kernel_weights)
+    inner_cov_hat = estimate_matrix_var(X_times_y, spatial_kernel_weights)
     cov_hat = grid_size*np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
     c2_hat = c_hat[1]
     c2_var_hat = cov_hat[1, 1]
@@ -351,9 +390,11 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  grid_size = 100
-  kernel_name = 'delta'
-  bandwidths = np.linspace(grid_size/10, grid_size/5, 10)
+  grid_size = 400
+  kernel_name = 'block'
+  # kernel_name = 'bartlett'
+  # kernel_name = 'delta'
+  bandwidths = np.linspace(0, 20, 10)
   for bandwidth in bandwidths:
     _, _, coverage = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
                                                 kernel_name=kernel_name,
