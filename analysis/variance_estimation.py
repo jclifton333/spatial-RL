@@ -142,7 +142,7 @@ def estimate_spatiotemporal_matrix_var(Y_centered, spatial_kernel_weights, tempo
       y_j = Y_centered[j]
       spatial_kernel = spatial_kernel_weights[l_i, l_j]
       temporal_kernel = temporal_kernel_weights[t_i, t_j]
-      kernel_weight = np.max((spatial_kernel, temporal_kernel))
+      kernel_weight = spatial_kernel + temporal_kernel
       weighted_outer = np.outer(y_i, y_j)*kernel_weight
       cov_hat += weighted_outer / N
   return cov_hat
@@ -315,6 +315,8 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
 
   pairwise_distances = get_pairwise_distances(grid_size)
   spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
+  temporal_kernel_weights = np.array([np.array([kernel(np.abs(t1 - t2)) for t1 in range(time_horizon)])
+                                      for t2 in range(time_horizon)])
 
   n_cutoff = int((1-pct_treat)*grid_size)
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
@@ -324,10 +326,10 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
   coverage = 0.
   chat_var_lst = []
 
-  y = np.zeros(0)
-  X = np.zeros((0, 2))
-
   for n in range(n_rep):
+    y = np.zeros(0)
+    X = np.zeros((0, 2))
+
     # Generate data
     x = generate_gaussian(identity_root_cov)
     for t in range(time_horizon):
@@ -355,7 +357,8 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
     # Estimate covariance and construct CI
     X_times_y = np.multiply(X, y[:, np.newaxis])
     X_times_y = X_times_y - X_times_y.mean(axis=0)
-    inner_cov_hat = estimate_matrix_var(X_times_y, spatial_kernel_weights)
+    inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_y, spatial_kernel_weights, temporal_kernel_weights,
+                                                       grid_size)
     cov_hat = grid_size*np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
     c2_hat = c_hat[1]
     c2_var_hat = cov_hat[1, 1]
@@ -390,11 +393,11 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  grid_size = 400
+  grid_size = 225
   kernel_name = 'block'
   # kernel_name = 'bartlett'
   # kernel_name = 'delta'
-  bandwidths = np.linspace(0, 20, 10)
+  bandwidths = np.linspace(1, 10, 10)
   for bandwidth in bandwidths:
     _, _, coverage = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
                                                 kernel_name=kernel_name,
