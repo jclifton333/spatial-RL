@@ -128,24 +128,35 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
 
 
 @njit
-def estimate_spatiotemporal_matrix_var(Y_centered, spatial_kernel_weights, temporal_kernel_weights, L):
+def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights):
   N, p = Y_centered.shape
 
   cov_hat = np.zeros((p, p))
   for i in range(N):
-    t_i = i // L
-    l_i = i % L
     y_i = Y_centered[i]
     for j in range(N):
-      t_j = j // L
-      l_j = j % L
       y_j = Y_centered[j]
-      spatial_kernel = spatial_kernel_weights[l_i, l_j]
-      temporal_kernel = temporal_kernel_weights[t_i, t_j]
-      kernel_weight = spatial_kernel + temporal_kernel
+      kernel_weight = spatiotemporal_kernel_weights[i, j]
       weighted_outer = np.outer(y_i, y_j)*kernel_weight
       cov_hat += weighted_outer / N
   return cov_hat
+
+
+def get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, L, N, combination_function=None):
+  if combination_function is None:
+    combination_function = lambda x, y: np.min((x, y))
+  spatiotemporal_kernel_weights = np.zeros((N, N))
+  for i in range(N):
+    t_i = i // L
+    l_i = i % L
+    for j in range(N):
+      t_j = j // L
+      l_j = j % L
+      spatial_kernel = spatial_kernel_weights[l_i, l_j]
+      temporal_kernel = temporal_kernel_weights[t_i, t_j]
+      kernel_weight = combination_function(spatial_kernel, temporal_kernel)
+      spatiotemporal_kernel_weights[i, j] = kernel_weight
+  return spatiotemporal_kernel_weights
 
 
 @njit
@@ -293,6 +304,97 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
+def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
+                        time_horizon=10):
+  """
+  Calculate sampling dbn of 1-step Q-function, where
+
+  X ~ N(0, Cov)
+  Y_i = c1*X_i + c2*1[ X_i > X_{(1-pct_treat)*L}
+  """
+  c1, c2 = 0.5, 1.
+
+  # Construct kernel weight matrix
+  if kernel_name == 'bartlett':
+    kernel = lambda x: bartlett(x, bandwidth)
+  elif kernel_name == 'delta':
+    kernel = lambda x: x == 0
+  elif kernel_name == 'block':
+    kernel = lambda x: block(x, bandwidth)
+
+  pairwise_distances = get_pairwise_distances(grid_size)
+  spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
+  temporal_kernel_weights = np.array([np.array([kernel(np.abs(t1 - t2)) for t1 in range(time_horizon)])
+                                      for t2 in range(time_horizon)])
+
+  n_cutoff = int((1 - pct_treat) * grid_size)
+  _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
+  identity_root_cov = np.eye(grid_size)
+  c_dbn = np.zeros((0, 2))
+  Xprime_X_lst = np.zeros((n_rep, 2, 2))
+  coverage = 0.
+  chat_var_chat_var_lst= []
+  ci_lst = np.zeros((n_rep, 2))
+  N = time_horizon * grid_size
+  spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, grid_size,
+                                                            N)
+
+  for n in range(n_rep):
+    q1 = np.zeros(0)
+    X = np.zeros((0, 2))
+
+    # Generate data
+    x = generate_gaussian(identity_root_cov)
+    for t in range(time_horizon):
+      x_cutoff = np.sort(x)[n_cutoff]
+      x_indicator = (x > x_cutoff)
+      errors = generate_gaussian(root_cov)
+      x_new = c1 * x + c2 * x_indicator + errors
+
+      # Append to dataset
+      y = np.hstack((y, x_new))
+      X_t = np.column_stack((x, x_indicator))
+      X = np.vstack((X, X_t))
+
+      # Backup
+      x_new_cutoff = np.sort(x_new)[n_cutoff]
+      x_new_indicator = (x_new > x_new_cutoff)
+      q1_rep = x_new + c_hat[0] * x_new + c_hat[1] * x_new_indicator
+      q1 = np.stack((q1, q1_rep))
+
+      x = x_new
+
+    # 0-step q-function
+    Xprime_X = np.dot(X.T, X)
+    Xprime_X_inv = np.linalg.inv(Xprime_X)
+    Xy = np.dot(X.T, y)
+    c_hat = np.dot(Xprime_X_inv, Xy)
+
+    # 1-step q-function
+    Xq = np.dot(X.T, q1)
+    c_backup_hat = np.dot(Xprime_X_inv, Xq)
+    c_dbn = np.vstack((c_dbn, c_backup_hat))
+    Xprime_X_lst[n, :] = Xprime_X / grid_size
+
+    # Estimate covariance and construct CI
+    X_times_q = np.multiply(X, q1[:, np.newaxis])
+    X_times_q = X_times_q - X_times_q.mean(axis=0)
+    inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_q, spatiotemporal_kernel_weights)
+    cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
+    c2_hat = c_hat[1]
+    c2_var_hat = cov_hat[1, 1]
+    ci_upper = c2_hat + 1.96 * np.sqrt(c2_var_hat)
+    ci_lower = c2_hat - 1.96 * np.sqrt(c2_var_hat)
+    ci_lst[n] = [ci_lower, ci_upper]
+
+  c_true = np.mean(c_dbn, 0)
+  contains_truth = ci_lst[:, 0] < c_true[1] < ci_lst[:, 1]
+  coverage = np.mean(contains_truth)
+
+  # c2_population_var_hat = np.var(c_dbn[:, 1])
+  return c_dbn, Xprime_X_lst, coverage
+
+
 def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
                                time_horizon=10):
   """
@@ -325,7 +427,9 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
   Xprime_X_lst = np.zeros((n_rep, 2, 2))
   coverage = 0.
   chat_var_lst = []
-
+  N = time_horizon * grid_size
+  spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, grid_size,
+                                                            N)
   for n in range(n_rep):
     y = np.zeros(0)
     X = np.zeros((0, 2))
@@ -357,8 +461,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
     # Estimate covariance and construct CI
     X_times_y = np.multiply(X, y[:, np.newaxis])
     X_times_y = X_times_y - X_times_y.mean(axis=0)
-    inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_y, spatial_kernel_weights, temporal_kernel_weights,
-                                                       grid_size)
+    inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_y, spatiotemporal_kernel_weights)
     cov_hat = grid_size*np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
     c2_hat = c_hat[1]
     c2_var_hat = cov_hat[1, 1]
@@ -393,26 +496,13 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  grid_size = 225
+  grid_size = 100
   kernel_name = 'block'
-  # kernel_name = 'bartlett'
-  # kernel_name = 'delta'
   bandwidths = np.linspace(1, 10, 10)
+  beta = 0.1
   for bandwidth in bandwidths:
     _, _, coverage = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
                                                 kernel_name=kernel_name,
-                                                beta1=1, beta2=1, n_rep=100,
+                                                beta1=beta, beta2=beta, n_rep=100,
                                                 pct_treat=0.1)
     print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
-  # var_estimates(cov_name='exponential', grid_size=100, n_rep=100)
-  # var_estimates(cov_name='exponential', grid_size=900, n_rep=5000)
-  # var_estimates(cov_name='exponential', grid_size=1600, n_rep=5000)
-  # var_estimates(cov_name='exponential', grid_size=6400, n_rep=5000)
-  # get_exponential_gaussian_covariance(beta1=1, beta2=2, grid_size=6400)
-  # get_pairwise_distances(6400)
-  # grid_size = 900
-  # beta = 0.1
-  # c_dbn, Xprime_Xs = simple_action_sampling_dbn(grid_size, beta1=beta, beta2=beta, n_rep=100, pct_treat=0.1)
-
-
-
