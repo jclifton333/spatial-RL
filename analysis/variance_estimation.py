@@ -330,7 +330,7 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
   n_cutoff = int((1 - pct_treat) * grid_size)
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
   identity_root_cov = np.eye(grid_size)
-  c_dbn = np.zeros((0, 2))
+  beta1_hat_dbn = np.zeros((0, 2))
   Xprime_X_lst = np.zeros((n_rep, 2, 2))
   coverage = 0.
   chat_var_chat_var_lst= []
@@ -340,7 +340,7 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
                                                             N)
 
   for n in range(n_rep):
-    q1 = np.zeros(0)
+    y = np.zeros(0)
     X = np.zeros((0, 2))
 
     # Generate data
@@ -356,43 +356,43 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
       X_t = np.column_stack((x, x_indicator))
       X = np.vstack((X, X_t))
 
-      # Backup
-      x_new_cutoff = np.sort(x_new)[n_cutoff]
-      x_new_indicator = (x_new > x_new_cutoff)
-      q1_rep = x_new + c_hat[0] * x_new + c_hat[1] * x_new_indicator
-      q1 = np.stack((q1, q1_rep))
-
       x = x_new
 
     # 0-step q-function
     Xprime_X = np.dot(X.T, X)
     Xprime_X_inv = np.linalg.inv(Xprime_X)
     Xy = np.dot(X.T, y)
-    c_hat = np.dot(Xprime_X_inv, Xy)
+    beta0_hat = np.dot(Xprime_X_inv, Xy)
+
+    # Backup
+    X0 = X[:-1, :]
+    X1 = X[1:, :]
+    V_hat = np.dot(X1, beta0_hat)
+    q1 = X1[:, 0] + V_hat
 
     # 1-step q-function
-    Xq = np.dot(X.T, q1)
-    c_backup_hat = np.dot(Xprime_X_inv, Xq)
-    c_dbn = np.vstack((c_dbn, c_backup_hat))
+    Xq = np.dot(X[:-1, :].T, q1)
+    beta1_hat = np.dot(Xprime_X_inv, Xq)
+    beta1_hat_dbn = np.vstack((beta1_hat_dbn, beta1_hat))
     Xprime_X_lst[n, :] = Xprime_X / grid_size
 
     # Estimate covariance and construct CI
-    X_times_q = np.multiply(X, q1[:, np.newaxis])
+    X_times_q = np.multiply(X[:-1, :], q1[:, np.newaxis])
     X_times_q = X_times_q - X_times_q.mean(axis=0)
     inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_q, spatiotemporal_kernel_weights)
     cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
-    c2_hat = c_hat[1]
-    c2_var_hat = cov_hat[1, 1]
-    ci_upper = c2_hat + 1.96 * np.sqrt(c2_var_hat)
-    ci_lower = c2_hat - 1.96 * np.sqrt(c2_var_hat)
+    beta1_1_hat = beta1_hat[1]
+    beta1_1_var_hat = cov_hat[1, 1]
+    ci_upper = beta1_1_hat + 1.96 * np.sqrt(beta1_1_var_hat)
+    ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
     ci_lst[n] = [ci_lower, ci_upper]
 
-  c_true = np.mean(c_dbn, 0)
-  contains_truth = ci_lst[:, 0] < c_true[1] < ci_lst[:, 1]
+  beta1_true = np.mean(beta1_hat_dbn, 0)
+  contains_truth = np.multiply(beta1_true[1] < ci_lst[:, 1], beta1_true[1]  > ci_lst[:, 0])
   coverage = np.mean(contains_truth)
 
   # c2_population_var_hat = np.var(c_dbn[:, 1])
-  return c_dbn, Xprime_X_lst, coverage
+  return beta1_hat_dbn, Xprime_X_lst, coverage
 
 
 def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
@@ -496,13 +496,15 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  grid_size = 100
+  grid_size = 900
   kernel_name = 'block'
   bandwidths = np.linspace(1, 10, 10)
   beta = 0.1
   for bandwidth in bandwidths:
-    _, _, coverage = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
-                                                kernel_name=kernel_name,
-                                                beta1=beta, beta2=beta, n_rep=100,
-                                                pct_treat=0.1)
+    # _, _, coverage = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
+    #                                             kernel_name=kernel_name,
+    #                                             beta1=beta, beta2=beta, n_rep=100,
+    #                                             pct_treat=0.1)
+    _, _, coverage = backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100,
+                                         pct_treat=0.1, time_horizon=10)
     print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
