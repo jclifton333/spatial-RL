@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.linalg as la
+from scipy.stats import normaltest
 import pdb
 import multiprocessing as mp
 from functools import partial
@@ -29,7 +30,7 @@ def get_pairwise_distances(grid_size):
 
 
 @njit
-def get_exponential_gaussian_covariance_helper(beta1=1, beta2=2, grid_size=100):
+def get_exponential_gaussian_covariance_helper(vars, beta1=1, beta2=2, grid_size=100):
   """
   Using gen model from "Optimal block size for variance estimation by a spatial block bootstrap method".
 
@@ -46,13 +47,20 @@ def get_exponential_gaussian_covariance_helper(beta1=1, beta2=2, grid_size=100):
           index_1 = length*i + j
           index_2 = length*iprime + jprime
           weighted_distance = beta1*np.abs(i - iprime) + beta2*np.abs(j - jprime)
-          cov[index_1, index_2] = np.exp(-weighted_distance)
+          cov_ = np.exp(-weighted_distance)
+          if i == j:
+            cov_ *= vars[i]
+          cov[index_1, index_2] = cov_
 
   return cov
 
 
-def get_exponential_gaussian_covariance(beta1=1, beta2=1, grid_size=100):
-  cov = get_exponential_gaussian_covariance_helper(beta1=beta1, beta2=beta2, grid_size=grid_size)
+def get_exponential_gaussian_covariance(beta1=1, beta2=1, grid_size=100, heteroskedastic=False):
+  if heteroskedastic:
+    vars = np.linspace(2/grid_size, 2, grid_size)
+  else:
+    vars = np.ones(grid_size)
+  cov = get_exponential_gaussian_covariance_helper(beta1=beta1, beta2=beta2, grid_size=grid_size, vars=vars)
   root_cov = np.real(la.sqrtm(cov))
   return cov, root_cov
 
@@ -396,7 +404,7 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
 
 
 def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
-                               time_horizon=10):
+                               time_horizon=10, heteroskedastic=False):
   """
   Treat pct_treat largest observations.
 
@@ -421,7 +429,8 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
                                       for t2 in range(time_horizon)])
 
   n_cutoff = int((1-pct_treat)*grid_size)
-  _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
+  _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2,
+                                                    heteroskedastic=heteroskedastic)
   identity_root_cov = np.eye(grid_size)
   c_dbn = np.zeros((0, 2))
   Xprime_X_lst = np.zeros((n_rep, 2, 2))
@@ -472,7 +481,8 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
     chat_var_lst.append(c2_var_hat)
 
   # c2_population_var_hat = np.var(c_dbn[:, 1])
-  return c_dbn, Xprime_X_lst, coverage
+  pvals = normaltest(c_dbn, axis=0)[1]
+  return c_dbn, Xprime_X_lst, coverage, pvals
 
 
 def regress_on_summary_statistic():
@@ -496,15 +506,17 @@ def regress_on_summary_statistic():
 
 
 if __name__ == "__main__":
-  grid_size = 900
+  # ToDo: check whether asymptotic normality is affected by heteroskedasticity
+  grid_size = 100
   kernel_name = 'block'
   bandwidths = np.linspace(1, 10, 10)
-  beta = 0.1
+  beta = 1.0
+  heteroskedastic = True
   for bandwidth in bandwidths:
-    # _, _, coverage = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
-    #                                             kernel_name=kernel_name,
-    #                                             beta1=beta, beta2=beta, n_rep=100,
-    #                                             pct_treat=0.1)
-    _, _, coverage = backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100,
-                                         pct_treat=0.1, time_horizon=10)
-    print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
+    _, _, coverage, pvals = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
+                                              kernel_name=kernel_name,
+                                              beta1=beta, beta2=beta, n_rep=100,
+                                              pct_treat=0.1, heteroskedastic=heteroskedastic)
+    # _, _, coverage = backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100,
+    #                                      pct_treat=0.1, time_horizon=10)
+    print('bandwidth: {} coverage: {} pvals: {}'.format(bandwidth, coverage, pvals))
