@@ -439,6 +439,12 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
   N = time_horizon * grid_size
   spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, grid_size,
                                                             N)
+
+  # For assessing alpha-mixing coef of residuals at l, lprime, conditional on actions
+  e_l_lst = np.zeros(n_rep)
+  e_lprime_lst = np.zeros(n_rep)
+  x_indicator_lst = np.zeros(0)
+
   for n in range(n_rep):
     y = np.zeros(0)
     X = np.zeros((0, 2))
@@ -453,6 +459,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
 
       # Append to dataset
       y = np.hstack((y, x_new))
+      x_indicator_lst = np.hstack((x_indicator_lst, x_indicator))
       X_t = np.column_stack((x, x_indicator))
       X = np.vstack((X, X_t))
 
@@ -463,6 +470,20 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
     Xprime_X_inv = np.linalg.inv(Xprime_X)
     Xy = np.dot(X.T, y)
     c_hat = np.dot(Xprime_X_inv, Xy)
+
+    # Residual joint distribution (for assessing alpha-mixing)
+    yHat = np.dot(X, c_hat)
+    for rep in range(n_rep):
+      # Condition on x_indicator_l_t, x_indicator_lprime_tp1
+      x_indicator_t = x_indicator_lst[(1*grid_size):(2*grid_size)]
+      x_indicator_tp1 = x_indicator_lst[(2 * grid_size):(3 * grid_size)]
+      if x_indicator_t[0] == 0 and x_indicator_tp1[-1] == 0:
+        yHat_t = yHat[(t*grid_size):((t+1)*grid_size)]
+        y_t = y[(t*grid_size):((t+1)*grid_size)]
+        residual_t_l = yHat_t[0] - y_t[0]
+        residual_t_lprime = yHat_t[-1] - y_t[-1]
+        e_l_lst[rep] = residual_t_l
+        e_lprime_lst[rep] = residual_t_lprime
 
     c_dbn = np.vstack((c_dbn, c_hat))
     Xprime_X_lst[n, :] = Xprime_X / grid_size
@@ -507,6 +528,8 @@ def regress_on_summary_statistic():
 
 if __name__ == "__main__":
   # ToDo: check whether asymptotic normality is affected by heteroskedasticity
+  # ToDo: numerically check whether, conditional on (x_indicator_t, x_indicator_tp1), dependence between residuals at
+  # ToDo: (x_t^l, x_{tp1}^l') decreases quickly with d(l, l')
   grid_size = 100
   kernel_name = 'block'
   bandwidths = np.linspace(1, 10, 10)
