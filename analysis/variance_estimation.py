@@ -444,6 +444,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
   e_l_lst = np.zeros(n_rep)
   e_lprime_lst = np.zeros(n_rep)
   x_indicator_lst = np.zeros(0)
+  X_lst = []
 
   for n in range(n_rep):
     y = np.zeros(0)
@@ -465,25 +466,13 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
 
       x = x_new
 
+    X_lst.append(X)
+
     # Regression
     Xprime_X = np.dot(X.T, X)
     Xprime_X_inv = np.linalg.inv(Xprime_X)
     Xy = np.dot(X.T, y)
     c_hat = np.dot(Xprime_X_inv, Xy)
-
-    # Residual joint distribution (for assessing alpha-mixing)
-    yHat = np.dot(X, c_hat)
-    for rep in range(n_rep):
-      # Condition on x_indicator_l_t, x_indicator_lprime_tp1
-      x_indicator_t = x_indicator_lst[(1*grid_size):(2*grid_size)]
-      x_indicator_tp1 = x_indicator_lst[(2 * grid_size):(3 * grid_size)]
-      if x_indicator_t[0] == 0 and x_indicator_tp1[-1] == 0:
-        yHat_t = yHat[(t*grid_size):((t+1)*grid_size)]
-        y_t = y[(t*grid_size):((t+1)*grid_size)]
-        residual_t_l = yHat_t[0] - y_t[0]
-        residual_t_lprime = yHat_t[-1] - y_t[-1]
-        e_l_lst[rep] = residual_t_l
-        e_lprime_lst[rep] = residual_t_lprime
 
     c_dbn = np.vstack((c_dbn, c_hat))
     Xprime_X_lst[n, :] = Xprime_X / grid_size
@@ -501,9 +490,25 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
     coverage += contains_truth / n_rep
     chat_var_lst.append(c2_var_hat)
 
+  # Residual joint distribution (for assessing alpha-mixing)
+  c_true = np.array([c1, c2])
+  yHat = np.dot(X, c_true)
+  for rep in range(n_rep):
+    # Condition on x_indicator_l_t, x_indicator_lprime_tp1
+    x_indicator_rep = X_lst[rep][:, 1]
+    x_indicator_t = x_indicator_rep[(1 * grid_size):(2 * grid_size)]
+    x_indicator_tp1 = x_indicator_rep[(2 * grid_size):(3 * grid_size)]
+    if x_indicator_t[0] == 0 and x_indicator_tp1[-1] == 0:
+      yHat_t = yHat[(t * grid_size):((t + 1) * grid_size)]
+      y_t = y[(t * grid_size):((t + 1) * grid_size)]
+      residual_t_l = yHat_t[0] - y_t[0]
+      residual_t_lprime = yHat_t[-1] - y_t[-1]
+      e_l_lst[rep] = residual_t_l
+      e_lprime_lst[rep] = residual_t_lprime
+
   # c2_population_var_hat = np.var(c_dbn[:, 1])
   pvals = normaltest(c_dbn, axis=0)[1]
-  return c_dbn, Xprime_X_lst, coverage, pvals
+  return c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst
 
 
 def regress_on_summary_statistic():
@@ -530,16 +535,26 @@ if __name__ == "__main__":
   # ToDo: check whether asymptotic normality is affected by heteroskedasticity
   # ToDo: numerically check whether, conditional on (x_indicator_t, x_indicator_tp1), dependence between residuals at
   # ToDo: (x_t^l, x_{tp1}^l') decreases quickly with d(l, l')
-  grid_size = 100
   kernel_name = 'block'
-  bandwidths = np.linspace(1, 10, 10)
   beta = 1.0
   heteroskedastic = True
-  for bandwidth in bandwidths:
-    _, _, coverage, pvals = simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
-                                              kernel_name=kernel_name,
-                                              beta1=beta, beta2=beta, n_rep=100,
-                                              pct_treat=0.1, heteroskedastic=heteroskedastic)
+  bandwidth = 3
+  u = 0.1
+  for grid_size in [25, 100, 400]:
+    _, _, coverage, pvals, e_l_lst, e_lprime_lst = \
+      simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
+                                 kernel_name=kernel_name,
+                                 beta1=beta, beta2=beta, n_rep=100,
+                                 pct_treat=0.1, heteroskedastic=heteroskedastic)
+
+    # Get CDFs to assess alpha-mixing
+    cdf_l = np.mean(e_l_lst < u)
+    cdf_lprime = np.mean(e_lprime_lst < u)
+    cdf_joint = np.mean(np.multiply(e_l_lst < u, e_lprime_lst < u))
+    cdf_ind = cdf_l * cdf_lprime
+    pdb.set_trace()
+
+    alpha = np.abs(cdf_joint - cdf_ind)
     # _, _, coverage = backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100,
     #                                      pct_treat=0.1, time_horizon=10)
-    print('bandwidth: {} coverage: {} pvals: {}'.format(bandwidth, coverage, pvals))
+    print('bandwidth: {} coverage: {} pvals: {} alpha: {}'.format(bandwidth, coverage, pvals, alpha))
