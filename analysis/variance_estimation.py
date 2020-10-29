@@ -445,6 +445,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
   e_lprime_lst = np.zeros(n_rep)
   x_indicator_lst = np.zeros(0)
   X_lst = []
+  y_lst = []
 
   for n in range(n_rep):
     y = np.zeros(0)
@@ -467,6 +468,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
       x = x_new
 
     X_lst.append(X)
+    y_lst.append(y)
 
     # Regression
     Xprime_X = np.dot(X.T, X)
@@ -492,17 +494,21 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
 
   # Residual joint distribution (for assessing alpha-mixing)
   c_true = np.array([c1, c2])
-  yHat = np.dot(X, c_true)
+  yHat_lst = [np.dot(X_, c_true) for X_ in X_lst]
   for rep in range(n_rep):
     # Condition on x_indicator_l_t, x_indicator_lprime_tp1
     x_indicator_rep = X_lst[rep][:, 1]
     x_indicator_t = x_indicator_rep[(1 * grid_size):(2 * grid_size)]
     x_indicator_tp1 = x_indicator_rep[(2 * grid_size):(3 * grid_size)]
     if x_indicator_t[0] == 0 and x_indicator_tp1[-1] == 0:
-      yHat_t = yHat[(t * grid_size):((t + 1) * grid_size)]
-      y_t = y[(t * grid_size):((t + 1) * grid_size)]
+      yHat_t = yHat_lst[rep][(1*grid_size):(2*grid_size)]
+      y_t = y_lst[rep][(1*grid_size):(2*grid_size)]
+      yHat_tp1 = yHat_lst[rep][(2 * grid_size):(3 * grid_size)]
+      y_tp1 = y_lst[rep][(2 * grid_size):(3 * grid_size)]
+
       residual_t_l = yHat_t[0] - y_t[0]
-      residual_t_lprime = yHat_t[-1] - y_t[-1]
+      residual_t_lprime = yHat_tp1[-1] - y_tp1[-1]
+
       e_l_lst[rep] = residual_t_l
       e_lprime_lst[rep] = residual_t_lprime
 
@@ -531,6 +537,15 @@ def regress_on_summary_statistic():
   plt.show()
 
 
+def alpha_cdf(x, y, u):
+  cdf_x = np.mean(x < u)
+  cdf_y = np.mean(y < u)
+  cdf_joint = np.mean(np.multiply(x < u, y < u))
+  cdf_ind = cdf_x * cdf_y
+  alpha = np.abs(cdf_ind - cdf_joint)
+  return alpha
+
+
 if __name__ == "__main__":
   # ToDo: check whether asymptotic normality is affected by heteroskedasticity
   # ToDo: numerically check whether, conditional on (x_indicator_t, x_indicator_tp1), dependence between residuals at
@@ -540,21 +555,28 @@ if __name__ == "__main__":
   heteroskedastic = True
   bandwidth = 3
   u = 0.1
-  for grid_size in [25, 100, 400]:
+  bootstrap_reps = 100
+  for grid_size in [25, 64, 100, 225, 400]:
     _, _, coverage, pvals, e_l_lst, e_lprime_lst = \
       simple_action_sampling_dbn(grid_size=grid_size, bandwidth=bandwidth,
                                  kernel_name=kernel_name,
-                                 beta1=beta, beta2=beta, n_rep=100,
+                                 beta1=beta, beta2=beta, n_rep=1000,
                                  pct_treat=0.1, heteroskedastic=heteroskedastic)
 
     # Get CDFs to assess alpha-mixing
-    cdf_l = np.mean(e_l_lst < u)
-    cdf_lprime = np.mean(e_lprime_lst < u)
-    cdf_joint = np.mean(np.multiply(e_l_lst < u, e_lprime_lst < u))
-    cdf_ind = cdf_l * cdf_lprime
-    pdb.set_trace()
+    alpha = alpha_cdf(e_l_lst, e_lprime_lst, u)
 
-    alpha = np.abs(cdf_joint - cdf_ind)
+    # Bootstrap estimate of standard error
+    sample_size = len(e_l_lst)
+    alpha_boot_lst = []
+    for b in range(bootstrap_reps):
+      boot_ixs = np.random.choice(sample_size, size=sample_size, replace=True)
+      e_l_boot = e_l_lst[boot_ixs]
+      e_lprime_boot = e_lprime_lst[boot_ixs]
+      alpha_boot = alpha_cdf(e_l_boot, e_lprime_boot, u)
+      alpha_boot_lst.append(alpha_boot)
+
+    se = np.std(alpha_boot_lst)
     # _, _, coverage = backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100,
     #                                      pct_treat=0.1, time_horizon=10)
-    print('bandwidth: {} coverage: {} pvals: {} alpha: {}'.format(bandwidth, coverage, pvals, alpha))
+    print('bandwidth: {} coverage: {} pvals: {} alpha: {} se: {}'.format(bandwidth, coverage, pvals, alpha, se))
