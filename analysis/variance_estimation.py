@@ -546,10 +546,7 @@ def alpha_cdf(x, y, u):
   return alpha
 
 
-if __name__ == "__main__":
-  # ToDo: check whether asymptotic normality is affected by heteroskedasticity
-  # ToDo: numerically check whether, conditional on (x_indicator_t, x_indicator_tp1), dependence between residuals at
-  # ToDo: (x_t^l, x_{tp1}^l') decreases quickly with d(l, l')
+def test_alpha_mixing():
   kernel_name = 'block'
   beta = 1.0
   heteroskedastic = True
@@ -580,3 +577,19 @@ if __name__ == "__main__":
     # _, _, coverage = backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100,
     #                                      pct_treat=0.1, time_horizon=10)
     print('bandwidth: {} coverage: {} pvals: {} alpha: {} se: {}'.format(bandwidth, coverage, pvals, alpha, se))
+
+
+if __name__ == "__main__":
+  # ToDo: check whether asymptotic normality is affected by heteroskedasticity
+  # ToDo: numerically check whether, conditional on (x_indicator_t, x_indicator_tp1), dependence between residuals at
+  # ToDo: (x_t^l, x_{tp1}^l') decreases quickly with d(l, l')
+  kernel_name = 'block'
+  beta = 1.0
+  heteroskedastic = True
+  bandwidth = 3
+  for grid_size in [25, 64, 100, 225, 400]:
+    beta1_hat_dbn, Xprime_X_lst, coverage = \
+      backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
+                          time_horizon=5)
+
+    print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
