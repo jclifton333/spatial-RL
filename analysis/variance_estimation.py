@@ -312,6 +312,56 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
+def backup_sampling_dbn_rep(seed, identity_root_cov, time_horizon, n_cutoff, root_cov, c1, c2,
+                            spatiotemporal_kernel_weights):
+  np.random.seed(seed)
+
+  y = np.zeros(0)
+  X = np.zeros((0, 2))
+
+  # Generate data
+  x = generate_gaussian(identity_root_cov)
+  for t in range(time_horizon):
+    x_cutoff = np.sort(x)[n_cutoff]
+    x_indicator = (x > x_cutoff)
+    errors = generate_gaussian(root_cov)
+    x_new = c1 * x + c2 * x_indicator + errors
+
+    # Append to dataset
+    y = np.hstack((y, x_new))
+    X_t = np.column_stack((x, x_indicator))
+    X = np.vstack((X, X_t))
+
+    x = x_new
+
+  # 0-step q-function
+  Xprime_X = np.dot(X.T, X)
+  Xprime_X_inv = np.linalg.inv(Xprime_X)
+  Xy = np.dot(X.T, y)
+  beta0_hat = np.dot(Xprime_X_inv, Xy)
+
+  # Backup
+  X0 = X[:-1, :]
+  X1 = X[1:, :]
+  V_hat = np.dot(X1, beta0_hat)
+  q1 = X1[:, 0] + V_hat
+
+  # 1-step q-function
+  Xq = np.dot(X0.T, q1)
+  beta1_hat = np.dot(Xprime_X_inv, Xq)
+
+  # Estimate covariance and construct CI
+  X_times_q = np.multiply(X0, q1[:, np.newaxis])
+  X_times_q = X_times_q - X_times_q.mean(axis=0)
+  inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_q, spatiotemporal_kernel_weights)
+  cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
+  beta1_1_hat = beta1_hat[1]
+  beta1_1_var_hat = cov_hat[1, 1]
+  ci_upper = beta1_1_hat + 1.96 * np.sqrt(beta1_1_var_hat)
+  ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
+  return {'ci_lower': ci_lower, 'ci_upper': ci_upper, 'Xq': Xq, 'beta1_hat': beta1_hat, 'Xprime_X': Xprime_X}
+
+
 def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
                         time_horizon=10):
   """
@@ -348,61 +398,30 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
   spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, grid_size,
                                                             N)
 
-  for n in range(n_rep):
-    y = np.zeros(0)
-    X = np.zeros((0, 2))
+  # Distribute
+  pool = mp.Pool(processes=int(mp.cpu_count() / 2))
+  backup_sampling_dbn_partial = partial(backup_sampling_dbn_rep, identity_root_cov=identity_root_cov,
+                                        time_horizon=time_horizon, n_cutoff=n_cutoff, root_cov=root_cov, c1=c1, c2=c2,
+                                        spatiotemporal_kernel_weights=spatiotemporal_kernel_weights)
+  results = pool.map(backup_sampling_dbn_partial, range(n_rep))
 
-    # Generate data
-    x = generate_gaussian(identity_root_cov)
-    for t in range(time_horizon):
-      x_cutoff = np.sort(x)[n_cutoff]
-      x_indicator = (x > x_cutoff)
-      errors = generate_gaussian(root_cov)
-      x_new = c1 * x + c2 * x_indicator + errors
-
-      # Append to dataset
-      y = np.hstack((y, x_new))
-      X_t = np.column_stack((x, x_indicator))
-      X = np.vstack((X, X_t))
-
-      x = x_new
-
-    # 0-step q-function
-    Xprime_X = np.dot(X.T, X)
-    Xprime_X_inv = np.linalg.inv(Xprime_X)
-    Xy = np.dot(X.T, y)
-    beta0_hat = np.dot(Xprime_X_inv, Xy)
-
-    # Backup
-    X0 = X[:-1, :]
-    X1 = X[1:, :]
-    V_hat = np.dot(X1, beta0_hat)
-    q1 = X1[:, 0] + V_hat
-
-    # 1-step q-function
-    Xq = np.dot(X0.T, q1)
-    beta1_hat = np.dot(Xprime_X_inv, Xq)
+  for n, res in enumerate(results):
+    ci_lower = res['ci_lower']
+    ci_upper = res['ci_upper']
+    Xq = res['Xq']
+    beta1_hat = res['beta1_hat']
+    Xprime_X = res['Xprime_X']
     beta1_hat_dbn = np.vstack((beta1_hat_dbn, beta1_hat))
     Xprime_X_lst[n, :] = Xprime_X / grid_size
     Xq_lst[n, :] = Xq
-
-    # Estimate covariance and construct CI
-    X_times_q = np.multiply(X0, q1[:, np.newaxis])
-    X_times_q = X_times_q - X_times_q.mean(axis=0)
-    inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_q, spatiotemporal_kernel_weights)
-    cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
-    beta1_1_hat = beta1_hat[1]
-    beta1_1_var_hat = cov_hat[1, 1]
-    ci_upper = beta1_1_hat + 1.96 * np.sqrt(beta1_1_var_hat)
-    ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
-    ci_lst[n] = [ci_lower, ci_upper]
+    ci_lst[n, :] = [ci_lower, ci_upper]
 
   Xprime_X_true = np.mean(Xprime_X_lst, axis=0) * grid_size
   Xprime_X_inv_true = np.linalg.inv(Xprime_X_true)
   Xq_true = np.mean(Xq_lst, axis=0)
   beta_true = np.dot(Xprime_X_inv_true, Xq_true)
   beta1_true = beta_true[1]
-  contains_truth = np.multiply(beta1_true < ci_lst[:, 1], beta1_true  > ci_lst[:, 0])
+  contains_truth = np.multiply(beta1_true < ci_lst[:, 1], beta1_true > ci_lst[:, 0])
   coverage = np.mean(contains_truth)
 
   # c2_population_var_hat = np.var(c_dbn[:, 1])
