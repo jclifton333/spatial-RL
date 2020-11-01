@@ -340,6 +340,7 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
   identity_root_cov = np.eye(grid_size)
   beta1_hat_dbn = np.zeros((0, 2))
   Xprime_X_lst = np.zeros((n_rep, 2, 2))
+  Xq_lst = np.zeros((n_rep, 2))
   coverage = 0.
   chat_var_chat_var_lst= []
   ci_lst = np.zeros((n_rep, 2))
@@ -379,13 +380,14 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
     q1 = X1[:, 0] + V_hat
 
     # 1-step q-function
-    Xq = np.dot(X[:-1, :].T, q1)
+    Xq = np.dot(X0.T, q1)
     beta1_hat = np.dot(Xprime_X_inv, Xq)
     beta1_hat_dbn = np.vstack((beta1_hat_dbn, beta1_hat))
     Xprime_X_lst[n, :] = Xprime_X / grid_size
+    Xq_lst[n, :] = Xq
 
     # Estimate covariance and construct CI
-    X_times_q = np.multiply(X[:-1, :], q1[:, np.newaxis])
+    X_times_q = np.multiply(X0, q1[:, np.newaxis])
     X_times_q = X_times_q - X_times_q.mean(axis=0)
     inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_q, spatiotemporal_kernel_weights)
     cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
@@ -395,8 +397,12 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
     ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
     ci_lst[n] = [ci_lower, ci_upper]
 
-  beta1_true = np.mean(beta1_hat_dbn, 0)
-  contains_truth = np.multiply(beta1_true[1] < ci_lst[:, 1], beta1_true[1]  > ci_lst[:, 0])
+  Xprime_X_true = np.mean(Xprime_X_lst, axis=0) * grid_size
+  Xprime_X_inv_true = np.linalg.inv(Xprime_X_true)
+  Xq_true = np.mean(Xq_lst, axis=0)
+  beta_true = np.dot(Xprime_X_inv_true, Xq_true)
+  beta1_true = beta_true[1]
+  contains_truth = np.multiply(beta1_true < ci_lst[:, 1], beta1_true  > ci_lst[:, 0])
   coverage = np.mean(contains_truth)
 
   # c2_population_var_hat = np.var(c_dbn[:, 1])
@@ -586,8 +592,9 @@ if __name__ == "__main__":
   kernel_name = 'block'
   beta = 1.0
   heteroskedastic = True
-  bandwidth = 3
-  for grid_size in [25, 64, 100, 225, 400]:
+  grid_size = 1600
+  bandwidths = np.linspace(10, grid_size / 3, 5)
+  for bandwidth in bandwidths:
     beta1_hat_dbn, Xprime_X_lst, coverage = \
       backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
                           time_horizon=5)
