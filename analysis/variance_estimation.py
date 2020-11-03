@@ -312,9 +312,17 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
-def backup_sampling_dbn_rep(seed, identity_root_cov, time_horizon, n_cutoff, root_cov, c1, c2,
-                            spatiotemporal_kernel_weights):
+def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, N, c1, c2):
+
   np.random.seed(seed)
+  pairwise_distances = get_pairwise_distances(grid_size)
+  spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
+  temporal_kernel_weights = np.array([np.array([kernel(np.abs(t1 - t2)) for t1 in range(time_horizon)])
+                                      for t2 in range(time_horizon)])
+  _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
+  identity_root_cov = np.eye(grid_size)
+  spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, grid_size,
+                                                            N)
 
   y = np.zeros(0)
   X = np.zeros((0, 2))
@@ -374,35 +382,23 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
 
   # Construct kernel weight matrix
   if kernel_name == 'bartlett':
-    kernel = lambda x: bartlett(x, bandwidth)
+    kernel = partial(bartlett, bandwidth=bandwidth)
   elif kernel_name == 'delta':
-    kernel = lambda x: x == 0
+    def kernel(x): return 0
   elif kernel_name == 'block':
-    kernel = lambda x: block(x, bandwidth)
-
-  pairwise_distances = get_pairwise_distances(grid_size)
-  spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
-  temporal_kernel_weights = np.array([np.array([kernel(np.abs(t1 - t2)) for t1 in range(time_horizon)])
-                                      for t2 in range(time_horizon)])
+    kernel = partial(block, bandwidth=bandwidth)
 
   n_cutoff = int((1 - pct_treat) * grid_size)
-  _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
-  identity_root_cov = np.eye(grid_size)
   beta1_hat_dbn = np.zeros((0, 2))
   Xprime_X_lst = np.zeros((n_rep, 2, 2))
   Xq_lst = np.zeros((n_rep, 2))
-  coverage = 0.
-  chat_var_chat_var_lst= []
   ci_lst = np.zeros((n_rep, 2))
   N = time_horizon * grid_size
-  spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, grid_size,
-                                                            N)
 
   # Distribute
-  pool = mp.Pool(processes=int(mp.cpu_count() / 2))
-  backup_sampling_dbn_partial = partial(backup_sampling_dbn_rep, identity_root_cov=identity_root_cov,
-                                        time_horizon=time_horizon, n_cutoff=n_cutoff, root_cov=root_cov, c1=c1, c2=c2,
-                                        spatiotemporal_kernel_weights=spatiotemporal_kernel_weights)
+  pool = mp.Pool(processes=4)
+  backup_sampling_dbn_partial = partial(backup_sampling_dbn_rep, time_horizon=time_horizon, n_cutoff=n_cutoff,
+                                        kernel=kernel, beta1=beta1, beta2=beta2, N=N, c1=c2, c2=c2)
   results = pool.map(backup_sampling_dbn_partial, range(n_rep))
 
   for n, res in enumerate(results):
@@ -442,11 +438,11 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
 
   # Construct kernel weight matrix
   if kernel_name == 'bartlett':
-    kernel = lambda x: bartlett(x, bandwidth)
+    kernel = partial(bartlett, bandwidth=bandwidth)
   elif kernel_name == 'delta':
-    kernel = lambda x: x == 0
+    def kernel(x): return 0
   elif kernel_name == 'block':
-    kernel = lambda x: block(x, bandwidth)
+    kernel = partial(block, bandwidth=bandwidth)
 
   pairwise_distances = get_pairwise_distances(grid_size)
   spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
@@ -611,8 +607,8 @@ if __name__ == "__main__":
   kernel_name = 'block'
   beta = 1.0
   heteroskedastic = True
-  grid_size = 1600
-  bandwidths = np.linspace(10, grid_size / 3, 5)
+  grid_size = 4900
+  bandwidths = np.linspace(5, 30, 10)
   for bandwidth in bandwidths:
     beta1_hat_dbn, Xprime_X_lst, coverage = \
       backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
