@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import scipy.linalg as la
 from scipy.stats import normaltest
@@ -145,14 +146,16 @@ def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights
     for j in range(N):
       y_j = Y_centered[j]
       kernel_weight = spatiotemporal_kernel_weights[i, j]
-      weighted_outer = np.outer(y_i, y_j)*kernel_weight
-      cov_hat += weighted_outer / N
+      for k_i in range(p):
+        for k_j in range(p):
+          cov_hat[k_i, k_j] += y_i[k_i]*y_j[k_j]*kernel_weight / N
   return cov_hat
 
 
-def get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, L, N, combination_function=None):
-  if combination_function is None:
-    combination_function = lambda x, y: np.min((x, y))
+@njit
+def get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, L, N):
+  # if combination_function is None:
+  #   combination_function = lambda x, y: np.min((x, y))
   spatiotemporal_kernel_weights = np.zeros((N, N))
   for i in range(N):
     t_i = i // L
@@ -162,7 +165,8 @@ def get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, L
       l_j = j % L
       spatial_kernel = spatial_kernel_weights[l_i, l_j]
       temporal_kernel = temporal_kernel_weights[t_i, t_j]
-      kernel_weight = combination_function(spatial_kernel, temporal_kernel)
+      # kernel_weight = combination_function(spatial_kernel, temporal_kernel)
+      kernel_weight = spatial_kernel + temporal_kernel
       spatiotemporal_kernel_weights[i, j] = kernel_weight
   return spatiotemporal_kernel_weights
 
@@ -396,10 +400,13 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
   N = time_horizon * grid_size
 
   # Distribute
-  pool = mp.Pool(processes=4)
   backup_sampling_dbn_partial = partial(backup_sampling_dbn_rep, time_horizon=time_horizon, n_cutoff=n_cutoff,
                                         kernel=kernel, beta1=beta1, beta2=beta2, N=N, c1=c2, c2=c2)
-  results = pool.map(backup_sampling_dbn_partial, range(n_rep))
+  if n_rep == 1:
+    results = [backup_sampling_dbn_partial(0)]
+  else:
+    pool = mp.Pool(processes=4)
+    results = pool.map(backup_sampling_dbn_partial, range(n_rep))
 
   for n, res in enumerate(results):
     ci_lower = res['ci_lower']
@@ -601,17 +608,22 @@ def test_alpha_mixing():
 
 
 if __name__ == "__main__":
-  # ToDo: check whether asymptotic normality is affected by heteroskedasticity
-  # ToDo: numerically check whether, conditional on (x_indicator_t, x_indicator_tp1), dependence between residuals at
-  # ToDo: (x_t^l, x_{tp1}^l') decreases quickly with d(l, l')
+  # ToDo: write big matrices to file so that they don't have to be re-computed (and that they can work with
+  # ToDo: multiprocessing?
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--n_rep', type=int)
+  parser.add_argument('--grid_size', type=int)
+  args = parser.parse_args()
+
   kernel_name = 'block'
   beta = 1.0
   heteroskedastic = True
-  grid_size = 4900
+  grid_size = args.grid_size
   bandwidths = np.linspace(5, 30, 10)
   for bandwidth in bandwidths:
     beta1_hat_dbn, Xprime_X_lst, coverage = \
-      backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
+      backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep, pct_treat=0.1,
                           time_horizon=5)
 
     print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
