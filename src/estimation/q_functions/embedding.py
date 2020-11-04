@@ -30,9 +30,9 @@ class GGCN(nn.Module):
   """
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
   """
-  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None):
+  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False):
     super(GGCN, self).__init__()
-    if neighbor_subset_limit > 1:
+    if neighbor_subset_limit > 1 and recursive:
       self.g1 = nn.Linear(2*J, 100)
       self.g2 = nn.Linear(100, J)
     self.h1 = nn.Linear(nfeat, 100)
@@ -41,6 +41,7 @@ class GGCN(nn.Module):
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
     self.samples_per_k = samples_per_k
+    self.recursive = recursive
 
   def h(self, b):
     b = self.h1(b)
@@ -55,6 +56,47 @@ class GGCN(nn.Module):
     return bvec
 
   def forward(self, X_, adjacency_lst):
+    if self.recursive:
+      return self.forward_recursive(X_, adjacency_lst)
+    else:
+      return self.forward_simple(X_, adjacency_lst)
+
+  def forward_simple(self, X_, adjacency_lst):
+    # Average a function of permutations of all neighbors, rather than all subsets of all neighbors
+
+    L = X_.shape[0]
+    final_ = torch.tensor([])
+    X_ = torch.tensor(X_).float()
+    for l in range(L):
+      neighbors_l = adjacency_lst[l] + [l]
+      N_l = len(neighbors_l)
+
+      def fk(k):
+        permutations_k = list(permutations(neighbors_l, int(k)))
+        if self.samples_per_k is not None:
+          permutations_k_ixs = np.random.choice(len(permutations_k), size=self.samples_per_k, replace=False)
+          permutations_k = [permutations_k[ix] for ix in permutations_k_ixs]
+        result = torch.zeros(self.J)
+        for perm in permutations_k:
+          x_l1 = torch.tensor(X_[perm[0], :])
+          h_val = self.h(x_l1)
+          result += h_val / len(permutations_k)
+        return result
+
+      if N_l > 1:
+        x_l = X_[l, :]
+        E_l = torch.cat((x_l, fk(N_l)))
+      else:
+        E_l = fk(N_l)
+      final_l = self.final(E_l)
+      final_ = torch.cat((final_, final_l))
+
+    params = list(self.parameters())
+    yhat = F.sigmoid(final_)
+    return yhat
+
+
+  def forward_recursive(self, X_, adjacency_lst):
     L = X_.shape[0]
     final_ = torch.tensor([])
     X_ = torch.tensor(X_).float()
@@ -95,14 +137,15 @@ class GGCN(nn.Module):
 
 
 def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=5, verbose=False,
-               neighbor_subset_limit=2, samples_per_k=None):
+               neighbor_subset_limit=2, samples_per_k=None, recursive=False):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
   T = len(X_list)
   X_list = [torch.FloatTensor(X) for X in X_list]
   y_list = [torch.FloatTensor(y) for y in y_list]
-  model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k)
+  model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
+               recursive=recursive)
   optimizer = optim.Adam(model.parameters(), lr=0.01)
 
   # Train
@@ -232,26 +275,40 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200, nhid=10, verbose=False
     y1 = np.exp(y_[:, 1])
     return y1
 
+  if verbose:
+    final_acc_train = 0.
+    for X, y in zip(X_list, y_list):
+      output = model_wrapper(X)
+      acc = ((output > 0.5) == y.detach().numpy()).mean()
+      final_acc_train += acc / T
+    print('final_acc_train: {:.4f}'.format(final_acc_train))
+
   return embedding_wrapper, model_wrapper
 
 
 if __name__ == "__main__":
   # Test
-  adjacency_mat = lattice(16)
-  adjacency_list = [[j for j in range(16) if adjacency_mat[i, j]] for i in range(16)]
+  grid_size = 100
+  adjacency_mat = lattice(grid_size)
+  adjacency_list = [[j for j in range(grid_size) if adjacency_mat[i, j]] for i in range(grid_size)]
   neighbor_counts = adjacency_mat.sum(axis=1)
   n = 2
-  X_list = np.array([np.random.normal(size=(16, 2)) for _ in range(2)])
-  y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(16)]) for X in X_list])
+  n_epoch = 20
+  X_list = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(2)])
+  y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
   y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
 
   print('Fitting gcn')
-  _, predictor = learn_gcn(X_list, y_list, adjacency_mat)
+  _, predictor = learn_gcn(X_list, y_list, adjacency_mat, n_epoch=n_epoch, verbose=True)
   predictor(X_list[0])
 
   print('Fitting ggcn')
-  learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=5, verbose=False,
-             neighbor_subset_limit=2, samples_per_k=None)
+  learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=100, batch_size=5, verbose=True,
+             neighbor_subset_limit=2, samples_per_k=5, recursive=False)
+
+  mean = np.mean(y_list)
+  baseline = np.max((mean, 1 - mean))
+  print(f'baseline\n{mean}')
 
 
 
