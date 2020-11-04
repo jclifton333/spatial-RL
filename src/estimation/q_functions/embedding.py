@@ -32,10 +32,12 @@ class GGCN_multi(nn.Module):
     # ToDo: different J for each neighbor_subset_size?
 
     super(GGCN, self).__init__()
-    self.input_layers = []
+    self.input_layers_1 = []
+    self.input_layers_2 = []
     self.neighbor_subset_limit = neighbor_subset_limit
     for neighbor_subset_size in range(2, neighbor_subset_limit+1):
-      self.input_layers.append(nn.Linear(nfeat*neighbor_subset_size, J))
+      self.input_layers_1.append(nn.Linear(nfeat*neighbor_subset_size, J))
+      self.input_layers_2.append(nn.Linear(J, J))
     self.h1 = nn.Linear(J*neighbor_subset_limit, 1)
     self.samples_per_k = samples_per_k
     self.J = J
@@ -62,7 +64,9 @@ class GGCN_multi(nn.Module):
         for permutation in permutations_k:
           x_permutation = X_[permutation, :]
           x_permutation = np.hstack(x_permutation)
-          embedding_permutation = self.input_layers[neighbor_subset_size-1](x_permutation)
+          embedding_permutation = self.input_layers_1[neighbor_subset_size-1](x_permutation)
+          embedding_permutation = F.relu(embedding_permutation)
+          embedding_permutation = self.input_layers_2[neighbor_subset_size-1](embedding_permutation)
           embedding_k += embedding_permutation / len(permutations_k)
         full_embedding = torch.cat(full_embedding, embedding_k)
     E = self.h(full_embedding)
@@ -190,8 +194,9 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
   T = len(X_list)
   X_list = [torch.FloatTensor(X) for X in X_list]
   y_list = [torch.FloatTensor(y) for y in y_list]
-  model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
-               recursive=recursive)
+  # model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
+  #              recursive=recursive)
+  model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k)
   optimizer = optim.Adam(model.parameters(), lr=0.01)
 
   # Train
@@ -339,7 +344,7 @@ if __name__ == "__main__":
   adjacency_list = [[j for j in range(grid_size) if adjacency_mat[i, j]] for i in range(grid_size)]
   neighbor_counts = adjacency_mat.sum(axis=1)
   n = 2
-  n_epoch = 100
+  n_epoch = 500
   X_list = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(2)])
   y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
   y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
@@ -349,7 +354,7 @@ if __name__ == "__main__":
   predictor(X_list[0])
 
   print('Fitting ggcn')
-  learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=20, batch_size=5, verbose=True,
+  learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=100, batch_size=5, verbose=True,
              neighbor_subset_limit=2, samples_per_k=5, recursive=False)
 
   oracle_mean = 0.
