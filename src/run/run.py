@@ -16,6 +16,7 @@ sys.path.append(pkg_dir)
 from src.environments import generate_network
 from src.policies.prefit_policies import generate_two_step_sis_data
 from src.run.Simulator import Simulator
+import torch
 
 VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola', 'ContinuousGrav']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step', 'two_step',
@@ -91,4 +92,5 @@ if __name__ == '__main__':
     if args.save_features == 'True':
       raise ValueError("Must have number_of_replicates=1 if save_features==True")
     else:
+      torch.multiprocessing.set_start_method("spawn")
       Sim.run()

@@ -8,7 +8,8 @@ import numpy as np
 import time
 import datetime
 import yaml
-import multiprocessing as mp
+# import multiprocessing as mp
+import torch.multiprocessing as mp
 import pdb
 
 # Hack bc python imports are stupid

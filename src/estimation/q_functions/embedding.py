@@ -10,15 +10,16 @@ from itertools import permutations
 from src.environments.generate_network import lattice
 from scipy.optimize import minimize
 from scipy.special import expit
-try:
-  import torch
-  import torch.nn.functional as F
-  import torch.optim as optim
-  import torch.nn as nn
-  from pygcn.utils import accuracy
-  from pygcn.models import GCN
-except ModuleNotFoundError:
-  print("torch not found")
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+import torch.nn as nn
+from pygcn.utils import accuracy
+from pygcn.models import GCN
+if torch.cuda.is_available():
+  dev = "cuda:0"
+else:
+  dev = "cpu"
 
 import pdb
 
