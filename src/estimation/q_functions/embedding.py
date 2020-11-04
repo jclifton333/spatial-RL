@@ -244,9 +244,14 @@ if __name__ == "__main__":
   X_list = np.array([np.random.normal(size=(16, 2)) for _ in range(2)])
   y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(16)]) for X in X_list])
   y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
+
+  print('Fitting gcn')
   _, predictor = learn_gcn(X_list, y_list, adjacency_mat)
   predictor(X_list[0])
 
+  print('Fitting ggcn')
+  learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=5, verbose=False,
+             neighbor_subset_limit=2, samples_per_k=None)
 
 
 
