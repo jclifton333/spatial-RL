@@ -86,7 +86,7 @@ class GGCN(nn.Module):
     # self.h1 = nn.Linear(nfeat, 1)
     self.h1 = nn.Linear(nfeat, 10)
     self.h2 = nn.Linear(10, J)
-    self.final = nn.Linear(J + 2*(neighbor_subset_limit > 1), 1)
+    self.final = nn.Linear(J, 1)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
     self.samples_per_k = samples_per_k
@@ -149,21 +149,20 @@ class GGCN(nn.Module):
   def forward_recursive_vec(self, X_, adjacency_lst):
     L = X_.shape[0]
     X_ = torch.tensor(X_).float()
-    # ToDo: vectorize
 
     # Collect permutations
     permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
-    where_k_neighbors = {k: [] for k in range(2, self.neighbor_subset_limit)}
+    where_k_neighbors = {k: [] for k in range(2, self.neighbor_subset_limit + 1)}
     for l in range(L):
       neighbors_l = adjacency_lst[l] + [l]
       N_l = np.min((len(neighbors_l), self.neighbor_subset_limit))
-      for k in range(2, N_l):
+      for k in range(2, N_l + 1):
         permutations_k = list(permutations(neighbors_l, int(k)))
         where_k_neighbors[k].append(l)
         if self.samples_per_k is not None:
           permutations_k_ixs = np.random.choice(len(permutations_k), size=self.samples_per_k, replace=False)
           permutations_k = [permutations_k[ix] for ix in permutations_k_ixs]
-          permutations_all[k][l, k, :] = permutations_k
+          permutations_all[k][l, :] = np.array(permutations_k).T
 
     def fk(b, k):
       if k == 1:
@@ -174,13 +173,13 @@ class GGCN(nn.Module):
         where_k_neighbors_ = where_k_neighbors[k]
         for perm_ix in range(self.samples_per_k):
           permutations_k_perm_ix = permutations_k[:, :, perm_ix]
-          # ToDo: check this part, not sure I understand what's goin on
           # ToDo: indices in where_k_neighbors_ will be wrong for k < neighbor_subset_limit, because X_ shrinks
           X_1 = torch.tensor(X_[permutations_k_perm_ix[where_k_neighbors_, 0]])
-          X_lst = torch.tensor(X_[permutations_k_perm_ix[where_k_neighbors_, 1:]])
+          X_lst = np.column_stack([X_[permutations_k_perm_ix[where_k_neighbors_, ix]] for ix in range(1, k)])
+          X_lst = torch.tensor(X_lst)
           fkm1_val = fk(X_lst, k-1)
           h_val = self.h(X_1)
-          h_val_cat_fkm1_val = torch.cat((h_val, fkm1_val))
+          h_val_cat_fkm1_val = torch.cat((h_val, fkm1_val), dim=1)
           g_val = self.g(h_val_cat_fkm1_val)
           result += g_val / len(permutations_k)
         return result
