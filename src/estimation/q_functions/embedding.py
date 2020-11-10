@@ -108,7 +108,8 @@ class GGCN(nn.Module):
 
   def forward(self, X_, adjacency_lst):
     if self.recursive:
-      return self.forward_recursive(X_, adjacency_lst)
+      # return self.forward_recursive(X_, adjacency_lst)
+      return self.forward_recursive_vec(X_, adjacency_lst)
     else:
       return self.forward_simple(X_, adjacency_lst)
 
@@ -147,12 +148,11 @@ class GGCN(nn.Module):
 
   def forward_recursive_vec(self, X_, adjacency_lst):
     L = X_.shape[0]
-    final_ = torch.tensor([])
     X_ = torch.tensor(X_).float()
     # ToDo: vectorize
 
     # Collect permutations
-    permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit)}
+    permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
     where_k_neighbors = {k: [] for k in range(2, self.neighbor_subset_limit)}
     for l in range(L):
       neighbors_l = adjacency_lst[l] + [l]
@@ -167,15 +167,17 @@ class GGCN(nn.Module):
 
     def fk(b, k):
       if k == 1:
-        return self.h(b[0])
+        return self.h(b)
       else:
         result = torch.zeros((L, self.J))
         permutations_k = permutations_all[k]
+        where_k_neighbors_ = where_k_neighbors[k]
         for perm_ix in range(self.samples_per_k):
           permutations_k_perm_ix = permutations_k[:, :, perm_ix]
-          # ToDo: check this part, not sure I understand what's goin
-          X_1 = torch.tensor(X_[permutations_k_perm_ix[:, 0]])
-          X_lst = torch.tensor(X_[permutations_k_perm_ix[:, 1:]])
+          # ToDo: check this part, not sure I understand what's goin on
+          # ToDo: indices in where_k_neighbors_ will be wrong for k < neighbor_subset_limit, because X_ shrinks
+          X_1 = torch.tensor(X_[permutations_k_perm_ix[where_k_neighbors_, 0]])
+          X_lst = torch.tensor(X_[permutations_k_perm_ix[where_k_neighbors_, 1:]])
           fkm1_val = fk(X_lst, k-1)
           h_val = self.h(X_1)
           h_val_cat_fkm1_val = torch.cat((h_val, fkm1_val))
@@ -183,15 +185,8 @@ class GGCN(nn.Module):
           result += g_val / len(permutations_k)
         return result
 
-      if N_l > 1:
-        x_l = X_[l, :]
-        E_l = torch.cat((x_l, fk(X_[neighbors_l, :], N_l)))
-      else:
-        E_l = fk([X_[l, :]], N_l)
-      final_l = self.final(E_l)
-      final_ = torch.cat((final_, final_l))
-
-    params = list(self.parameters())
+    E = fk(X_, self.neighbor_subset_limit)
+    final_ = self.final(E)
     yhat = F.sigmoid(final_)
     return yhat
 
@@ -393,12 +388,12 @@ if __name__ == "__main__":
   # ToDo: see how much ggcn speeds up when we fix the binary relation g, rather than learn it
 
   # Test
-  grid_size = 1000
+  grid_size = 100
   adjacency_mat = lattice(grid_size)
   adjacency_list = [[j for j in range(grid_size) if adjacency_mat[i, j]] for i in range(grid_size)]
   neighbor_counts = adjacency_mat.sum(axis=1)
   n = 2
-  n_epoch = 1
+  n_epoch = 10
   X_list = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(2)])
   y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
   y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
@@ -409,7 +404,7 @@ if __name__ == "__main__":
 
   print('Fitting ggcn')
   learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=10, batch_size=10, verbose=True,
-             neighbor_subset_limit=1, samples_per_k=1, recursive=True)
+             neighbor_subset_limit=2, samples_per_k=1, recursive=True)
 
   oracle_mean = 0.
   for yp, y in zip(y_probs_list, y_list):
