@@ -81,29 +81,36 @@ class GGCN(nn.Module):
   def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1 and recursive:
-      self.g1 = nn.Linear(2*J, 10)
-      self.g2 = nn.Linear(10, J)
+      self.g1 = nn.Linear(2*J, J)
+      self.g2 = nn.Linear(J, J)
     # self.h1 = nn.Linear(nfeat, 1)
-    self.h1 = nn.Linear(nfeat, 10)
-    self.h2 = nn.Linear(10, J)
-    self.final = nn.Linear(J, 1)
+    self.h1 = nn.Linear(nfeat, J)
+    self.h2 = nn.Linear(J, J)
+    self.final1 = nn.Linear(J+2, J)
+    self.final2 = nn.Linear(J, 1)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
     self.samples_per_k = samples_per_k
     self.recursive = recursive
 
+  def final(self, X_):
+    E = self.final1(X_)
+    E = F.relu(E)
+    E = self.final2(E)
+    E = F.relu(E)
+    return E
+
   def h(self, b):
-    # # ToDo: using linear architecture for debugging
     b = self.h1(b)
-    b = F.relu(b)
-    b = self.h2(b)
+    # b = F.relu(b)
+    # b = self.h2(b)
     return b
 
   def g(self, bvec):
     bvec = self.g1(bvec)
-    bvec = F.relu(bvec)
-    bvec = self.g2(bvec)
-    bvec = F.relu(bvec)
+    # bvec = F.relu(bvec)
+    # bvec = self.g2(bvec)
+    # bvec = F.relu(bvec)
     return bvec
 
   def forward(self, X_, adjacency_lst):
@@ -162,7 +169,7 @@ class GGCN(nn.Module):
         if self.samples_per_k is not None:
           permutations_k_ixs = np.random.choice(len(permutations_k), size=self.samples_per_k, replace=False)
           permutations_k = [permutations_k[ix] for ix in permutations_k_ixs]
-          permutations_all[k][l, :] = np.array(permutations_k).T
+        permutations_all[k][l, :] = np.array(permutations_k).T
 
     def fk(b, k):
       if k == 1:
@@ -180,11 +187,14 @@ class GGCN(nn.Module):
           fkm1_val = fk(X_lst, k-1)
           h_val = self.h(X_1)
           h_val_cat_fkm1_val = torch.cat((h_val, fkm1_val), dim=1)
-          g_val = self.g(h_val_cat_fkm1_val)
+          # # ToDo: uncomment to learn binary relation instead of fixing to addition
+          # g_val = self.g(h_val_cat_fkm1_val)
+          g_val = h_val + fkm1_val
           result += g_val / len(permutations_k)
         return result
 
     E = fk(X_, self.neighbor_subset_limit)
+    E = torch.cat((X_, E), dim=1)
     final_ = self.final(E)
     yhat = F.sigmoid(final_)
     return yhat
@@ -244,7 +254,7 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
   #              recursive=recursive)
   model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
                recursive=recursive)
-  optimizer = optim.Adam(model.parameters(), lr=0.001)
+  optimizer = optim.Adam(model.parameters(), lr=0.01)
 
   # Train
   for epoch in range(n_epoch):
@@ -257,6 +267,7 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
       optimizer.zero_grad()
       output = model(X, adjacency_list)
       criterion = nn.BCELoss()
+      pdb.set_trace()
       loss_train = criterion(output, y)
       acc = ((output > 0.5) == y).float().mean()
       loss_train.backward()
@@ -384,17 +395,17 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200, nhid=10, verbose=False
 
 
 if __name__ == "__main__":
-  # ToDo: see how much ggcn speeds up when we fix the binary relation g, rather than learn it
-
   # Test
-  grid_size = 100
+  grid_size = 400
   adjacency_mat = lattice(grid_size)
   adjacency_list = [[j for j in range(grid_size) if adjacency_mat[i, j]] for i in range(grid_size)]
   neighbor_counts = adjacency_mat.sum(axis=1)
   n = 2
-  n_epoch = 10
+  n_epoch = 200
   X_list = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(2)])
-  y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
+  # ToDo: simpler model for debugging
+  y_probs_list = np.array([expit(X.sum(axis=1)) for X in X_list])
+  # y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
   y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
 
   # print('Fitting gcn')
@@ -403,7 +414,7 @@ if __name__ == "__main__":
 
   print('Fitting ggcn')
   learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=10, batch_size=10, verbose=True,
-             neighbor_subset_limit=2, samples_per_k=1, recursive=True)
+             neighbor_subset_limit=1, samples_per_k=6, recursive=True)
 
   oracle_mean = 0.
   for yp, y in zip(y_probs_list, y_list):
