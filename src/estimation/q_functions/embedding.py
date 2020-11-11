@@ -14,6 +14,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
+from torch.autograd import Variable
 from pygcn.utils import accuracy
 from pygcn.models import GCN
 if torch.cuda.is_available():
@@ -63,6 +64,7 @@ class GGCN_multi(nn.Module):
         embedding_k = torch.zeros(self.J)
         for permutation in permutations_k:
           x_permutation = X_[permutation, :]
+          from torch.autograd import Variable
           x_permutation = np.hstack(x_permutation)
           embedding_permutation = self.input_layers_1[neighbor_subset_size-1](x_permutation)
           embedding_permutation = F.relu(embedding_permutation)
@@ -87,7 +89,7 @@ class GGCN(nn.Module):
     self.h1 = nn.Linear(nfeat, J)
     self.h2 = nn.Linear(J, J)
     self.final1 = nn.Linear(J+2, J)
-    self.final2 = nn.Linear(J, 1)
+    self.final2 = nn.Linear(J, 2)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
     self.samples_per_k = samples_per_k
@@ -97,20 +99,19 @@ class GGCN(nn.Module):
     E = self.final1(X_)
     E = F.relu(E)
     E = self.final2(E)
-    E = F.relu(E)
     return E
 
   def h(self, b):
     b = self.h1(b)
-    # b = F.relu(b)
-    # b = self.h2(b)
+    b = F.relu(b)
+    b = self.h2(b)
     return b
 
   def g(self, bvec):
     bvec = self.g1(bvec)
-    # bvec = F.relu(bvec)
-    # bvec = self.g2(bvec)
-    # bvec = F.relu(bvec)
+    bvec = F.relu(bvec)
+    bvec = self.g2(bvec)
+    bvec = F.relu(bvec)
     return bvec
 
   def forward(self, X_, adjacency_lst):
@@ -155,7 +156,7 @@ class GGCN(nn.Module):
 
   def forward_recursive_vec(self, X_, adjacency_lst):
     L = X_.shape[0]
-    X_ = torch.tensor(X_).float()
+    X_ = torch.tensor(X_)
 
     # Collect permutations
     permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
@@ -195,14 +196,13 @@ class GGCN(nn.Module):
 
     E = fk(X_, self.neighbor_subset_limit)
     E = torch.cat((X_, E), dim=1)
-    final_ = self.final(E)
-    yhat = F.sigmoid(final_)
+    yhat = self.final(E)
     return yhat
 
   def forward_recursive(self, X_, adjacency_lst):
     L = X_.shape[0]
     final_ = torch.tensor([])
-    X_ = torch.tensor(X_).float()
+    X_ = torch.tensor(X_)
     # ToDo: vectorize
     for l in range(L):
       neighbors_l = adjacency_lst[l] + [l]
@@ -255,6 +255,8 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
   model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
                recursive=recursive)
   optimizer = optim.Adam(model.parameters(), lr=0.01)
+  # criterion = nn.BCELoss()
+  criterion = nn.CrossEntropyLoss()
 
   # Train
   for epoch in range(n_epoch):
@@ -265,28 +267,32 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
     for X, y in zip(X_batch, y_batch):
       model.train()
       optimizer.zero_grad()
+      X = Variable(X)
+      y = Variable(y).long()
       output = model(X, adjacency_list)
-      criterion = nn.BCELoss()
-      pdb.set_trace()
       loss_train = criterion(output, y)
-      acc = ((output > 0.5) == y).float().mean()
+      yhat = F.softmax(output)[:, 1]
+      acc = ((yhat > 0.5) == y).float().mean()
       loss_train.backward()
       optimizer.step()
       avg_acc_train += acc / batch_size
 
     # Tracking diagnostics
-    # grad_norm = np.sqrt(np.sum([param.grad.data.norm(2).item()**2 for param in model.parameters()]))
+    grad_norm = np.sqrt(np.sum([param.grad.data.norm(2).item()**2 for param in model.parameters() if param.grad
+                                is not None]))
     yhat0 = model(X_list[0], adjacency_list)
 
     if verbose:
       print('Epoch: {:04d}'.format(epoch+1),
-            'acc_train: {:.4f}'.format(avg_acc_train))
+            'acc_train: {:.4f}'.format(avg_acc_train),
+            'grad_norm: {:.4f}'.format(grad_norm))
 
   if verbose:
     final_acc_train = 0.
     for X, y in zip(X_list, y_list):
       output = model(X, adjacency_list)
-      acc = ((output > 0.5) == y).float().mean()
+      yhat = F.softmax(output)[:, 1]
+      acc = ((yhat > 0.5) == y).float().mean()
       final_acc_train += acc / T
     print('final_acc_train: {:.4f}'.format(final_acc_train))
 
@@ -403,9 +409,7 @@ if __name__ == "__main__":
   n = 2
   n_epoch = 200
   X_list = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(2)])
-  # ToDo: simpler model for debugging
-  y_probs_list = np.array([expit(X.sum(axis=1)) for X in X_list])
-  # y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
+  y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
   y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
 
   # print('Fitting gcn')
@@ -413,8 +417,8 @@ if __name__ == "__main__":
   # predictor(X_list[0])
 
   print('Fitting ggcn')
-  learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=10, batch_size=10, verbose=True,
-             neighbor_subset_limit=1, samples_per_k=6, recursive=True)
+  learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=100, batch_size=2, verbose=True,
+             neighbor_subset_limit=2, samples_per_k=6, recursive=True)
 
   oracle_mean = 0.
   for yp, y in zip(y_probs_list, y_list):
