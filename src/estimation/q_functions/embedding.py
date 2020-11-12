@@ -155,6 +155,11 @@ class GGCN(nn.Module):
     return yhat
 
   def forward_recursive_vec(self, X_, adjacency_lst):
+    E = self.embed_recursive_vec(X_, adjacency_lst)
+    yhat = self.final(E)
+    return yhat
+
+  def embed_recursive_vec(self, X_, adjacency_lst):
     L = X_.shape[0]
     X_ = torch.tensor(X_)
 
@@ -196,8 +201,7 @@ class GGCN(nn.Module):
 
     E = fk(X_, self.neighbor_subset_limit)
     E = torch.cat((X_, E), dim=1)
-    yhat = self.final(E)
-    return yhat
+    return E
 
   def forward_recursive(self, X_, adjacency_lst):
     L = X_.shape[0]
@@ -295,6 +299,19 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
       acc = ((yhat > 0.5) == y).float().mean()
       final_acc_train += acc / T
     print('final_acc_train: {:.4f}'.format(final_acc_train))
+
+    def embedding_wrapper(X_):
+      X_ = torch.FloatTensor(X_)
+      E = model.embed_recursive_vec(X_, adjacency_list)
+      return E
+
+    def model_wrapper(X_):
+      X_ = torch.FloatTensor(X_)
+      logits = model.forward_recursive_vec(X_, adjacency_list)
+      yhat = F.softmax(logits)[:, 1]
+      return yhat
+
+    return embedding_wrapper, model_wrapper
 
 
 def embed_location(X_raw, neighbors_list, g, h, l, J):
