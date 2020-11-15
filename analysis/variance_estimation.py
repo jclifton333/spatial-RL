@@ -620,10 +620,13 @@ if __name__ == "__main__":
   beta = 1.0
   heteroskedastic = True
   grid_size = args.grid_size
-  bandwidths = np.linspace(5, 30, 10)
+  bandwidths = np.linspace(1, 50, 5)
   for bandwidth in bandwidths:
     beta1_hat_dbn, Xprime_X_lst, coverage = \
       backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep, pct_treat=0.1,
                           time_horizon=5)
-
+    # c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst = \
+    #   simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep,
+    #                              pct_treat=0.1,
+    #                              time_horizon=5)
     print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
