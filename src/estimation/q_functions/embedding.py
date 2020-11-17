@@ -15,8 +15,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Variable
-from pygcn.utils import accuracy
-from pygcn.models import GCN
+# from pygcn.utils import accuracy
+# from pygcn.models import GCN
 if torch.cuda.is_available():
   dev = "cuda:0"
 else:
@@ -80,7 +80,7 @@ class GGCN(nn.Module):
   """
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
   """
-  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False):
+  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1 and recursive:
       self.g1 = nn.Linear(2*J, J)
@@ -88,7 +88,8 @@ class GGCN(nn.Module):
     # self.h1 = nn.Linear(nfeat, 1)
     self.h1 = nn.Linear(nfeat, J)
     self.h2 = nn.Linear(J, J)
-    self.final1 = nn.Linear(J+2, J)
+    self.final1 = nn.Linear(J+nfeat, J)
+    self.dropout_final = nn.Dropout(p=dropout)
     self.final2 = nn.Linear(J, 2)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
@@ -97,6 +98,7 @@ class GGCN(nn.Module):
 
   def final(self, X_):
     E = self.final1(X_)
+    E = self.dropout_final(E)
     E = F.relu(E)
     E = self.final2(E)
     return E
@@ -167,7 +169,7 @@ class GGCN(nn.Module):
     permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
     where_k_neighbors = {k: [] for k in range(2, self.neighbor_subset_limit + 1)}
     for l in range(L):
-      neighbors_l = adjacency_lst[l] + [l]
+      neighbors_l = np.append(adjacency_lst[l], [l])
       N_l = np.min((len(neighbors_l), self.neighbor_subset_limit))
       for k in range(2, N_l + 1):
         permutations_k = list(permutations(neighbors_l, int(k)))
@@ -246,8 +248,48 @@ class GGCN(nn.Module):
     return yhat
 
 
-def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=5, verbose=False,
-               neighbor_subset_limit=2, samples_per_k=None, recursive=False):
+def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+              neighbor_subset_limit=2, samples_per_k=6, recursive=True):
+  """
+  Tune hyperparameters of GGCN; search over
+    lr
+    dropout
+  """
+
+  # ToDo: try random search before something fancier
+  def CV_objective(settings):
+    lr = settings['lr']
+    dropout = settings['dropout']
+
+    # ToDo: split X_list, y_list into train, val
+    model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
+             neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k, recursive=recursive, lr=lr,
+                     dropout=dropout)
+
+
+# ToDo: change name
+def learn_gccn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+             neighbor_subset_limit=2, samples_per_k=6, recursive=True):
+
+  model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
+                   neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k, recursive=recursive)
+
+  def embedding_wrapper(X_):
+    X_ = torch.FloatTensor(X_)
+    E = model.embed_recursive_vec(X_, adjacency_list).detach().numpy()
+    return E
+
+  def model_wrapper(X_):
+    X_ = torch.FloatTensor(X_)
+    logits = model.forward_recursive_vec(X_, adjacency_list)
+    yhat = F.softmax(logits)[:, 1].detach().numpy()
+    return yhat
+
+  return embedding_wrapper, model_wrapper
+
+
+def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+               neighbor_subset_limit=2, samples_per_k=6, recursive=True, lr=0.01, tol=0.01, dropout=0.0):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
@@ -257,8 +299,8 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
   # model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
   #              recursive=recursive)
   model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
-               recursive=recursive)
-  optimizer = optim.Adam(model.parameters(), lr=0.01)
+               recursive=recursive, dropout=dropout)
+  optimizer = optim.Adam(model.parameters(), lr=lr)
   # criterion = nn.BCELoss()
   criterion = nn.CrossEntropyLoss()
 
@@ -273,13 +315,18 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
       optimizer.zero_grad()
       X = Variable(X)
       y = Variable(y).long()
+
+      # Take gradient step
       output = model(X, adjacency_list)
       loss_train = criterion(output, y)
-      yhat = F.softmax(output)[:, 1]
-      acc = ((yhat > 0.5) == y).float().mean()
       loss_train.backward()
       optimizer.step()
-      avg_acc_train += acc / batch_size
+
+    # Evaluate loss
+    for X_, y_ in zip(X_list, y_list):
+      yhat = F.softmax(model(X_, adjacency_list))[:, 1]
+      acc = ((yhat > 0.5) == y).float().mean()
+      avg_acc_train += acc / T
 
     # Tracking diagnostics
     grad_norm = np.sqrt(np.sum([param.grad.data.norm(2).item()**2 for param in model.parameters() if param.grad
@@ -291,6 +338,14 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
             'acc_train: {:.4f}'.format(avg_acc_train),
             'grad_norm: {:.4f}'.format(grad_norm))
 
+    # Break if change in accuracy is sufficiently small
+    if epoch > 0:
+      relative_acc_diff = np.abs(prev_avg_acc_train - avg_acc_train) / avg_acc_train
+      if relative_acc_diff < tol:
+        break
+
+    prev_avg_acc_train = avg_acc_train
+
   if verbose:
     final_acc_train = 0.
     for X, y in zip(X_list, y_list):
@@ -300,18 +355,8 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=200, nhid=10, batch_size=
       final_acc_train += acc / T
     print('final_acc_train: {:.4f}'.format(final_acc_train))
 
-    def embedding_wrapper(X_):
-      X_ = torch.FloatTensor(X_)
-      E = model.embed_recursive_vec(X_, adjacency_list)
-      return E
 
-    def model_wrapper(X_):
-      X_ = torch.FloatTensor(X_)
-      logits = model.forward_recursive_vec(X_, adjacency_list)
-      yhat = F.softmax(logits)[:, 1]
-      return yhat
-
-    return embedding_wrapper, model_wrapper
+  return model
 
 
 def embed_location(X_raw, neighbors_list, g, h, l, J):

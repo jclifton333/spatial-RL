@@ -8,7 +8,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 import networkx as nx
 import pdb
-from ..estimation.q_functions.embedding import learn_gcn
+from ..estimation.q_functions.embedding import learn_gcn, learn_ggcn
 
 # Create ABC base class compatible with Python 2.7 and 3.x
 ABC = ABCMeta('ABC', (object, ), {'__slots__': ()})
@@ -121,8 +121,8 @@ class SpatialDisease(ABC):
     pass
 
   def fit_embedding(self):
-    # ToDo: Assuming semi-supervised learning with binary target, using GCN
-    self.embedder, self.predictor = learn_gcn(self.X_raw, self.y, self.adjacency_matrix)
+    # self.embedder, self.predictor = learn_gcn(self.X_raw, self.y, self.adjacency_matrix)
+    self.embedder, self.predictor = learn_ggcn(self.X_raw, self.y, self.adjacency_list)
 
   def step(self, a, eta=None):
     """

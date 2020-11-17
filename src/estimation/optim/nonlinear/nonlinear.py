@@ -1,4 +1,4 @@
-import xpress as xp
+# import xpress as xp
 import numpy as np
 from ..quad_approx.fit_quad_approx import get_quadratic_program_from_q
 import pdb
