@@ -255,16 +255,35 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
     lr
     dropout
   """
+  VAL_PCT = 0.3
+  T = len(X_list)
+  TRAIN_NUM = int((1 - VAL_PCT) * T)
+  VAL_NUM = T - TRAIN_NUM
 
   # ToDo: try random search before something fancier
   def CV_objective(settings):
     lr = settings['lr']
     dropout = settings['dropout']
 
-    # ToDo: split X_list, y_list into train, val
-    model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
+    # Split into train, val
+    train_ixs = np.random.choice(T, size=TRAIN_NUM, replace=False)
+    val_ixs = [ix for ix in range(T) if ix not in train_ixs]
+    X_train, y_train = [X_list[ix] for ix in train_ixs], [y_list[ix] for ix in train_ixs]
+    X_val, y_val = [X_list[ix] for ix in val_ixs], [y_list[ix] for ix in val_ixs]
+
+    # Fit model on training data
+    model = fit_ggcn(X_train, y_train, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
              neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k, recursive=recursive, lr=lr,
                      dropout=dropout)
+
+    # Evaluate model on evaluation data
+    total_val_acc = 0.
+    for X, y in zip(X_val, y_val):
+      output = model(X, adjacency_list)
+      yhat = F.softmax(output)[:, 1]
+      acc = ((yhat > 0.5) == y).float().mean()
+      total_val_acc += acc / T
+    return total_val_acc
 
 
 # ToDo: change name
