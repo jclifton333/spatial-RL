@@ -247,26 +247,18 @@ class GGCN(nn.Module):
     yhat = F.sigmoid(final_)
     return yhat
 
-
-def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-              neighbor_subset_limit=2, samples_per_k=6, recursive=True):
+def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch, nhid, batch_size, verbose,
+                           neighbor_subset_limit, samples_per_k, recursive):
   """
-  Tune hyperparameters of GGCN; search over
-    lr
-    dropout
+  Helper for tune_gccn. 
   """
-  VAL_PCT = 0.3
-  T = len(X_list)
-  TRAIN_NUM = int((1 - VAL_PCT) * T)
-  VAL_NUM = T - TRAIN_NUM
 
-  # ToDo: try random search before something fancier
   def CV_objective(settings):
     lr = settings['lr']
     dropout = settings['dropout']
 
     # Split into train, val
-    train_ixs = np.random.choice(T, size=TRAIN_NUM, replace=False)
+    train_ixs = np.random.choice(T, size=train_num, replace=False)
     val_ixs = [ix for ix in range(T) if ix not in train_ixs]
     X_train, y_train = [X_list[ix] for ix in train_ixs], [y_list[ix] for ix in train_ixs]
     X_val, y_val = [X_list[ix] for ix in val_ixs], [y_list[ix] for ix in val_ixs]
@@ -279,11 +271,44 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
     # Evaluate model on evaluation data
     total_val_acc = 0.
     for X, y in zip(X_val, y_val):
-      output = model(X, adjacency_list)
-      yhat = F.softmax(output)[:, 1]
-      acc = ((yhat > 0.5) == y).float().mean()
+      output = model(torch.FloatTensor(X), adjacency_list)
+      yhat = F.softmax(output)[:, 1].detach().numpy()
+      acc = ((yhat > 0.5) == y).mean()
       total_val_acc += acc / T
     return total_val_acc
+
+  return CV_objective
+
+
+def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+              neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5):
+  """
+  Tune hyperparameters of GGCN; search over
+    lr
+    dropout
+  """
+  VAL_PCT = 0.3
+  T = len(X_list)
+  TRAIN_NUM = int((1 - VAL_PCT) * T)
+  LR_RANGE = np.logspace(-3, -1, 100)
+  DROPOUT_RANGE = np.linspace(0, 0.5, 100)
+
+  objective = get_ggcn_val_objective(T, TRAIN_NUM, X_list, y_list, adjacency_list, n_epoch, nhid, batch_size, verbose,
+                                     neighbor_subset_limit, samples_per_k, recursive)
+
+  best_settings = None
+  best_value = -float('inf')
+  for _ in range(num_settings_to_try):
+    lr = np.random.choice(LR_RANGE)
+    dropout = np.random.choice(DROPOUT_RANGE)
+    settings = {'lr': lr, 'dropout': dropout}
+    value = objective(settings)
+
+    if value > best_value:
+      best_value = value
+      best_settings = settings
+
+  return best_settings
 
 
 # ToDo: change name
@@ -498,8 +523,10 @@ if __name__ == "__main__":
   # predictor(X_list[0])
 
   print('Fitting ggcn')
-  learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=100, batch_size=2, verbose=True,
-             neighbor_subset_limit=2, samples_per_k=6, recursive=True)
+  tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+            neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5)
+  # learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=100, batch_size=2, verbose=True,
+  #            neighbor_subset_limit=2, samples_per_k=6, recursive=True)
 
   oracle_mean = 0.
   for yp, y in zip(y_probs_list, y_list):
