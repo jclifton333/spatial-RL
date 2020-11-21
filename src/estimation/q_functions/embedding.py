@@ -247,6 +247,17 @@ class GGCN(nn.Module):
     yhat = F.sigmoid(final_)
     return yhat
 
+
+def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size):
+  mean_acc = 0.
+  for X, y in zip(X_, y_):
+    output = model(torch.FloatTensor(X), adjacency_list)
+    yhat = F.softmax(output)[:, 1].detach().numpy()
+    acc = ((yhat > 0.5) == y).mean()
+    mean_acc += acc / sample_size
+  return mean_acc
+
+
 def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch, nhid, batch_size, verbose,
                            neighbor_subset_limit, samples_per_k, recursive):
   """
@@ -269,55 +280,18 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
                      dropout=dropout)
 
     # Evaluate model on evaluation data
-    total_val_acc = 0.
-    for X, y in zip(X_val, y_val):
-      output = model(torch.FloatTensor(X), adjacency_list)
-      yhat = F.softmax(output)[:, 1].detach().numpy()
-      acc = ((yhat > 0.5) == y).mean()
-      total_val_acc += acc / T
-    return total_val_acc
+    total_val_acc = evaluate_model_on_dataset(model, X_val, y_val, adjacency_list, T-train_num)
+    return total_val_acc, model
 
   return CV_objective
 
 
-def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-              neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5):
-  """
-  Tune hyperparameters of GGCN; search over
-    lr
-    dropout
-  """
-  VAL_PCT = 0.3
-  T = len(X_list)
-  TRAIN_NUM = int((1 - VAL_PCT) * T)
-  LR_RANGE = np.logspace(-3, -1, 100)
-  DROPOUT_RANGE = np.linspace(0, 0.5, 100)
-
-  objective = get_ggcn_val_objective(T, TRAIN_NUM, X_list, y_list, adjacency_list, n_epoch, nhid, batch_size, verbose,
-                                     neighbor_subset_limit, samples_per_k, recursive)
-
-  best_settings = None
-  best_value = -float('inf')
-  for _ in range(num_settings_to_try):
-    lr = np.random.choice(LR_RANGE)
-    dropout = np.random.choice(DROPOUT_RANGE)
-    settings = {'lr': lr, 'dropout': dropout}
-    value = objective(settings)
-
-    if value > best_value:
-      best_value = value
-      best_settings = settings
-
-  return best_settings
-
-
-# ToDo: change name
-def learn_gccn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-             neighbor_subset_limit=2, samples_per_k=6, recursive=True):
-
-  model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
-                   neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k, recursive=recursive)
-
+def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+               neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5):
+  _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
+                          verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
+                          samples_per_k=samples_per_k, recursive=recursive, num_settings_to_try=num_settings_to_try,
+                          X_holdout=None, y_holdout=None)
   def embedding_wrapper(X_):
     X_ = torch.FloatTensor(X_)
     E = model.embed_recursive_vec(X_, adjacency_list).detach().numpy()
@@ -330,6 +304,71 @@ def learn_gccn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=
     return yhat
 
   return embedding_wrapper, model_wrapper
+
+
+def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+              neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+              X_holdout=None, y_holdout=None):
+  """
+  Tune hyperparameters of GGCN; search over
+    lr
+    dropout
+  """
+  VAL_PCT = 0.3
+  T = len(X_list)
+  TRAIN_NUM = int((1 - VAL_PCT) * T)
+  LR_RANGE = np.logspace(-3, -1, 100)
+  DROPOUT_RANGE = np.linspace(0, 0.5, 100)
+  if X_holdout is not None:
+    holdout_size = len(X_holdout)
+
+  objective = get_ggcn_val_objective(T, TRAIN_NUM, X_list, y_list, adjacency_list, n_epoch, nhid, batch_size, verbose,
+                                     neighbor_subset_limit, samples_per_k, recursive)
+
+  best_settings = None
+  best_model = None
+  best_value = -float('inf')
+  all_models = []
+  results = {i: {} for i in range(num_settings_to_try)}
+  for i in range(num_settings_to_try):
+    lr = np.random.choice(LR_RANGE)
+    dropout = np.random.choice(DROPOUT_RANGE)
+    settings = {'lr': lr, 'dropout': dropout}
+    value, model = objective(settings)
+    # print('settings: {} value: {}'.format(settings, value))
+    if value > best_value:
+      best_value = value
+      best_settings = settings
+      best_model = model
+
+    results[i]['val'] = value
+
+    if X_holdout is not None:
+      holdout_acc = evaluate_model_on_dataset(model, X_holdout, y_holdout, adjacency_list, holdout_size)
+      results[i]['holdout'] = holdout_acc
+
+  return best_settings, best_model, results
+
+
+# ToDo: change name
+# def learn_gccn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+#              neighbor_subset_limit=2, samples_per_k=6, recursive=True):
+#
+#   model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
+#                    neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k, recursive=recursive)
+#
+#   def embedding_wrapper(X_):
+#     X_ = torch.FloatTensor(X_)
+#     E = model.embed_recursive_vec(X_, adjacency_list).detach().numpy()
+#     return E
+#
+#   def model_wrapper(X_):
+#     X_ = torch.FloatTensor(X_)
+#     logits = model.forward_recursive_vec(X_, adjacency_list)
+#     yhat = F.softmax(logits)[:, 1].detach().numpy()
+#     return yhat
+#
+#   return embedding_wrapper, model_wrapper
 
 
 def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
@@ -514,22 +553,29 @@ if __name__ == "__main__":
   neighbor_counts = adjacency_mat.sum(axis=1)
   n = 2
   n_epoch = 200
-  X_list = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(2)])
+  X_list = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(n)])
   y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
   y_list = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in y_probs_list])
 
-  # print('Fitting gcn')
-  # _, predictor = learn_gcn(X_list, y_list, adjacency_mat, n_epoch=n_epoch, verbose=True)
-  # predictor(X_list[0])
+  # Holdout data
+  X_list_holdout = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(2)])
+  y_probs_list_holdout = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in
+                                   X_list_holdout])
+  y_list_holdout = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in
+                             y_probs_list_holdout])
 
   print('Fitting ggcn')
-  tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-            neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5)
-  # learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=100, batch_size=2, verbose=True,
-  #            neighbor_subset_limit=2, samples_per_k=6, recursive=True)
+  _, _, results = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+                       neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+                       X_holdout=X_list_holdout, y_holdout=y_list_holdout)
+
+  for item in results.values():
+    val = item['val']
+    holdout = item['holdout']
+    print(f'val: {val} holdout {holdout}')
 
   oracle_mean = 0.
-  for yp, y in zip(y_probs_list, y_list):
+  for yp, y in zip(y_probs_list_holdout, y_list_holdout):
     y_hat = (yp > 0.5)
-    oracle_mean += (y_hat == y).mean() / len(y_list)
+    oracle_mean += (y_hat == y).mean() / len(y_list_holdout)
   print(f'oracle: {oracle_mean}')

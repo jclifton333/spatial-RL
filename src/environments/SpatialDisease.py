@@ -122,6 +122,7 @@ class SpatialDisease(ABC):
 
   def fit_embedding(self):
     # self.embedder, self.predictor = learn_gcn(self.X_raw, self.y, self.adjacency_matrix)
+    # self.embedder, self.predictor = learn_ggcn(self.X_raw, self.y, self.adjacency_list)
     self.embedder, self.predictor = learn_ggcn(self.X_raw, self.y, self.adjacency_list)
 
   def step(self, a, eta=None):
