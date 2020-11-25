@@ -8,6 +8,7 @@ sys.path.append(pkg_dir)
 import numpy as np
 from itertools import permutations
 from src.environments.generate_network import lattice
+from scipy.stats import pearsonr
 from scipy.optimize import minimize
 from scipy.special import expit
 import torch
@@ -116,10 +117,10 @@ class GGCN(nn.Module):
     bvec = F.relu(bvec)
     return bvec
 
-  def forward(self, X_, adjacency_lst):
+  def forward(self, X_, adjacency_lst, location_subset=None):
     if self.recursive:
       # return self.forward_recursive(X_, adjacency_lst)
-      return self.forward_recursive_vec(X_, adjacency_lst)
+      return self.forward_recursive_vec(X_, adjacency_lst, location_subset=location_subset)
     else:
       return self.forward_simple(X_, adjacency_lst)
 
@@ -156,8 +157,8 @@ class GGCN(nn.Module):
     yhat = F.sigmoid(final_)
     return yhat
 
-  def forward_recursive_vec(self, X_, adjacency_lst):
-    E = self.embed_recursive_vec(X_, adjacency_lst)
+  def forward_recursive_vec(self, X_, adjacency_lst, location_subset=None):
+    E = self.embed_recursive_vec(X_, adjacency_lst, locations_subset=location_subset)
     yhat = self.final(E)
     return yhat
 
@@ -253,7 +254,7 @@ class GGCN(nn.Module):
 def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, location_subsets=None):
   mean_acc = 0.
 
-  for ix, X, y in enumerate(zip(X_, y_)):
+  for ix, (X, y) in enumerate(zip(X_, y_)):
     if location_subsets is not None:
       location_subset = location_subsets[ix]
       output = model(torch.FloatTensor(X), adjacency_list, location_subset)
@@ -283,13 +284,14 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
     val_ixs = [[l for l in range(L) if l not in train_ixs[t]] for t in range(T)]
 
     # Fit model on training data
-    model = fit_ggcn(X, y, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
+    model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
              neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k, recursive=recursive, lr=lr,
                      dropout=dropout, locations_subsets=train_ixs)
 
     # Evaluate model on evaluation data
-    sample_size = train_num*T
-    total_val_acc = evaluate_model_on_dataset(model, X_val, y_val, adjacency_list, sample_size)
+    sample_size = T
+    total_val_acc = evaluate_model_on_dataset(model, X_list, y_list, adjacency_list, sample_size,
+                                              location_subsets=val_ixs)
     return total_val_acc, model
 
   return CV_objective
@@ -332,9 +334,13 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
   """
   VAL_PCT = 0.3
   T = len(X_list)
-  TRAIN_NUM = int((1 - VAL_PCT) * T)
+  L = X_list[0].shape[0]
+  TRAIN_NUM = int((1 - VAL_PCT) * L)
   LR_RANGE = np.logspace(-3, -1, 100)
   DROPOUT_RANGE = np.linspace(0, 0.5, 100)
+
+  # Note that in training, splitting takes place over locations, whereas in holdout evaluation, splitting
+  # takes place over timesteps
   if X_holdout is not None:
     holdout_size = len(X_holdout)
 
@@ -362,6 +368,8 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
     if X_holdout is not None:
       holdout_acc = evaluate_model_on_dataset(model, X_holdout, y_holdout, adjacency_list, holdout_size)
       results[i]['holdout'] = holdout_acc
+
+  print(f'best value: {best_value}')
 
   return best_settings, best_model, results
 
@@ -409,12 +417,8 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
     avg_acc_train = 0.
     batch_ixs = np.random.choice(T, size=batch_size)
 
-    if locations_subsets is None:
-      X_batch = [X_list[ix] for ix in batch_ixs]
-      y_batch = [y_list[ix] for ix in batch_ixs]
-    else:
-      X_batch = [X_list[ix][locations_subsets[ix]] for ix in batch_ixs]
-      y_batch = [y_list[ix][locations_subsets[ix]] for ix in batch_ixs]
+    X_batch = [X_list[ix] for ix in batch_ixs]
+    y_batch = [y_list[ix] for ix in batch_ixs]
 
     for X, y, ix in zip(X_batch, y_batch, batch_ixs):
       model.train()
@@ -427,6 +431,8 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
         output = model(X, adjacency_list, locations_subset)
         loss_train = criterion(output, y[locations_subset])
       else:
+        output = model(X, adjacency_list)
+        loss_train = criterion(output, y)
 
       loss_train.backward()
       optimizer.step()
@@ -592,13 +598,18 @@ if __name__ == "__main__":
 
   print('Fitting ggcn')
   _, _, results = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-                       neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+                       neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=20,
                        X_holdout=X_list_holdout, y_holdout=y_list_holdout)
 
+  vals = []
+  holdouts = []
   for item in results.values():
     val = item['val']
     holdout = item['holdout']
+    vals.append(val)
+    holdouts.append(holdout)
     print(f'val: {val} holdout {holdout}')
+  print('val holdout corr: {}'.format(pearsonr(vals, holdouts)[0]))
 
   oracle_mean = 0.
   for yp, y in zip(y_probs_list_holdout, y_list_holdout):
