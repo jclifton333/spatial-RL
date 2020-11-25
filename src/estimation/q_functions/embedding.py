@@ -250,12 +250,19 @@ class GGCN(nn.Module):
     return yhat
 
 
-def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size):
+def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, location_subsets=None):
   mean_acc = 0.
-  for X, y in zip(X_, y_):
-    output = model(torch.FloatTensor(X), adjacency_list)
-    yhat = F.softmax(output)[:, 1].detach().numpy()
-    acc = ((yhat > 0.5) == y).mean()
+
+  for ix, X, y in enumerate(zip(X_, y_)):
+    if location_subsets is not None:
+      location_subset = location_subsets[ix]
+      output = model(torch.FloatTensor(X), adjacency_list, location_subset)
+      yhat = F.softmax(output)[:, 1].detach().numpy()
+      acc = ((yhat > 0.5) == y[location_subset]).mean()
+    else:
+      output = model(torch.FloatTensor(X), adjacency_list)
+      yhat = F.softmax(output)[:, 1].detach().numpy()
+      acc = ((yhat > 0.5) == y).mean()
     mean_acc += acc / sample_size
   return mean_acc
 
@@ -265,24 +272,24 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
   """
   Helper for tune_gccn. 
   """
+  L = X_list[0].shape[0]
 
   def CV_objective(settings):
     lr = settings['lr']
     dropout = settings['dropout']
 
     # Split into train, val
-    train_ixs = np.random.choice(T, size=train_num, replace=False)
-    val_ixs = [ix for ix in range(T) if ix not in train_ixs]
-    X_train, y_train = [X_list[ix] for ix in train_ixs], [y_list[ix] for ix in train_ixs]
-    X_val, y_val = [X_list[ix] for ix in val_ixs], [y_list[ix] for ix in val_ixs]
+    train_ixs = [np.random.choice(L, size=train_num, replace=False) for t in range(T)]
+    val_ixs = [[l for l in range(L) if l not in train_ixs[t]] for t in range(T)]
 
     # Fit model on training data
-    model = fit_ggcn(X_train, y_train, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
+    model = fit_ggcn(X, y, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
              neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k, recursive=recursive, lr=lr,
-                     dropout=dropout)
+                     dropout=dropout, locations_subsets=train_ixs)
 
     # Evaluate model on evaluation data
-    total_val_acc = evaluate_model_on_dataset(model, X_val, y_val, adjacency_list, T-train_num)
+    sample_size = train_num*T
+    total_val_acc = evaluate_model_on_dataset(model, X_val, y_val, adjacency_list, sample_size)
     return total_val_acc, model
 
   return CV_objective
