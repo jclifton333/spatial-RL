@@ -161,7 +161,7 @@ class GGCN(nn.Module):
     yhat = self.final(E)
     return yhat
 
-  def embed_recursive_vec(self, X_, adjacency_lst):
+  def embed_recursive_vec(self, X_, adjacency_lst, locations_subset=None):
     L = X_.shape[0]
     X_ = torch.tensor(X_)
 
@@ -195,14 +195,16 @@ class GGCN(nn.Module):
           fkm1_val = fk(X_lst, k-1)
           h_val = self.h(X_1)
           h_val_cat_fkm1_val = torch.cat((h_val, fkm1_val), dim=1)
-          # # ToDo: uncomment to learn binary relation instead of fixing to addition
-          # g_val = self.g(h_val_cat_fkm1_val)
-          g_val = h_val + fkm1_val
+          # ToDo: uncomment to learn binary relation instead of fixing to addition
+          g_val = self.g(h_val_cat_fkm1_val)
+          # g_val = h_val + fkm1_val
           result += g_val / len(permutations_k)
         return result
 
     E = fk(X_, self.neighbor_subset_limit)
-    E = torch.cat((X_, E), dim=1)
+    E =  torch.cat((X_, E), dim=1)
+    if locations_subset is not None:
+      E = E[locations_subset]
     return E
 
   def forward_recursive(self, X_, adjacency_lst):
@@ -379,7 +381,8 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
 
 
 def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-               neighbor_subset_limit=2, samples_per_k=6, recursive=True, lr=0.01, tol=0.01, dropout=0.0):
+             neighbor_subset_limit=2, samples_per_k=6, recursive=True, lr=0.01, tol=0.01, dropout=0.0,
+             locations_subsets=None):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
@@ -398,17 +401,26 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
   for epoch in range(n_epoch):
     avg_acc_train = 0.
     batch_ixs = np.random.choice(T, size=batch_size)
-    X_batch = [X_list[ix] for ix in batch_ixs]
-    y_batch = [y_list[ix] for ix in batch_ixs]
-    for X, y in zip(X_batch, y_batch):
+
+    if locations_subsets is None:
+      X_batch = [X_list[ix] for ix in batch_ixs]
+      y_batch = [y_list[ix] for ix in batch_ixs]
+    else:
+      X_batch = [X_list[ix][locations_subsets[ix]] for ix in batch_ixs]
+      y_batch = [y_list[ix][locations_subsets[ix]] for ix in batch_ixs]
+
+    for X, y, ix in zip(X_batch, y_batch, batch_ixs):
       model.train()
       optimizer.zero_grad()
       X = Variable(X)
       y = Variable(y).long()
 
-      # Take gradient step
-      output = model(X, adjacency_list)
-      loss_train = criterion(output, y)
+      if locations_subsets is not None:
+        locations_subset = locations_subsets[ix]
+        output = model(X, adjacency_list, locations_subset)
+        loss_train = criterion(output, y[locations_subset])
+      else:
+
       loss_train.backward()
       optimizer.step()
 
