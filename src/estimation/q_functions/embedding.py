@@ -369,7 +369,10 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
       holdout_acc = evaluate_model_on_dataset(model, X_holdout, y_holdout, adjacency_list, holdout_size)
       results[i]['holdout'] = holdout_acc
 
-  print(f'best value: {best_value}')
+
+  baseline = np.mean([np.mean(y_) for y_ in y_list])
+  baseline = np.max((baseline, 1-baseline))
+  print(f'best value: {best_value} baseline: {baseline}')
 
   return best_settings, best_model, results
 
