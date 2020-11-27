@@ -350,6 +350,7 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
   best_settings = None
   best_model = None
   best_value = -float('inf')
+  worst_value = float('inf')
   all_models = []
   results = {i: {} for i in range(num_settings_to_try)}
   for i in range(num_settings_to_try):
@@ -362,6 +363,8 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
       best_value = value
       best_settings = settings
       best_model = model
+    if value < worst_value:
+      worst_value = value
 
     results[i]['val'] = value
 
@@ -372,7 +375,7 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
 
   baseline = np.mean([np.mean(y_) for y_ in y_list])
   baseline = np.max((baseline, 1-baseline))
-  print(f'best value: {best_value} baseline: {baseline}')
+  print(f'best value: {best_value} worst value: {worst_value} baseline: {baseline}')
 
   return best_settings, best_model, results
 
