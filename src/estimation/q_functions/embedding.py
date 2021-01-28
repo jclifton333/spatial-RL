@@ -81,7 +81,8 @@ class GGCN(nn.Module):
   """
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
   """
-  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0):
+  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0,
+               apply_sigmoid=False):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1 and recursive:
       self.g1 = nn.Linear(2*J, J)
@@ -96,12 +97,15 @@ class GGCN(nn.Module):
     self.J = J
     self.samples_per_k = samples_per_k
     self.recursive = recursive
+    self.apply_sigmoid = apply_sigmoid
 
   def final(self, X_):
     E = self.final1(X_)
     E = self.dropout_final(E)
     E = F.relu(E)
     E = self.final2(E)
+    if self.apply_sigmoid:
+      E = F.sigmoid(E)
     return E
 
   def h(self, b):
@@ -251,7 +255,8 @@ class GGCN(nn.Module):
     return yhat
 
 
-def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, location_subsets=None):
+def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, location_subsets=None,
+                              targets_are_probs=False):
   mean_acc = 0.
 
   for ix, (X, y) in enumerate(zip(X_, y_)):
@@ -262,7 +267,10 @@ def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, locati
       acc = ((yhat > 0.5) == y[location_subset]).mean()
     else:
       output = model(torch.FloatTensor(X), adjacency_list)
-      yhat = F.softmax(output)[:, 1].detach().numpy()
+      if targets_are_probs:
+        yhat = output[:, 1].detach().numpy()
+      else:
+        yhat = F.softmax(output)[:, 1].detach().numpy()
       acc = ((yhat > 0.5) == y).mean()
     mean_acc += acc / sample_size
   return mean_acc
@@ -291,7 +299,7 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
     # Evaluate model on evaluation data
     sample_size = T
     total_val_acc = evaluate_model_on_dataset(model, X_list, y_list, adjacency_list, sample_size,
-                                              location_subsets=val_ixs)
+                                              location_subsets=val_ixs, targets_are_probs=target_are_probs)
     return total_val_acc, model
 
   return CV_objective
@@ -415,14 +423,12 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
   # model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
   #              recursive=recursive)
   model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
-               recursive=recursive, dropout=dropout)
+               recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
   optimizer = optim.Adam(model.parameters(), lr=lr)
-  # criterion = nn.BCELoss()
-  # if target_are_probs:
-  #   criterion = nn.MSELoss()
-  # else:
-  #   criterion = nn.CrossEntropyLoss()
-  criterion = nn.CrossEntropyLoss()
+  if target_are_probs:
+    criterion = nn.MSELoss()
+  else:
+    criterion = nn.CrossEntropyLoss()
 
   # Train
   for epoch in range(n_epoch):
@@ -436,14 +442,21 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
       model.train()
       optimizer.zero_grad()
       X = Variable(X)
-      y = Variable(y).long()
+      if target_are_probs:
+        y = Variable(y)
+      else:
+        y = Variable(y).long()
 
       if locations_subsets is not None:
         locations_subset = locations_subsets[ix]
         output = model(X, adjacency_list, locations_subset)
+        if target_are_probs:
+          output = output[:, 1]
         loss_train = criterion(output, y[locations_subset])
       else:
         output = model(X, adjacency_list)
+        if target_are_probs:
+          output = output[:, 1]
         loss_train = criterion(output, y)
 
       loss_train.backward()
@@ -451,7 +464,10 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
 
     # Evaluate loss
     for X_, y_ in zip(X_list, y_list):
-      yhat = F.softmax(model(X_, adjacency_list))[:, 1]
+      if target_are_probs:
+        yhat = model(X_, adjacency_list)[:, 1]
+      else:
+        yhat = F.softmax(model(X_, adjacency_list))[:, 1]
       acc = ((yhat > 0.5) == y).float().mean()
       avg_acc_train += acc / T
 
