@@ -104,8 +104,8 @@ class GGCN(nn.Module):
     E = self.dropout_final(E)
     E = F.relu(E)
     E = self.final2(E)
-    # if self.apply_sigmoid:
-    #   E = F.sigmoid(E)
+    if self.apply_sigmoid:
+      E = F.sigmoid(E)
     return E
 
   def h(self, b):
@@ -265,7 +265,7 @@ def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, locati
       output = model(torch.FloatTensor(X), adjacency_list, location_subset)
       if targets_are_probs:
         yhat = output[:, 1].detach().numpy()
-        acc = ((yhat > 0.5) == (y[location_subset] > 0.5)).mean()
+        acc = ((yhat - y[location_subset])**2).mean()
       else:
         yhat = F.softmax(output)[:, 1].detach().numpy()
         acc = ((yhat > 0.5) == y[location_subset]).mean()
@@ -273,9 +273,10 @@ def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, locati
       output = model(torch.FloatTensor(X), adjacency_list)
       if targets_are_probs:
         yhat = output[:, 1].detach().numpy()
+        acc = ((yhat - y)**2).mean()
       else:
         yhat = F.softmax(output)[:, 1].detach().numpy()
-        acc = ((yhat > 0.5) == (y > 0.5)).mean()
+        acc = ((yhat > 0.5) == y).mean()
     mean_acc += acc / sample_size
   return mean_acc
 
