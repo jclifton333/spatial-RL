@@ -152,7 +152,8 @@ class SIS(SpatialDisease):
     if self.regenerate_network:
       self.adjacency_matrix = self.generate_network(self.L)
       self.lambda_ = self.adjacency_matrix
-      super(SIS, self).construct_network(self.adjacency_matrix, self.construct_features_for_policy_search)
+      super(SIS, self).construct_network(self.adjacency_matrix, self.construct_features_for_policy_search,
+                                         self.compute_pairwise_distances)
 
 
   ##############################################################
