@@ -47,10 +47,12 @@ def one_step_policy(**kwargs):
   clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
   true_probs = np.hstack(env.true_infection_probs)
   gccn_probs = np.hstack([env.predictor(x_raw) for x_raw in env.X_raw])
+  # oracle_gccn_probs = np.hstack([env.true_probs_predictor(x_raw) for x_raw in env.X_raw])
   linear_probs = np.hstack([clf.predict_proba(x, np.where(x_raw[:, -1] == 1)[0], None)
                             for x, x_raw in zip(env.X, env.X_raw)])
 
   gccn_acc = np.mean((gccn_probs - true_probs)**2)
+  # oracle_gccn_acc = np.mean((oracle_gccn_probs - true_probs) ** 2)
   linear_acc = np.mean((linear_probs - true_probs)**2)
   print(f'gccn: {gccn_acc} linear: {linear_acc}')
 

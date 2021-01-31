@@ -81,7 +81,8 @@ class GGCN(nn.Module):
   """
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
   """
-  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0):
+  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0,
+               apply_sigmoid=False):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1 and recursive:
       self.g1 = nn.Linear(2*J, J)
@@ -96,12 +97,14 @@ class GGCN(nn.Module):
     self.J = J
     self.samples_per_k = samples_per_k
     self.recursive = recursive
+    self.apply_sigmoid = apply_sigmoid
 
   def final(self, X_):
     E = self.final1(X_)
     E = self.dropout_final(E)
     E = F.relu(E)
     E = self.final2(E)
+    # E = F.sigmoid(E)
     return E
 
   def h(self, b):
@@ -164,7 +167,7 @@ class GGCN(nn.Module):
 
   def embed_recursive_vec(self, X_, adjacency_lst, locations_subset=None):
     L = X_.shape[0]
-    X_ = torch.tensor(X_)
+    # X_ = torch.tensor(X_)
 
     # Collect permutations
     permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
@@ -190,7 +193,8 @@ class GGCN(nn.Module):
         for perm_ix in range(self.samples_per_k):
           permutations_k_perm_ix = permutations_k[:, :, perm_ix]
           # ToDo: indices in where_k_neighbors_ will be wrong for k < neighbor_subset_limit, because X_ shrinks
-          X_1 = torch.tensor(X_[permutations_k_perm_ix[where_k_neighbors_, 0]])
+          # X_1 = torch.tensor(X_[permutations_k_perm_ix[where_k_neighbors_, 0]])
+          X_1 = X_[permutations_k_perm_ix[where_k_neighbors_, 0]]
           X_lst = np.column_stack([X_[permutations_k_perm_ix[where_k_neighbors_, ix]] for ix in range(1, k)])
           X_lst = torch.tensor(X_lst)
           fkm1_val = fk(X_lst, k-1)
@@ -251,25 +255,34 @@ class GGCN(nn.Module):
     return yhat
 
 
-def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, location_subsets=None):
+def evaluate_model_on_dataset(model, X_, y_, adjacency_list, sample_size, location_subsets=None,
+                              targets_are_probs=False):
   mean_acc = 0.
 
   for ix, (X, y) in enumerate(zip(X_, y_)):
     if location_subsets is not None:
       location_subset = location_subsets[ix]
       output = model(torch.FloatTensor(X), adjacency_list, location_subset)
-      yhat = F.softmax(output)[:, 1].detach().numpy()
-      acc = ((yhat > 0.5) == y[location_subset]).mean()
+      if targets_are_probs:
+        yhat = F.softmax(output)[:, 1].detach().numpy()
+        acc = -((yhat - y[location_subset])**2).mean()
+      else:
+        yhat = F.softmax(output)[:, 1].detach().numpy()
+        acc = ((yhat > 0.5) == y[location_subset]).mean()
     else:
       output = model(torch.FloatTensor(X), adjacency_list)
-      yhat = F.softmax(output)[:, 1].detach().numpy()
-      acc = ((yhat > 0.5) == y).mean()
+      if targets_are_probs:
+        yhat = F.softmax(output)[:, 1].detach().numpy()
+        acc = -((yhat - y)**2).mean()
+      else:
+        yhat = F.softmax(output)[:, 1].detach().numpy()
+        acc = ((yhat > 0.5) == y).mean()
     mean_acc += acc / sample_size
   return mean_acc
 
 
 def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch, nhid, batch_size, verbose,
-                           neighbor_subset_limit, samples_per_k, recursive):
+                           neighbor_subset_limit, samples_per_k, recursive, target_are_probs=False):
   """
   Helper for tune_gccn. 
   """
@@ -286,29 +299,35 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
     # Fit model on training data
     model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size, verbose=verbose,
              neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k, recursive=recursive, lr=lr,
-                     dropout=dropout, locations_subsets=train_ixs)
+                     dropout=dropout, locations_subsets=train_ixs, target_are_probs=target_are_probs)
 
     # Evaluate model on evaluation data
     sample_size = T
     total_val_acc = evaluate_model_on_dataset(model, X_list, y_list, adjacency_list, sample_size,
-                                              location_subsets=val_ixs)
+                                              location_subsets=val_ixs, targets_are_probs=target_are_probs)
     return total_val_acc, model
 
   return CV_objective
 
 
-def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-               neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5):
+def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=False,
+               neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+               target_are_probs=False):
 
   if len(X_list) > 1:
-    _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
-                            verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
-                            samples_per_k=samples_per_k, recursive=recursive, num_settings_to_try=num_settings_to_try,
-                            X_holdout=None, y_holdout=None)
+    # _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
+    #                         verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
+    #                         samples_per_k=samples_per_k, recursive=recursive, num_settings_to_try=num_settings_to_try,
+    #                         X_holdout=None, y_holdout=None, target_are_probs=target_are_probs)
+    model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
+                     verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
+                     samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2,
+                     target_are_probs=target_are_probs)
   else:
     model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
                      verbose=verbose,neighbor_subset_limit=neighbor_subset_limit,
-                     samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2)
+                     samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2,
+                     target_are_probs=target_are_probs)
 
   def embedding_wrapper(X_):
     X_ = torch.FloatTensor(X_)
@@ -318,15 +337,15 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=
   def model_wrapper(X_):
     X_ = torch.FloatTensor(X_)
     logits = model.forward_recursive_vec(X_, adjacency_list)
-    yhat = F.softmax(logits)[:, 1].detach().numpy()
+    yhat = F.softmax(logits, dim=1)[:, 1].detach().numpy()
     return yhat
 
   return embedding_wrapper, model_wrapper
 
 
-def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
+def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=False,
               neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
-              X_holdout=None, y_holdout=None):
+              X_holdout=None, y_holdout=None, target_are_probs=False):
   """
   Tune hyperparameters of GGCN; search over
     lr
@@ -345,7 +364,7 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
     holdout_size = len(X_holdout)
 
   objective = get_ggcn_val_objective(T, TRAIN_NUM, X_list, y_list, adjacency_list, n_epoch, nhid, batch_size, verbose,
-                                     neighbor_subset_limit, samples_per_k, recursive)
+                                     neighbor_subset_limit, samples_per_k, recursive, target_are_probs=target_are_probs)
 
   best_settings = None
   best_model = None
@@ -372,9 +391,11 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
       holdout_acc = evaluate_model_on_dataset(model, X_holdout, y_holdout, adjacency_list, holdout_size)
       results[i]['holdout'] = holdout_acc
 
-
-  baseline = np.mean([np.mean(y_) for y_ in y_list])
-  baseline = np.max((baseline, 1-baseline))
+  if target_are_probs:
+    baseline = -np.mean([np.var(y_) for y_ in y_list])
+  else:
+    baseline = np.mean([np.mean(y_) for y_ in y_list])
+    baseline = np.max((baseline, 1-baseline))
   print(f'best value: {best_value} worst value: {worst_value} baseline: {baseline}')
 
   return best_settings, best_model, results
@@ -401,9 +422,9 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5
 #   return embedding_wrapper, model_wrapper
 
 
-def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-             neighbor_subset_limit=2, samples_per_k=6, recursive=True, lr=0.01, tol=0.01, dropout=0.0,
-             locations_subsets=None):
+def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=True,
+             neighbor_subset_limit=2, samples_per_k=6, recursive=True, lr=0.01, tol=0.001, dropout=0.0,
+             locations_subsets=None, target_are_probs=False):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
@@ -413,10 +434,12 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
   # model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
   #              recursive=recursive)
   model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
-               recursive=recursive, dropout=dropout)
+               recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
   optimizer = optim.Adam(model.parameters(), lr=lr)
-  # criterion = nn.BCELoss()
-  criterion = nn.CrossEntropyLoss()
+  if target_are_probs:
+    criterion = nn.MSELoss()
+  else:
+    criterion = nn.CrossEntropyLoss()
 
   # Train
   for epoch in range(n_epoch):
@@ -430,14 +453,21 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
       model.train()
       optimizer.zero_grad()
       X = Variable(X)
-      y = Variable(y).long()
+      if target_are_probs:
+        y = Variable(y)
+      else:
+        y = Variable(y).long()
 
       if locations_subsets is not None:
         locations_subset = locations_subsets[ix]
         output = model(X, adjacency_list, locations_subset)
+        if target_are_probs:
+          output = output[:, 1]
         loss_train = criterion(output, y[locations_subset])
       else:
         output = model(X, adjacency_list)
+        if target_are_probs:
+          output = output[:, 1]
         loss_train = criterion(output, y)
 
       loss_train.backward()
@@ -445,8 +475,11 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
 
     # Evaluate loss
     for X_, y_ in zip(X_list, y_list):
-      yhat = F.softmax(model(X_, adjacency_list))[:, 1]
-      acc = ((yhat > 0.5) == y).float().mean()
+      yhat = F.softmax(model(X_, adjacency_list), dim=1)[:, 1]
+      if target_are_probs:
+        acc = ((yhat - y_)**2).float().mean().detach().numpy()
+      else:
+        acc = ((yhat > 0.5) == y_).float().mean().detach().numpy()
       avg_acc_train += acc / T
 
     # Tracking diagnostics
@@ -460,10 +493,10 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5,
             'grad_norm: {:.4f}'.format(grad_norm))
 
     # Break if change in accuracy is sufficiently small
-    if epoch > 0:
-      relative_acc_diff = np.abs(prev_avg_acc_train - avg_acc_train) / avg_acc_train
-      if relative_acc_diff < tol:
-        break
+    # if epoch > 0:
+    #   relative_acc_diff = np.abs(prev_avg_acc_train - avg_acc_train) / avg_acc_train
+    #   if relative_acc_diff < tol:
+    #     break
 
     prev_avg_acc_train = avg_acc_train
 
@@ -569,8 +602,8 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200, nhid=10, verbose=False
   def model_wrapper(X_):
     X_ = torch.FloatTensor(X_)
     y_ = model.forward(X_, adjacency_mat).detach().numpy()
-    y1 = np.exp(y_[:, 1])
-    return y1
+    # y1 = np.exp(y_[:, 1])
+    return y_
 
   if verbose:
     final_acc_train = 0.

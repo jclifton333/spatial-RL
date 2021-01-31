@@ -124,6 +124,8 @@ class SpatialDisease(ABC):
     # self.embedder, self.predictor = learn_gcn(self.X_raw, self.y, self.adjacency_matrix)
     # self.embedder, self.predictor = learn_ggcn(self.X_raw, self.y, self.adjacency_list)
     self.embedder, self.predictor = learn_ggcn(self.X_raw, self.y, self.adjacency_list)
+    # _, self.true_probs_predictor = learn_ggcn(self.X_raw, self.true_infection_probs, self.adjacency_list,
+    #                                           target_are_probs=True)
 
   def step(self, a, eta=None):
     """
