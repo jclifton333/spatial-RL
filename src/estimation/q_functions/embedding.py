@@ -7,7 +7,7 @@ sys.path.append(pkg_dir)
 
 import numpy as np
 from itertools import permutations
-from src.environments.generate_network import lattice
+from src.environments.generate_network import lattice, random_nearest_neighbor
 from scipy.stats import pearsonr
 from scipy.optimize import minimize
 from scipy.special import expit
@@ -310,19 +310,19 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
   return CV_objective
 
 
-def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=False,
+def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size=5, verbose=False,
                neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
                target_are_probs=False):
 
   if len(X_list) > 1:
-    # _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
-    #                         verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
-    #                         samples_per_k=samples_per_k, recursive=recursive, num_settings_to_try=num_settings_to_try,
-    #                         X_holdout=None, y_holdout=None, target_are_probs=target_are_probs)
-    model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
-                     verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
-                     samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2,
-                     target_are_probs=target_are_probs)
+    _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
+                            verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
+                            samples_per_k=samples_per_k, recursive=recursive, num_settings_to_try=num_settings_to_try,
+                            X_holdout=None, y_holdout=None, target_are_probs=target_are_probs)
+    # model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
+    #                  verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
+    #                  samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2,
+    #                  target_are_probs=target_are_probs)
   else:
     model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
                      verbose=verbose,neighbor_subset_limit=neighbor_subset_limit,
@@ -574,7 +574,7 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200, nhid=10, verbose=False
   y_list = [torch.LongTensor(y) for y in y_list]
   adjacency_mat += np.eye(L)
   adjacency_mat = torch.FloatTensor(adjacency_mat)
-  model = GCN(nfeat=p, nhid=nhid, nclass=2, dropout=0.5)
+  model = GCN(nfeat=p, nhid=nhid, nclass=2, dropout=0.8)
   optimizer = optim.Adam(model.parameters(), lr=0.01)
 
   # Train
@@ -618,11 +618,11 @@ def learn_gcn(X_list, y_list, adjacency_mat, n_epoch=200, nhid=10, verbose=False
 
 if __name__ == "__main__":
   # Test
-  grid_size = 400
-  adjacency_mat = lattice(grid_size)
+  grid_size = 100
+  adjacency_mat = random_nearest_neighbor(grid_size)
   adjacency_list = [[j for j in range(grid_size) if adjacency_mat[i, j]] for i in range(grid_size)]
   neighbor_counts = adjacency_mat.sum(axis=1)
-  n = 2
+  n = 10
   n_epoch = 200
   X_list = np.array([np.random.normal(size=(grid_size, 2)) for _ in range(n)])
   y_probs_list = np.array([np.array([expit(np.sum(X[adjacency_list[l]])) for l in range(grid_size)]) for X in X_list])
@@ -635,23 +635,20 @@ if __name__ == "__main__":
   y_list_holdout = np.array([np.array([np.random.binomial(1, prob) for prob in y_probs]) for y_probs in
                              y_probs_list_holdout])
 
-  print('Fitting ggcn')
-  _, _, results = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=10, nhid=100, batch_size=5, verbose=False,
-                       neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=20,
-                       X_holdout=X_list_holdout, y_holdout=y_list_holdout)
 
-  vals = []
-  holdouts = []
-  for item in results.values():
-    val = item['val']
-    holdout = item['holdout']
-    vals.append(val)
-    holdouts.append(holdout)
-    print(f'val: {val} holdout {holdout}')
-  print('val holdout corr: {}'.format(pearsonr(vals, holdouts)[0]))
+  print('Fitting ggcn')
+  _, model_ = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=False,
+             neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+             target_are_probs=False)
 
   oracle_mean = 0.
-  for yp, y in zip(y_probs_list_holdout, y_list_holdout):
-    y_hat = (yp > 0.5)
-    oracle_mean += (y_hat == y).mean() / len(y_list_holdout)
-  print(f'oracle: {oracle_mean}')
+  ggcn_mean = 0.
+  baseline_mean = 0.
+  for X, yp, y in zip(X_list_holdout, y_probs_list_holdout, y_list_holdout):
+    y_hat_oracle = (yp > 0.5)
+    y_hat_ggcn = (model_(X) > 0.5)
+    y_hat_baseline = (np.mean(y) > 0.5)
+    oracle_mean += (y_hat_oracle == y).mean() / len(y_list_holdout)
+    ggcn_mean += (y_hat_ggcn == y).mean() / len(y_list_holdout)
+    baseline_mean += (y_hat_baseline == y).mean() / len(y_list_holdout)
+  print(f'oracle: {oracle_mean} ggcn: {ggcn_mean} baseline: {baseline_mean}')
