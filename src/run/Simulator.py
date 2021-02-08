@@ -11,6 +11,7 @@ import yaml
 # import multiprocessing as mp
 import torch.multiprocessing as mp
 import pdb
+import matplotlib.pyplot as plt
 
 # Hack bc python imports are stupid
 import sys
@@ -322,8 +323,6 @@ class Simulator(object):
     est_cov = np.mean(zvars)
     est_cov_naive = np.mean(np.array(zvar_naive_list))
 
-    pdb.set_trace()
-
     # Test for normality
     pvals = normaltest(np.array(q_fn_params_list)).pvalue
     raw_pvals = normaltest(np.array(q_fn_params_raw_list)).pvalue
@@ -427,42 +426,14 @@ class Simulator(object):
     else:
       # results_list = pool.map_async(self.episode, [i for i in range(self.number_of_replicates)])
       results_list = pool.map(self.episode, [i for i in range(self.number_of_replicates)])
-    # for rep in range(self.number_of_replicates):
-    #   iterim_results_list.append(pool.apply_async(self.episode, args=(rep,)))
-    # for res in iterim_results_list:
-    #   try:
-    #     results_list.append(res.get(timeout=1000))
-    #   except mp.context.TimeoutError:
-    #     pass
-    # pool.close()
-    # pool.join()
-
-    # results_list = pool.map(self.episode, range(self.number_of_replicates))
-
-    # Save results
-    # results_dict = {}
-    # for d in results_list:
-    #   if d is not None:
-    #     for k, v in d.items():
-    #       results_dict[k] = v
     results_dict = {k: v for d in results_list for k, v in d.items() if d is not None}
-    # list_of_scores = [v['score'] for v in results_dict.values()]
-    # list_of_mean_losses = [v['mean_losses'] for v in results_dict.values()]
-    # list_of_max_losses = [v['max_losses'] for v in results_dict.values()]
-
-    # if list_of_mean_losses[0][0] is not None:
-    #   mean_mean_losses = np.array(list_of_mean_losses).mean(axis=0)
-    #   mean_max_losses = np.array(list_of_max_losses).mean(axis=0)
-    # else:
-    #   mean_mean_losses = None
-    #   mean_max_losses = None
-
-    # mean, se = float(np.mean(list_of_scores)), float(np.std(list_of_scores) / np.sqrt(len(list_of_scores)))
-    # results_dict['mean'] = mean
-    # results_dict['se'] = se
-    # results_dict['mean_mean_losses'] = mean_mean_losses
-    # results_dict['mean_max_losses'] = mean_max_losses
     self.save_results(results_dict)
+
+    # Plot accuracies if given in results
+    # if 'linear_acc_lst' in results_list[0].keys():
+    #   linear_acc_array = [v['linear_acc_lst'] for v in results_list.values()]
+    #   gccn_acc_array = [v['gccn_acc_lst'] for v in results_list.values()]
+
     return
 
   def episode_wrapper(self, replicate):
@@ -479,6 +450,8 @@ class Simulator(object):
     self.env.step(self.random_policy(**self.policy_arguments)[0])
     mean_losses = []
     max_losses = []
+    linear_acc_lst = []
+    gccn_acc_lst = []
     for t in range(self.time_horizon-2):
       print(t)
       a, info = self.policy(**self.policy_arguments)
@@ -494,6 +467,13 @@ class Simulator(object):
         else:
           mean_loss = None
           max_loss = None
+
+        if 'linear_acc' in info.keys():
+          linear_acc = info['linear_acc']
+          gccn_acc = info['gccn_acc']
+          linear_acc_lst.append(linear_acc)
+          gccn_acc_lst.append(gccn_acc)
+
       else:
         mean_loss = None
         max_loss = None
@@ -512,6 +492,18 @@ class Simulator(object):
     episode_results['runtime'] = float(t1 - t0)
     episode_results['mean_losses'] = mean_losses
     episode_results['max_losses'] = max_losses
+
+    if len(linear_acc_lst) > 0:
+      episode_results['linear_acc_lst'] = linear_acc_lst
+      episode_results['gccn_acc_lst'] = gccn_acc_lst
+
+    if self.env.learn_embedding and self.number_of_replicates == 1:
+      gccn_mean = np.mean(gccn_acc_lst)
+      print(f'gccn acc: {gccn_mean}')
+      plt.plot(linear_acc_lst, label='linear')
+      plt.plot(gccn_acc_lst, label='gccn')
+      plt.legend()
+      plt.show()
 
     if self.fit_qfn_at_end:
       # Get q-function parameters
@@ -599,6 +591,8 @@ class Simulator(object):
       #     episode_results['q_fn_bootstrap_dbn_raw'] = raw_bootstrap_dbn
 
       #   print('GOT HERE')
+
+    print(f'score: {score}')
 
     if self.save_features and self.number_of_replicates == 1:  # Save raw features, responses, adjacency matrix
       X_raw = self.env.X_raw

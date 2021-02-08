@@ -183,10 +183,11 @@ class SIS(SpatialDisease):
     :param raw_data_block:
     :return:
     """
-    if self.learn_embedding:  # ToDo: doesn't distinguish between neighbor orders
-      psi = self.embedder(raw_data_block)
-    else:
-      psi = self.binary_psi(raw_data_block, neighbor_order)
+    # if self.learn_embedding:  # ToDo: doesn't distinguish between neighbor orders
+    #   psi = self.embedder(raw_data_block)
+    # else:
+    #   psi = self.binary_psi(raw_data_block, neighbor_order)
+    psi = self.binary_psi(raw_data_block, neighbor_order)
     return psi
 
   ##############################################################
@@ -281,11 +282,14 @@ class SIS(SpatialDisease):
     self.X_raw.append(raw_data_block)
     self.y.append(self.current_infected)
     data_block_1 = self.binary_psi(raw_data_block, neighbor_order=1)
-    if not self.learn_embedding:
-      self.X.append(data_block_1)
-    else:
-      self.fit_embedding()
-      self.X = [self.embedder(x_raw) for x_raw in self.X_raw]
+
+    # if not self.learn_embedding:
+    #   self.X.append(data_block_1)
+    # else:
+    #   self.fit_embedding()
+    #   self.X = [self.embedder(x_raw) for x_raw in self.X_raw]
+
+    self.X.append(data_block_1)
 
     if self.neighbor_features:
       data_block_2 = self.psi(raw_data_block, neighbor_order=2)

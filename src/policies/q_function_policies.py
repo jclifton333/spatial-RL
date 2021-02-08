@@ -11,6 +11,7 @@ from src.estimation.model_based.Gravity.estimate_continuous_parameters import fi
 from src.estimation.q_functions.model_fitters import SKLogit2
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
+from src.estimation.q_functions.embedding import ggcn_multiple_runs
 from src.utils.misc import random_argsort
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
@@ -32,8 +33,10 @@ def one_step_policy(**kwargs):
 
   if env.learn_embedding:
     loss_dict = {}
+    true_probs = np.hstack(env.true_infection_probs)
+    predictor, gccn_acc = ggcn_multiple_runs(env.X_raw, env.y, env.adjacency_list, true_probs)
     def qfn(a):
-      return env.predictor(env.data_block_at_action(-1, a, raw=True))
+      return predictor(env.data_block_at_action(-1, a, raw=True))
   else:
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
     # Add parameters to info dictionary if params is an attribute of clf (as is the case with SKLogit2)
@@ -45,22 +48,14 @@ def one_step_policy(**kwargs):
 
   # For diagnosis
   clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
-  true_probs = np.hstack(env.true_infection_probs)
-  gccn_probs = np.hstack([env.predictor(x_raw) for x_raw in env.X_raw])
-  # oracle_gccn_probs = np.hstack([env.true_probs_predictor(x_raw) for x_raw in env.X_raw])
   linear_probs = np.hstack([clf.predict_proba(x, np.where(x_raw[:, -1] == 1)[0], None)
                             for x, x_raw in zip(env.X, env.X_raw)])
-
-  gccn_acc = np.mean((gccn_probs - true_probs)**2)
-  # oracle_gccn_acc = np.mean((oracle_gccn_probs - true_probs) ** 2)
-  linear_acc = np.mean((linear_probs - true_probs)**2)
+  linear_acc = np.mean((linear_probs - true_probs) ** 2)
   print(f'gccn: {gccn_acc} linear: {linear_acc}')
 
+  loss_dict['linear_acc'] = linear_acc
+  loss_dict['gccn_acc'] = gccn_acc
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-
-  # # ToDo: Using random actions for diagnostic purposes!
-  # a = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
-  # a = np.random.permutation(a)
 
   return a, loss_dict
 

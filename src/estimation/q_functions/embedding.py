@@ -315,14 +315,14 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size
                target_are_probs=False):
 
   if len(X_list) > 1:
-    _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
-                            verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
-                            samples_per_k=samples_per_k, recursive=recursive, num_settings_to_try=num_settings_to_try,
-                            X_holdout=None, y_holdout=None, target_are_probs=target_are_probs)
-    # model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
-    #                  verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
-    #                  samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2,
-    #                  target_are_probs=target_are_probs)
+    # _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
+    #                         verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
+    #                         samples_per_k=samples_per_k, recursive=recursive, num_settings_to_try=num_settings_to_try,
+    #                         X_holdout=None, y_holdout=None, target_are_probs=target_are_probs)
+    model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
+                     verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
+                     samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2,
+                     target_are_probs=target_are_probs)
   else:
     model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
                      verbose=verbose,neighbor_subset_limit=neighbor_subset_limit,
@@ -341,6 +341,19 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size
     return yhat
 
   return embedding_wrapper, model_wrapper
+
+
+def ggcn_multiple_runs(X_raw_list, y_list, adjacency_list, true_probs, num_runs=5):
+  best_model = None
+  best_score = float('inf')
+  for _ in range(num_runs):
+    _, predictor = learn_ggcn(X_raw_list, y_list, adjacency_list)
+    phat = np.hstack([predictor(x_raw) for x_raw in X_raw_list])
+    score = np.mean((phat - true_probs)**2)
+    if score < best_score:
+      best_model = predictor
+      best_score = score
+  return best_model, best_score
 
 
 def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=False,
