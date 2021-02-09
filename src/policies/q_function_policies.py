@@ -35,6 +35,17 @@ def one_step_policy(**kwargs):
     loss_dict = {}
     true_probs = np.hstack(env.true_infection_probs)
     predictor, gccn_acc = ggcn_multiple_runs(env.X_raw, env.y, env.adjacency_list, true_probs)
+
+    # For diagnosis
+    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+    linear_probs = np.hstack([clf.predict_proba(x, np.where(x_raw[:, -1] == 1)[0], None)
+                              for x, x_raw in zip(env.X, env.X_raw)])
+    linear_acc = np.mean((linear_probs - true_probs) ** 2)
+    print(f'gccn: {gccn_acc} linear: {linear_acc}')
+
+    loss_dict['linear_acc'] = linear_acc
+    loss_dict['gccn_acc'] = gccn_acc
+
     def qfn(a):
       return predictor(env.data_block_at_action(-1, a, raw=True))
   else:
@@ -46,15 +57,6 @@ def one_step_policy(**kwargs):
     def qfn(a):
       return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
-  # For diagnosis
-  clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
-  linear_probs = np.hstack([clf.predict_proba(x, np.where(x_raw[:, -1] == 1)[0], None)
-                            for x, x_raw in zip(env.X, env.X_raw)])
-  linear_acc = np.mean((linear_probs - true_probs) ** 2)
-  print(f'gccn: {gccn_acc} linear: {linear_acc}')
-
-  loss_dict['linear_acc'] = linear_acc
-  loss_dict['gccn_acc'] = gccn_acc
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
 
   return a, loss_dict
