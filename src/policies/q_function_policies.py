@@ -34,7 +34,7 @@ def one_step_policy(**kwargs):
   if env.learn_embedding:
     loss_dict = {}
     true_probs = np.hstack(env.true_infection_probs)
-    predictor, gccn_acc = ggcn_multiple_runs(env.X_raw, env.y, env.adjacency_list, true_probs)
+    predictor, gccn_acc, gccn_pobs = ggcn_multiple_runs(env.X_raw, env.y, env.adjacency_list, true_probs)
 
     # For diagnosis
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
@@ -48,6 +48,8 @@ def one_step_policy(**kwargs):
 
     def qfn(a):
       return predictor(env.data_block_at_action(-1, a, raw=True))
+    def linear_qfn(a):
+      return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
   else:
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
     # Add parameters to info dictionary if params is an attribute of clf (as is the case with SKLogit2)
@@ -58,7 +60,8 @@ def one_step_policy(**kwargs):
       return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-
+  a_linear = argmaxer(linear_qfn, evaluation_budget, treatment_budget, env)
+  pdb.set_trace()
   return a, loss_dict
 
 

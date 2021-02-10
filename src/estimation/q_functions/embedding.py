@@ -81,7 +81,7 @@ class GGCN(nn.Module):
   """
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
   """
-  def __init__(self, nfeat, J, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0,
+  def __init__(self, nfeat, J, adjacency_lst, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0,
                apply_sigmoid=False):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1 and recursive:
@@ -98,10 +98,15 @@ class GGCN(nn.Module):
     self.samples_per_k = samples_per_k
     self.recursive = recursive
     self.apply_sigmoid = apply_sigmoid
+    self.adjacency_list = adjacency_lst
 
-  def final(self, X_):
+    if self.recursive:
+      self.sample_indices_for_recursive()
+
+  def final(self, X_, train=True):
     E = self.final1(X_)
-    E = self.dropout_final(E)
+    if train:
+      E = self.dropout_final(E)
     E = F.relu(E)
     E = self.final2(E)
     # E = F.sigmoid(E)
@@ -123,7 +128,7 @@ class GGCN(nn.Module):
   def forward(self, X_, adjacency_lst, location_subset=None):
     if self.recursive:
       # return self.forward_recursive(X_, adjacency_lst)
-      return self.forward_recursive_vec(X_, adjacency_lst, location_subset=location_subset)
+      return self.forward_recursive_vec(X_, location_subset=location_subset)
     else:
       return self.forward_simple(X_, adjacency_lst)
 
@@ -160,36 +165,52 @@ class GGCN(nn.Module):
     yhat = F.sigmoid(final_)
     return yhat
 
-  def forward_recursive_vec(self, X_, adjacency_lst, location_subset=None):
-    E = self.embed_recursive_vec(X_, adjacency_lst, locations_subset=location_subset)
-    yhat = self.final(E)
+  def forward_recursive_vec(self, X_, location_subset=None, train=True):
+    E = self.embed_recursive_vec(X_, locations_subset=location_subset)
+    yhat = self.final(E, train=train)
     return yhat
 
-  def embed_recursive_vec(self, X_, adjacency_lst, locations_subset=None):
+  def sample_indices_for_recursive(self, locations_subset=None):
+    L = len(self.adjacency_list)
+    # Collect permutations
+    self.permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
+    self.where_k_neighbors = {k: [] for k in range(2, self.neighbor_subset_limit + 1)}
+    for l in range(L):
+      neighbors_l = np.append(self.adjacency_list[l], [l])
+      N_l = np.min((len(neighbors_l), self.neighbor_subset_limit))
+      for k in range(2, N_l + 1):
+        permutations_k = list(permutations(neighbors_l, int(k)))
+        self.where_k_neighbors[k].append(l)
+        if self.samples_per_k is not None:
+          permutations_k_ixs = np.random.choice(len(permutations_k), size=self.samples_per_k, replace=False)
+          permutations_k = [permutations_k[ix] for ix in permutations_k_ixs]
+        self.permutations_all[k][l, :] = np.array(permutations_k).T
+
+  def embed_recursive_vec(self, X_, locations_subset=None):
     L = X_.shape[0]
     # X_ = torch.tensor(X_)
 
     # Collect permutations
-    permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
-    where_k_neighbors = {k: [] for k in range(2, self.neighbor_subset_limit + 1)}
-    for l in range(L):
-      neighbors_l = np.append(adjacency_lst[l], [l])
-      N_l = np.min((len(neighbors_l), self.neighbor_subset_limit))
-      for k in range(2, N_l + 1):
-        permutations_k = list(permutations(neighbors_l, int(k)))
-        where_k_neighbors[k].append(l)
-        if self.samples_per_k is not None:
-          permutations_k_ixs = np.random.choice(len(permutations_k), size=self.samples_per_k, replace=False)
-          permutations_k = [permutations_k[ix] for ix in permutations_k_ixs]
-        permutations_all[k][l, :] = np.array(permutations_k).T
+    # permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
+    # where_k_neighbors = {k: [] for k in range(2, self.neighbor_subset_limit + 1)}
+    # for l in range(L):
+    #   neighbors_l = np.append(adjacency_lst[l], [l])
+    #   N_l = np.min((len(neighbors_l), self.neighbor_subset_limit))
+    #   for k in range(2, N_l + 1):
+    #     permutations_k = list(permutations(neighbors_l, int(k)))
+    #     where_k_neighbors[k].append(l)
+    #     if self.samples_per_k is not None:
+    #       permutations_k_ixs = np.random.choice(len(permutations_k), size=self.samples_per_k, replace=False)
+    #       permutations_k = [permutations_k[ix] for ix in permutations_k_ixs]
+    #     permutations_all[k][l, :] = np.array(permutations_k).T
 
     def fk(b, k):
       if k == 1:
         return self.h(b)
       else:
         result = torch.zeros((L, self.J))
-        permutations_k = permutations_all[k]
-        where_k_neighbors_ = where_k_neighbors[k]
+        permutations_k = self.permutations_all[k]
+        where_k_neighbors_ = self.where_k_neighbors[k]
         for perm_ix in range(self.samples_per_k):
           permutations_k_perm_ix = permutations_k[:, :, perm_ix]
           # ToDo: indices in where_k_neighbors_ will be wrong for k < neighbor_subset_limit, because X_ shrinks
@@ -331,12 +352,12 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size
 
   def embedding_wrapper(X_):
     X_ = torch.FloatTensor(X_)
-    E = model.embed_recursive_vec(X_, adjacency_list).detach().numpy()
+    E = model.embed_recursive_vec(X_).detach().numpy()
     return E
 
   def model_wrapper(X_):
     X_ = torch.FloatTensor(X_)
-    logits = model.forward_recursive_vec(X_, adjacency_list)
+    logits = model.forward_recursive_vec(X_, train=False)
     yhat = F.softmax(logits, dim=1)[:, 1].detach().numpy()
     return yhat
 
@@ -346,6 +367,7 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size
 def ggcn_multiple_runs(X_raw_list, y_list, adjacency_list, true_probs, num_runs=5):
   best_model = None
   best_score = float('inf')
+  best_phat = None
   for _ in range(num_runs):
     _, predictor = learn_ggcn(X_raw_list, y_list, adjacency_list)
     phat = np.hstack([predictor(x_raw) for x_raw in X_raw_list])
@@ -353,7 +375,8 @@ def ggcn_multiple_runs(X_raw_list, y_list, adjacency_list, true_probs, num_runs=
     if score < best_score:
       best_model = predictor
       best_score = score
-  return best_model, best_score
+      best_phat = phat
+  return best_model, best_score, best_phat
 
 
 def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=False,
@@ -446,7 +469,8 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
   y_list = [torch.FloatTensor(y) for y in y_list]
   # model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
   #              recursive=recursive)
-  model = GGCN(nfeat=p, J=nhid, neighbor_subset_limit=neighbor_subset_limit, samples_per_k=samples_per_k,
+  model = GGCN(nfeat=p, J=nhid, adjacency_lst=adjacency_list, neighbor_subset_limit=neighbor_subset_limit,
+               samples_per_k=samples_per_k,
                recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
   optimizer = optim.Adam(model.parameters(), lr=lr)
   if target_are_probs:
