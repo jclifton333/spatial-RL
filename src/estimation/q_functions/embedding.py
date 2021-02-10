@@ -99,9 +99,7 @@ class GGCN(nn.Module):
     self.recursive = recursive
     self.apply_sigmoid = apply_sigmoid
     self.adjacency_list = adjacency_lst
-
-    if self.recursive:
-      self.sample_indices_for_recursive()
+    self.L = len(adjacency_lst)
 
   def final(self, X_, train=True):
     E = self.final1(X_)
@@ -135,7 +133,7 @@ class GGCN(nn.Module):
   def forward_simple(self, X_, adjacency_lst):
     # Average a function of permutations of all neighbors, rather than all subsets of all neighbors
 
-    L = X_.shape[0]
+    L = self.L
     final_ = torch.tensor([])
     X_ = torch.tensor(X_).float()
     for l in range(L):
@@ -165,13 +163,20 @@ class GGCN(nn.Module):
     yhat = F.sigmoid(final_)
     return yhat
 
-  def forward_recursive_vec(self, X_, location_subset=None, train=True):
-    E = self.embed_recursive_vec(X_, locations_subset=location_subset)
-    yhat = self.final(E, train=train)
+  def forward_recursive_vec(self, X_, location_subset=None, train=True, n_samples=5):
+    if train:
+      E = self.embed_recursive_vec(X_, locations_subset=location_subset)
+      yhat = self.final(E, train=train)
+    else:
+      yhat = np.zeros(self.L)
+      for _ in range(n_samples):
+        E = self.embed_recursive_vec(X_, locations_subset=location_subset)
+        yhat_sample = self.final(E, train=train)
+        yhat += yhat_sample / n_samples
     return yhat
 
   def sample_indices_for_recursive(self, locations_subset=None):
-    L = len(self.adjacency_list)
+    L = self.L
     # Collect permutations
     self.permutations_all = {k: np.zeros((L, k, self.samples_per_k)) for k in range(2, self.neighbor_subset_limit + 1)}
     self.where_k_neighbors = {k: [] for k in range(2, self.neighbor_subset_limit + 1)}
@@ -188,6 +193,7 @@ class GGCN(nn.Module):
 
   def embed_recursive_vec(self, X_, locations_subset=None):
     L = X_.shape[0]
+    self.sample_indices_for_recursive()
     # X_ = torch.tensor(X_)
 
     # Collect permutations
