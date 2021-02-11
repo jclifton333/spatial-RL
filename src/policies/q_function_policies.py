@@ -61,7 +61,9 @@ def one_step_policy(**kwargs):
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   a_linear = argmaxer(linear_qfn, evaluation_budget, treatment_budget, env)
-  pdb.set_trace()
+  q_a = qfn(a).sum()
+  q_alin = qfn(a_linear).sum()
+  print(f'q(a): {q_a} q(alin): {q_alin}')
   return a, loss_dict
 
 
