@@ -163,16 +163,9 @@ class GGCN(nn.Module):
     yhat = F.sigmoid(final_)
     return yhat
 
-  def forward_recursive_vec(self, X_, location_subset=None, train=True, n_samples=5):
-    if train:
-      E = self.embed_recursive_vec(X_, locations_subset=location_subset)
-      yhat = self.final(E, train=train)
-    else:
-      yhat = np.zeros(self.L)
-      for _ in range(n_samples):
-        E = self.embed_recursive_vec(X_, locations_subset=location_subset)
-        yhat_sample = self.final(E, train=train)
-        yhat += yhat_sample / n_samples
+  def forward_recursive_vec(self, X_, location_subset=None, train=True):
+    E = self.embed_recursive_vec(X_, locations_subset=location_subset)
+    yhat = self.final(E, train=train)
     return yhat
 
   def sample_indices_for_recursive(self, locations_subset=None):
@@ -363,8 +356,11 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size
 
   def model_wrapper(X_):
     X_ = torch.FloatTensor(X_)
-    logits = model.forward_recursive_vec(X_, train=False)
-    yhat = F.softmax(logits, dim=1)[:, 1].detach().numpy()
+    yhat = np.zeros(X_.shape[0])
+    for _ in range(5):
+      logits = model.forward_recursive_vec(X_, train=False)
+      yhat_sample = F.softmax(logits, dim=1)[:, 1].detach().numpy()
+      yhat += yhat_sample / 5
     return yhat
 
   return embedding_wrapper, model_wrapper
