@@ -6,7 +6,7 @@ import time
 import pdb
 import numpy as np
 from src.estimation.optim.sweep.argmaxer_sweep import perturb_action
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from numba import njit, jit
 import copy
 
@@ -56,7 +56,7 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
 
 
 def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions):
-  reg = LinearRegression()
+  reg = Ridge()
   X = np.array([get_neighbor_ixn_features(a, neighbor_interactions) for a in sample_acts])
   y = sample_qs[:, l_ix]
   reg.fit(X, y)
@@ -64,13 +64,14 @@ def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_intera
 
 
 def evaluate_quad_approx(reg_list, neighbor_interaction_lists, q, env_L, treatment_budget):
-  sample_qs, sample_acts = sample_from_q(q, treatment_budget, 20, env_L)
+  sample_qs, sample_acts = sample_from_q(q, treatment_budget, 20, env_L, None)
   score = 0.
   for l, reg_l in enumerate(reg_list):
     neighbor_interactions = neighbor_interaction_lists[l]
     X_l = np.array([get_neighbor_ixn_features(a, neighbor_interactions) for a in sample_acts])
     y_l = sample_qs[:, l]
-    score += reg_l.score(X_l, y_l) / env_L
+    score_l = reg_l.score(X_l, y_l)
+    score += score_l / env_L
   return score
 
 
@@ -88,7 +89,7 @@ def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, env_L, i
       intercept_l, beta_l = reg.intercept_, reg.coef_
       quadratic_parameters[neighbor_interactions[:, 0], neighbor_interactions[:, 1]] += beta_l
       intercept += intercept_l
-      reg_list.append(l)
+      reg_list.append(reg)
   score = evaluate_quad_approx(reg_list, neighbor_interaction_lists, q, env_L, treatment_budget)
   print(f'score: {score}')
   return quadratic_parameters, intercept
