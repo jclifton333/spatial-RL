@@ -60,21 +60,26 @@ def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_intera
   X = np.array([get_neighbor_ixn_features(a, neighbor_interactions) for a in sample_acts])
   y = sample_qs[:, l_ix]
   reg.fit(X, y)
-  return reg.intercept_, reg.coef_
+  score = reg.score(X, y)
+  return reg.intercept_, reg.coef_, score
 
 
 def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, env_L, ixs):
   quadratic_parameters = np.zeros((env_L, env_L))
   intercept = 0
+  score = 0.
+  L = len(ixs)
   if ixs is None:
     ixs = range(env_L)
-  for l_ix in range(len(ixs)):
+  for l_ix in range(L):
     l = ixs[l_ix]
     neighbor_interactions = neighbor_interaction_lists[l]
     if len(neighbor_interactions) > 0:
-      intercept_l, beta_l = fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions)
+      intercept_l, beta_l, score_l = fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions)
       quadratic_parameters[neighbor_interactions[:, 0], neighbor_interactions[:, 1]] += beta_l
       intercept += intercept_l
+      score += score_l / L
+  print(f'quad approx fit: {score}')
   return quadratic_parameters, intercept
 
 
