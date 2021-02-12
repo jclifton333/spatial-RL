@@ -43,8 +43,8 @@ def one_step_policy(**kwargs):
     linear_acc = np.mean((linear_probs - true_probs) ** 2)
     print(f'gccn: {gccn_acc} linear: {linear_acc}')
 
-    loss_dict['linear_acc'] = linear_acc
-    loss_dict['gccn_acc'] = gccn_acc
+    loss_dict['linear_acc'] = float(linear_acc)
+    loss_dict['gccn_acc'] = float(gccn_acc)
 
     def qfn(a):
       return predictor(env.data_block_at_action(-1, a, raw=True))

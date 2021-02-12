@@ -1,6 +1,7 @@
 import os
 import yaml
 import argparse
+import numpy as np
 
 
 def summarize_results_at_date(date_str):
@@ -12,7 +13,7 @@ def summarize_results_at_date(date_str):
     if date_str in fname:
       any_found = True
       f = yaml.load(open(fname, 'rb'))
-      mean_, se_ = f['results']['mean'], f['results']['se']
+      mean_ = np.mean([f['results'][ix]['score'] for ix in range(len(f['results'].keys()))])
       env_name, L, policy_name = f['settings']['env_name'], f['settings']['L'], f['settings']['policy_name']
 
       epsilon = None
@@ -24,7 +25,7 @@ def summarize_results_at_date(date_str):
       for net in networks:
         if net in fname:
           network = net
-      print(env_name, network, policy_name, L, epsilon, mean_, se_)
+      print(env_name, network, policy_name, L, epsilon, mean_)
   if not any_found:
     print('No results found for that date.')
 
