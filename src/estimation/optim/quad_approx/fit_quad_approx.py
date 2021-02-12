@@ -8,6 +8,7 @@ import numpy as np
 from src.estimation.optim.sweep.argmaxer_sweep import perturb_action
 from sklearn.linear_model import LinearRegression
 from numba import njit, jit
+import copy
 
 
 # @njit
@@ -24,13 +25,26 @@ def get_neighbor_ixn_features(a, neighbor_interactions):
   return neighbor_ixn_features
 
 
+def shuffle_random_bits(arr, num_to_shuffle):
+  """
+  Helper for doing sequential quad_approx.
+  """
+  L = len(arr)
+  ixs = np.random.choice(L, size=num_to_shuffle)
+  bits_to_shuffle = arr[ixs]
+  np.random.shuffle(bits_to_shuffle)
+  arr_copy = copy.copy(arr)
+  arr_copy[ixs] = bits_to_shuffle
+  return arr_copy
+
+
 def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
   """
   Evaluate q function at evaluation_budget points in order to fit quadratic approximation.
   """
+  num_to_shuffle = treatment_budget*2
   if initial_act is not None:
-    num_to_perturb = int(np.ceil(treatment_budget / 2))
-    acts_to_evaluate = [perturb_action(initial_act, num_to_perturb) for e in range(evaluation_budget - 1)]
+    acts_to_evaluate = [shuffle_random_bits(initial_act, num_to_shuffle) for _ in range(evaluation_budget)]
     acts_to_evaluate.append(initial_act)
   else:
     dummy_act = np.hstack((np.ones(treatment_budget), np.zeros(L - treatment_budget)))

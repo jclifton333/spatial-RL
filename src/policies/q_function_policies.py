@@ -12,6 +12,7 @@ from src.estimation.q_functions.model_fitters import SKLogit2
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 from src.estimation.q_functions.embedding import ggcn_multiple_runs
+from src.estimation.optim.quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
 from src.utils.misc import random_argsort
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
@@ -60,7 +61,7 @@ def one_step_policy(**kwargs):
       return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  a_linear = argmaxer(linear_qfn, evaluation_budget, treatment_budget, env)
+  a_linear = argmaxer_quad_approx(linear_qfn, evaluation_budget, treatment_budget, env)
   q_a = qfn(a).sum()
   q_alin = qfn(a_linear).sum()
   print(f'q(a): {q_a} q(alin): {q_alin}')
