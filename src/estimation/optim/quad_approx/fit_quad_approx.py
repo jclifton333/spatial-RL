@@ -60,26 +60,37 @@ def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_intera
   X = np.array([get_neighbor_ixn_features(a, neighbor_interactions) for a in sample_acts])
   y = sample_qs[:, l_ix]
   reg.fit(X, y)
-  score = reg.score(X, y)
-  return reg.intercept_, reg.coef_, score
+  return reg
 
 
-def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, env_L, ixs):
+def evaluate_quad_approx(reg_list, neighbor_interaction_lists, q, env_L, treatment_budget):
+  sample_qs, sample_acts = sample_from_q(q, treatment_budget, 20, env_L)
+  score = 0.
+  for l, reg_l in enumerate(reg_list):
+    neighbor_interactions = neighbor_interaction_lists[l]
+    X_l = np.array([get_neighbor_ixn_features(a, neighbor_interactions) for a in sample_acts])
+    y_l = sample_qs[:, l]
+    score += reg_l.score(X_l, y_l) / env_L
+  return score
+
+
+def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, env_L, ixs, q, treatment_budget):
   quadratic_parameters = np.zeros((env_L, env_L))
   intercept = 0
-  score = 0.
-  L = len(ixs)
+  reg_list = []
   if ixs is None:
     ixs = range(env_L)
-  for l_ix in range(L):
+  for l_ix in ixs:
     l = ixs[l_ix]
     neighbor_interactions = neighbor_interaction_lists[l]
     if len(neighbor_interactions) > 0:
-      intercept_l, beta_l, score_l = fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions)
+      reg = fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions)
+      intercept_l, beta_l = reg.intercept_, reg.coef_
       quadratic_parameters[neighbor_interactions[:, 0], neighbor_interactions[:, 1]] += beta_l
       intercept += intercept_l
-      score += score_l / L
-  print(f'quad approx fit: {score}')
+      reg_list.append(l)
+  score = evaluate_quad_approx(reg_list, neighbor_interaction_lists, q, env_L, treatment_budget)
+  print(f'score: {score}')
   return quadratic_parameters, intercept
 
 
@@ -89,7 +100,8 @@ def get_quadratic_program_from_q(q, treatment_budget, evaluation_budget, env, ix
   else:
     L = env.L
   sample_qs, sample_acts = sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act)
-  quadratic_parameters, intercept = fit_quad_approx(sample_qs, sample_acts, env.neighbor_interaction_lists, env.L, ixs)
+  quadratic_parameters, intercept = fit_quad_approx(sample_qs, sample_acts, env.neighbor_interaction_lists, env.L, ixs,
+                                                    q, treatment_budget)
   return quadratic_parameters, intercept
 
 
