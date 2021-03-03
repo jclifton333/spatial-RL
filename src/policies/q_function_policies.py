@@ -38,19 +38,19 @@ def one_step_policy(**kwargs):
     predictor, gccn_acc, gccn_pobs = ggcn_multiple_runs(env.X_raw, env.y, env.adjacency_list, true_probs)
 
     # For diagnosis
-    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
-    linear_probs = np.hstack([clf.predict_proba(x, np.where(x_raw[:, -1] == 1)[0], None)
-                              for x, x_raw in zip(env.X, env.X_raw)])
-    linear_acc = np.mean((linear_probs - true_probs) ** 2)
-    print(f'gccn: {gccn_acc} linear: {linear_acc}')
+    # clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+    # linear_probs = np.hstack([clf.predict_proba(x, np.where(x_raw[:, -1] == 1)[0], None)
+    #                           for x, x_raw in zip(env.X, env.X_raw)])
+    # linear_acc = np.mean((linear_probs - true_probs) ** 2)
+    # print(f'gccn: {gccn_acc} linear: {linear_acc}')
 
-    loss_dict['linear_acc'] = float(linear_acc)
-    loss_dict['gccn_acc'] = float(gccn_acc)
+    # loss_dict['linear_acc'] = float(linear_acc)
+    # loss_dict['gccn_acc'] = float(gccn_acc)
 
     def qfn(a):
       return predictor(env.data_block_at_action(-1, a, raw=True))
-    def linear_qfn(a):
-      return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
+    # def linear_qfn(a):
+    #   return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
   else:
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
     # Add parameters to info dictionary if params is an attribute of clf (as is the case with SKLogit2)
@@ -61,10 +61,10 @@ def one_step_policy(**kwargs):
       return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  a_linear = argmaxer_quad_approx(linear_qfn, evaluation_budget, treatment_budget, env)
-  q_a = qfn(a).sum()
-  q_alin = qfn(a_linear).sum()
-  print(f'q(a): {q_a} q(alin): {q_alin}')
+  # a_linear = argmaxer_quad_approx(linear_qfn, evaluation_budget, treatment_budget, env)
+  # q_a = qfn(a).sum()
+  # q_alin = qfn(a_linear).sum()
+  # print(f'q(a): {q_a} q(alin): {q_alin}')
   return a, loss_dict
 
 

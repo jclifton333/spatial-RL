@@ -56,7 +56,7 @@ def sample_from_q(q, treatment_budget, evaluation_budget, L, initial_act):
 
 
 def fit_quad_approx_at_location(sample_qs, sample_acts, l, l_ix, neighbor_interactions):
-  reg = Ridge()
+  reg = Ridge(alpha=5.0)
   X = np.array([get_neighbor_ixn_features(a, neighbor_interactions) for a in sample_acts])
   y = sample_qs[:, l_ix]
   reg.fit(X, y)
@@ -90,8 +90,8 @@ def fit_quad_approx(sample_qs, sample_acts, neighbor_interaction_lists, env_L, i
       quadratic_parameters[neighbor_interactions[:, 0], neighbor_interactions[:, 1]] += beta_l
       intercept += intercept_l
       reg_list.append(reg)
-  score = evaluate_quad_approx(reg_list, neighbor_interaction_lists, q, env_L, treatment_budget)
-  print(f'score: {score}')
+  # score = evaluate_quad_approx(reg_list, neighbor_interaction_lists, q, env_L, treatment_budget)
+  # print(f'score: {score}')
   return quadratic_parameters, intercept
 
 
