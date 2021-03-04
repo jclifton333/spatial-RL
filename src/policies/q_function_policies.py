@@ -40,29 +40,42 @@ def one_step_policy(**kwargs):
     def oracle_qfn(a):
       return env.next_infected_probabilities(a)
     true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
-    # predictor, gccn_acc, gccn_pobs = ggcn_multiple_runs(env.X_raw,
-    #                                                     env.y, env.adjacency_list, env, eval_actions, true_probs)
     predictor = oracle_tune_ggcn(env.X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs)
 
     # For diagnosis
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
-    linear_probs = np.hstack([clf.predict_proba(x, np.where(x_raw[:, -1] == 1)[0], None)
-                              for x, x_raw in zip(env.X, env.X_raw)])
-    # linear_acc = np.mean((linear_probs - true_probs) ** 2)
-    # onem_linear_probs = 1 - linear_probs
-    # onem_true_probs = 1 - true_probs
-    # linear_acc = (linear_probs * np.log(linear_probs / true_probs) + \
-    #              onem_linear_probs * np.log(onem_linear_probs / onem_true_probs)).mean()
-    # # print(f'gccn: {gccn_acc} linear: {linear_acc}')
-
-    # loss_dict['linear_acc'] = float(linear_acc)
-    # loss_dict['gccn_acc'] = float(gccn_acc)
 
     def qfn(a):
       return predictor(env.data_block_at_action(-1, a, raw=True))
     def linear_qfn(a):
       return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
+    a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+    a_linear = argmaxer_quad_approx(linear_qfn, evaluation_budget, treatment_budget, env)
+    q_a = qfn(a).sum()
+    q_alin = qfn(a_linear).sum()
+    q_a_true = oracle_qfn(a).sum()
+    q_alin_true = oracle_qfn(a_linear).sum()
+
+    # Get accuracy at actions at _this_ timestep
+    linear_acc = 0.
+    gccn_acc = 0.
+    for a_ in eval_actions:
+      linear_probs = linear_qfn(a_)
+      gccn_probs = qfn(a_)
+      true_probs = oracle_qfn(a_)
+      onem_linear_probs = 1 - linear_probs
+      onem_gccn_probs = 1 - gccn_probs
+      onem_true_probs = 1 - true_probs
+      gccn_acc += (gccn_probs * np.log(gccn_probs / true_probs) +
+                   onem_gccn_probs * np.log(onem_gccn_probs / onem_true_probs)).mean() / N_REP
+      linear_acc += (linear_probs * np.log(linear_probs / true_probs) +
+                     onem_linear_probs * np.log(onem_linear_probs / onem_true_probs)).mean() / N_REP
+
+    print(f'gccn acc: {gccn_acc} linear acc: {linear_acc}\nq(a): {q_a} q(alin): {q_alin}\nq_true(a): {q_a_true} q_alin_true: {q_alin_true}')
+
+    q_gccn_minus_q_linear = q_a_true - q_alin_true
+    loss_dict['q_diff'] = q_gccn_minus_q_linear
   else:
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
     # Add parameters to info dictionary if params is an attribute of clf (as is the case with SKLogit2)
@@ -71,34 +84,7 @@ def one_step_policy(**kwargs):
 
     def qfn(a):
       return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
-
-  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
-  a_linear = argmaxer_quad_approx(linear_qfn, evaluation_budget, treatment_budget, env)
-  q_a = qfn(a).sum()
-  q_alin = qfn(a_linear).sum()
-  q_a_true = oracle_qfn(a).sum()
-  q_alin_true = oracle_qfn(a_linear).sum()
-
-  # Get accuracy at actions at _this_ timestep
-
-  linear_acc = 0.
-  gccn_acc = 0.
-  for a_ in eval_actions:
-    linear_probs = linear_qfn(a_)
-    gccn_probs = qfn(a_)
-    true_probs = oracle_qfn(a_)
-    onem_linear_probs = 1 - linear_probs
-    onem_gccn_probs = 1 - gccn_probs
-    onem_true_probs = 1 - true_probs
-    gccn_acc += (gccn_probs * np.log(gccn_probs / true_probs) +
-                   onem_gccn_probs * np.log(onem_gccn_probs / onem_true_probs)).mean() / N_REP
-    linear_acc += (linear_probs * np.log(linear_probs / true_probs) +
-                onem_linear_probs * np.log(onem_linear_probs / onem_true_probs)).mean() / N_REP
-
-  print(f'gccn acc: {gccn_acc} linear acc: {linear_acc}\nq(a): {q_a} q(alin): {q_alin}\nq_true(a): {q_a_true} q_alin_true: {q_alin_true}')
-
-  q_gccn_minus_q_linear = q_a_true - q_alin_true
-  loss_dict['q_diff'] = q_gccn_minus_q_linear
+    a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
 
   return a, loss_dict
 
