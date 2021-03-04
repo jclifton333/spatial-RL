@@ -25,7 +25,12 @@ def summarize_results_at_date(date_str):
       for net in networks:
         if net in fname:
           network = net
-      print(env_name, network, policy_name, L, epsilon, mean_)
+
+      to_print = f'{env_name} {network} {policy_name} {L} {epsilon} {mean_}'
+      if 'learn_embedding' in f['settings'].keys():
+        to_print += ' {}'.format(f['settings']['learn_embedding'])
+
+      print(to_print)
   if not any_found:
     print('No results found for that date.')
 

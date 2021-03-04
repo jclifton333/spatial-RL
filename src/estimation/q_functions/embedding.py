@@ -389,7 +389,7 @@ def ggcn_multiple_runs(X_raw_list, y_list, adjacency_list, env, eval_actions, tr
 
 def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_probs,
                      n_epoch=50, nhid=100, batch_size=5, verbose=False,
-                     neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+                     neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=3,
                      X_holdout=None, y_holdout=None, target_are_probs=False):
   """
   Tune GGCN hyperparameters, given sample of true probabilities evaluated at the current state.
@@ -419,8 +419,6 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
       best_predictor = predictor
     if score > worst_score:
       worst_score = score
-
-  print(f'best score: {best_score} worst score: {worst_score}')
   return best_predictor
 
 
