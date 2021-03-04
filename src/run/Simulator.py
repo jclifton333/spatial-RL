@@ -452,6 +452,7 @@ class Simulator(object):
     max_losses = []
     linear_acc_lst = []
     gccn_acc_lst = []
+    q_diff_lst = []
     for t in range(self.time_horizon-2):
       print(t)
       a, info = self.policy(**self.policy_arguments)
@@ -471,8 +472,10 @@ class Simulator(object):
         if 'linear_acc' in info.keys():
           linear_acc = info['linear_acc']
           gccn_acc = info['gccn_acc']
+          q_diff = info['q_diff']
           linear_acc_lst.append(linear_acc)
           gccn_acc_lst.append(gccn_acc)
+          q_diff_lst.append(q_diff)
 
       else:
         mean_loss = None
@@ -498,11 +501,17 @@ class Simulator(object):
       episode_results['gccn_acc_lst'] = gccn_acc_lst
 
     if self.env.learn_embedding and self.number_of_replicates == 1:
-      gccn_mean = np.mean(gccn_acc_lst)
-      print(f'gccn acc: {gccn_mean}')
-      plt.plot(linear_acc_lst, label='linear')
-      plt.plot(gccn_acc_lst, label='gccn')
-      plt.legend()
+      times = np.arange(len(linear_acc_lst))
+      fig, ax1 = plt.subplots()
+      ax1.set_xlabel('time')
+      ax1.set_ylabel('loss')
+      ax1.plot(times, linear_acc_lst, label='linear', color='red')
+      ax1.plot(gccn_acc_lst, label='gccn', color='green')
+      ax1.legend()
+      ax2 = ax1.twinx()
+      ax2.set_ylabel('q gccn - q linear')
+      ax2.plot(times, q_diff_lst)
+      fig.tight_layout()
       plt.show()
 
     if self.fit_qfn_at_end:

@@ -8,6 +8,13 @@ def onehot(length, ix):
   return arr
 
 
+def kl(p, q):
+  onem_p = 1 - p
+  onem_q = 1 - q
+  kl_ = (p * np.log(p / q) + onem_p * np.log(onem_p / onem_q)).mean()
+  return kl_
+
+
 def random_argsort(arr, num_to_take):
   """
   Ad-hoc way of getting randomized argsort.

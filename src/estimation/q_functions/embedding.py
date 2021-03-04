@@ -16,6 +16,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Variable
+from src.utils.misc import kl
 # from pygcn.utils import accuracy
 # from pygcn.models import GCN
 if torch.cuda.is_available():
@@ -332,7 +333,7 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
 
 def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size=5, verbose=False,
                neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
-               target_are_probs=False):
+               target_are_probs=False, lr=0.01, tol=0.01, dropout=0.2):
 
   if len(X_list) > 1:
     # _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
@@ -341,7 +342,7 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size
     #                         X_holdout=None, y_holdout=None, target_are_probs=target_are_probs)
     model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
                      verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
-                     samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2,
+                     samples_per_k=samples_per_k, recursive=recursive, lr=lr, tol=tol, dropout=dropout,
                      target_are_probs=target_are_probs)
   else:
     model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
@@ -366,19 +367,61 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size
   return embedding_wrapper, model_wrapper
 
 
-def ggcn_multiple_runs(X_raw_list, y_list, adjacency_list, true_probs, num_runs=5):
+def ggcn_multiple_runs(X_raw_list, y_list, adjacency_list, env, eval_actions, true_probs, num_runs=5):
   best_model = None
   best_score = float('inf')
   best_phat = None
   for _ in range(num_runs):
     _, predictor = learn_ggcn(X_raw_list, y_list, adjacency_list)
-    phat = np.hstack([predictor(x_raw) for x_raw in X_raw_list])
-    score = np.mean((phat - true_probs)**2)
+    def qfn(a):
+      return predictor(env.data_block_at_action(-1, a, raw=True))
+    phat = np.hstack([qfn(a_) for a_ in eval_actions])
+    # score = np.mean((phat - true_probs)**2)
+    onem_phat = 1 - phat
+    onem_true_probs = 1 - true_probs
+    score = kl(phat, true_probs)
     if score < best_score:
       best_model = predictor
       best_score = score
       best_phat = phat
   return best_model, best_score, best_phat
+
+
+def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_probs,
+                     n_epoch=50, nhid=100, batch_size=5, verbose=False,
+                     neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+                     X_holdout=None, y_holdout=None, target_are_probs=False):
+  """
+  Tune GGCN hyperparameters, given sample of true probabilities evaluated at the current state.
+  """
+  LR_RANGE = np.logspace(-3, -1, 100)
+  DROPOUT_RANGE = np.linspace(0, 1.0, 100)
+
+  best_predictor = None
+  best_score = float('inf')
+  worst_score = -float('inf')
+  for _ in range(num_settings_to_try):
+    # Fit model with settings
+    lr = np.random.choice(LR_RANGE)
+    dropout = np.random.choice(DROPOUT_RANGE)
+    _, predictor = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size=5, verbose=False,
+                              neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+                              target_are_probs=False, lr=lr, tol=0.01, dropout=dropout)
+
+    # Compare to true probs
+    def qfn(a):
+      return predictor(env.data_block_at_action(-1, a, raw=True))
+    phat = np.hstack([qfn(a_) for a_ in eval_actions])
+    score = kl(phat, true_probs)
+
+    if score < best_score:
+      best_score = score
+      best_predictor = predictor
+    if score > worst_score:
+      worst_score = score
+
+  print(f'best score: {best_score} worst score: {worst_score}')
+  return best_predictor
 
 
 def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=False,
