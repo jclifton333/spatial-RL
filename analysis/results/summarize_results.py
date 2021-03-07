@@ -13,7 +13,9 @@ def summarize_results_at_date(date_str):
     if date_str in fname:
       any_found = True
       f = yaml.load(open(fname, 'rb'))
-      mean_ = np.mean([f['results'][ix]['score'] for ix in range(len(f['results'].keys()))])
+      scores = [f['results'][ix]['score'] for ix in range(len(f['results'].keys()))]
+      mean_ = np.mean(scores)
+      se_ = np.std(scores) / np.sqrt(len(scores))
       env_name, L, policy_name = f['settings']['env_name'], f['settings']['L'], f['settings']['policy_name']
 
       epsilon = None
@@ -26,7 +28,7 @@ def summarize_results_at_date(date_str):
         if net in fname:
           network = net
 
-      to_print = f'{env_name} {network} {policy_name} {L} {epsilon} {mean_}'
+      to_print = f'{env_name} {network} {policy_name} {L} {epsilon} {mean_} {se_}'
       if 'learn_embedding' in f['settings'].keys():
         to_print += ' {}'.format(f['settings']['learn_embedding'])
 
