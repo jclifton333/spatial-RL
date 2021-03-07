@@ -11,7 +11,7 @@ from src.estimation.model_based.Gravity.estimate_continuous_parameters import fi
 from src.estimation.q_functions.model_fitters import SKLogit2
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
-from src.estimation.q_functions.embedding import ggcn_multiple_runs, oracle_tune_ggcn
+from src.estimation.q_functions.embedding import ggcn_multiple_runs, oracle_tune_ggcn, learn_ggcn
 from src.estimation.optim.quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
 from src.utils.misc import random_argsort
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
@@ -39,8 +39,9 @@ def one_step_policy(**kwargs):
     eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
     def oracle_qfn(a):
       return env.next_infected_probabilities(a)
-    true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
-    predictor = oracle_tune_ggcn(env.X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs)
+    # true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
+    # predictor = oracle_tune_ggcn(env.X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs)
+    _, predictor = learn_ggcn(env.X_raw, env.y, env.adjacency_list)
 
     # For diagnosis
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
