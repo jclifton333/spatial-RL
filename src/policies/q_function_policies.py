@@ -23,9 +23,9 @@ from functools import partial
 
 
 def one_step_policy(**kwargs):
-  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap = \
+  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, raw_features = \
     kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
-    kwargs['bootstrap']
+    kwargs['bootstrap'], kwargs['raw_features']
 
   if bootstrap:
     weights = np.random.exponential(size=len(env.X)*env.L)
@@ -78,13 +78,22 @@ def one_step_policy(**kwargs):
     q_gccn_minus_q_linear = q_a_true - q_alin_true
     loss_dict['q_diff'] = q_gccn_minus_q_linear
   else:
-    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
-    # Add parameters to info dictionary if params is an attribute of clf (as is the case with SKLogit2)
-    if 'params' in clf.__dict__.keys():
-      loss_dict['q_fn_params'] = clf.params
+    if raw_features:
+      X = np.vstack(env.X)
+      y = np.hstack(env.y)
+      clf = LogisticRegression()
+      clf.fit(X, y)
+      loss_dict = {}
+      def qfn(a):
+        return clf.predict_proba(env.data_block_at_action(-1, a))[:, 1]
 
-    def qfn(a):
-      return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
+    else:
+      clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+      # Add parameters to info dictionary if params is an attribute of clf (as is the case with SKLogit2)
+      if 'params' in clf.__dict__.keys():
+          loss_dict['q_fn_params'] = clf.params
+      def qfn(a):
+        return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
     a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
 
   return a, loss_dict
