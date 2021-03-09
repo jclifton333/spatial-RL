@@ -322,11 +322,19 @@ def two_step(**kwargs):
     weights = None
 
   # One step
-  clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
-  def qfn_at_block(block_index, a):
-    return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
+  if env.learn_embedding:
+    _, predictor = learn_ggcn(env.X_raw, env.y, env.adjacency_list)
 
-  # ToDo: Comment in after debugging
+    # For diagnosis
+    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+
+    def qfn_at_block(block_index, a):
+      return predictor(env.data_block_at_action(block_index, a, raw=True))
+  else:
+    clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
+    def qfn_at_block(block_index, a):
+      return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
+
   # Back up once
   backup = []
   for t in range(1, env.T):
