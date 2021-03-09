@@ -31,7 +31,8 @@ def summarize_results_at_date(date_str):
       to_print = f'{env_name} {network} {policy_name} {L} {epsilon} {mean_} {se_}'
       if 'learn_embedding' in f['settings'].keys():
         to_print += ' {}'.format(f['settings']['learn_embedding'])
-
+      if 'raw_features' in f['settings'].keys():
+        to_print += ' {}'.format(f['settings']['raw_features'])
       print(to_print)
   if not any_found:
     print('No results found for that date.')

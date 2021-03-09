@@ -121,7 +121,8 @@ class Simulator(object):
     self.settings.update({'env_name': env_name, 'L': self.env.L, 'policy_name': policy_name,
                           'argmaxer_name': argmaxer_name, 'time_horizon': self.time_horizon,
                           'number_of_replicates': self.number_of_replicates,
-                          'learn_embedding': str(self.env.learn_embedding)})
+                          'learn_embedding': str(self.env.learn_embedding),
+                          'raw_features': str(self.raw_features)})
 
     # Get filename base for saving results
     to_join = [env_name, policy_name, argmaxer_name, str(self.env.L), network_name,

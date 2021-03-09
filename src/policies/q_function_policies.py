@@ -86,7 +86,6 @@ def one_step_policy(**kwargs):
       loss_dict = {}
       def qfn(a):
         return clf.predict_proba(env.data_block_at_action(-1, a))[:, 1]
-
     else:
       clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
       # Add parameters to info dictionary if params is an attribute of clf (as is the case with SKLogit2)
