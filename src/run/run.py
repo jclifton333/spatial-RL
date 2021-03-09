@@ -68,7 +68,7 @@ if __name__ == '__main__':
       env_kwargs['regenerate_network'] = True
     network_name = args.network
   elif args.env_name == 'Ebola':
-    env_kwargs = {}
+    env_kwargs = {'learn_embedding': (args.learn_embedding == 'True')}
     network_name = 'Ebola'
   elif args.env_name == 'ContinuousGrav':
     env_kwargs = {'L': args.L}

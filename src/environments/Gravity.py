@@ -11,6 +11,7 @@ import pdb
 from scipy.special import expit
 from src.environments.SpatialDisease import SpatialDisease
 import src.environments.gravity_infection_probs as infection_probs
+import copy
 
 
 class Gravity(SpatialDisease):
@@ -26,7 +27,7 @@ class Gravity(SpatialDisease):
   """
   def __init__(self, distance_matrix, product_matrix, adjacency_matrix, covariate_matrix, theta,
                theta_x_l, theta_x_lprime, lambda_, initial_infections=None,
-               construct_features_for_policy_search=False):
+               construct_features_for_policy_search=False, learn_embedding=False):
     """
 
     :param distance_matrix:
@@ -36,7 +37,8 @@ class Gravity(SpatialDisease):
     :param lambda_: array of weights used in policy search
     """
     SpatialDisease.__init__(self, adjacency_matrix, initial_infections=initial_infections,
-                            construct_features_for_policy_search=construct_features_for_policy_search)
+                            construct_features_for_policy_search=construct_features_for_policy_search,
+                            learn_embedding=learn_embedding)
     self.current_state = None  # TODO
 
     self.distance_matrix = distance_matrix
