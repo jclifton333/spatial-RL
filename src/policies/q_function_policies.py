@@ -32,7 +32,7 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  if env.learn_embedding:
+  if env.learn_embedding and len(env.X) > 7: 
     loss_dict = {}
     N_REP = 50
     dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))

@@ -461,6 +461,7 @@ class Simulator(object):
       print(t)
       a, info = self.policy(**self.policy_arguments)
       self.policy_arguments['planning_depth'] = self.time_horizon - t
+      print(self.env.Y[-1, :].mean())
 
       # For pre-fit q_fn
       if info is not None:
@@ -493,8 +494,8 @@ class Simulator(object):
 
       self.env.step(a)
     t1 = time.time()
-    # score = np.mean(self.env.Y)
-    score = np.mean(self.env.current_infected)
+    score = np.mean(self.env.Y)
+    # score = np.mean(self.env.current_infected)
     episode_results['score'] = float(score)
     episode_results['runtime'] = float(t1 - t0)
     episode_results['mean_losses'] = mean_losses
