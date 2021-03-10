@@ -9,6 +9,8 @@ def onehot(length, ix):
 
 
 def kl(p, q):
+  p = np.maximum(np.minimum(p, 0.999), 0.001)
+  q = np.maximum(np.minimum(q, 0.999), 0.001)
   onem_p = 1 - p
   onem_q = 1 - q
   kl_ = (p * np.log(p / q) + onem_p * np.log(onem_p / onem_q)).mean()

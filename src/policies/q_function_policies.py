@@ -13,7 +13,7 @@ import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 from src.estimation.q_functions.embedding import ggcn_multiple_runs, oracle_tune_ggcn, learn_ggcn
 from src.estimation.optim.quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
-from src.utils.misc import random_argsort
+from src.utils.misc import random_argsort, kl
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
 from scipy.special import expit, logit
@@ -65,13 +65,8 @@ def one_step_policy(**kwargs):
       linear_probs = linear_qfn(a_)
       gccn_probs = qfn(a_)
       true_probs = oracle_qfn(a_)
-      onem_linear_probs = 1 - linear_probs
-      onem_gccn_probs = 1 - gccn_probs
-      onem_true_probs = 1 - true_probs
-      gccn_acc += (gccn_probs * np.log(gccn_probs / true_probs) +
-                   onem_gccn_probs * np.log(onem_gccn_probs / onem_true_probs)).mean() / N_REP
-      linear_acc += (linear_probs * np.log(linear_probs / true_probs) +
-                     onem_linear_probs * np.log(onem_linear_probs / onem_true_probs)).mean() / N_REP
+      gccn_acc += kl(gccn_probs, true_probs) / N_REP
+      linear_acc += kl(linear_probs, true_probs) / N_REP
 
     print(f'gccn acc: {gccn_acc} linear acc: {linear_acc}\nq(a): {q_a} q(alin): {q_alin}\nq_true(a): {q_a_true} q_alin_true: {q_alin_true}')
 
