@@ -39,9 +39,15 @@ def one_step_policy(**kwargs):
     eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
     def oracle_qfn(a):
       return env.next_infected_probabilities(a)
-    true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
-    predictor = oracle_tune_ggcn(env.X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs)
-    # _, predictor = learn_ggcn(env.X_raw, env.y, env.adjacency_list)
+    # true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
+    # predictor = oracle_tune_ggcn(env.X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs)
+
+    if env.__name__ == "Ebola":
+      X_raw = np.array([np.concatenate((x_raw, env.NEIGHBOR_DISTANCE_MATRIX)) for x_raw in env.X_raw])
+    else:
+      X_raw = env.X_raw
+
+    _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
     # For diagnosis
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)

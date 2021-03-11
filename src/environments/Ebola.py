@@ -32,12 +32,16 @@ class Ebola(Gravity):
   OUTBREAK_TIMES = network_info['outbreak_time_array']
 
   ADJACENCY_MATRIX = np.zeros((L, L))
+  NEIGHBOR_DISTANCE_MATRIX = np.zeros((L, 4))
   for l in range(L):
     d_l_lprime = DISTANCE_MATRIX[l, :]
     s_l_lprime = SUSCEPTIBILITY[l] * SUSCEPTIBILITY
     sorted_ratios = np.argsort(d_l_lprime / s_l_lprime)
+    j = 0
     for lprime in sorted_ratios[1:4]:
         ADJACENCY_MATRIX[l, lprime] = 1
+        NEIGHBOR_DISTANCE_MATRIX[l, j] = d_l_lprime
+        j += 1
 
   MAX_NUMBER_OF_NEIGHBORS = int(np.max(np.sum(ADJACENCY_MATRIX, axis=1)))
   # Fill matrix of susceptibility products
@@ -109,7 +113,8 @@ class Ebola(Gravity):
       else:
         l_prime = neighbors[i]
         x_lprime = raw_data_block[l_prime, :]
-        x_l = np.concatenate((x_l, x_lprime, [self.DISTANCE_MATRIX[l, l_prime] + self.DISTANCE_MATRIX[l_prime, l]]))
+        x_l = np.concatenate((x_l, x_lprime))
+    x_l = np.concatenate((x_l, self.NEIGHBOR_DISTANCE_MATRIX[l, :]))
 
     # If second-order, concatenate counts of infection and treatment status pairs for first- and second-order neighbors
     # (similar to SIS).
