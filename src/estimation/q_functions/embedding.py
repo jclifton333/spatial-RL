@@ -516,7 +516,6 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
                samples_per_k=samples_per_k,
                recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
   optimizer = optim.Adam(model.parameters(), lr=lr)
-  pdb.set_trace()
   if target_are_probs:
     criterion = nn.MSELoss()
   else:

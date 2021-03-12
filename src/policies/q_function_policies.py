@@ -32,7 +32,7 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  if env.learn_embedding:
+  if env.learn_embedding and len(env.X) > 7:
     loss_dict = {}
     N_REP = 50
     dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
@@ -43,7 +43,7 @@ def one_step_policy(**kwargs):
     # predictor = oracle_tune_ggcn(env.X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs)
 
     if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
-      X_raw = np.array([np.concatenate((x_raw, env.NEIGHBOR_DISTANCE_MATRIX)) for x_raw in env.X_raw])
+      X_raw = [np.column_stack((x_raw, env.NEIGHBOR_DISTANCE_MATRIX)) for x_raw in env.X_raw]
     else:
       X_raw = env.X_raw
 
