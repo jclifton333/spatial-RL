@@ -32,7 +32,7 @@ class Ebola(Gravity):
   OUTBREAK_TIMES = network_info['outbreak_time_array']
 
   ADJACENCY_MATRIX = np.zeros((L, L))
-  NEIGHBOR_DISTANCE_MATRIX = np.zeros((L, 4))
+  NEIGHBOR_DISTANCE_MATRIX = np.zeros((L, 3))
   for l in range(L):
     d_l_lprime = DISTANCE_MATRIX[l, :]
     s_l_lprime = SUSCEPTIBILITY[l] * SUSCEPTIBILITY
@@ -40,7 +40,7 @@ class Ebola(Gravity):
     j = 0
     for lprime in sorted_ratios[1:4]:
         ADJACENCY_MATRIX[l, lprime] = 1
-        NEIGHBOR_DISTANCE_MATRIX[l, j] = d_l_lprime
+        NEIGHBOR_DISTANCE_MATRIX[l, j] = DISTANCE_MATRIX[l, j]
         j += 1
 
   MAX_NUMBER_OF_NEIGHBORS = int(np.max(np.sum(ADJACENCY_MATRIX, axis=1)))

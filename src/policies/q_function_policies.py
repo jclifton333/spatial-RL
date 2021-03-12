@@ -42,7 +42,7 @@ def one_step_policy(**kwargs):
     # true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
     # predictor = oracle_tune_ggcn(env.X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs)
 
-    if env.__name__ == "Ebola":
+    if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
       X_raw = np.array([np.concatenate((x_raw, env.NEIGHBOR_DISTANCE_MATRIX)) for x_raw in env.X_raw])
     else:
       X_raw = env.X_raw
