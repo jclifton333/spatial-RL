@@ -53,7 +53,10 @@ def one_step_policy(**kwargs):
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
 
     def qfn(a):
-      return predictor(env.data_block_at_action(-1, a, raw=True))
+      X_raw_ = env.data_block_at_action(-1, a, raw=True)
+      if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
+        X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
+      return predictor(X_raw_)
     def linear_qfn(a):
       return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
 
