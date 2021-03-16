@@ -199,28 +199,30 @@ def estimate_var(y, kernel_weights, grid_size):
   return sigma_sq_hat
 
 
-def get_kernel_from_file(kernel, pairwise_distances):
-  for fname in os.path.listdir(kernel_dir):
-    if kernel in fname and pairwise_distances in fname:
+def get_kernel_from_file(kernel_name, L):
+  for fname in os.listdir(kernel_dir):
+    if kernel_name in fname and str(L) in fname:
+      fname = os.path.join(kernel_dir, fname)
       saved_kernel_weights = np.load(fname)
       return saved_kernel_weights
   saved_kernel_weights = None
   return saved_kernel_weights
 
 
-def construct_kernel_matrix_from_distances(kernel, pairwise_distances):
+def construct_kernel_matrix_from_distances(kernel, pairwise_distances, kernel_name):
   grid_size = pairwise_distances.shape[0]
 
   # Try to get saved kernel
-  saved_kernel_weights = get_kernel_from_file(kernel, pairwise_distances)
+  saved_kernel_weights = get_kernel_from_file(kernel_name, grid_size)
   if saved_kernel_weights is None:
     kernel_weights = np.zeros((grid_size, grid_size))
     for i in range(grid_size):
       for j in range(grid_size):
         kernel_weights[i, j] = kernel(pairwise_distances[i, j])
-    suffix = f'{kernel}_{pairwise_distances}'
-    fname = os.path.join(kernel_dir, suffix)
-    np.save(fname, kernel_weights)
+    suffix = f'{kernel_name}_{grid_size}.npy'
+    fname = os.path.join(kernel_dir, suffix )
+    with open(fname, 'wb') as f:
+      np.save(f, kernel_weights)
   else:
     kernel_weights = saved_kernel_weights
   return kernel_weights
@@ -335,11 +337,11 @@ def var_sigma_infty_from_exp_kernel(beta1=0.1, beta2=0.1, grid_size=100):
   return
 
 
-def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, N, c1, c2):
+def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, N, c1, c2, kernel_name):
 
   np.random.seed(seed)
   pairwise_distances = get_pairwise_distances(grid_size)
-  spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
+  spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances, kernel_name)
   temporal_kernel_weights = np.array([np.array([kernel(np.abs(t1 - t2)) for t1 in range(time_horizon)])
                                       for t2 in range(time_horizon)])
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
@@ -420,7 +422,8 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
 
   # Distribute
   backup_sampling_dbn_partial = partial(backup_sampling_dbn_rep, time_horizon=time_horizon, n_cutoff=n_cutoff,
-                                        kernel=kernel, beta1=beta1, beta2=beta2, N=N, c1=c2, c2=c2)
+                                        kernel=kernel, beta1=beta1, beta2=beta2, N=N, c1=c2, c2=c2,
+                                        kernel_name=kernel_name)
   if n_rep == 1:
     results = [backup_sampling_dbn_partial(0)]
   else:
