@@ -410,7 +410,10 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
 
     # Compare to true probs
     def qfn(a):
-      return predictor(env.data_block_at_action(-1, a, raw=True))
+      X_raw_ = env.data_block_at_action(-1, a, raw=True)
+      if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
+        X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
+      return predictor(X_raw_)
     phat = np.hstack([qfn(a_) for a_ in eval_actions])
     score = kl(phat, true_probs)
 
