@@ -40,7 +40,7 @@ class Ebola(Gravity):
     j = 0
     for lprime in sorted_ratios[1:4]:
         ADJACENCY_MATRIX[l, lprime] = 1
-        NEIGHBOR_DISTANCE_MATRIX[l, j] = DISTANCE_MATRIX[l, j]
+        NEIGHBOR_DISTANCE_MATRIX[l, j] = DISTANCE_MATRIX[l, j] + DISTANCE_MATRIX[j, l]
         j += 1
 
   MAX_NUMBER_OF_NEIGHBORS = int(np.max(np.sum(ADJACENCY_MATRIX, axis=1)))
@@ -56,7 +56,8 @@ class Ebola(Gravity):
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
 
   # Params for logit of transmission probability
-  ALPHA = 3.0
+  # ALPHA = 3.0
+  ALPHA = 2.0
   BETA = -5.0
   ETA_0 = SIS.ETA_2 * ALPHA
   ETA_1 = SIS.ETA_3 + np.log(ALPHA)
@@ -113,8 +114,7 @@ class Ebola(Gravity):
       else:
         l_prime = neighbors[i]
         x_lprime = raw_data_block[l_prime, :]
-        x_l = np.concatenate((x_l, x_lprime))
-    x_l = np.concatenate((x_l, self.NEIGHBOR_DISTANCE_MATRIX[l, :]))
+        x_l = np.concatenate((x_l, x_lprime, [self.NEIGHBOR_DISTANCE_MATRIX[l, i]]))
 
     # If second-order, concatenate counts of infection and treatment status pairs for first- and second-order neighbors
     # (similar to SIS).
