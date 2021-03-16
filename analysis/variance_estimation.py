@@ -12,6 +12,7 @@ from numba import njit
 
 import os
 this_dir = os.path.dirname(os.path.abspath(__file__))
+kernel_dir = os.path.join(this_dir, 'kernels')
 
 
 @njit
@@ -198,12 +199,30 @@ def estimate_var(y, kernel_weights, grid_size):
   return sigma_sq_hat
 
 
+def get_kernel_from_file(kernel, pairwise_distances):
+  for fname in os.path.listdir(kernel_dir):
+    if kernel in fname and pairwise_distances in fname:
+      saved_kernel_weights = np.load(fname)
+      return saved_kernel_weights
+  saved_kernel_weights = None
+  return saved_kernel_weights
+
+
 def construct_kernel_matrix_from_distances(kernel, pairwise_distances):
   grid_size = pairwise_distances.shape[0]
-  kernel_weights = np.zeros((grid_size, grid_size))
-  for i in range(grid_size):
-    for j in range(grid_size):
-      kernel_weights[i, j] = kernel(pairwise_distances[i, j])
+
+  # Try to get saved kernel
+  saved_kernel_weights = get_kernel_from_file(kernel, pairwise_distances)
+  if saved_kernel_weights is None:
+    kernel_weights = np.zeros((grid_size, grid_size))
+    for i in range(grid_size):
+      for j in range(grid_size):
+        kernel_weights[i, j] = kernel(pairwise_distances[i, j])
+    suffix = f'{kernel}_{pairwise_distances}'
+    fname = os.path.join(kernel_dir, suffix)
+    np.save(fname, kernel_weights)
+  else:
+    kernel_weights = saved_kernel_weights
   return kernel_weights
 
 
@@ -620,7 +639,8 @@ if __name__ == "__main__":
   beta = 1.0
   heteroskedastic = True
   grid_size = args.grid_size
-  bandwidths = np.linspace(1, 50, 5)
+  # bandwidths = np.linspace(1, 50, 5)
+  bandwidths = [5]
   for bandwidth in bandwidths:
     beta1_hat_dbn, Xprime_X_lst, coverage = \
       backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep, pct_treat=0.1,
