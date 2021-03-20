@@ -9,6 +9,7 @@ import yaml
 import datetime
 import matplotlib.pyplot as plt
 from numba import njit
+np.set_printoptions(suppress=True)
 
 import os
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -138,10 +139,16 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
 
 
 @njit
-def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights):
+def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights, total_distances=None):
   N, p = Y_centered.shape
+  CORRELOGRAM_ORDER = 10
 
   cov_hat = np.zeros((p, p))
+  if total_distances is None:
+    correlogram = None
+  else:
+    correlogram_counts = np.zeros(CORRELOGRAM_ORDER)
+    correlogram = np.zeros(CORRELOGRAM_ORDER)
   for i in range(N):
     y_i = Y_centered[i]
     for j in range(N):
@@ -149,15 +156,25 @@ def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights
       kernel_weight = spatiotemporal_kernel_weights[i, j]
       for k_i in range(p):
         for k_j in range(p):
-          cov_hat[k_i, k_j] += y_i[k_i]*y_j[k_j]*kernel_weight / N
-  return cov_hat
+          product = y_i[k_i]*y_j[k_j]*kernel_weight
+          cov_hat[k_i, k_j] += product / N
+
+          # Optionally update correlogram
+          if correlogram is not None and k_i == 1:
+            d_ij = np.int(total_distances[i, j])
+            if d_ij < CORRELOGRAM_ORDER:
+              correlogram_counts[d_ij] = correlogram_counts[d_ij] + 1.
+              correlogram[d_ij] += (product - correlogram[d_ij]) / correlogram_counts[d_ij]
+
+  return cov_hat, correlogram
 
 
 @njit
-def get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, L, N):
+def get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, pairwise_distances, L, N):
   # if combination_function is None:
   #   combination_function = lambda x, y: np.min((x, y))
   spatiotemporal_kernel_weights = np.zeros((N, N))
+  total_distances = np.zeros((N, N))
   for i in range(N):
     t_i = i // L
     l_i = i % L
@@ -168,8 +185,12 @@ def get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, L
       temporal_kernel = temporal_kernel_weights[t_i, t_j]
       # kernel_weight = combination_function(spatial_kernel, temporal_kernel)
       kernel_weight = spatial_kernel + temporal_kernel
+      spatial_distance = pairwise_distances[l_i, l_j]
+      temporal_distance = np.abs(t_i - t_j)
+      total_distance_ij = spatial_distance + temporal_distance
+      total_distances[i, j] = total_distance_ij
       spatiotemporal_kernel_weights[i, j] = kernel_weight
-  return spatiotemporal_kernel_weights
+  return spatiotemporal_kernel_weights, total_distances
 
 
 @njit
@@ -346,8 +367,9 @@ def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, 
                                       for t2 in range(time_horizon)])
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2)
   identity_root_cov = np.eye(grid_size)
-  spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, grid_size,
-                                                            N)
+  spatiotemporal_kernel_weights, total_distances = get_spatiotemporal_kernel(spatial_kernel_weights,
+                                                                             temporal_kernel_weights,
+                                                                             pairwise_distances, grid_size, N)
 
   y = np.zeros(0)
   X = np.zeros((0, 2))
@@ -386,12 +408,16 @@ def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, 
   # Estimate covariance and construct CI
   X_times_q = np.multiply(X0, q1[:, np.newaxis])
   X_times_q = X_times_q - X_times_q.mean(axis=0)
-  inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_q, spatiotemporal_kernel_weights)
+  inner_cov_hat, correlogram = estimate_spatiotemporal_matrix_var(X_times_q, spatiotemporal_kernel_weights,
+                                                                  total_distances=total_distances)
   cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
   beta1_1_hat = beta1_hat[1]
   beta1_1_var_hat = cov_hat[1, 1]
   ci_upper = beta1_1_hat + 1.96 * np.sqrt(beta1_1_var_hat)
   ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
+
+  correlogram = correlogram.round(2)
+  pdb.set_trace()
   return {'ci_lower': ci_lower, 'ci_upper': ci_upper, 'Xq': Xq, 'beta1_hat': beta1_hat, 'Xprime_X': Xprime_X}
 
 
@@ -427,7 +453,7 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
   if n_rep == 1:
     results = [backup_sampling_dbn_partial(0)]
   else:
-    pool = mp.Pool(processes=24)
+    pool = mp.Pool(processes=4)
     results = pool.map(backup_sampling_dbn_partial, range(n_rep))
 
   for n, res in enumerate(results):
@@ -642,14 +668,14 @@ if __name__ == "__main__":
   beta = 1.0
   heteroskedastic = True
   grid_size = args.grid_size
-  # bandwidths = np.linspace(1, 50, 5)
-  bandwidths = [5]
+  bandwidths = np.linspace(1, 50, 5)
+  # bandwidths = [5]
   for bandwidth in bandwidths:
     beta1_hat_dbn, Xprime_X_lst, coverage = \
       backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep, pct_treat=0.1,
                           time_horizon=5)
-    # c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst = \
-    #   simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep,
-    #                              pct_treat=0.1,
-    #                              time_horizon=5)
+    #c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst = \
+    #  simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep,
+    #                             pct_treat=0.1,
+    #                             time_horizon=5)
     print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
