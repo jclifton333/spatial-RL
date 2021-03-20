@@ -141,13 +141,14 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
 @njit
 def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights, total_distances=None):
   N, p = Y_centered.shape
-  CORRELOGRAM_ORDER = 10
+  CORRELOGRAM_ORDER = 25
 
   cov_hat = np.zeros((p, p))
   if total_distances is None:
+    correlogram_counts = None
     correlogram = None
   else:
-    correlogram_counts = np.zeros(CORRELOGRAM_ORDER)
+    correlogram_counts = np.ones(CORRELOGRAM_ORDER)
     correlogram = np.zeros(CORRELOGRAM_ORDER)
   for i in range(N):
     y_i = Y_centered[i]
@@ -157,16 +158,17 @@ def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights
       for k_i in range(p):
         for k_j in range(p):
           product = y_i[k_i]*y_j[k_j]*kernel_weight
-          cov_hat[k_i, k_j] += product / N
+          cov_hat[k_i, k_j] += product
 
           # Optionally update correlogram
-          if correlogram is not None and k_i == 1:
+          if correlogram is not None and k_i == 1 and k_j == 1:
             d_ij = np.int(total_distances[i, j])
             if d_ij < CORRELOGRAM_ORDER:
-              correlogram_counts[d_ij] = correlogram_counts[d_ij] + 1.
               correlogram[d_ij] += (product - correlogram[d_ij]) / correlogram_counts[d_ij]
+              correlogram_counts[d_ij] = correlogram_counts[d_ij] + 1.
 
-  return cov_hat, correlogram
+  cov_hat /= N
+  return cov_hat, correlogram, correlogram_counts
 
 
 @njit
@@ -184,7 +186,7 @@ def get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, p
       spatial_kernel = spatial_kernel_weights[l_i, l_j]
       temporal_kernel = temporal_kernel_weights[t_i, t_j]
       # kernel_weight = combination_function(spatial_kernel, temporal_kernel)
-      kernel_weight = spatial_kernel + temporal_kernel
+      kernel_weight = (spatial_kernel + temporal_kernel) / 2
       spatial_distance = pairwise_distances[l_i, l_j]
       temporal_distance = np.abs(t_i - t_j)
       total_distance_ij = spatial_distance + temporal_distance
@@ -300,7 +302,7 @@ def constant(x):
 
 
 def block(x, bandwidth):
-  return np.abs(x) / bandwidth <= 1
+  return (np.abs(x) / bandwidth) <= 1
 
 
 def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_cores=0.25):
@@ -408,16 +410,15 @@ def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, 
   # Estimate covariance and construct CI
   X_times_q = np.multiply(X0, q1[:, np.newaxis])
   X_times_q = X_times_q - X_times_q.mean(axis=0)
-  inner_cov_hat, correlogram = estimate_spatiotemporal_matrix_var(X_times_q, spatiotemporal_kernel_weights,
-                                                                  total_distances=total_distances)
+  inner_cov_hat, correlogram, correlogram_counts = estimate_spatiotemporal_matrix_var(X_times_q,
+                                                                                      spatiotemporal_kernel_weights,
+                                                                                      total_distances=total_distances)
   cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
   beta1_1_hat = beta1_hat[1]
   beta1_1_var_hat = cov_hat[1, 1]
   ci_upper = beta1_1_hat + 1.96 * np.sqrt(beta1_1_var_hat)
   ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
 
-  correlogram = correlogram.round(2)
-  pdb.set_trace()
   return {'ci_lower': ci_lower, 'ci_upper': ci_upper, 'Xq': Xq, 'beta1_hat': beta1_hat, 'Xprime_X': Xprime_X}
 
 
@@ -668,11 +669,11 @@ if __name__ == "__main__":
   beta = 1.0
   heteroskedastic = True
   grid_size = args.grid_size
-  bandwidths = np.linspace(1, 50, 5)
+  bandwidths = np.linspace(26, 35, 5)
   # bandwidths = [5]
   for bandwidth in bandwidths:
     beta1_hat_dbn, Xprime_X_lst, coverage = \
-      backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep, pct_treat=0.1,
+      backup_sampling_dbn(grid_size, bandwidth, kernel_name='block', beta1=1, beta2=1, n_rep=args.n_rep, pct_treat=0.1,
                           time_horizon=5)
     #c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst = \
     #  simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep,
