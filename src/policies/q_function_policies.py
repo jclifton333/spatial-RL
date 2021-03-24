@@ -68,13 +68,7 @@ def one_step_policy(**kwargs):
       q_a_true_ = oracle_qfn(a_).sum()
       return a_, q_a_true_
 
-    a = None
-    q_a_true = float('inf')
-    for _ in range(3):
-      a_rep, q_a_true_rep = optimize_qfns(qfn)
-      if q_a_true_rep < q_a_true:
-        a = a_rep
-        q_a_true = q_a_true_rep
+    a, q_a_true = optimize_qfns(qfn)
     a_linear = argmaxer_quad_approx(linear_qfn, evaluation_budget, treatment_budget, env)
     q_alin_true = oracle_qfn(a_linear).sum()
     q_a = qfn(a).sum()

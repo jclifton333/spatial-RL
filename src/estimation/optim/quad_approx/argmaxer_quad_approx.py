@@ -18,7 +18,20 @@ def argmaxer_quad_approx(q, evaluation_budget, treatment_budget, env, initial_ac
   return a
 
 
-def argmaxer_multiple_quad_approx(q, evaluation_budget, treatment_budget, env, number_of_starts=5):
+def argmaxer_oracle_multiple_quad_approx(q, evaluation_budget, treatment_budget, env, oracle_q, number_of_starts=3):
+  best_a = None
+  best_q = float('inf')
+
+  for i in range(number_of_starts - 1):
+    a = argmaxer_quad_approx(q, evaluation_budget, treatment_budget, env)
+    q_a = oracle_q(a).sum()
+    if q_a < best_q:
+      best_q = q_a
+      best_a = a
+  return best_a
+
+
+def argmaxer_multiple_quad_approx(q, evaluation_budget, treatment_budget, env, number_of_starts=3):
   """
   Argmaxer quad_approx with multiple starts.
   """
@@ -31,7 +44,7 @@ def argmaxer_multiple_quad_approx(q, evaluation_budget, treatment_budget, env, n
     if q_a < best_q:
       best_q = q_a
       best_a = a
-    print(f'q{i}: {best_q}')
+    # print(f'q{i}: {best_q}')
 
   return best_a
 
