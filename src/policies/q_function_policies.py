@@ -33,6 +33,7 @@ def one_step_policy(**kwargs):
     weights = None
 
   if env.learn_embedding:
+  # if env.learn_embedding:
     loss_dict = {}
     N_REP = 50
     dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
@@ -46,26 +47,38 @@ def one_step_policy(**kwargs):
       X_raw = env.X_raw
 
     true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
-    predictor = oracle_tune_ggcn(X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs)
     # _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
     # For diagnosis
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
 
-    def qfn(a):
-      X_raw_ = env.data_block_at_action(-1, a, raw=True)
+    predictor = oracle_tune_ggcn(X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs,
+  				   num_settings_to_try=3)
+
+    def qfn(a_):
+      X_raw_ = env.data_block_at_action(-1, a_, raw=True)
       if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
         X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
       return predictor(X_raw_)
-    def linear_qfn(a):
-      return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
+    def linear_qfn(a_):
+      return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
+    
+    def optimize_qfns(qfn_):
+      a_ = argmaxer(qfn_, evaluation_budget, treatment_budget, env)
+      q_a_true_ = oracle_qfn(a_).sum()
+      return a_, q_a_true_
 
-    a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+    a = None
+    q_a_true = float('inf')
+    for _ in range(3):
+      a_rep, q_a_true_rep = optimize_qfns(qfn)
+      if q_a_true_rep < q_a_true:
+        a = a_rep
+        q_a_true = q_a_true_rep
     a_linear = argmaxer_quad_approx(linear_qfn, evaluation_budget, treatment_budget, env)
+    q_alin_true = oracle_qfn(a_linear).sum()
     q_a = qfn(a).sum()
     q_alin = qfn(a_linear).sum()
-    q_a_true = oracle_qfn(a).sum()
-    q_alin_true = oracle_qfn(a_linear).sum()
 
     # Get accuracy at actions at _this_ timestep
     linear_acc = 0.

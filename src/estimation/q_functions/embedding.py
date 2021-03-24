@@ -422,6 +422,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
       best_predictor = predictor
     if score > worst_score:
       worst_score = score
+    print(f'best score: {best_score} worst score: {worst_score}')
   return best_predictor
 
 
