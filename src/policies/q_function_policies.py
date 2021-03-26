@@ -35,7 +35,7 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  if env.learn_embedding and len(env.X) > 30 and len(env.X) % 8 == 0:
+  if env.learn_embedding and len(env.X) % 8 == 0:
   # if env.learn_embedding:
     loss_dict = {}
     N_REP = 50
@@ -52,10 +52,10 @@ def one_step_policy(**kwargs):
     true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
     # _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
-    fname = os.path.join(data_dir, 'data_t=36.p')
-    data_dict = {'X_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
-                 'true_probs': true_probs}
-    pkl.dump(data_dict, open(fname, 'wb'))
+    # fname = os.path.join(data_dir, 'data_t=8.p')
+    # data_dict = {'X_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
+    #              'true_probs': true_probs}
+    # pkl.dump(data_dict, open(fname, 'wb'))
 
     # For diagnosis
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)

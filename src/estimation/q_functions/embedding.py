@@ -397,11 +397,12 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
   LR_RANGE = np.logspace(-3, -1, 100)
   DROPOUT_RANGE = np.linspace(0, 1.0, 100)
   NHID_RANGE = np.linspace(10, 100, 5)
-  NEIGHBOR_SUBSET_LIMIT_RANGE = [2, 3]
+  NEIGHBOR_SUBSET_LIMIT_RANGE = [3]
 
   best_predictor = None
   best_score = float('inf')
   worst_score = -float('inf')
+  results = {'lr': [], 'dropout': [], 'nhid': [], 'neighbor_subset': [], 'score': []}
   for _ in range(num_settings_to_try):
     # Fit model with settings
     lr = np.random.choice(LR_RANGE)
@@ -430,8 +431,13 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
     if score > worst_score:
       worst_score = score
     print(f'best score: {best_score} worst score: {worst_score}')
+    results['lr'].append(lr)
+    results['dropout'].append(dropout)
+    results['nhid'].append(nhid)
+    results['neighbor_subset'].append(neighbor_subset_limit)
+    results['score'].append(score)
 
-  return best_predictor
+  return best_predictor, results
 
 
 def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=False,
