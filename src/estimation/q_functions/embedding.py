@@ -409,6 +409,8 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
     nhid = int(np.random.choice(NHID_RANGE))
     neighbor_subset_limit = np.random.choice(NEIGHBOR_SUBSET_LIMIT_RANGE)
 
+    print(f'lr: {lr} dropout: {dropout} nhid: {nhid} neighbor_limit: {neighbor_subset_limit}')
+
     _, predictor = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=nhid, batch_size=5, verbose=False,
                               neighbor_subset_limit=neighbor_subset_limit, samples_per_k=6, recursive=True, num_settings_to_try=5,
                               target_are_probs=False, lr=lr, tol=0.01, dropout=dropout)
@@ -428,6 +430,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
     if score > worst_score:
       worst_score = score
     print(f'best score: {best_score} worst score: {worst_score}')
+
   return best_predictor
 
 
