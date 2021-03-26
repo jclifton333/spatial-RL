@@ -20,6 +20,7 @@ from scipy.special import expit, logit
 import numpy as np
 # import keras.backend as K
 from functools import partial
+import matplotlib.pyplot as plt
 
 
 def one_step_policy(**kwargs):
@@ -32,7 +33,7 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  if env.learn_embedding:
+  if env.learn_embedding and len(env.X) > 30 and len(env.X) % 8 == 0:
   # if env.learn_embedding:
     loss_dict = {}
     N_REP = 50
@@ -53,7 +54,7 @@ def one_step_policy(**kwargs):
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
 
     predictor = oracle_tune_ggcn(X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs,
-  				   num_settings_to_try=3)
+  				                       num_settings_to_try=10)
 
     def qfn(a_):
       X_raw_ = env.data_block_at_action(-1, a_, raw=True)
@@ -77,14 +78,23 @@ def one_step_policy(**kwargs):
     # Get accuracy at actions at _this_ timestep
     linear_acc = 0.
     gccn_acc = 0.
+    linear_diffs = np.zeros(0)
+    gccn_diffs = np.zeros(0)
     for a_ in eval_actions:
       linear_probs = linear_qfn(a_)
       gccn_probs = qfn(a_)
       true_probs = oracle_qfn(a_)
       gccn_acc += kl(gccn_probs, true_probs) / N_REP
       linear_acc += kl(linear_probs, true_probs) / N_REP
+      linear_diffs = np.concatenate((linear_diffs, np.abs(linear_probs - true_probs)))
+      gccn_diffs = np.concatenate((gccn_diffs, np.abs(gccn_probs - true_probs)))
 
     print(f'gccn acc: {gccn_acc} linear acc: {linear_acc}\nq(a): {q_a} q(alin): {q_alin}\nq_true(a): {q_a_true} q_alin_true: {q_alin_true}')
+    # plt.hist(linear_diffs, alpha=0.5, label='linear')
+    # plt.hist(gccn_diffs, alpha=0.5, label='ggcn')
+    # plt.legend()
+    # plt.show()
+    # pdb.set_trace()
 
     q_gccn_minus_q_linear = q_a_true - q_alin_true
     loss_dict['q_diff'] = q_gccn_minus_q_linear

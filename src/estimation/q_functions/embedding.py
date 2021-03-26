@@ -389,13 +389,15 @@ def ggcn_multiple_runs(X_raw_list, y_list, adjacency_list, env, eval_actions, tr
 
 def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_probs,
                      n_epoch=50, nhid=100, batch_size=5, verbose=False,
-                     neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=3,
+                     samples_per_k=6, recursive=True, num_settings_to_try=3,
                      X_holdout=None, y_holdout=None, target_are_probs=False):
   """
   Tune GGCN hyperparameters, given sample of true probabilities evaluated at the current state.
   """
   LR_RANGE = np.logspace(-3, -1, 100)
   DROPOUT_RANGE = np.linspace(0, 1.0, 100)
+  NHID_RANGE = np.linspace(10, 100, 5)
+  NEIGHBOR_SUBSET_LIMIT_RANGE = [2, 3]
 
   best_predictor = None
   best_score = float('inf')
@@ -404,8 +406,11 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
     # Fit model with settings
     lr = np.random.choice(LR_RANGE)
     dropout = np.random.choice(DROPOUT_RANGE)
-    _, predictor = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size=5, verbose=False,
-                              neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
+    nhid = int(np.random.choice(NHID_RANGE))
+    neighbor_subset_limit = np.random.choice(NEIGHBOR_SUBSET_LIMIT_RANGE)
+
+    _, predictor = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=nhid, batch_size=5, verbose=False,
+                              neighbor_subset_limit=neighbor_subset_limit, samples_per_k=6, recursive=True, num_settings_to_try=5,
                               target_are_probs=False, lr=lr, tol=0.01, dropout=dropout)
 
     # Compare to true probs
