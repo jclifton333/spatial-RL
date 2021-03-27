@@ -397,7 +397,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
   LR_RANGE = np.logspace(-3, -1, 100)
   DROPOUT_RANGE = np.linspace(0, 1.0, 100)
   NHID_RANGE = np.linspace(10, 100, 5)
-  NEIGHBOR_SUBSET_LIMIT_RANGE = [3]
+  NEIGHBOR_SUBSET_LIMIT_RANGE = [1]
 
   best_predictor = None
   best_score = float('inf')

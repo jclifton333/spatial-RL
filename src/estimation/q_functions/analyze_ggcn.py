@@ -46,6 +46,6 @@ if __name__ == "__main__":
 
   data_dict, env = load_saved_ebola_ggcn_data(args.fname)
   predictor, y, Z = oracle_tune_data_dict(data_dict, env, num_settings_to_try=10)
-  mod = sm.OLS(y, Z)
-  res = mod.fit()
-  print(res.summary())
+  # mod = sm.OLS(y, Z)
+  # res = mod.fit()
+  # print(res.summary())
