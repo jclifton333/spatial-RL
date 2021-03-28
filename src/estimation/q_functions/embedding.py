@@ -87,9 +87,9 @@ class GGCN(nn.Module):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1 and recursive:
       self.g1 = nn.Linear(2*J, J)
-      self.g2 = nn.Linear(J, J)
-    # self.h1 = nn.Linear(nfeat, 1)
+      # self.g2 = nn.Linear(J, J)
     self.h1 = nn.Linear(nfeat, J)
+    self.h2 = nn.Linear(J, J)
     self.final1 = nn.Linear(J+nfeat, 2)
     self.dropout_final = nn.Dropout(p=dropout)
     self.neighbor_subset_limit = neighbor_subset_limit
@@ -108,13 +108,15 @@ class GGCN(nn.Module):
   def h(self, b):
     b = self.h1(b)
     b = F.relu(b)
+    b = self.h2(b)
+    b = F.relu(b)
     return b
 
   def g(self, bvec):
     bvec = self.g1(bvec)
     bvec = F.relu(bvec)
-    bvec = self.g2(bvec)
-    bvec = F.relu(bvec)
+    # bvec = self.g2(bvec)
+    # bvec = F.relu(bvec)
     return bvec
 
   def forward(self, X_, adjacency_lst, location_subset=None):
@@ -215,12 +217,13 @@ class GGCN(nn.Module):
           h_val = self.h(X_1)
           h_val_cat_fkm1_val = torch.cat((h_val, fkm1_val), dim=1)
           # ToDo: uncomment to learn binary relation instead of fixing to addition
-          g_val = self.g(h_val_cat_fkm1_val)
-          # g_val = h_val + fkm1_val
+          # g_val = self.g(h_val_cat_fkm1_val)
+          g_val = h_val + fkm1_val
           result += g_val / len(permutations_k)
         return result
 
     E = fk(X_, self.neighbor_subset_limit)
+    E = F.relu(E)
     E =  torch.cat((X_, E), dim=1)
     if locations_subset is not None:
       E = E[locations_subset]
@@ -391,11 +394,11 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
   # LR_RANGE = np.logspace(-3, -1, 100)
   # DROPOUT_RANGE = np.linspace(0, 1.0, 100)
   # NHID_RANGE = np.linspace(5, 30, 3)
-  NEIGHBOR_SUBSET_LIMIT_RANGE = [1]
+  NEIGHBOR_SUBSET_LIMIT_RANGE = [2]
   
-  LR_RANGE = [0.01]
+  LR_RANGE = [0.005]
   DROPOUT_RANGE = [0.0]
-  NHID_RANGE = [20]
+  NHID_RANGE = [16]
   
 
   best_predictor = None
@@ -536,7 +539,7 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
   model = GGCN(nfeat=p, J=nhid, adjacency_lst=adjacency_list, neighbor_subset_limit=neighbor_subset_limit,
                samples_per_k=samples_per_k,
                recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
-  optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.0001)
+  optimizer = optim.Adam(model.parameters(), lr=lr)
   if target_are_probs:
     criterion = nn.MSELoss()
   else:
