@@ -30,13 +30,13 @@ def load_saved_ebola_ggcn_data(fname):
   return data_dict, env
 
 
-def oracle_tune_data_dict(data_dict, env, num_settings_to_try=5):
+def oracle_tune_data_dict(data_dict, env, num_settings_to_try=5, verbose=True):
   X_list, y_list, adjacency_list, eval_actions, true_probs = data_dict['X_list'], data_dict['y_list'], \
     data_dict['adjacency_list'], data_dict['eval_actions'], data_dict['true_probs']
 
   predictor, results = oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_probs,
                                         X_eval=X_list[-1],
-                                        num_settings_to_try=num_settings_to_try)
+                                        num_settings_to_try=num_settings_to_try, verbose=verbose)
 
   return predictor
 
@@ -58,7 +58,7 @@ def fit_and_compare_models(data_dict, env, num_settings_to_try=5):
   def q_lm(a):
     X_raw_ = copy.copy(X_list[-1])
     X_raw_[:, 1] = a
-    return lm.predict(X_raw_)
+    return lm.predict_proba(X_raw_)[:, 1]
 
   # Evaluate
   lm_score = 0.

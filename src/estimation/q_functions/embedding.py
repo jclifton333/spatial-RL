@@ -382,16 +382,21 @@ def ggcn_multiple_runs(X_raw_list, y_list, adjacency_list, env, eval_actions, tr
 
 def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_probs,
                      X_eval=None,
-                     n_epoch=50, nhid=100, batch_size=5, verbose=False,
+                     n_epoch=70, nhid=100, batch_size=5, verbose=False,
                      samples_per_k=6, recursive=True, num_settings_to_try=3,
                      X_holdout=None, y_holdout=None, target_are_probs=False):
   """
   Tune GGCN hyperparameters, given sample of true probabilities evaluated at the current state.
   """
-  LR_RANGE = np.logspace(-3, -1, 100)
-  DROPOUT_RANGE = np.linspace(0, 1.0, 100)
-  NHID_RANGE = np.linspace(5, 30, 3)
+  # LR_RANGE = np.logspace(-3, -1, 100)
+  # DROPOUT_RANGE = np.linspace(0, 1.0, 100)
+  # NHID_RANGE = np.linspace(5, 30, 3)
   NEIGHBOR_SUBSET_LIMIT_RANGE = [1]
+  
+  LR_RANGE = [0.01]
+  DROPOUT_RANGE = [0.0]
+  NHID_RANGE = [20]
+  
 
   best_predictor = None
   best_score = float('inf')
@@ -406,7 +411,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
 
     print(f'lr: {lr} dropout: {dropout} nhid: {nhid} neighbor_limit: {neighbor_subset_limit}')
 
-    _, predictor = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=nhid, batch_size=5, verbose=False,
+    _, predictor = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=5, verbose=verbose,
                               neighbor_subset_limit=neighbor_subset_limit, samples_per_k=6, recursive=True, num_settings_to_try=5,
                               target_are_probs=False, lr=lr, tol=0.01, dropout=dropout)
 
@@ -531,7 +536,7 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
   model = GGCN(nfeat=p, J=nhid, adjacency_lst=adjacency_list, neighbor_subset_limit=neighbor_subset_limit,
                samples_per_k=samples_per_k,
                recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
-  optimizer = optim.Adam(model.parameters(), lr=lr)
+  optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.0001)
   if target_are_probs:
     criterion = nn.MSELoss()
   else:
