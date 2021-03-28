@@ -47,7 +47,6 @@ class GGCN_multi(nn.Module):
     self.J = J
 
   def h(self, E):
-    E = F.relu(E)
     E = self.h1(E)
     return E
 
@@ -91,10 +90,8 @@ class GGCN(nn.Module):
       self.g2 = nn.Linear(J, J)
     # self.h1 = nn.Linear(nfeat, 1)
     self.h1 = nn.Linear(nfeat, J)
-    self.h2 = nn.Linear(J, J)
-    self.final1 = nn.Linear(J+nfeat, J)
+    self.final1 = nn.Linear(J+nfeat, 2)
     self.dropout_final = nn.Dropout(p=dropout)
-    self.final2 = nn.Linear(J, 2)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
     self.samples_per_k = samples_per_k
@@ -105,17 +102,12 @@ class GGCN(nn.Module):
 
   def final(self, X_, train=True):
     E = self.final1(X_)
-    if train:
-      E = self.dropout_final(E)
-    E = F.relu(E)
-    E = self.final2(E)
     # E = F.sigmoid(E)
     return E
 
   def h(self, b):
     b = self.h1(b)
     b = F.relu(b)
-    b = self.h2(b)
     return b
 
   def g(self, bvec):
@@ -399,7 +391,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
   LR_RANGE = np.logspace(-3, -1, 100)
   DROPOUT_RANGE = np.linspace(0, 1.0, 100)
   NHID_RANGE = np.linspace(5, 30, 3)
-  NEIGHBOR_SUBSET_LIMIT_RANGE = [2]
+  NEIGHBOR_SUBSET_LIMIT_RANGE = [1]
 
   best_predictor = None
   best_score = float('inf')
@@ -539,7 +531,7 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
   model = GGCN(nfeat=p, J=nhid, adjacency_lst=adjacency_list, neighbor_subset_limit=neighbor_subset_limit,
                samples_per_k=samples_per_k,
                recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
-  optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.1)
+  optimizer = optim.Adam(model.parameters(), lr=lr)
   if target_are_probs:
     criterion = nn.MSELoss()
   else:

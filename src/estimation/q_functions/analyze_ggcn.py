@@ -5,6 +5,7 @@ data_dir = os.path.join(this_dir, 'data')
 pkg_dir = os.path.join(this_dir, '..', '..', '..')
 sys.path.append(pkg_dir)
 
+import pdb
 import copy
 import numpy as np
 import pickle as pkl
@@ -64,12 +65,16 @@ def fit_and_compare_models(data_dict, env, num_settings_to_try=5):
   nn_score = 0.
   eval_actions = data_dict['eval_actions']
   true_probs = data_dict['true_probs']
-  n = len(true_probs)
-  for a_, true_probs_ in zip(eval_actions, true_probs):
-    nn_probs = q_nn(a_)
-    lm_probs = q_lm(a_)
-    lm_score += kl(lm_probs, true_probs_) / n
-    nn_score += kl(nn_probs, true_probs_) / n
+  lm_probs = np.zeros(0)
+  nn_probs = np.zeros(0)
+  for a_ in eval_actions:
+    nn_probs = np.hstack((nn_probs, q_nn(a_)))
+    lm_probs = np.hstack((lm_probs, q_lm(a_)))
+  # lm_score = kl(lm_probs, true_probs) 
+  # nn_score = kl(nn_probs, true_probs) 
+  lm_score = np.mean(np.abs(lm_probs - true_probs)) 
+  nn_score = np.mean(np.abs(nn_probs - true_probs))
+
   print(f'nn score: {nn_score} lm score: {lm_score}')
 
 
