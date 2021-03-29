@@ -398,7 +398,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
   
   LR_RANGE = [0.005, 0.01]
   DROPOUT_RANGE = [0.0]
-  NHID_RANGE = [5, 16, 32]
+  NHID_RANGE = [32, 64]
   
 
   best_predictor = None

@@ -30,7 +30,7 @@ VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 
                       'sis_local_aic_one_step', 'ebola_aic_two_step']
 POLICY_SEARCH_NAMES = ['policy_search', 'sis_aic_two_step', 'sis_one_step_continuation', 'ebola_aic_two_step']
 VALID_ARGMAXER_NAMES = ['quad_approx', 'random', 'global', 'sequential_quad_approx', 'nonlinear',
-                        'multiple_quad_approx']
+                        'multiple_quad_approx', 'oracle_multiple_quad_approx']
 VALID_NETWORK_NAMES = ['lattice', 'barabasi', 'nearestneighbor']
 
 if __name__ == '__main__':

@@ -57,6 +57,9 @@ def argmaxer_factory(choice):
   elif choice == 'multiple_quad_approx':
     from .quad_approx.argmaxer_quad_approx import argmaxer_multiple_quad_approx
     return argmaxer_multiple_quad_approx
+  elif choice == 'oracle_multiple_quad_approx':
+    from .quad_approx.argmaxer_quad_approx import argmaxer_oracle_multiple_quad_approx
+    return argmaxer_oracle_multiple_quad_approx
   elif choice == 'random':
     return argmaxer_random
   elif choice == 'global':

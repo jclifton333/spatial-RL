@@ -35,15 +35,16 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  if env.learn_embedding:
+  def oracle_qfn(a):
+      return env.next_infected_probabilities(a)
+
+  if env.learn_embedding and len(env.X) > 8:
   # if env.learn_embedding:
     loss_dict = {}
     N_REP = 50
     dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
     eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
-    def oracle_qfn(a):
-      return env.next_infected_probabilities(a)
-    
+        
     if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
       X_raw = [np.column_stack((x_raw, env.NEIGHBOR_DISTANCE_MATRIX)) for x_raw in env.X_raw]
       env_name = 'Ebola'
@@ -59,13 +60,15 @@ def one_step_policy(**kwargs):
     #              'true_probs': true_probs, 'X_list': env.X, 'settings': {'env': env_name, 'L': env.L}}
     # pkl.dump(data_dict, open(fname, 'wb'))
 
-    _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
+    # _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
     # For diagnosis
-    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+    # clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+    clf = LogisticRegression()
+    clf.fit(np.vstack(X_raw), np.hstack(env.y))
 
-    predictor = oracle_tune_ggcn(X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs,
-  				                       num_settings_to_try=5)
+    predictor, _ = oracle_tune_ggcn(X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs,
+  		                    num_settings_to_try=1)
 
     def qfn(a_):
       X_raw_ = env.data_block_at_action(-1, a_, raw=True)
@@ -73,10 +76,12 @@ def one_step_policy(**kwargs):
         X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
       return predictor(X_raw_)
     def linear_qfn(a_):
-      return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
+      # return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
+      return clf.predict_proba(env.data_block_at_action(-1, a_, raw=True))[:, 1]
+
     
     def optimize_qfns(qfn_):
-      a_ = argmaxer(qfn_, evaluation_budget, treatment_budget, env)
+      a_ = argmaxer(qfn_, evaluation_budget, treatment_budget, env, oracle_q=oracle_qfn)
       q_a_true_ = oracle_qfn(a_).sum()
       return a_, q_a_true_
 
@@ -125,7 +130,7 @@ def one_step_policy(**kwargs):
           loss_dict['q_fn_params'] = clf.params
       def qfn(a):
         return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
-    a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+    a = argmaxer(qfn, evaluation_budget, treatment_budget, env, oracle_q=oracle_qfn)
 
   return a, loss_dict
 
