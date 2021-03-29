@@ -35,7 +35,7 @@ def one_step_policy(**kwargs):
   else:
     weights = None
 
-  if env.learn_embedding and len(env.X) > 30 and len(env.X) % 8 == 0:
+  if env.learn_embedding:
   # if env.learn_embedding:
     loss_dict = {}
     N_REP = 50
@@ -46,22 +46,26 @@ def one_step_policy(**kwargs):
     
     if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
       X_raw = [np.column_stack((x_raw, env.NEIGHBOR_DISTANCE_MATRIX)) for x_raw in env.X_raw]
+      env_name = 'Ebola'
     else:
       X_raw = env.X_raw
+      env_name = 'sis'
 
     true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
-    _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
-    fname = os.path.join(data_dir, 'sis_data_t=36.p')
-    data_dict = {'X_raw_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
-                 'true_probs': true_probs, 'X_list': env.X}
-    pkl.dump(data_dict, open(fname, 'wb'))
+
+    # fname = os.path.join(data_dir, 'sis_data_t=8.p')
+    # data_dict = {'X_raw_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
+    #              'true_probs': true_probs, 'X_list': env.X, 'settings': {'env': env_name, 'L': env.L}}
+    # pkl.dump(data_dict, open(fname, 'wb'))
+
+    _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
     # For diagnosis
     clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
 
     predictor = oracle_tune_ggcn(X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs,
-  				                       num_settings_to_try=10)
+  				                       num_settings_to_try=5)
 
     def qfn(a_):
       X_raw_ = env.data_block_at_action(-1, a_, raw=True)
