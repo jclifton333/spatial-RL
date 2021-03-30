@@ -38,7 +38,7 @@ def one_step_policy(**kwargs):
   def oracle_qfn(a):
       return env.next_infected_probabilities(a)
 
-  if env.learn_embedding and len(env.X) > 8:
+  if env.learn_embedding:
   # if env.learn_embedding:
     loss_dict = {}
     N_REP = 50
@@ -63,30 +63,32 @@ def one_step_policy(**kwargs):
     # _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
     # For diagnosis
-    # clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
-    clf = LogisticRegression()
-    clf.fit(np.vstack(X_raw), np.hstack(env.y))
+    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+    # clf = LogisticRegression()
+    # clf.fit(np.vstack(X_raw), np.hstack(env.y))
 
-    predictor, _ = oracle_tune_ggcn(X_raw, env.y, env.adjacency_list, env, eval_actions, true_probs,
+    predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
   		                    num_settings_to_try=1)
 
     def qfn(a_):
-      X_raw_ = env.data_block_at_action(-1, a_, raw=True)
+      # X_raw_ = env.data_block_at_action(-1, a_, raw=True)
+      X_ = env.data_block_at_action(-1, a_)
       if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
         X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
-      return predictor(X_raw_)
+      # return predictor(X_raw_)
+      return predictor(X_)
     def linear_qfn(a_):
-      # return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
-      return clf.predict_proba(env.data_block_at_action(-1, a_, raw=True))[:, 1]
+      return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
+      # return clf.predict_proba(env.data_block_at_action(-1, a_, raw=True))[:, 1]
 
     
     def optimize_qfns(qfn_):
-      a_ = argmaxer(qfn_, evaluation_budget, treatment_budget, env, oracle_q=oracle_qfn)
+      a_ = argmaxer(qfn_, evaluation_budget, treatment_budget, env)
       q_a_true_ = oracle_qfn(a_).sum()
       return a_, q_a_true_
 
     a, q_a_true = optimize_qfns(qfn)
-    a_linear = argmaxer_quad_approx(linear_qfn, evaluation_budget, treatment_budget, env)
+    a_linear = argmaxer(linear_qfn, evaluation_budget, treatment_budget, env)
     q_alin_true = oracle_qfn(a_linear).sum()
     q_a = qfn(a).sum()
     q_alin = qfn(a_linear).sum()
@@ -130,7 +132,7 @@ def one_step_policy(**kwargs):
           loss_dict['q_fn_params'] = clf.params
       def qfn(a):
         return clf.predict_proba(env.data_block_at_action(-1, a), **predict_proba_kwargs)
-    a = argmaxer(qfn, evaluation_budget, treatment_budget, env, oracle_q=oracle_qfn)
+    a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
 
   return a, loss_dict
 

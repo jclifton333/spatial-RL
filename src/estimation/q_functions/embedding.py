@@ -396,9 +396,9 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
   # NHID_RANGE = np.linspace(5, 30, 3)
   NEIGHBOR_SUBSET_LIMIT_RANGE = [2]
   
-  LR_RANGE = [0.005, 0.01]
+  LR_RANGE = [0.005]
   DROPOUT_RANGE = [0.0]
-  NHID_RANGE = [32, 64]
+  NHID_RANGE = [16]
   
 
   best_predictor = None
@@ -421,13 +421,16 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
     # Compare to true probs
     def qfn(a):
       if X_eval is None:
-        X_raw_ = env.data_block_at_action(-1, a, raw=True)
+        # X_raw_ = env.data_block_at_action(-1, a, raw=True)
+        X_ = env.data_block_at_action(-1, a)
         if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
           X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
       else:
         X_raw_ = copy.copy(X_eval)
         X_raw_[:, 1] = a
-      return predictor(X_raw_)
+      # return predictor(X_raw_)
+      return predictor(X_)
+
     phat = np.hstack([qfn(a_) for a_ in eval_actions])
     score = kl(phat, true_probs)
 
@@ -539,7 +542,7 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
   model = GGCN(nfeat=p, J=nhid, adjacency_lst=adjacency_list, neighbor_subset_limit=neighbor_subset_limit,
                samples_per_k=samples_per_k,
                recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
-  optimizer = optim.Adam(model.parameters(), lr=lr)
+  optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
   if target_are_probs:
     criterion = nn.MSELoss()
   else:
