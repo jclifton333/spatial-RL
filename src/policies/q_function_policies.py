@@ -55,10 +55,10 @@ def one_step_policy(**kwargs):
     true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
 
 
-    # fname = os.path.join(data_dir, 'sis_data_t=8.p')
-    # data_dict = {'X_raw_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
-    #              'true_probs': true_probs, 'X_list': env.X, 'settings': {'env': env_name, 'L': env.L}}
-    # pkl.dump(data_dict, open(fname, 'wb'))
+    fname = os.path.join(data_dir, 'Ebola_data_t=8.p')
+    data_dict = {'X_raw_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
+                 'true_probs': true_probs, 'X_list': env.X, 'settings': {'env': env_name, 'L': env.L}}
+    pkl.dump(data_dict, open(fname, 'wb'))
 
     # _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 

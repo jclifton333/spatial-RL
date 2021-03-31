@@ -396,9 +396,9 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
   # NHID_RANGE = np.linspace(5, 30, 3)
   NEIGHBOR_SUBSET_LIMIT_RANGE = [2]
   
-  LR_RANGE = [0.005]
+  LR_RANGE = [0.01]
   DROPOUT_RANGE = [0.0]
-  NHID_RANGE = [16]
+  NHID_RANGE = [32]
   
 
   best_predictor = None
@@ -421,9 +421,14 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
     # Compare to true probs
     def qfn(a):
       # X_raw_ = env.data_block_at_action(-1, a, raw=True)
-      X_ = env.data_block_at_action(-1, a)
-      # if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
-      #   X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
+      if X_eval is None:
+        X_ = env.data_block_at_action(-1, a)
+      else:
+        X_ = copy.copy(X_eval)
+        if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
+          X_[:, 1] = a
+        else:
+          raise NotImplementedError
       # else:
       #   X_raw_ = copy.copy(X_eval)
       #   X_raw_[:, 1] = a

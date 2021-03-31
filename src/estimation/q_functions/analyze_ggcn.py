@@ -36,11 +36,14 @@ def load_saved_ggcn_data(fname):
 
 
 def oracle_tune_data_dict(data_dict, env, num_settings_to_try=5, verbose=True, n_epochs=50):
-  X_raw_list, y_list, adjacency_list, eval_actions, true_probs = data_dict['X_raw_list'], data_dict['y_list'], \
-    data_dict['adjacency_list'], data_dict['eval_actions'], data_dict['true_probs']
+  X_raw_list, X_list, y_list, adjacency_list, eval_actions, true_probs = data_dict['X_raw_list'], data_dict['X_list'], \
+                                                                         data_dict['y_list'], \
+                                                                         data_dict['adjacency_list'], \
+                                                                         data_dict['eval_actions'], \
+                                                                         data_dict['true_probs']
   
-  predictor, results = oracle_tune_ggcn(X_raw_list, y_list, adjacency_list, env, eval_actions, true_probs,
-                                        X_eval=X_raw_list[-1], n_epoch=n_epochs,
+  predictor, results = oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_probs,
+                                        X_eval=X_list[-1], n_epoch=n_epochs,
                                         num_settings_to_try=num_settings_to_try, verbose=verbose)
 
   return predictor
@@ -67,9 +70,12 @@ def fit_and_compare_models(data_dict, env, num_settings_to_try=5, n_epochs=50):
 
   # Define q functions
   def q_nn(a):
-    X_raw_ = copy.copy(X_raw_list[-1])
-    X_raw_[:, 1] = a
-    return nn(X_raw_)
+    if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
+      x = copy.copy(X_list[-1])
+      x[:, 1] = a
+    else:
+      raise NotImplementedError
+    return nn(x)
 
   def q_lm_raw(a):
     X_raw_ = copy.copy(X_raw_list[-1])
@@ -78,8 +84,12 @@ def fit_and_compare_models(data_dict, env, num_settings_to_try=5, n_epochs=50):
 
   # TODO: WIP! have to get data_block_from_action
   def q_lm(a):
-    X_a = env.data_block_at_action(-1, a)
-    return lm.predict_proba(X_a)[:, 1]
+    if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
+      x = copy.copy(X_list[-1])
+      x[:, 1] = a
+    else:
+      raise NotImplementedError
+    return lm.predict_proba(x)[:, 1]
 
   # Evaluate
   eval_actions = data_dict['eval_actions']
@@ -98,7 +108,7 @@ def fit_and_compare_models(data_dict, env, num_settings_to_try=5, n_epochs=50):
   nn_score = np.mean(np.abs(nn_probs - true_probs))
   ll = log_likelihood(lm, X_, y_)
   ll_raw = log_likelihood(lm_raw, X_raw, y_)
-  ll_nn = kl(y_, np.hstack([nn(x_raw_) for x_raw_ in X_raw_list]))
+  ll_nn = kl(y_, np.hstack([nn(x_) for x_ in X_list]))
   print(ll_raw, ll_nn)
   lm_predict_raw = lm_raw.predict(X_raw)
   lm_acc_raw = np.mean(lm_predict_raw == y_)
@@ -109,8 +119,8 @@ def fit_and_compare_models(data_dict, env, num_settings_to_try=5, n_epochs=50):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   # parser.add_argument('--fname', type=str, default='data_t=8.p')
-  parser.add_argument('--fname', type=str, default='sis_data_t=8.p')
+  parser.add_argument('--fname', type=str, default='Ebola_data_t=8.p')
   args = parser.parse_args()
 
   data_dict, env = load_saved_ggcn_data(args.fname)
-  fit_and_compare_models(data_dict, env, num_settings_to_try=5, n_epochs=50)
+  fit_and_compare_models(data_dict, env, num_settings_to_try=1, n_epochs=300)
