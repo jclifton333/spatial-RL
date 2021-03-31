@@ -420,14 +420,13 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
 
     # Compare to true probs
     def qfn(a):
-      if X_eval is None:
-        # X_raw_ = env.data_block_at_action(-1, a, raw=True)
-        X_ = env.data_block_at_action(-1, a)
-        if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
-          X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
-      else:
-        X_raw_ = copy.copy(X_eval)
-        X_raw_[:, 1] = a
+      # X_raw_ = env.data_block_at_action(-1, a, raw=True)
+      X_ = env.data_block_at_action(-1, a)
+      # if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
+      #   X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
+      # else:
+      #   X_raw_ = copy.copy(X_eval)
+      #   X_raw_[:, 1] = a
       # return predictor(X_raw_)
       return predictor(X_)
 

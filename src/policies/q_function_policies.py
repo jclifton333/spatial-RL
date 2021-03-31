@@ -38,7 +38,7 @@ def one_step_policy(**kwargs):
   def oracle_qfn(a):
       return env.next_infected_probabilities(a)
 
-  if env.learn_embedding:
+  if env.learn_embedding and len(env.X) > 8:
   # if env.learn_embedding:
     loss_dict = {}
     N_REP = 50
@@ -73,8 +73,8 @@ def one_step_policy(**kwargs):
     def qfn(a_):
       # X_raw_ = env.data_block_at_action(-1, a_, raw=True)
       X_ = env.data_block_at_action(-1, a_)
-      if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
-        X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
+      # if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
+      #   X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
       # return predictor(X_raw_)
       return predictor(X_)
     def linear_qfn(a_):
