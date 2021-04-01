@@ -38,7 +38,7 @@ def one_step_policy(**kwargs):
   def oracle_qfn(a):
       return env.next_infected_probabilities(a)
 
-  if env.learn_embedding and len(env.X) > 8:
+  if env.learn_embedding:
   # if env.learn_embedding:
     loss_dict = {}
     N_REP = 50
@@ -55,10 +55,10 @@ def one_step_policy(**kwargs):
     true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
 
 
-    fname = os.path.join(data_dir, 'Ebola_data_t=8.p')
-    data_dict = {'X_raw_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
-                 'true_probs': true_probs, 'X_list': env.X, 'settings': {'env': env_name, 'L': env.L}}
-    pkl.dump(data_dict, open(fname, 'wb'))
+    # fname = os.path.join(data_dir, 'Ebola_data_t=8.p')
+    # data_dict = {'X_raw_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
+    #              'true_probs': true_probs, 'X_list': env.X, 'settings': {'env': env_name, 'L': env.L}}
+    # pkl.dump(data_dict, open(fname, 'wb'))
 
     # _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
@@ -68,7 +68,7 @@ def one_step_policy(**kwargs):
     # clf.fit(np.vstack(X_raw), np.hstack(env.y))
 
     predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
-  		                    num_settings_to_try=1)
+  		                    num_settings_to_try=1, n_epoch=300)
 
     def qfn(a_):
       # X_raw_ = env.data_block_at_action(-1, a_, raw=True)
