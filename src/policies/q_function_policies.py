@@ -38,8 +38,9 @@ def two_step_oracle_ggcn_policy(**kwargs):
 
   # Get pseudo-outcomes
   def oracle_pseudo_outcome(x_raw):
-    a_ = argmaxer(oracle_qfn, evaluation_budget, treatment_budget, env)
-    pseudo = oracle_qfn(a_, x_raw)
+    oracle_qfn_at_xraw = lambda a: oracle_qfn(a, x_raw)
+    a_ = argmaxer(oracle_qfn_at_xraw, evaluation_budget, treatment_budget, env)
+    pseudo = oracle_qfn_at_xraw(a_)
     return pseudo
 
   backups = []
@@ -62,6 +63,7 @@ def two_step_oracle_ggcn_policy(**kwargs):
     X_ = env.data_block_at_action(-1, a_)
     return predictor(X_)
 
+  pdb.set_trace()
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, {}
 
