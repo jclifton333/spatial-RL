@@ -83,7 +83,7 @@ class GGCN(nn.Module):
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
   """
   def __init__(self, nfeat, J, adjacency_lst, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0,
-               apply_sigmoid=False, neighbor_order=1):
+               apply_sigmoid=False, neighbor_order=2):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1 and recursive:
       self.g1 = nn.Linear(2*J, J)
@@ -97,9 +97,10 @@ class GGCN(nn.Module):
     self.samples_per_k = samples_per_k
     self.recursive = recursive
     self.apply_sigmoid = apply_sigmoid
-    self.adjacency_list = adjacency_lst
     if neighbor_order == 1:
-      self.adjacency_list = second_order_adjacency_list(self.adjacency_list)
+      self.adjacency_list = adjacency_lst
+    elif neighbor_order == 2:
+      self.adjacency_list = second_order_adjacency_list(adjacency_lst)
     self.L = len(adjacency_lst)
 
   def final(self, X_, train=True):

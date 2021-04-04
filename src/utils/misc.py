@@ -34,6 +34,6 @@ def second_order_adjacency_list(adjacency_list):
       lst_lprime = adjacency_list[lprime]
       for lprimeprime in lst_lprime:
         if lprimeprime not in second_order_list_l:
-          second_order_list_l.append(lprimeprime)
+          second_order_list_l = np.append(second_order_list_l, lprimeprime)
     second_order_list.append(second_order_list_l)
   return second_order_list
