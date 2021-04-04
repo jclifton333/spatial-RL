@@ -56,14 +56,13 @@ def two_step_oracle_ggcn_policy(**kwargs):
   # dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
   # eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
   # true_probs = np.hstack([oracle_qfn(a_, current_x_raw) for a_ in eval_actions])
-  predictor, _ = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True)
+  _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True)
 
   # Get optimal action
   def qfn(a_):
     X_ = env.data_block_at_action(-1, a_)
     return predictor(X_)
 
-  pdb.set_trace()
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, {}
 

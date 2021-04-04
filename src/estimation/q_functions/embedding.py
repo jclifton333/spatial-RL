@@ -327,24 +327,14 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
   return CV_objective
 
 
-def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=100, batch_size=5, verbose=False,
+def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=16, batch_size=5, verbose=False,
                neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
-               target_are_probs=False, lr=0.01, tol=0.01, dropout=0.2):
+               target_are_probs=False, lr=0.01, tol=0.01, dropout=0.0):
 
-  if len(X_list) > 1:
-    # _, model, _ = tune_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
-    #                         verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
-    #                         samples_per_k=samples_per_k, recursive=recursive, num_settings_to_try=num_settings_to_try,
-    #                         X_holdout=None, y_holdout=None, target_are_probs=target_are_probs)
-    model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
-                     verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
-                     samples_per_k=samples_per_k, recursive=recursive, lr=lr, tol=tol, dropout=dropout,
-                     target_are_probs=target_are_probs)
-  else:
-    model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
-                     verbose=verbose,neighbor_subset_limit=neighbor_subset_limit,
-                     samples_per_k=samples_per_k, recursive=recursive, lr=0.01, tol=0.01, dropout=0.2,
-                     target_are_probs=target_are_probs)
+  model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
+                   verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
+                   samples_per_k=samples_per_k, recursive=recursive, lr=lr, tol=tol, dropout=dropout,
+                   target_are_probs=target_are_probs)
 
   def embedding_wrapper(X_):
     X_ = torch.FloatTensor(X_)
