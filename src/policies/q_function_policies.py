@@ -22,7 +22,53 @@ import numpy as np
 import pickle as pkl
 # import keras.backend as K
 from functools import partial
+import copy
 import matplotlib.pyplot as plt
+
+
+def two_step_oracle_ggcn_policy(**kwargs):
+  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, raw_features = \
+    kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
+    kwargs['bootstrap'], kwargs['raw_features']
+
+  # Define myopic oracle Q-function
+  def oracle_qfn(a, x_raw):
+      infection_probs = env.infection_probability(a, x_raw[:, -1], x_raw[:, 0])
+      return infection_probs
+
+  # Get pseudo-outcomes
+  def oracle_pseudo_outcome(x_raw):
+    a_ = argmaxer(oracle_qfn, evaluation_budget, treatment_budget, env)
+    pseudo = oracle_qfn(a_, x_raw)
+    return pseudo
+
+  backups = []
+  for x_raw_, x_raw_next_ in zip(env.X_raw[:-1], env.X_raw[1:]):
+    pseudo_x_raw = oracle_pseudo_outcome(x_raw_next_)
+    myopic = oracle_qfn(x_raw_[:, 1], x_raw_)
+    backup = myopic + pseudo_x_raw
+    backups = np.append(backup)
+
+  # Fit GGCN to backups to get q1
+  current_x_raw = env.X_raw[-1]
+  N_REP = 50
+  dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
+  eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
+  true_probs = np.hstack([oracle_qfn(a_, current_x_raw) for a_ in eval_actions])
+  predictor, _ = oracle_tune_ggcn(env.X[:-1], backups, env.adjacency_list, env, eval_actions, true_probs,
+                                  num_settings_to_try=1, n_epoch=100)
+
+  # Get optimal action
+  def qfn(a_):
+    # X_raw_ = env.data_block_at_action(-1, a_, raw=True)
+    X_ = env.data_block_at_action(-1, a_)
+    # if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
+    #   X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
+    # return predictor(X_raw_)
+    return predictor(X_)
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  return a, {}
 
 
 def one_step_policy(**kwargs):
