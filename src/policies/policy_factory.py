@@ -96,5 +96,7 @@ def policy_factory(policy_type):
     return eval.one_step_parametric_true_model
   elif policy_type == 'one_step_var_only':
     return eval.one_step_var_only
+  elif policy_type == 'two_step_oracle_ggcn':
+    return roll.two_step_oracle_ggcn_policy
   else:
     raise ValueError('Argument does not match any policy.')

@@ -416,7 +416,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
 
     _, predictor = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=5, verbose=verbose,
                               neighbor_subset_limit=neighbor_subset_limit, samples_per_k=6, recursive=True, num_settings_to_try=5,
-                              target_are_probs=False, lr=lr, tol=0.01, dropout=dropout)
+                              target_are_probs=target_are_probs, lr=lr, tol=0.01, dropout=dropout)
 
     # Compare to true probs
     def qfn(a):

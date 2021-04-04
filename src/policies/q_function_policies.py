@@ -47,24 +47,19 @@ def two_step_oracle_ggcn_policy(**kwargs):
     pseudo_x_raw = oracle_pseudo_outcome(x_raw_next_)
     myopic = oracle_qfn(x_raw_[:, 1], x_raw_)
     backup = myopic + pseudo_x_raw
-    backups = np.append(backup)
+    backups.append(backup)
 
   # Fit GGCN to backups to get q1
-  current_x_raw = env.X_raw[-1]
-  N_REP = 50
-  dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
-  eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
-  true_probs = np.hstack([oracle_qfn(a_, current_x_raw) for a_ in eval_actions])
-  predictor, _ = oracle_tune_ggcn(env.X[:-1], backups, env.adjacency_list, env, eval_actions, true_probs,
-                                  num_settings_to_try=1, n_epoch=100)
+  # current_x_raw = env.X_raw[-1]
+  # N_REP = 50
+  # dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
+  # eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
+  # true_probs = np.hstack([oracle_qfn(a_, current_x_raw) for a_ in eval_actions])
+  predictor, _ = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True)
 
   # Get optimal action
   def qfn(a_):
-    # X_raw_ = env.data_block_at_action(-1, a_, raw=True)
     X_ = env.data_block_at_action(-1, a_)
-    # if hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX'):
-    #   X_raw_ = np.column_stack((X_raw_, env.NEIGHBOR_DISTANCE_MATRIX))
-    # return predictor(X_raw_)
     return predictor(X_)
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
