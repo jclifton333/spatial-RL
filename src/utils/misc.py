@@ -26,4 +26,14 @@ def random_argsort(arr, num_to_take):
   return np.argsort(np.lexsort((b, top_entries)))[:num_to_take]
 
 
-
+def second_order_adjacency_list(adjacency_list):
+  second_order_list = []
+  for l, lst in enumerate(adjacency_list):
+    second_order_list_l = lst
+    for lprime in lst:
+      lst_lprime = adjacency_list[lprime]
+      for lprimeprime in lst_lprime:
+        if lprimeprime not in second_order_list_l:
+          second_order_list_l.append(lprimeprime)
+    second_order_list.append(second_order_list_l)
+  return second_order_list

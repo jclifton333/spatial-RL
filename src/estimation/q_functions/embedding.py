@@ -17,7 +17,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Variable
-from src.utils.misc import kl
+from src.utils.misc import kl, second_order_adjacency_list
 # from pygcn.utils import accuracy
 # from pygcn.models import GCN
 if torch.cuda.is_available():
@@ -83,7 +83,7 @@ class GGCN(nn.Module):
   Generalized graph convolutional network (not sure yet if it's a generalization strictly speaking).
   """
   def __init__(self, nfeat, J, adjacency_lst, neighbor_subset_limit=2, samples_per_k=None, recursive=False, dropout=0.0,
-               apply_sigmoid=False):
+               apply_sigmoid=False, neighbor_order=1):
     super(GGCN, self).__init__()
     if neighbor_subset_limit > 1 and recursive:
       self.g1 = nn.Linear(2*J, J)
@@ -98,6 +98,8 @@ class GGCN(nn.Module):
     self.recursive = recursive
     self.apply_sigmoid = apply_sigmoid
     self.adjacency_list = adjacency_lst
+    if neighbor_order == 1:
+      self.adjacency_list = second_order_adjacency_list(self.adjacency_list)
     self.L = len(adjacency_lst)
 
   def final(self, X_, train=True):
