@@ -57,10 +57,29 @@ def two_step_oracle_ggcn_policy(**kwargs):
   # eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
   # true_probs = np.hstack([oracle_qfn(a_, current_x_raw) for a_ in eval_actions])
   _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
-			    samples_per_k=15, neighbor_subset_limit=1)
+			                      samples_per_k=15, neighbor_subset_limit=1, verbose=False, lr=0.01,
+                            batch_size=10, nhid=16, dropout=0)
+  _, predictor2 = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
+                            samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
+                            batch_size=10, nhid=16, dropout=0)
   # lm = Ridge()
   # lm.fit(np.vstack(env.X[:-1]), np.hstack(backups))
-  # predictor = lambda x_: lm.predict(x_) 
+  # predictor = lambda x_: lm.predict(x_)
+
+  # Evaluate predictors (for diagnosis)
+  acc1_list = []
+  acc2_list = []
+  for x, b in zip(env.X[:-1], backups):
+    backup_hat_1 = predictor(x)
+    backup_hat_2 = predictor2(x)
+    error_1 = np.mean((backup_hat_1 - b)**2)
+    error_2 = np.mean((backup_hat_2 - b)**2)
+    acc1_list.append(error_1)
+    acc2_list.append(error_2)
+
+  acc1 = np.mean(acc1_list)
+  acc2 = np.mean(acc2_list)
+  print(f'acc1: {acc1} acc2: {acc2}')
 
   # Get optimal action
   def qfn(a_):

@@ -90,7 +90,7 @@ class GGCN(nn.Module):
       # self.g2 = nn.Linear(J, J)
     self.h1 = nn.Linear(nfeat, J)
     self.h2 = nn.Linear(J, J)
-    self.final1 = nn.Linear(J+nfeat, 2)
+    self.final1 = nn.Linear(J+nfeat, 2-apply_sigmoid)
     self.dropout_final = nn.Dropout(p=dropout)
     self.neighbor_subset_limit = neighbor_subset_limit
     self.J = J
@@ -346,11 +346,11 @@ def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=16, batch_size=
 
   def model_wrapper(X_):
     X_ = torch.FloatTensor(X_)
-    yhat = np.zeros(X_.shape[0])
-    for _ in range(5):
-      logits = model.forward_recursive_vec(X_, train=False)
-      yhat_sample = F.softmax(logits, dim=1)[:, 1].detach().numpy()
-      yhat += yhat_sample / 5
+    logits = model.forward_recursive_vec(X_, train=False)
+    if not target_are_probs:
+      yhat = F.softmax(logits, dim=1)[:, -1].detach().numpy()
+    else:
+      yhat = logits.detach().numpy()
     return yhat
 
   return embedding_wrapper, model_wrapper
@@ -539,7 +539,7 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
   model = GGCN(nfeat=p, J=nhid, adjacency_lst=adjacency_list, neighbor_subset_limit=neighbor_subset_limit,
                samples_per_k=samples_per_k,
                recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
-  optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
+  optimizer = optim.Adam(model.parameters(), lr=lr)
   if target_are_probs:
     criterion = nn.MSELoss()
   else:
@@ -571,7 +571,9 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
       else:
         output = model(X, adjacency_list)
         if target_are_probs:
-          output = output[:, 1]
+          output = output[:, 0]
+        # if epoch % 50 == 0:
+        #   pdb.set_trace()
         loss_train = criterion(output, y)
 
       loss_train.backward()
@@ -579,10 +581,11 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
 
     # Evaluate loss
     for X_, y_ in zip(X_list, y_list):
-      yhat = F.softmax(model(X_, adjacency_list), dim=1)[:, 1]
       if target_are_probs:
+        yhat = model(X_, adjacency_list)[:, 0]
         acc = ((yhat - y_)**2).float().mean().detach().numpy()
       else:
+        yhat = F.softmax(model(X_, adjacency_list), dim=1)[:, 1]
         acc = ((yhat > 0.5) == y_).float().mean().detach().numpy()
       avg_acc_train += acc / T
 
@@ -608,8 +611,12 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
     final_acc_train = 0.
     for X, y in zip(X_list, y_list):
       output = model(X, adjacency_list)
-      yhat = F.softmax(output)[:, 1]
-      acc = ((yhat > 0.5) == y).float().mean()
+      if target_are_probs:
+        yhat = output
+        acc = ((yhat - y)**2).float().mean()
+      else:
+        yhat = F.softmax(output)[:, 1]
+        acc = ((yhat > 0.5) == y).float().mean()
       final_acc_train += acc / T
     print('final_acc_train: {:.4f}'.format(final_acc_train))
 
