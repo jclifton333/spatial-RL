@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-python3 ../src/run/run.py --env_name='sis' --policy_name='two_step_oracle_ggcn' --argmaxer_name='random' \
-     --omega=0.0 --number_of_replicates=1 --rollout_depth=1 --time_horizon=25 --L=100 --gamma=0.9 \
+python3 ../src/run/run.py --env_name='sis' --policy_name='two_step_oracle_ggcn' --argmaxer_name='argmaxer_quad_approx' \
+     --omega=0.0 --number_of_replicates=24 --rollout_depth=1 --time_horizon=25 --L=100 --gamma=0.9 \
+     --evaluation_budget=100 --epsilon=0.0 --network='lattice' --seed=5 --error_quantile=0.95 --ignore_errors='True' \
+     --learn_embedding='True' --save_features='False' --raw_features='False'
+
+python3 ../src/run/run.py --env_name='sis' --policy_name='two_step_ggcn' --argmaxer_name='argmaxer_quad_approx' \
+     --omega=0.0 --number_of_replicates=24 --rollout_depth=1 --time_horizon=25 --L=100 --gamma=0.9 \
      --evaluation_budget=100 --epsilon=0.0 --network='lattice' --seed=5 --error_quantile=0.95 --ignore_errors='True' \
      --learn_embedding='True' --save_features='False' --raw_features='False'
 

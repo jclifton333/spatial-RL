@@ -541,7 +541,7 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
                recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
   optimizer = optim.Adam(model.parameters(), lr=lr)
   if target_are_probs:
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
   else:
     criterion = nn.CrossEntropyLoss()
 
@@ -558,7 +558,7 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
       optimizer.zero_grad()
       X = Variable(X)
       if target_are_probs:
-        y = Variable(y)
+        y = Variable(y).unsqueeze(1)
       else:
         y = Variable(y).long()
 
@@ -570,10 +570,6 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
         loss_train = criterion(output, y[locations_subset])
       else:
         output = model(X, adjacency_list)
-        if target_are_probs:
-          output = output[:, 0]
-        # if epoch % 50 == 0:
-        #   pdb.set_trace()
         loss_train = criterion(output, y)
 
       loss_train.backward()
@@ -606,17 +602,16 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
     #     break
 
     prev_avg_acc_train = avg_acc_train
-
   if verbose:
     final_acc_train = 0.
-    for X, y in zip(X_list, y_list):
-      output = model(X, adjacency_list)
+    for X_, y_ in zip(X_list, y_list):
+      output = model(X_, adjacency_list)
       if target_are_probs:
-        yhat = output
-        acc = ((yhat - y)**2).float().mean()
+        yhat = output[:, 0]
+        acc = ((yhat - y_)**2).float().mean().detach().numpy()
       else:
         yhat = F.softmax(output)[:, 1]
-        acc = ((yhat > 0.5) == y).float().mean()
+        acc = ((yhat > 0.5) == y_).float().mean()
       final_acc_train += acc / T
     print('final_acc_train: {:.4f}'.format(final_acc_train))
 

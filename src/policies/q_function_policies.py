@@ -26,6 +26,72 @@ import copy
 import matplotlib.pyplot as plt
 
 
+
+def two_step_ggcn_policy(**kwargs):
+  classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, raw_features = \
+    kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
+    kwargs['bootstrap'], kwargs['raw_features']
+
+  # Fit myopic q-function
+  _, predictor0 = learn_ggcn(env.X_raw, env.y, env.adjacency_list)
+  def qfn0(a, x_raw):
+      infection_probs = predictor0(np.column_stack((a, x_raw[:, -1], x_raw[:, 0])))
+      return infection_probs
+
+  # Get pseudo-outcomes
+  def pseudo_outcome(x_raw):
+    qfn0_at_xraw = lambda a: qfn0(a, x_raw)
+    a_ = argmaxer(qfn0_at_xraw, evaluation_budget, treatment_budget, env)
+    pseudo = qfn0_at_xraw(a_)
+    return pseudo
+
+  backups = []
+  for x_raw_, x_raw_next_ in zip(env.X_raw[:-1], env.X_raw[1:]):
+    pseudo_x_raw = pseudo_outcome(x_raw_next_)
+    myopic = qfn0(x_raw_[:, 1], x_raw_)
+    backup = myopic + pseudo_x_raw
+    backups.append(backup)
+
+  # Fit GGCN to backups to get q1
+  # current_x_raw = env.X_raw[-1]
+  # N_REP = 50
+  # dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
+  # eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
+  # true_probs = np.hstack([oracle_qfn(a_, current_x_raw) for a_ in eval_actions])
+  # _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
+	# 		                      samples_per_k=15, neighbor_subset_limit=1, verbose=False, lr=0.01,
+  #                           batch_size=10, nhid=16, dropout=0)
+  _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
+                            samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
+                            batch_size=10, nhid=16, dropout=0.5)
+  # lm = Ridge()
+  # lm.fit(np.vstack(env.X[:-1]), np.hstack(backups))
+  # predictor2 = lambda x_: lm.predict(x_)
+
+  # # Evaluate predictors (for diagnosis)
+  # acc1_list = []
+  # acc2_list = []
+  # for x, b in zip(env.X[:-1], backups):
+  #   backup_hat_1 = predictor(x)[:, 0]
+  #   backup_hat_2 = predictor2(x)
+  #   error_1 = np.mean((backup_hat_1 - b)**2)
+  #   error_2 = np.mean((backup_hat_2 - b)**2)
+  #   acc1_list.append(error_1)
+  #   acc2_list.append(error_2)
+
+  # acc1 = np.mean(acc1_list)
+  # acc2 = np.mean(acc2_list)
+  # print(f'acc1: {acc1} acc2: {acc2}')
+
+  # Get optimal action
+  def qfn(a_):
+    X_ = env.data_block_at_action(-1, a_)
+    return predictor(X_)[:, 0]
+
+  a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
+  return a, {}
+
+
 def two_step_oracle_ggcn_policy(**kwargs):
   classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, raw_features = \
     kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
@@ -56,35 +122,35 @@ def two_step_oracle_ggcn_policy(**kwargs):
   # dummy_act = np.concatenate((np.ones(treatment_budget), np.zeros(env.L - treatment_budget)))
   # eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
   # true_probs = np.hstack([oracle_qfn(a_, current_x_raw) for a_ in eval_actions])
+  # _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
+	# 		                      samples_per_k=15, neighbor_subset_limit=1, verbose=False, lr=0.01,
+  #                           batch_size=10, nhid=16, dropout=0)
   _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
-			                      samples_per_k=15, neighbor_subset_limit=1, verbose=False, lr=0.01,
-                            batch_size=10, nhid=16, dropout=0)
-  _, predictor2 = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
-                            samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
-                            batch_size=10, nhid=16, dropout=0)
+                            samples_per_k=15, neighbor_subset_limit=2, verbose=True, lr=0.01,
+                            batch_size=10, nhid=16, dropout=0.5)
   # lm = Ridge()
   # lm.fit(np.vstack(env.X[:-1]), np.hstack(backups))
-  # predictor = lambda x_: lm.predict(x_)
+  # predictor2 = lambda x_: lm.predict(x_)
 
-  # Evaluate predictors (for diagnosis)
-  acc1_list = []
-  acc2_list = []
-  for x, b in zip(env.X[:-1], backups):
-    backup_hat_1 = predictor(x)
-    backup_hat_2 = predictor2(x)
-    error_1 = np.mean((backup_hat_1 - b)**2)
-    error_2 = np.mean((backup_hat_2 - b)**2)
-    acc1_list.append(error_1)
-    acc2_list.append(error_2)
+  # # Evaluate predictors (for diagnosis)
+  # acc1_list = []
+  # acc2_list = []
+  # for x, b in zip(env.X[:-1], backups):
+  #   backup_hat_1 = predictor(x)[:, 0]
+  #   backup_hat_2 = predictor2(x)
+  #   error_1 = np.mean((backup_hat_1 - b)**2)
+  #   error_2 = np.mean((backup_hat_2 - b)**2)
+  #   acc1_list.append(error_1)
+  #   acc2_list.append(error_2)
 
-  acc1 = np.mean(acc1_list)
-  acc2 = np.mean(acc2_list)
-  print(f'acc1: {acc1} acc2: {acc2}')
+  # acc1 = np.mean(acc1_list)
+  # acc2 = np.mean(acc2_list)
+  # print(f'acc1: {acc1} acc2: {acc2}')
 
   # Get optimal action
   def qfn(a_):
     X_ = env.data_block_at_action(-1, a_)
-    return predictor(X_)
+    return predictor(X_)[:, 0]
 
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, {}
