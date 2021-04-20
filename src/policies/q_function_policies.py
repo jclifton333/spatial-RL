@@ -32,28 +32,30 @@ def two_step_ggcn_policy(**kwargs):
     kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
     kwargs['bootstrap'], kwargs['raw_features']
 
+  GAMMA = 0.5  
+
   # Fit myopic q-function
   _, predictor0 = learn_ggcn(env.X, env.y, env.adjacency_list, n_epoch=70, target_are_probs=False,
                              samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.005,
                              batch_size=5, nhid=16, dropout=0.0)
 
   def qfn0(a, t):
-      x_at_a = env.data_block_at_action(a, t)
+      x_at_a = env.data_block_at_action(t, a)
       infection_probs = predictor0(x_at_a)
       return infection_probs
 
   # ToDo: for diagnosis only
-  lm0 = LogisticRegression()
-  lm0.fit(np.vstack(env.X_raw), np.hstack(env.y))
-  def qfn0_baseline(a, x_raw):
-    infection_probs = lm0.predict_proba(np.column_stack((a, x_raw[:, -1], x_raw[:, 0])))[:, 1]
-    return infection_probs
+  # lm0 = LogisticRegression()
+  # lm0.fit(np.vstack(env.X_raw), np.hstack(env.y))
+  # def qfn0_baseline(a, x_raw):
+  #   infection_probs = lm0.predict_proba(np.column_stack((a, x_raw[:, -1], x_raw[:, 0])))[:, 1]
+  #   return infection_probs
 
-  def pseudo_outcome_baseline(x_raw):
-    qfn0_at_x_raw = lambda a: qfn0_baseline(a, x_raw)
-    a_ = argmaxer(qfn0_at_x_raw, evaluation_budget, treatment_budget, env)
-    pseudo = qfn0_at_x_raw(a_)
-    return pseudo
+  # def pseudo_outcome_baseline(x_raw):
+  #   qfn0_at_x_raw = lambda a: qfn0_baseline(a, x_raw)
+  #   a_ = argmaxer(qfn0_at_x_raw, evaluation_budget, treatment_budget, env)
+  #   pseudo = qfn0_at_x_raw(a_)
+  #   return pseudo
 
   # Get pseudo-outcomes
   def pseudo_outcome(t):
@@ -63,48 +65,48 @@ def two_step_ggcn_policy(**kwargs):
     return pseudo
 
   # Define myopic oracle Q-function
-  def oracle_qfn(a, x_raw):
-    infection_probs = env.infection_probability(a, x_raw[:, -1], x_raw[:, 0])
-    return infection_probs
+  # def oracle_qfn(a, x_raw):
+  #   infection_probs = env.infection_probability(a, x_raw[:, -1], x_raw[:, 0])
+  #   return infection_probs
 
-  # Get pseudo-outcomes
-  def oracle_pseudo_outcome(x_raw):
-    oracle_qfn_at_xraw = lambda a: oracle_qfn(a, x_raw)
-    a_ = argmaxer(oracle_qfn_at_xraw, evaluation_budget, treatment_budget, env)
-    pseudo = oracle_qfn_at_xraw(a_)
-    return pseudo
+  # # Get pseudo-outcomes
+  # def oracle_pseudo_outcome(x_raw):
+  #   oracle_qfn_at_xraw = lambda a: oracle_qfn(a, x_raw)
+  #   a_ = argmaxer(oracle_qfn_at_xraw, evaluation_budget, treatment_budget, env)
+  #   pseudo = oracle_qfn_at_xraw(a_)
+  #   return pseudo
 
   myopic = np.zeros(0)
   lookahead = np.zeros(0)
   backups = []
-  myopic_baseline = np.zeros(0)
-  lookahead_baseline = np.zeros(0)
-  backups_baseline = []
-  myopic_oracle = np.zeros(0)
-  lookahead_oracle = np.zeros(0) 
-  backups_oracle = []
+  # myopic_baseline = np.zeros(0)
+  # lookahead_baseline = np.zeros(0)
+  # backups_baseline = []
+  # myopic_oracle = np.zeros(0)
+  # lookahead_oracle = np.zeros(0) 
+  # backups_oracle = []
 
   for t, (x_raw_, x_raw_next_) in enumerate(zip(env.X_raw[:-1], env.X_raw[1:])):
     pseudo_rep = pseudo_outcome(t)
     myopic_rep = qfn0(x_raw_[:, 1], t)
     myopic = np.hstack((myopic, myopic_rep))
     lookahead = np.hstack((lookahead, pseudo_rep))
-    backups.append(myopic_rep + pseudo_rep)
+    backups.append(myopic_rep + GAMMA * pseudo_rep)
 
-    # ToDo: for diagnosis only
-    myopic_baseline_rep = qfn0_baseline(x_raw_[:, 1], x_raw_)
-    pseudo_baseline_rep = pseudo_outcome_baseline(x_raw_next_)
-    myopic_baseline = np.hstack((myopic_baseline, myopic_baseline_rep))
-    lookahead_baseline = np.hstack((lookahead_baseline, pseudo_baseline_rep))
-    backup_baseline = myopic_baseline_rep + pseudo_baseline_rep
-    backups_baseline.append(backup_baseline)
+  #   # ToDo: for diagnosis only
+  #   myopic_baseline_rep = qfn0_baseline(x_raw_[:, 1], x_raw_)
+  #   pseudo_baseline_rep = pseudo_outcome_baseline(x_raw_next_)
+  #   myopic_baseline = np.hstack((myopic_baseline, myopic_baseline_rep))
+  #   lookahead_baseline = np.hstack((lookahead_baseline, pseudo_baseline_rep))
+  #   backup_baseline = myopic_baseline_rep + pseudo_baseline_rep
+  #   backups_baseline.append(backup_baseline)
 
-    myopic_oracle_rep = oracle_qfn(x_raw_[:, 1], x_raw_)
-    pseudo_oracle_rep = oracle_pseudo_outcome(x_raw_next_)
-    myopic_oracle = np.hstack((myopic_oracle, myopic_oracle_rep))
-    lookahead_oracle = np.hstack((lookahead_oracle, pseudo_oracle_rep)) 
-    backup_oracle = myopic_oracle_rep + pseudo_oracle_rep
-    backups_oracle.append(backup_oracle)
+  #   myopic_oracle_rep = oracle_qfn(x_raw_[:, 1], x_raw_)
+  #   pseudo_oracle_rep = oracle_pseudo_outcome(x_raw_next_)
+  #   myopic_oracle = np.hstack((myopic_oracle, myopic_oracle_rep))
+  #   lookahead_oracle = np.hstack((lookahead_oracle, pseudo_oracle_rep)) 
+  #   backup_oracle = myopic_oracle_rep + pseudo_oracle_rep
+  #   backups_oracle.append(backup_oracle)
 
   # Fit GGCN to backups to get q1
   # current_x_raw = env.X_raw[-1]
@@ -116,12 +118,12 @@ def two_step_ggcn_policy(**kwargs):
 	# 		                      samples_per_k=15, neighbor_subset_limit=1, verbose=False, lr=0.01,
   #                           batch_size=10, nhid=16, dropout=0)
   _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
-                            samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
+                            samples_per_k=15, neighbor_subset_limit=3, verbose=False, lr=0.01,
                             batch_size=10, nhid=16, dropout=0.5)
 
-  _, predictor2 = learn_ggcn(env.X[:-1], backups_baseline, env.adjacency_list, n_epoch=100, target_are_probs=True,
-                            samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
-                            batch_size=10, nhid=16, dropout=0.5)
+  # _, predictor2 = learn_ggcn(env.X[:-1], backups_baseline, env.adjacency_list, n_epoch=100, target_are_probs=True,
+  #                           samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
+  #                           batch_size=10, nhid=16, dropout=0.5)
 
   # lm = Ridge()
   # lm.fit(np.vstack(env.X[:-1]), np.hstack(backups))
@@ -131,21 +133,21 @@ def two_step_ggcn_policy(**kwargs):
   acc1_list = []
   acc2_list = []
   # for x, b1, b2 in zip(env.X[:-1], backups, backups_baseline):
-  for x, b in zip(env.X[:-1], backups_oracle):
-    backup_hat_1 = predictor(x)[:, 0]
-    backup_hat_2 = predictor2(x)[:, 0]
-    # error_1 = np.mean((backup_hat_1 - b1)**2)
-    # error_2 = np.mean((backup_hat_2 - b2)**2)
-    error_1 = np.mean((backup_hat_1 - b) ** 2)
-    error_2 = np.mean((backup_hat_2 - b)**2)
-    acc1_list.append(error_1)
-    acc2_list.append(error_2)
+  # for x, b in zip(env.X[:-1], backups_oracle):
+  #   backup_hat_1 = predictor(x)[:, 0]
+  #   backup_hat_2 = predictor2(x)[:, 0]
+  #   # error_1 = np.mean((backup_hat_1 - b1)**2)
+  #   # error_2 = np.mean((backup_hat_2 - b2)**2)
+  #   error_1 = np.mean((backup_hat_1 - b) ** 2)
+  #   error_2 = np.mean((backup_hat_2 - b)**2)
+  #   acc1_list.append(error_1)
+  #   acc2_list.append(error_2)
 
-  if len(env.X) > 10:
-    pdb.set_trace()
-  acc1 = np.mean(acc1_list)
-  acc2 = np.mean(acc2_list)
-  print(f'acc1: {acc1} acc2: {acc2}')
+  # if len(env.X) > 10:
+  #   pdb.set_trace()
+  # acc1 = np.mean(acc1_list)
+  # acc2 = np.mean(acc2_list)
+  # print(f'acc1: {acc1} acc2: {acc2}')
 
   # Get optimal action
   def qfn(a_):
