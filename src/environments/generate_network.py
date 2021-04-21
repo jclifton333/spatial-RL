@@ -46,6 +46,30 @@ def lattice(size):
   return adjacency_matrix
 
 
+def update_adjacency_matrix(adjacency_matrix, ix, neighbors_lst):
+  adjacency_matrix[ix, neighbors_lst] = 1
+  return adjacency_matrix
+
+
+def contrived(size):
+  adjacency_matrix = np.zeros((size, size))
+  num_subnets = size // 7
+  for subnet_ix in range(num_subnets):
+    num_so_far = subnet_ix * 7
+
+    adjacency_matrix = update_adjacency_matrix(adjacency_matrix, num_so_far, [num_so_far + 1, num_so_far + 2])
+    adjacency_matrix = update_adjacency_matrix(adjacency_matrix, num_so_far + 1, [num_so_far, num_so_far + 2])
+    adjacency_matrix = update_adjacency_matrix(adjacency_matrix, num_so_far + 2,
+                                               [num_so_far, num_so_far + 1 , num_so_far + 3])
+    adjacency_matrix = update_adjacency_matrix(adjacency_matrix, num_so_far + 3, [num_so_far + 2, num_so_far + 4])
+    adjacency_matrix = update_adjacency_matrix(adjacency_matrix, num_so_far + 4, [num_so_far + 3, num_so_far + 5,
+                                                                                  num_so_far + 6])
+    adjacency_matrix = update_adjacency_matrix(adjacency_matrix, num_so_far + 5, [num_so_far + 4, num_so_far + 6])
+    adjacency_matrix = update_adjacency_matrix(adjacency_matrix, num_so_far + 6, [num_so_far + 4, num_so_far + 5])
+
+  return adjacency_matrix
+
+
 def Barabasi_Albert(size, prop_init=0.9, p=0.05):
   """
   Random preferential attachment model
