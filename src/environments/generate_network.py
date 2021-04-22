@@ -52,8 +52,9 @@ def update_adjacency_matrix(adjacency_matrix, ix, neighbors_lst):
 
 
 def contrived(size):
-  adjacency_matrix = np.zeros((size, size))
   num_subnets = size // 7
+  new_size = num_subnets * 7
+  adjacency_matrix = np.zeros((new_size, new_size))
   for subnet_ix in range(num_subnets):
     num_so_far = subnet_ix * 7
 

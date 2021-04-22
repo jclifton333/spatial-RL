@@ -65,7 +65,6 @@ class SpatialDisease(ABC):
                                     for l in range(self.L)])
 
     network_as_nx_object = nx.from_numpy_matrix(self.adjacency_matrix)
-
     if construct_features_for_policy_search or compute_pairwise_distances:
       pairwise_distance_dictionary = dict(nx.all_pairs_shortest_path_length(network_as_nx_object))
       self.pairwise_distances = np.zeros((self.L, self.L))  # Entries are omega's in Nick's WNS paper
