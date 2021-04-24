@@ -332,12 +332,12 @@ def get_ggcn_val_objective(T, train_num, X_list, y_list, adjacency_list, n_epoch
 
 def learn_ggcn(X_list, y_list, adjacency_list, n_epoch=100, nhid=16, batch_size=5, verbose=False,
                neighbor_subset_limit=2, samples_per_k=6, recursive=True, num_settings_to_try=5,
-               target_are_probs=False, lr=0.01, tol=0.01, dropout=0.0):
+               target_are_probs=False, lr=0.01, tol=0.01, dropout=0.0, neighbor_order=2):
 
   model = fit_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=batch_size,
                    verbose=verbose, neighbor_subset_limit=neighbor_subset_limit,
                    samples_per_k=samples_per_k, recursive=recursive, lr=lr, tol=tol, dropout=dropout,
-                   target_are_probs=target_are_probs)
+                   target_are_probs=target_are_probs, neighbor_order=neighbor_order)
 
   def embedding_wrapper(X_):
     X_ = torch.FloatTensor(X_)
@@ -380,7 +380,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
                      X_eval=None,
                      n_epoch=70, nhid=100, batch_size=5, verbose=False,
                      samples_per_k=6, recursive=True, num_settings_to_try=3,
-                     X_holdout=None, y_holdout=None, target_are_probs=False):
+                     X_holdout=None, y_holdout=None, target_are_probs=False, neighbor_order=2):
   """
   Tune GGCN hyperparameters, given sample of true probabilities evaluated at the current state.
   """
@@ -409,7 +409,7 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
 
     _, predictor = learn_ggcn(X_list, y_list, adjacency_list, n_epoch=n_epoch, nhid=nhid, batch_size=5, verbose=verbose,
                               neighbor_subset_limit=neighbor_subset_limit, samples_per_k=6, recursive=True, num_settings_to_try=5,
-                              target_are_probs=target_are_probs, lr=lr, tol=0.01, dropout=dropout)
+                              target_are_probs=target_are_probs, lr=lr, tol=0.01, dropout=dropout, neighbor_order=neighbor_order)
 
     # Compare to true probs
     def qfn(a):
@@ -527,7 +527,7 @@ def tune_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5
 
 def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5, verbose=True,
              neighbor_subset_limit=2, samples_per_k=6, recursive=True, lr=0.01, tol=0.001, dropout=0.0,
-             locations_subsets=None, target_are_probs=False):
+             locations_subsets=None, target_are_probs=False, neighbor_order=2):
   # See here: https://github.com/tkipf/pygcn/blob/master/pygcn/train.py
   # Specify model
   p = X_list[0].shape[1]
@@ -538,7 +538,8 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
   #              recursive=recursive)
   model = GGCN(nfeat=p, J=nhid, adjacency_lst=adjacency_list, neighbor_subset_limit=neighbor_subset_limit,
                samples_per_k=samples_per_k,
-               recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs)
+               recursive=recursive, dropout=dropout, apply_sigmoid=target_are_probs, 
+	       neighbor_order=neighbor_order)
   optimizer = optim.Adam(model.parameters(), lr=lr)
   if target_are_probs:
     criterion = nn.L1Loss()

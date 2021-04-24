@@ -37,7 +37,7 @@ def two_step_ggcn_policy(**kwargs):
   # Fit myopic q-function
   _, predictor0 = learn_ggcn(env.X, env.y, env.adjacency_list, n_epoch=70, target_are_probs=False,
                              samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.005,
-                             batch_size=5, nhid=16, dropout=0.0)
+                             batch_size=5, nhid=16, dropout=0.0, neighbor_order=1)
 
   def qfn0(a, t):
       x_at_a = env.data_block_at_action(t, a)
@@ -119,7 +119,7 @@ def two_step_ggcn_policy(**kwargs):
   #                           batch_size=10, nhid=16, dropout=0)
   _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
                             samples_per_k=15, neighbor_subset_limit=3, verbose=False, lr=0.01,
-                            batch_size=10, nhid=16, dropout=0.5)
+                            batch_size=10, nhid=16, dropout=0.5, neighbor_order=2)
 
   # _, predictor2 = learn_ggcn(env.X[:-1], backups_baseline, env.adjacency_list, n_epoch=100, target_are_probs=True,
   #                           samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
@@ -265,7 +265,7 @@ def one_step_policy(**kwargs):
     # clf.fit(np.vstack(X_raw), np.hstack(env.y))
 
     predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
-  		                    num_settings_to_try=1, n_epoch=300)
+  		                    num_settings_to_try=1, n_epoch=300, neighbor_order=1)
 
     def qfn(a_):
       # X_raw_ = env.data_block_at_action(-1, a_, raw=True)
