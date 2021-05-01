@@ -74,7 +74,7 @@ def contrived(size):
 def contrived_initial_infections(size):
   num_subnets = size // 7
   new_size = num_subnets * 7
-  infections = np.zeros(size)
+  infections = np.zeros(new_size)
   for subnet_ix in range(num_subnets):
     num_so_far = subnet_ix * 7
     infections[num_so_far] = 1
