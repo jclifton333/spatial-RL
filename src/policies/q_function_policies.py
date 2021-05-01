@@ -117,8 +117,9 @@ def two_step_ggcn_policy(**kwargs):
   # _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
 	# 		                      samples_per_k=15, neighbor_subset_limit=1, verbose=False, lr=0.01,
   #                           batch_size=10, nhid=16, dropout=0)
+
   _, predictor = learn_ggcn(env.X[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
-                            samples_per_k=15, neighbor_subset_limit=3, verbose=False, lr=0.01,
+                            samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
                             batch_size=10, nhid=16, dropout=0.5, neighbor_order=2)
 
   # _, predictor2 = learn_ggcn(env.X[:-1], backups_baseline, env.adjacency_list, n_epoch=100, target_are_probs=True,
