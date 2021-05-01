@@ -71,6 +71,17 @@ def contrived(size):
   return adjacency_matrix
 
 
+def contrived_initial_infections(size):
+  num_subnets = size // 7
+  new_size = num_subnets * 7
+  infections = np.zeros(size)
+  for subnet_ix in range(num_subnets):
+    num_so_far = subnet_ix * 7
+    infections[num_so_far] = 1
+    infections[num_so_far + 6] = 1
+  return infections
+
+
 def Barabasi_Albert(size, prop_init=0.9, p=0.05):
   """
   Random preferential attachment model

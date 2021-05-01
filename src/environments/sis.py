@@ -10,6 +10,7 @@ from src.estimation.model_based.sis.infection_model_objective import success_or_
 from .SpatialDisease import SpatialDisease
 from .sis_contaminator import SIS_Contaminator, recoding_mapping
 from .sis_infection_probs import sis_infection_probability
+from .generate_network import contrived_initial_infections
 from scipy.linalg import block_diag
 import src.utils.gradient as gradient
 import pdb
@@ -103,6 +104,9 @@ class SIS(SpatialDisease):
       self.adjacency_matrix = self.generate_network(L)
     else:
       self.adjacency_matrix = adjacency_matrix
+
+    if self.generate_network.__name__ == 'contrived' and initial_infections is None:
+      initial_infections = contrived_initial_infections(L)
 
     self.lambda_ = self.adjacency_matrix
     SpatialDisease.__init__(self, self.adjacency_matrix, initial_infections,
