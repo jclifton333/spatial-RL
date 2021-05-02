@@ -57,6 +57,13 @@ def two_step_ggcn_policy_helper(**kwargs):
       infection_probs = predictor0(x_at_a)
       return infection_probs
 
+  # Get pseudo-outcomes
+  def pseudo_outcome(t):
+    qfn0_at_x = lambda a: qfn0(a, t)
+    a_ = argmaxer(qfn0_at_x, evaluation_budget, treatment_budget, env)
+    pseudo = qfn0_at_x(a_)
+    return pseudo
+
   if diagnostic_mode:
     lm0 = LogisticRegression()
     lm0.fit(np.vstack(env.X_raw), np.hstack(env.y))
@@ -68,13 +75,6 @@ def two_step_ggcn_policy_helper(**kwargs):
       qfn0_at_x_raw = lambda a: qfn0_baseline(a, x_raw)
       a_ = argmaxer(qfn0_at_x_raw, evaluation_budget, treatment_budget, env)
       pseudo = qfn0_at_x_raw(a_)
-      return pseudo
-
-    # Get pseudo-outcomes
-    def pseudo_outcome(t):
-      qfn0_at_x = lambda a: qfn0(a, t)
-      a_ = argmaxer(qfn0_at_x, evaluation_budget, treatment_budget, env)
-      pseudo = qfn0_at_x(a_)
       return pseudo
 
     # Define myopic oracle Q-function
