@@ -26,8 +26,15 @@ import copy
 import matplotlib.pyplot as plt
 
 
-
 def two_step_ggcn_policy(**kwargs):
+  env = kwargs['env']
+  if len(env.X) < 5:
+    return one_step_policy(**kwargs)
+  else:
+    return two_step_ggcn_policy_helper(**kwargs)
+
+
+def two_step_ggcn_policy_helper(**kwargs):
   classifier, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, raw_features, diagnostic_mode = \
     kwargs['classifier'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], \
     kwargs['bootstrap'], kwargs['raw_features'], kwargs['diagnostic_mode']
