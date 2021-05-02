@@ -91,8 +91,13 @@ class Gravity(SpatialDisease):
       transmission_prob = 0.0
     return transmission_prob
 
-  def infection_prob_at_location(self, a, l, eta, x, eta_x_l, eta_x_lprime):
-    if self.current_infected[l]:
+  def infection_probability(self, a, y, x):
+    return np.array([
+      self.infection_prob_at_location(a, y, l, None, x, None, None) for l in range(self.L)
+    ])
+
+  def infection_prob_at_location(self, a, y, l, eta, x, eta_x_l, eta_x_lprime):
+    if y[l] == 1:
       return 1.0
     else:
       not_transmitted_prob = np.product([1 - self.transmission_prob(a, l, lprime, eta, x, eta_x_l, eta_x_lprime)
@@ -102,7 +107,7 @@ class Gravity(SpatialDisease):
 
   def next_infected_probabilities(self, a, x=None, eta=None, eta_x_l=None, eta_x_lprime=None):
     return np.array([
-      self.infection_prob_at_location(a, l, eta, x, eta_x_l, eta_x_lprime) for l in range(self.L)
+      self.infection_prob_at_location(a, self.current_infected, l, eta, x, eta_x_l, eta_x_lprime) for l in range(self.L)
     ])
 
   @abstractmethod

@@ -68,7 +68,7 @@ class Simulator(object):
                evaluation_budget, env_kwargs, network_name, bootstrap, seed, error_quantile,
                sampling_dbn_run=False, sampling_dbn_estimator=None, fit_qfn_at_end=False, variance_only=False,
                parametric_bootstrap=False, ignore_errors=False, fname_addendum=None, save_features=False,
-               raw_features=False):
+               raw_features=False, diagnostic_mode=False):
     """
     :param lookahead_depth:
     :param env_name: 'sis' or 'Gravity'
@@ -109,7 +109,8 @@ class Simulator(object):
                               'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                               'divide_evenly': False, 'argmaxer': self.argmaxer, 'q_model': None,
                               'bootstrap': bootstrap, 'initial_policy_parameter': None, 'q_fn': None,
-                              'quantile': error_quantile, 'raw_features': self.raw_features}
+                              'quantile': error_quantile, 'raw_features': self.raw_features,
+                              'diagnostic_mode': diagnostic_mode}
 
     # Get settings dict for log
     self.settings = {'classifier': self.policy_arguments['classifier'].__name__,
