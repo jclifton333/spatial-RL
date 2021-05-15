@@ -28,10 +28,7 @@ import matplotlib.pyplot as plt
 
 def two_step_ggcn_policy(**kwargs):
   env = kwargs['env']
-  if len(env.X) < 5:
-    return one_step_policy(**kwargs)
-  else:
-    return two_step_ggcn_policy_helper(**kwargs)
+  return two_step_ggcn_policy_helper(**kwargs)
 
 
 def two_step_ggcn_policy_helper(**kwargs):
@@ -43,17 +40,19 @@ def two_step_ggcn_policy_helper(**kwargs):
   ebola = hasattr(env, 'NEIGHBOR_DISTANCE_MATRIX')
 
   if ebola:
+    features0 = env.X
     features = env.X_raw
   else:
+    features0 = env.X 
     features = env.X
 
   # Fit myopic q-function
-  _, predictor0 = learn_ggcn(features, env.y, env.adjacency_list, n_epoch=70, target_are_probs=False,
+  _, predictor0 = learn_ggcn(features0, env.y, env.adjacency_list, n_epoch=70, target_are_probs=False,
                              samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.005,
                              batch_size=5, nhid=16, dropout=0.0, neighbor_order=1)
 
   def qfn0(a, t):
-      x_at_a = env.data_block_at_action(t, a, raw=ebola)
+      x_at_a = env.data_block_at_action(t, a)
       infection_probs = predictor0(x_at_a)
       return infection_probs
 
@@ -131,8 +130,8 @@ def two_step_ggcn_policy_helper(**kwargs):
   #                           batch_size=10, nhid=16, dropout=0)
 
   _, predictor = learn_ggcn(features[:-1], backups, env.adjacency_list, n_epoch=100, target_are_probs=True,
-                            samples_per_k=15, neighbor_subset_limit=2, verbose=False, lr=0.01,
-                            batch_size=10, nhid=16, dropout=0.5, neighbor_order=2)
+                            samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.01,
+                            batch_size=10, nhid=16, dropout=0.5, neighbor_order=1)
 
   if diagnostic_mode:
     _, predictor2 = learn_ggcn(features[:-1], backups_baseline, env.adjacency_list, n_epoch=100, target_are_probs=True,
