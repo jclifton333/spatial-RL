@@ -2,13 +2,15 @@ import os
 import yaml
 import argparse
 import numpy as np
+import pandas as pd
 
 
 def summarize_results_at_date(date_str):
   epsilons = ['0.0', '0.5', '0.75', '1.0']
   networks = ['lattice', 'nearestneighbor']
-
-  any_found = False
+  results = {'env_name': [], 'network': [], 'policy_name': [], 'L': [], 'epsilon': [],
+             'mean': [], 'se': []}
+  any_found = False 
   for fname in os.listdir():
     if date_str in fname:
       any_found = True
@@ -29,11 +31,22 @@ def summarize_results_at_date(date_str):
           network = net
 
       to_print = f'{env_name} {network} {policy_name} {L} {epsilon} {mean_} {se_}'
+      results['env_name'].append(env_name)
+      results['network'].append(network)
+      results['policy_name'].append(policy_name)
+      results['L'].append(L)
+      results['epsilon'].append(epsilon)
+      results['mean'].append(mean_)
+      results['se'].append(se_)
+
       if 'learn_embedding' in f['settings'].keys():
         to_print += ' {}'.format(f['settings']['learn_embedding'])
       if 'raw_features' in f['settings'].keys():
         to_print += ' {}'.format(f['settings']['raw_features'])
       print(to_print)
+  df = pd.DataFrame.from_dict(results)
+  df.sort_values(by=['env_name', 'network', 'L', 'epsilon', 'policy_name'])
+  print(df)
   if not any_found:
     print('No results found for that date.')
 
@@ -43,3 +56,4 @@ if __name__ == "__main__":
   parser.add_argument('--date', type=str)
   args = parser.parse_args()
   summarize_results_at_date(args.date)
+  
