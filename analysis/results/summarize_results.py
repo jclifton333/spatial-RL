@@ -40,7 +40,6 @@ def summarize_results_at_date(date_strs):
       to_print = f'{env_name} {network} {policy_name} {L} {epsilon} {mean_} {se_}'
       results['env_name'].append(env_name)
       results['network'].append(network)
-      results['policy_name'].append(policy_name)
       results['L'].append(L)
       results['epsilon'].append(epsilon)
       results['mean'].append(mean_)
@@ -48,9 +47,16 @@ def summarize_results_at_date(date_strs):
 
       if 'learn_embedding' in f['settings'].keys():
         to_print += ' {}'.format(f['settings']['learn_embedding'])
+        if policy_name == 'one_step':
+          learn_embedding = f['settings']['learn_embedding']
+          if learn_embedding:
+            policy_name += '_ggcn'
       if 'raw_features' in f['settings'].keys():
         to_print += ' {}'.format(f['settings']['raw_features'])
       print(to_print)
+
+      results['policy_name'].append(policy_name)
+
   df = pd.DataFrame.from_dict(results)
   df.sort_values(by=['env_name', 'network', 'L', 'epsilon', 'policy_name'], inplace=True)
   print(df)
