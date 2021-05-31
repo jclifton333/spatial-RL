@@ -113,12 +113,16 @@ class Simulator(object):
                               'diagnostic_mode': diagnostic_mode}
 
     # Get settings dict for log
+    if 'epsilon' in env_kwargs.keys():
+        epsilon = env_kwargs['epsilon']
+    else:
+        epsilon = None
     self.settings = {'classifier': self.policy_arguments['classifier'].__name__,
                      'regressor': self.policy_arguments['regressor'].__name__,
                      'evaluation_budget': evaluation_budget, 'gamma': gamma, 'rollout_depth': lookahead_depth,
                      'planning_depth': self.time_horizon, 'treatment_budget': treatment_budget,
                      'divide_evenly': self.policy_arguments['divide_evenly'], 'argmaxer': argmaxer_name,
-                     'evaluation_policy': self.sampling_dbn_estimator}
+                     'evaluation_policy': self.sampling_dbn_estimator, 'epsilon': epsilon}
     self.settings.update({'env_name': env_name, 'L': self.env.L, 'policy_name': policy_name,
                           'argmaxer_name': argmaxer_name, 'time_horizon': self.time_horizon,
                           'number_of_replicates': self.number_of_replicates,
