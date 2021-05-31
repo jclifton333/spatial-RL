@@ -28,10 +28,11 @@ import matplotlib.pyplot as plt
 
 def two_step_ggcn_policy(**kwargs):
   env = kwargs['env']
-  if len(env.X) < 5:
-    return one_step_policy(**kwargs)
-  else:
-    return two_step_ggcn_policy_helper(**kwargs)
+  # if len(env.X) < 5:
+  #   return one_step_policy(**kwargs)
+  # else:
+  #   return two_step_ggcn_policy_helper(**kwargs)
+  return two_step_ggcn_policy_helper(**kwargs)
 
 
 def two_step_ggcn_policy_helper(**kwargs):
@@ -48,7 +49,7 @@ def two_step_ggcn_policy_helper(**kwargs):
     features = env.X
 
   # Fit myopic q-function
-  _, predictor0 = learn_ggcn(features, env.y, env.adjacency_list, n_epoch=70, target_are_probs=False,
+  _, predictor0 = learn_ggcn(features, env.y, env.adjacency_list, n_epoch=300, target_are_probs=False,
                              samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.005,
                              batch_size=5, nhid=16, dropout=0.0, neighbor_order=1)
 
@@ -554,9 +555,9 @@ def two_step_mb(**kwargs):
 
 
 def two_step(**kwargs):
-  classifier, regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, gamma = \
+  classifier, regressor, env, evaluation_budget, treatment_budget, argmaxer, bootstrap, gamma, raw_features = \
     kwargs['classifier'], kwargs['regressor'], kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], \
-    kwargs['argmaxer'], kwargs['bootstrap'], kwargs['gamma']
+    kwargs['argmaxer'], kwargs['bootstrap'], kwargs['gamma'], kwargs['raw_features']
 
   if bootstrap:
     weights = np.random.exponential(size=len(env.X)*env.L)
@@ -589,13 +590,16 @@ def two_step(**kwargs):
   # Fit backup-up q function
   # reg = regressor(n_estimators=100)
   reg = regressor()
-  reg.fit(np.vstack(env.X[:-1]), np.hstack(backup))
+  if raw_features:
+    reg.fit(np.vstack(env.X_raw[:-1]), np.hstack(backup))
+  else:
+    reg.fit(np.vstack(env.X[:-1]), np.hstack(backup))
 
   def qfn(a):
     infections = env.Y[-1, :]
     infected_indices = np.where(infections == 1)[0]
     not_infected_indices = np.where(infections == 0)[0]
-    X_ = env.data_block_at_action(-1, a)
+    X_ = env.data_block_at_action(-1, a, raw=raw_features)
     # ToDo: Comment back in after debugging
     # X = env.data_block_at_action(-1, a, neighbor_order=2)
     return clf.predict_proba(X_, infected_indices, not_infected_indices) + gamma * reg.predict(X_)
