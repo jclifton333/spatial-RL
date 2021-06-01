@@ -572,9 +572,17 @@ def two_step(**kwargs):
     def qfn_at_block(block_index, a):
       return predictor(env.data_block_at_action(block_index, a, raw=True))
   else:
-    clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
-    def qfn_at_block(block_index, a):
-      return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
+    if raw_features:
+      clf = LogisticRegression()
+      y = np.hstack(env.y)
+      X_raw = np.vstack(env.X_raw)
+      clf.fit(X_raw, y)
+      def qfn_at_block(block_index, a):
+        return clf.predict_proba(env.data_block_at_action(block_index, a, raw=True))[:, 1]
+    else:
+      clf, predict_proba_kwargs, info = fit_one_step_predictor(classifier, env, weights)
+      def qfn_at_block(block_index, a):
+        return clf.predict_proba(env.data_block_at_action(block_index, a), **predict_proba_kwargs)
 
   # Back up once
   backup = []
