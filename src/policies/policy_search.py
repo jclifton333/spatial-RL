@@ -431,10 +431,11 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
       infection_probs_predictor = sis_inf_probs.sis_infection_probability_oracle_contaminated
       infection_probs_kwargs['epsilon'] = env.epsilon
       infection_probs_kwargs['contaminator'] = env.contaminator
+      infection_probs_kwargs['feature_function'] = env.binary_psi
 
       if env.epsilon > 0:
         def transmission_probs_predictor(a, b, c, **kwargs):
-          return 1.
+          return np.ones((env.L, env.L))
       else:
         transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
     else:
