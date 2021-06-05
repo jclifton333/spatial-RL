@@ -100,5 +100,7 @@ def policy_factory(policy_type):
     return roll.two_step_oracle_ggcn_policy
   elif policy_type == 'two_step_ggcn':
     return roll.two_step_ggcn_policy
+  elif policy_type == 'oracle_policy_search':
+    return ps.oracle_policy_search_policy
   else:
     raise ValueError('Argument does not match any policy.')

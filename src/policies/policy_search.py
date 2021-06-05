@@ -538,6 +538,30 @@ def policy_parameter_wrapper(**kwargs):
   return policy_parameter_, beta_mean
 
 
+def oracle_policy_search_policy(**kwargs):
+  env, remaining_time_horizon, treatment_budget, initial_policy_parameter = \
+    kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget'], kwargs['initial_policy_parameter']
+
+  def gen_model_posterior():
+    return env.ETA
+
+  # Settings
+  if initial_policy_parameter is None:
+    initial_policy_parameter = np.ones(3) * 0.5
+  initial_alpha = initial_zeta = None
+  # remaining_time_horizon = T - env.T
+
+  # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random
+  # ToDo: policy; may be improved...
+  rho = 3.20
+  tau = 0.76
+  a, policy_parameter = policy_search(env, remaining_time_horizon, gen_model_posterior, initial_policy_parameter,
+                                      initial_alpha, initial_zeta, treatment_budget, rho, tau, tol=1e-3,
+                                      maxiter=100, feature_function=features_for_priority_score, k=1,
+                                      method='bayes_opt', oracle=True)
+  return a, {'initial_policy_parameter': policy_parameter}
+
+
 def policy_search_policy(**kwargs):
   env, remaining_time_horizon, treatment_budget, initial_policy_parameter = \
     kwargs['env'], kwargs['planning_depth'], kwargs['treatment_budget'], kwargs['initial_policy_parameter']
