@@ -45,11 +45,40 @@ def merge_may_data():
   return
 
 
-def barplots(df):
-  full_env_names = ['lattice0.0', 'lattice0.5', 'lattice1.0']
+def barplots(df, normalize=False):
+  # full_env_names = ['lattice0.0', 'lattice0.5', 'lattice1.0']
+  full_env_names = df.full_env_name.unique()
   L_list = [100]
   df_subset = df[(df['full_env_name'].isin(full_env_names)) & (df['L'].isin(L_list))]
-  sns.catplot(x='full_env_name', y='mean', hue='full_policy_name', kind='bar', data=df_subset)
+
+  if normalize:
+    df_subset['oracle_performance'] = None
+    df_subset['random_performance'] = None
+
+    # Get oracle and random performances
+    for L in L_list:
+      for full_env_name in full_env_names:
+        oracle_performance = \
+          df_subset[(df_subset['L'] == L)
+                    & (df_subset['full_env_name'] == full_env_name)
+                    & (df_subset['full_policy_name'] == 'oracle_policy_search')][0]
+        random_performance = \
+          df_subset[(df_subset['L'] == L)
+                    & (df_subset['full_env_name'] == full_env_name)
+                    & (df_subset['full_policy_name'] == 'random')][0]
+        df_subset.loc[(df_subset.L == L) & (df_subset.full_env_name == full_env_name), 'oracle_performance'] = \
+          oracle_performance
+        df_subset.loc[(df_subset.L == L) & (df_subset.full_env_name == full_env_name), 'random_performance'] = \
+          random_performance
+
+    # Normalize
+    df_subset['normalized_mean'] = \
+      (df_subset.mean - df_subset.random_performance) / (df_subset.oracle_performance - df_subset.random_performance)
+
+    # Plot
+    sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset)
+  else:
+    sns.catplot(x='full_env_name', y='mean', hue='full_policy_name', kind='bar', data=df_subset)
   plt.show()
   return
 
