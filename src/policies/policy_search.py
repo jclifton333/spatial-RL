@@ -401,7 +401,7 @@ def policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_para
 
 def policy_search(env, time_horizon, gen_model_posterior, initial_policy_parameter, initial_alpha, initial_zeta,
                   treatment_budget, rho, tau, tol=1e-3, maxiter=100, feature_function=features_for_priority_score, k=1,
-                  method='bayes_opt'):
+                  method='bayes_opt', oracle=False):
   """
   Alg 1 on pg 10 of Nick's WNS paper; referring to parameter of transition model as 'beta', instead of 'eta'
   as in QL draft and the rest of this source code
@@ -427,8 +427,19 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
   if env.__class__.__name__ == 'SIS':
     infection_probs_kwargs = {'s': np.zeros(env.L), 'omega': 0.0}
     transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
-    infection_probs_predictor = sis_inf_probs.sis_infection_probability
-    transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
+    if oracle:
+      infection_probs_predictor = sis_inf_probs.sis_infection_probability_oracle_contaminated
+      infection_probs_kwargs['epsilon'] = env.epsilon
+      infection_probs_kwargs['contaminator'] = env.contaminator
+
+      if env.epsilon > 0:
+        def transmission_probs_predictor(a, b, c, **kwargs):
+          return 1.
+      else:
+        transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
+    else:
+      infection_probs_predictor = sis_inf_probs.sis_infection_probability
+      transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
   elif env.__class__.__name__ == 'Ebola':
     infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
                               'adjacency_matrix': env.ADJACENCY_MATRIX, 'product_matrix': env.product_matrix,

@@ -13,6 +13,22 @@ def expit(logit_p):
   return 1 - 1 / (1 + np.exp(logit_p))
 
 
+def sis_infection_probability_oracle_contaminated(a, y, eta, L, adjacency_lists, epsilon, contaminator, **kwargs):
+  if epsilon > 0:
+    X_raw_ = np.column_stack((np.zeros(L), a, y))
+    X_ = env.binary_psi(X_raw_, neighbor_order=1)
+    contaminator_probs = contaminator.predict_proba(X_)
+    if epsilon < 1:
+      base_infected_probabilities = sis_infection_probability(a, y, eta, L, adjacency_lists, **kwargs)
+      probs = (1 - epsilon) * base_infected_probabilities + epsilon * contaminator_probs
+      return probs
+    else:
+      return contaminator_probs
+  else:
+    base_infected_probabilities = sis_infection_probability(a, y, eta, L, adjacency_lists, **kwargs)
+    return base_infected_probabilities
+
+
 def sis_infection_probability(a, y, eta, L, adjacency_lists, **kwargs):
   """
 
