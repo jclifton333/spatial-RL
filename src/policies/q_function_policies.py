@@ -605,16 +605,16 @@ def two_step(**kwargs):
     infections = env.Y[-1, :]
     infected_indices = np.where(infections == 1)[0]
     not_infected_indices = np.where(infections == 0)[0]
-    X0 = env.data_block_at_action(-1, a)
     if raw_features:
+      X0 = env.data_block_at_action(-1, a, raw=True)
       X1 = env.data_block_at_action(-1, a, raw=True)
+      return clf.predict_proba(X0)[:, 1] + gamma * reg.predict(X1)
     else:
+      X0 = env.data_block_at_action(-1, a)
       X1 = X0
-    # ToDo: Comment back in after debugging
-    # X = env.data_block_at_action(-1, a, neighbor_order=2)
-    return clf.predict_proba(X0, infected_indices, not_infected_indices) + gamma * reg.predict(X1)
-    # return clf.predict_proba(X_, infected_indices, not_infected_indices) 
+      return clf.predict_proba(X0, infected_indices, not_infected_indices) + gamma * reg.predict(X1)
 
+      
   a = argmaxer(qfn, evaluation_budget, treatment_budget, env)
   return a, {'q_fn_params': reg.coef_}
 
