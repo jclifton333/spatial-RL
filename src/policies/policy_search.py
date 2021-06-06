@@ -148,6 +148,7 @@ def roll_out_candidate_policy(T, s, a, y, beta, eta, treatment_budget, k, env, i
     y_tpm = y
     a_tpm = a
     for m in range(T):
+      infection_probs_kwargs['s'] = s_tpm
       priority_score = R(env, s_tpm, a_tpm, y_tpm, infection_probs_predictor, infection_probs_kwargs,
                          transmission_probs_predictor, transmission_probs_kwargs, data_depth, eta, beta)
       a_tpm = decision_rule(env, s_tpm, a_tpm, y_tpm, infection_probs_predictor, infection_probs_kwargs,
