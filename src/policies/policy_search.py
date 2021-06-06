@@ -156,6 +156,7 @@ def roll_out_candidate_policy(T, s, a, y, beta, eta, treatment_budget, k, env, i
       infection_probs = infection_probs_predictor(a_tpm, y_tpm, beta, env.L, env.adjacency_list,
                                                   **infection_probs_kwargs)
       y_tpm = np.random.binomial(n=1, p=infection_probs)
+      s_tpm = env.update_state(s_tpm)
       if m >= number_of_steps_ahead:  # In case we want returns starting a few steps in the future; used in continuation policies
         r_tpm = (gamma**m) * -np.sum(y_tpm)
         scores.append(r_tpm)
@@ -425,7 +426,7 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
   :return:
   """
   if env.__class__.__name__ == 'SIS':
-    infection_probs_kwargs = {'s': np.zeros(env.L), 'omega': 0.0}
+    infection_probs_kwargs = {'s': env.current_state, 'omega': 0.0}
     transmission_probs_kwargs = {'adjacency_matrix': env.adjacency_matrix}
     if oracle:
       infection_probs_predictor = sis_inf_probs.sis_infection_probability_oracle_contaminated

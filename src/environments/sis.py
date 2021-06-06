@@ -203,14 +203,18 @@ class SIS(SpatialDisease):
     self.S_indicator = np.vstack((self.S_indicator, s > 0))
     self.current_state = s
 
+  def update_state(self, s):
+    state_mean = s * (1 - self.independence_parameter)
+    sprime = np.random.normal(loc=self.beta[0] * state_mean, scale=self.beta[1])
+    return sprime
+
   def next_state(self):
     """
     Update state array acc to AR(1)
     :return next_state: self.L-length array of new states
     """
     super(SIS, self).next_state()
-    state_mean = self.current_state * (1 - self.independence_parameter)
-    next_state = np.random.normal(loc=self.beta[0]*state_mean, scale=self.beta[1])
+    next_state = self.update_state(self.current_state)
     self.add_state(next_state)
     return next_state
 
