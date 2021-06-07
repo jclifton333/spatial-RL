@@ -2,6 +2,7 @@ import pdb
 import numpy as np
 from numba import njit, jit
 import math
+import copy
 
 """"
 For computing sis model infection probabilities.  See draft pg. 13.
@@ -91,6 +92,45 @@ def sis_transmission_probs_for_omega0(a, l, lprime, eta, adjacency_matrix):
   else:
     p_llprime = 0.0
   return p_llprime
+
+
+def get_all_oracle_contaminated_sis_transmission_probs(a, eta, L, **kwargs):
+  epsilon = kwargs['epsilon']
+  if epsilon > 0:
+    contaminated = get_all_pseudo_transmission_probs(a, eta, L, **kwargs)
+    if epsilon < 1:
+      uncontaminated = get_all_sis_transmission_probs_omega0(a, eta, L, **kwargs)
+      final_transmission_probs = epsilon * uncontaminated + (1 - epsilon) * contaminated
+      return final_transmission_probs
+    else:
+      return contaminated
+  else:
+    return get_all_sis_transmission_probs_omega0(a, eta, L, **kwargs)
+
+
+def get_all_pseudo_transmission_probs(a, eta, L, **kwargs):
+  s, y, feature_function, contaminator, adjacency_matrix = \
+    kwargs['s'], kwargs['y'], kwargs['feature_function'], kwargs['contaminator'], kwargs['adjacency_matrix']
+  s_indicator = s > 0
+  X_encodings = s_indicator + 2*a + 4*y
+  X_encodings_onehot = np.zeros((L, 8))
+  X_encodings_onehot[:, X_encodings] = 1
+
+  # Get contaminated infection probs
+  location_contributions = contaminator.predict_proba(X_encodings_onehot)
+  pseudo_transmission_probs_matrix = \
+    get_all_pseudo_transmission_probs_wrapped(L, location_contributions, adjacency_matrix)
+  return pseudo_transmission_probs_matrix
+
+
+@njit
+def get_all_pseudo_transmission_probs_wrapped(L, location_contributions, adjacency_matrix):
+  pseudo_transmission_probs_matrix = np.zeros((L, L))
+  for l in range(L):
+    for lprime in range(L):
+      if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
+        pseudo_transmission_probs_matrix[l, lprime] = location_contributions[lprime]
+  return pseudo_transmission_probs_matrix
 
 
 def get_all_sis_transmission_probs_omega0(a, eta, L, **kwargs):

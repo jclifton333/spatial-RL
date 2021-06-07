@@ -11,11 +11,15 @@ class SIS_Contaminator(object):
     self.weights = new_weights
 
   def predict_proba(self, X):
+    logit_p = self.get_logit(X)
+    p = expit(logit_p)
+    return p
+
+  def get_logit(self, X):
     if self.weights is None:
       self.weights = np.random.normal(size=(X.shape[1] + 1))
     logit_p = np.dot(np.column_stack((X, np.ones(X.shape[0]))), self.weights)
-    p = expit(logit_p)
-    return p
+    return logit_p
 
 
 def recoding_mapping(contaminator_coef):

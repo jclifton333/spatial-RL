@@ -149,6 +149,8 @@ def roll_out_candidate_policy(T, s, a, y, beta, eta, treatment_budget, k, env, i
     a_tpm = a
     for m in range(T):
       infection_probs_kwargs['s'] = s_tpm
+      transmission_probs_kwargs['s'] = s_tpm
+      transmission_probs_kwargs['y'] = y_tpm
       priority_score = R(env, s_tpm, a_tpm, y_tpm, infection_probs_predictor, infection_probs_kwargs,
                          transmission_probs_predictor, transmission_probs_kwargs, data_depth, eta, beta)
       a_tpm = decision_rule(env, s_tpm, a_tpm, y_tpm, infection_probs_predictor, infection_probs_kwargs,
@@ -434,10 +436,13 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
       infection_probs_kwargs['epsilon'] = env.epsilon
       infection_probs_kwargs['contaminator'] = env.contaminator
       infection_probs_kwargs['feature_function'] = env.binary_psi
-
       if env.epsilon > 0:
-        def transmission_probs_predictor(a, b, c, **kwargs):
-          return np.ones((env.L, env.L))
+        transmission_probs_kwargs['epsilon'] = env.epsilon
+        transmission_probs_kwargs['contaminator'] = env.contaminator
+        transmission_probs_kwargs['feature_function'] = env.binary_psi
+        transmission_probs_kwargs['s'] = env.current_state
+        transmission_probs_kwargs['y'] = env.current_infected
+        transmission_probs_predictor = sis_inf_probs.get_all_oracle_contaminated_sis_transmission_probs
       else:
         transmission_probs_predictor = sis_inf_probs.get_all_sis_transmission_probs_omega0
     else:
