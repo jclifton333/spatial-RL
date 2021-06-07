@@ -21,6 +21,14 @@ class SIS_Contaminator(object):
     logit_p = np.dot(np.column_stack((X, np.ones(X.shape[0]))), self.weights)
     return logit_p
 
+  def get_neighbor_contribution(self, X_neighbor):
+    if self.weights is None:
+      self.weights = np.random.normal(size=(X_neighbor.shape[1] + 1))
+    logit_p = np.dot(np.column_stack((X_neighbor, np.ones(X_neighbor.shape[0]))), self.weights[8:])
+    p = expit(logit_p)
+    return p
+
+
 
 def recoding_mapping(contaminator_coef):
   """

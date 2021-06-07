@@ -112,12 +112,13 @@ def get_all_pseudo_transmission_probs(a, eta, L, **kwargs):
   s, y, feature_function, contaminator, adjacency_matrix = \
     kwargs['s'], kwargs['y'], kwargs['feature_function'], kwargs['contaminator'], kwargs['adjacency_matrix']
   s_indicator = s > 0
-  X_encodings = s_indicator + 2*a + 4*y
+  X_encodings = (s_indicator + 2*a + 4*y).astype(int)
   X_encodings_onehot = np.zeros((L, 8))
-  X_encodings_onehot[:, X_encodings] = 1
+  for l in range(L):
+    X_encodings_onehot[l, X_encodings[l]] = 1
 
   # Get contaminated infection probs
-  location_contributions = contaminator.predict_proba(X_encodings_onehot)
+  location_contributions = contaminator.get_neighbor_contribution(X_encodings_onehot)
   pseudo_transmission_probs_matrix = \
     get_all_pseudo_transmission_probs_wrapped(L, location_contributions, adjacency_matrix)
   return pseudo_transmission_probs_matrix
