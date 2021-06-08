@@ -115,7 +115,7 @@ def get_all_pseudo_transmission_probs(a, eta, L, **kwargs):
   X_encodings = (s_indicator + 2*a + 4*y).astype(int)
   X_encodings_onehot = np.zeros((L, 8))
   X_raw_ = np.column_stack((s_indicator, a, y))
-  X_ = feature_function(X_raw_)
+  X_ = feature_function(X_raw_, neighbor_order=1)
   for l in range(L):
     X_encodings_onehot[l, X_encodings[l]] = 1
   logits = contaminator.get_logit(X_)

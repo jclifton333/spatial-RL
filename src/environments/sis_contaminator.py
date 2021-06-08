@@ -24,7 +24,7 @@ class SIS_Contaminator(object):
   def get_neighbor_logit(self, X_neighbor):
     if self.weights is None:
       self.weights = np.random.normal(size=(X.shape[1] + 1))
-    logit_p = np.dot(np.column_stack((X_neighbor, self.weights[8:-1])))
+    logit_p = np.dot(X_neighbor, self.weights[8:-1])
     return logit_p
 
   def get_neighbor_contribution(self, X, X_neighbor):
