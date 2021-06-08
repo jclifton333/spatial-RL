@@ -398,7 +398,7 @@ def policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_para
                                                 initial_policy_parameter, treatment_budget, k, env,
                                                 infection_probs_predictor, infection_probs_kwargs,
                                                 transmission_probs_predictor, transmission_probs_kwargs, env.data_depth,
-                                                n_rep_per_gp_opt_iteration=10)
+                                                n_rep_per_gp_opt_iteration=20)
 
   return policy_parameter, beta_tilde
 

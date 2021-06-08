@@ -137,7 +137,7 @@ def get_all_pseudo_transmission_probs_wrapped(L, probs, exp_logits, exp_neighbor
     for lprime in range(L):
       if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
         exp_neighbor_logits_lprime = exp_neighbor_logits[lprime]
-        exp_logit_without_neighbor_llprime = exp_logits_l - exp_neighbor_logits_lprime
+        exp_logit_without_neighbor_llprime = exp_logits_l / exp_neighbor_logits_lprime
         prob_without_neighbor_llprime = exp_logit_without_neighbor_llprime / (1 + exp_logit_without_neighbor_llprime)
         pseudo_transmission_probs_matrix[l, lprime] = probs_l - prob_without_neighbor_llprime
   return pseudo_transmission_probs_matrix
