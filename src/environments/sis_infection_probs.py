@@ -121,21 +121,25 @@ def get_all_pseudo_transmission_probs(a, eta, L, **kwargs):
   logits = contaminator.get_logit(X_)
   neighbor_logits = contaminator.get_neighbor_logit(X_encodings_onehot)
   exp_logits = np.exp(logits)
+  probs = exp_logits / (1 + exp_logits)
   exp_neighbor_logits = np.exp(neighbor_logits)
   pseudo_transmission_probs_matrix = \
-    get_all_pseudo_transmission_probs_wrapped(L, exp_logits, exp_neighbor_logits, adjacency_matrix)
+    get_all_pseudo_transmission_probs_wrapped(L, probs, exp_logits, exp_neighbor_logits, adjacency_matrix)
   return pseudo_transmission_probs_matrix
 
 
 @njit
-def get_all_pseudo_transmission_probs_wrapped(L, exp_logits, exp_neighbor_logits, adjacency_matrix):
+def get_all_pseudo_transmission_probs_wrapped(L, probs, exp_logits, exp_neighbor_logits, adjacency_matrix):
   pseudo_transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
     exp_logits_l = exp_logits[l]
+    probs_l = probs[l]
     for lprime in range(L):
       if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
         exp_neighbor_logits_lprime = exp_neighbor_logits[lprime]
-        pseudo_transmission_probs_matrix[l, lprime] = exp_neighbor_logits_lprime / exp_logits_l
+        exp_logit_without_neighbor_llprime = exp_logits_l - exp_neighbor_logits_lprime
+        prob_without_neighbor_llprime = exp_logit_without_neighbor_llprime / (1 + exp_logit_without_neighbor_llprime)
+        pseudo_transmission_probs_matrix[l, lprime] = probs_l - prob_without_neighbor_llprime
   return pseudo_transmission_probs_matrix
 
 
