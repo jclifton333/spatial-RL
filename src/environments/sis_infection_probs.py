@@ -114,23 +114,28 @@ def get_all_pseudo_transmission_probs(a, eta, L, **kwargs):
   s_indicator = s > 0
   X_encodings = (s_indicator + 2*a + 4*y).astype(int)
   X_encodings_onehot = np.zeros((L, 8))
+  X_raw_ = np.column_stack((s_indicator, a, y))
+  X_ = feature_function(X_raw_)
   for l in range(L):
     X_encodings_onehot[l, X_encodings[l]] = 1
-
-  # Get contaminated infection probs
-  location_contributions = contaminator.get_neighbor_contribution(X_encodings_onehot)
+  logits = contaminator.get_logit(X_)
+  neighbor_logits = contaminator.get_neighbor_logit(X_encodings_onehot)
+  exp_logits = np.exp(logits)
+  exp_neighbor_logits = (1 + np.exp(neighbor_logits))
   pseudo_transmission_probs_matrix = \
-    get_all_pseudo_transmission_probs_wrapped(L, location_contributions, adjacency_matrix)
+    get_all_pseudo_transmission_probs_wrapped(L, exp_logits, exp_neighbor_logits, adjacency_matrix)
   return pseudo_transmission_probs_matrix
 
 
 @njit
-def get_all_pseudo_transmission_probs_wrapped(L, location_contributions, adjacency_matrix):
+def get_all_pseudo_transmission_probs_wrapped(L, exp_logits, exp_neighbor_logits, adjacency_matrix):
   pseudo_transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
+    exp_logits_l = exp_logits[l]
     for lprime in range(L):
       if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
-        pseudo_transmission_probs_matrix[l, lprime] = location_contributions[lprime]
+        exp_neighbor_logits_lprime = exp_neighbor_logits[lprime]
+        pseudo_transmission_probs_matrix[l, lprime] = exp_neighbor_logits_lprime / exp_logits_l
   return pseudo_transmission_probs_matrix
 
 
