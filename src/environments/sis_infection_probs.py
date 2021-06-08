@@ -120,7 +120,7 @@ def get_all_pseudo_transmission_probs(a, eta, L, **kwargs):
     X_encodings_onehot[l, X_encodings[l]] = 1
   logits = contaminator.get_logit(X_)
   neighbor_logits = contaminator.get_neighbor_logit(X_encodings_onehot)
-  exp_logits = 1 + np.exp(logits)
+  exp_logits = np.exp(logits)
   exp_neighbor_logits = np.exp(neighbor_logits)
   pseudo_transmission_probs_matrix = \
     get_all_pseudo_transmission_probs_wrapped(L, exp_logits, exp_neighbor_logits, adjacency_matrix)
