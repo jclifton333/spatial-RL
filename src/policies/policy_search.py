@@ -56,6 +56,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
 
+import matplotlib.pyplot as plt
 import pdb
 import numpy as np
 import copy
@@ -179,6 +180,7 @@ def gp_opt_for_policy_search(T, s, y, beta, eta_init, treatment_budget, k, env, 
                                       transmission_probs_kwargs, data_depth,
                                       monte_carlo_reps=n_rep_per_gp_opt_iteration, gamma=0.9)
     return score
+
 
   ETA_BOUNDS = (0.0, np.power(1, -1/3))
   explore_ = {'eta1': [eta_init[0]], 'eta2': [eta_init[1]], 'eta3': [eta_init[2]]}
@@ -398,7 +400,7 @@ def policy_parameter(env, time_horizon, gen_model_posterior, initial_policy_para
                                                 initial_policy_parameter, treatment_budget, k, env,
                                                 infection_probs_predictor, infection_probs_kwargs,
                                                 transmission_probs_predictor, transmission_probs_kwargs, env.data_depth,
-                                                n_rep_per_gp_opt_iteration=20)
+                                                n_rep_per_gp_opt_iteration=50)
 
   return policy_parameter, beta_tilde
 
@@ -558,6 +560,8 @@ def oracle_policy_search_policy(**kwargs):
     initial_policy_parameter = np.ones(3) * 0.5
   initial_alpha = initial_zeta = None
   # remaining_time_horizon = T - env.T
+
+  remaining_time_horizon = np.min((remaining_time_horizon, 3))
 
   # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random
   # ToDo: policy; may be improved...
