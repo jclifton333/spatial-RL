@@ -26,6 +26,38 @@ import copy
 import matplotlib.pyplot as plt
 
 
+def two_step_true_probs_policy(**kwargs):
+  N_REP = 10
+
+  env, evaluation_budget, treatment_budget, argmaxer, gamma = \
+    kwargs['env'], kwarsg['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['gamma']
+
+  # Define myopic oracle Q-function
+  def oracle_qfn(a, s_, y_):
+    infection_probs = env.infection_probability(a, y_, s_)
+    return infection_probs
+
+  # Get pseudo-outcomes
+  def oracle_pseudo_outcome(s_, y_):
+    oracle_qfn_at_xraw = lambda a: oracle_qfn(a, s_, y_)
+    a_ = argmaxer(oracle_qfn_at_xraw, evaluation_budget, treatment_budget, env)
+    pseudo = oracle_qfn_at_xraw(a_)
+    return pseudo
+
+  s, y = env.current_state, env.current_infected
+  def two_step_qfn(a):
+    infection_probs_at_a = env.infection_probability(a, y, s)
+    q_vals = np.zeros(env.L)
+    for _ in range(N_REP):
+      y_next = np.random.binomial(n=1, p=infection_probs_at_a)
+      s_next = env.update_state(s)
+      pseudo = oracle_pseudo_outcome(s_next, y_next)
+      q_vals += (infection_probs_at_a + gamma * pseudo) / N_REP
+
+  a = argmaxer(two_step_qfn, evaluation_budget, treatment_budget, env)
+  return a, {}
+
+
 def two_step_ggcn_policy(**kwargs):
   env = kwargs['env']
   return two_step_ggcn_policy_helper(**kwargs)
