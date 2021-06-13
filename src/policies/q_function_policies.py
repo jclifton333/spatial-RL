@@ -27,10 +27,10 @@ import matplotlib.pyplot as plt
 
 
 def two_step_true_probs_policy(**kwargs):
-  N_REP = 10
+  N_REP = 1
 
   env, evaluation_budget, treatment_budget, argmaxer, gamma = \
-    kwargs['env'], kwarsg['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['gamma']
+    kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['gamma']
 
   # Define myopic oracle Q-function
   def oracle_qfn(a, s_, y_):
