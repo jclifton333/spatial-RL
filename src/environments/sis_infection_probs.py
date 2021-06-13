@@ -132,13 +132,13 @@ def get_all_pseudo_transmission_probs(a, eta, L, **kwargs):
 def get_all_pseudo_transmission_probs_wrapped(L, probs, exp_logits, exp_neighbor_logits, adjacency_matrix):
   pseudo_transmission_probs_matrix = np.zeros((L, L))
   for l in range(L):
-    exp_logits_l = exp_logits[l]
-    probs_l = probs[l]
+    # exp_logits_l = exp_logits[l]
+    # probs_l = probs[l]
     for lprime in range(L):
       if adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
-        exp_neighbor_logits_lprime = exp_neighbor_logits[lprime]
-        neighbor_contribution_llprime = exp_neighbor_logits_lprime / (1 + exp_logits_l)
-        pseudo_transmission_probs_matrix[l, lprime] = neighbor_contribution_llprime
+        # exp_neighbor_logits_lprime = exp_neighbor_logits[lprime]
+        # neighbor_contribution_llprime = exp_neighbor_logits_lprime / (1 + exp_logits_l)
+        pseudo_transmission_probs_matrix[l, lprime] = probs[lprime]
   return pseudo_transmission_probs_matrix
 
 
