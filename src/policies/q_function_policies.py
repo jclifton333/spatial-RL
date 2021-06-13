@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 
 def two_step_true_probs_policy(**kwargs):
   N_REP = 1
+  N_FUNCTION_APPROX_REPS = 30
 
   env, evaluation_budget, treatment_budget, argmaxer, gamma = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['gamma']
@@ -38,20 +39,37 @@ def two_step_true_probs_policy(**kwargs):
     return infection_probs
 
   # Get pseudo-outcomes
-  def oracle_pseudo_outcome(s_, y_):
+  def oracle_pseudo_outcome_exact(s_, y_):
     oracle_qfn_at_xraw = lambda a: oracle_qfn(a, s_, y_)
     a_ = argmaxer(oracle_qfn_at_xraw, evaluation_budget, treatment_budget, env)
     pseudo = oracle_qfn_at_xraw(a_)
     return pseudo
 
+  # Estimate oracle pseudo outcome with function approximation
   s, y = env.current_state, env.current_infected
+  a_dummy = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
+  backups = []
+  x_next_list = []
+  for _ in range(N_FUNCTION_APPROX_REPS):
+    np.random.shuffle(a_dummy)
+    infection_probs_at_a = env.infection_probability(a_dummy, y, s)
+    y_next = np.random.binomial(n=1, p=infection_probs_at_a)
+    s_next = env.update_state(s)
+    backups.append(oracle_pseudo_outcome_exact(s_next, y_next))
+    x_next_list.append(np.column_stack((s_next, y_next)))
+
+  _, oracle_pseudo_outcome_distilled = learn_ggcn(x_next_list, backups, env.adjacency_list, n_epoch=70,
+                                                  target_are_probs=True,
+                                                  samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.01,
+                                                  batch_size=10, nhid=16, dropout=0.5, neighbor_order=1)
+
   def two_step_qfn(a):
     infection_probs_at_a = env.infection_probability(a, y, s)
     q_vals = np.zeros(env.L)
     for _ in range(N_REP):
       y_next = np.random.binomial(n=1, p=infection_probs_at_a)
       s_next = env.update_state(s)
-      pseudo = oracle_pseudo_outcome(s_next, y_next)
+      pseudo = oracle_pseudo_outcome_distilled(np.column_stack((s_next, y_next)))[:, 0]
       q_vals += (infection_probs_at_a + gamma * pseudo) / N_REP
 
   a = argmaxer(two_step_qfn, evaluation_budget, treatment_budget, env)
