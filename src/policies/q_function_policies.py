@@ -13,6 +13,7 @@ from src.estimation.q_functions.model_fitters import SKLogit2
 import src.estimation.q_functions.mse_optimal_combination as mse_combo
 from src.estimation.q_functions.one_step import *
 from src.estimation.q_functions.embedding import ggcn_multiple_runs, oracle_tune_ggcn, learn_ggcn
+from src.environments.sis_infection_probs import sis_infection_probability_oracle_contaminated
 from src.estimation.optim.quad_approx.argmaxer_quad_approx import argmaxer_quad_approx
 from src.utils.misc import random_argsort, kl
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
@@ -64,7 +65,9 @@ def two_step_true_probs_policy(**kwargs):
                                                   batch_size=10, nhid=16, dropout=0.5, neighbor_order=1)
 
   def two_step_qfn(a):
-    infection_probs_at_a = env.infection_probability(a, y, s)
+    infection_probs_at_a = sis_infection_probability_oracle_contaminated(a, y, env.ETA, env.adjacency_list,
+                                                                         env.epsilon, env.contaminator,
+                                                                         env.binary_psi, **{'s': s})
     q_vals = np.zeros(env.L)
     for _ in range(N_REP):
       y_next = np.random.binomial(n=1, p=infection_probs_at_a)
