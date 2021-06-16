@@ -65,7 +65,7 @@ def two_step_true_probs_policy(**kwargs):
                                                   batch_size=10, nhid=16, dropout=0.5, neighbor_order=1)
 
   def two_step_qfn(a):
-    infection_probs_at_a = sis_infection_probability_oracle_contaminated(a, y, env.ETA, env.adjacency_list,
+    infection_probs_at_a = sis_infection_probability_oracle_contaminated(a, y, env.ETA, env.L, env.adjacency_list,
                                                                          env.epsilon, env.contaminator,
                                                                          env.binary_psi, **{'s': s})
     q_vals = np.zeros(env.L)
