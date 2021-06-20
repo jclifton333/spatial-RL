@@ -29,7 +29,7 @@ def merge_may_data():
   df5 = df5[df5['policy_name'] == 'two_step_true_probs']
 
   # Merge csvs
-  df = pd.concat([df1, df2, df3, df4])
+  df = pd.concat([df1, df2, df3, df4, df5])
 
   # Full env names
   df['full_env_name'] = None
@@ -71,7 +71,9 @@ def barplots(df, normalize=False):
     # Get oracle and random performances
     for L in L_list:
       for full_env_name in df_subset.full_env_name.unique():
-        if 'oracle_policy_search' in df_subset.policy_name.unique():
+        df_subset_subset_policies = df_subset.loc[(df_subset['L'] == L) & (df_subset['full_env_name'] == full_env_name),
+                                         'policy_name'].to_list()
+        if 'oracle_policy_search' in df_subset_subset_policies:
           oracle_ps_performance = \
             df_subset.loc[(df_subset['L'] == L)
                       & (df_subset['full_env_name'] == full_env_name)
@@ -86,10 +88,12 @@ def barplots(df, normalize=False):
             df_subset.loc[(df_subset['L'] == L)
                           & (df_subset['full_env_name'] == full_env_name)
                           & (df_subset['full_policy_name'] == 'two_step_true_probs'), 'mean'].iloc[0]
-        random_performance = \
-          df_subset.loc[(df_subset['L'] == L)
-                    & (df_subset['full_env_name'] == full_env_name)
-                    & (df_subset['full_policy_name'] == 'random'), 'mean'].iloc[0]
+        # random_performance = \
+        #   df_subset.loc[(df_subset['L'] == L)
+        #             & (df_subset['full_env_name'] == full_env_name)
+        #             & (df_subset['full_policy_name'] == 'random'), 'mean'].iloc[0]
+        random_performance =  df_subset.loc[(df_subset['L'] == L)
+                    & (df_subset['full_env_name'] == full_env_name), 'mean'].max()
         df_subset.loc[(df_subset.L == L) & (df_subset.full_env_name == full_env_name), 'oracle_performance'] = \
           oracle_performance
         df_subset.loc[(df_subset.L == L) & (df_subset.full_env_name == full_env_name), 'random_performance'] = \
@@ -98,6 +102,7 @@ def barplots(df, normalize=False):
     # Normalize
     df_subset['normalized_mean'] = \
       (df_subset['mean'] - df_subset.oracle_performance) / (df_subset.random_performance - df_subset.oracle_performance)
+    df_subset = df_subset[~df_subset['policy_name'].isin(['oracle_policy_search', 'random', 'two_step_true_probs'])]
 
     # Plot
     sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset)
@@ -109,7 +114,8 @@ def barplots(df, normalize=False):
 
 if __name__ == "__main__":
   merge_may_data()
-  df = pd.read_csv('0620_merged.csv') # barplots(df, normalize=True)
+  df = pd.read_csv('0620_merged.csv')
+  barplots(df, normalize=True)
   # df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
 
   # # Add cols for raw features
