@@ -6,7 +6,7 @@ import pandas as pd
 pd.set_option('display.max_rows', None)
 
 
-def summarize_results_at_date(date_strs):
+def summarize_results_at_date(date_strs, save):
   epsilons = ['0.0', '0.5', '0.75', '1.0']
   networks = ['lattice', 'nearestneighbor']
   results = {'env_name': [], 'network': [], 'policy_name': [], 'L': [], 'epsilon': [],
@@ -59,6 +59,8 @@ def summarize_results_at_date(date_strs):
 
   df = pd.DataFrame.from_dict(results)
   df.sort_values(by=['env_name', 'network', 'L', 'epsilon', 'policy_name'], inplace=True)
+  if save:
+      df.to_csv(f'{date_strs}.csv')
   print(df)
   if not any_found:
     print('No results found for that date.')
@@ -67,6 +69,9 @@ def summarize_results_at_date(date_strs):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--date', type=str)
+  parser.add_argument('--save', type=str, default='False')
   args = parser.parse_args()
-  summarize_results_at_date(args.date)
+  save = (args.save == 'True')
+  summarize_results_at_date(args.date, save)
+
   
