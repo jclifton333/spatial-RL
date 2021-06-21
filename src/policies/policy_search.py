@@ -454,7 +454,9 @@ def policy_search(env, time_horizon, gen_model_posterior, initial_policy_paramet
     infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
                               'adjacency_matrix': env.ADJACENCY_MATRIX, 'product_matrix': env.product_matrix,
                               'x': None}
-    transmission_probs_kwargs = infection_probs_kwargs
+    transmission_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'susceptibility': env.SUSCEPTIBILITY,
+                              'adjacency_matrix': env.ADJACENCY_MATRIX, 'product_matrix': env.product_matrix,
+                              'x': None}
     infection_probs_predictor = ebola_inf_probs.ebola_infection_probs
     transmission_probs_predictor = ebola_inf_probs.get_all_gravity_transmission_probs
 
