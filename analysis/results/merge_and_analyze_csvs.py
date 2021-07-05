@@ -12,6 +12,7 @@ def merge_may_data():
   df3 = pd.read_csv('210601,210602.csv')
   df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
   df5 = pd.read_csv('210613,210614,210615,210616,210617.csv')
+  df6 = pd.read_csv('210621,210622.csv')
 
   # Add cols for raw features
   df1['raw0'] = 0
@@ -24,6 +25,8 @@ def merge_may_data():
   df4['raw1'] = 0
   df5['raw0'] = 0
   df5['raw1'] = 0
+  df6['raw0'] = 0
+  df6['raw1'] = 0
 
   df4 = df4[~(df4['epsilon'].isin([0.5, 1.0]))]
   df5 = df5[df5['policy_name'] == 'two_step_true_probs']
@@ -62,6 +65,7 @@ def barplots(df, normalize=False):
   full_env_names = [name for name in df.full_env_name.unique()
                     if (name != 'Ebola')]  # ToDo: don't have oracle for Ebola
   L_list = [98, 100, 294, 300]
+  # L_list = [98, 294]
   epsilon_list = [0.0, 0.5, 1.0]
   df_subset = df[(df['full_env_name'].isin(full_env_names)) & (df['L'].isin(L_list)) &
                  (df['epsilon'].isin(epsilon_list))]
@@ -69,36 +73,52 @@ def barplots(df, normalize=False):
   if normalize:
     df_subset['oracle_performance'] = None
     df_subset['random_performance'] = None
+    env_to_flag_lst = []  # Flag envs whose best-performing policy is not in ['oracle ps', 'oracle two step']
 
-    # Get oracle and random performances
     for full_env_name in df_subset.full_env_name.unique():
       df_subset_subset_policies = df_subset.loc[(df_subset['full_env_name'] == full_env_name),
                                        'policy_name'].to_list()
-      if 'oracle_policy_search' in df_subset_subset_policies:
-        oracle_ps_performance = \
-          df_subset.loc[
-                     (df_subset['full_env_name'] == full_env_name)
-                    & (df_subset['full_policy_name'] == 'oracle_policy_search'), 'mean'].iloc[0]
-        oracle_two_step_performance = \
-          df_subset.loc[
-                        (df_subset['full_env_name'] == full_env_name)
-                        & (df_subset['full_policy_name'] == 'two_step_true_probs'), 'mean'].iloc[0]
-        oracle_performance = np.min((oracle_ps_performance, oracle_two_step_performance))
-      else:
-        oracle_performance = \
-          df_subset.loc[
-                        (df_subset['full_env_name'] == full_env_name)
-                        & (df_subset['full_policy_name'] == 'two_step_true_probs'), 'mean'].iloc[0]
+
+      # Take minimum of scores in case there are duplicates
+      for policy_name_ in df_subset_subset_policies:
+        df_subset.loc[(df_subset['full_env_name'] == full_env_name)
+                       & (df_subset['full_policy_name'] == policy_name_), 'mean'] = \
+          df_subset.loc[(df_subset['full_env_name'] == full_env_name)
+                        & (df_subset['full_policy_name'] == policy_name_), 'mean'].min()
+
+      # # Get oracle and random performances
+      # if 'oracle_policy_search' in df_subset_subset_policies:
+      #   oracle_ps_performance = \
+      #     df_subset.loc[
+      #                (df_subset['full_env_name'] == full_env_name)
+      #               & (df_subset['full_policy_name'] == 'oracle_policy_search'), 'mean'].iloc[0]
+      #   oracle_two_step_performance = \
+      #     df_subset.loc[
+      #                   (df_subset['full_env_name'] == full_env_name)
+      #                   & (df_subset['full_policy_name'] == 'two_step_true_probs'), 'mean'].iloc[0]
+      #   oracle_performance = np.min((oracle_ps_performance, oracle_two_step_performance))
+      # else:
+      #   oracle_performance = \
+      #     df_subset.loc[
+      #                   (df_subset['full_env_name'] == full_env_name)
+      #                   & (df_subset['full_policy_name'] == 'two_step_true_probs'), 'mean'].iloc[0]
       # random_performance = \
       #   df_subset.loc[(df_subset['L'] == L)
       #             & (df_subset['full_env_name'] == full_env_name)
       #             & (df_subset['full_policy_name'] == 'random'), 'mean'].iloc[0]
-      random_performance =  df_subset.loc[
+      random_performance = df_subset.loc[
                    (df_subset['full_env_name'] == full_env_name), 'mean'].max()
+      oracle_performance = df_subset.loc[
+        (df_subset['full_env_name'] == full_env_name), 'mean'].min()
       df_subset.loc[df_subset.full_env_name == full_env_name, 'oracle_performance'] = \
         oracle_performance
       df_subset.loc[(df_subset.full_env_name == full_env_name), 'random_performance'] = \
         random_performance
+
+      best_policy_name = df_subset.full_policy_name[df_subset.loc[
+        (df_subset['full_env_name'] == full_env_name), 'mean'].idxmin()]
+      if best_policy_name not in ['oracle_policy_search', 'two_step_true_probs']:
+        df_subset.loc[df_subset['full_env_name'] == full_env_name, 'full_env_name'] += '*'
 
     # Normalize
     df_subset['normalized_mean'] = \
@@ -106,9 +126,9 @@ def barplots(df, normalize=False):
     df_subset = df_subset[~df_subset['policy_name'].isin(['oracle_policy_search', 'random', 'two_step_true_probs'])]
 
     # Plot
-    sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset)
+    sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
   else:
-    sns.catplot(x='full_env_name', y='mean', hue='full_policy_name', kind='bar', data=df_subset)
+    sns.catplot(x='full_env_name', y='mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
   plt.show()
   return
 
