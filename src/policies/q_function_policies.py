@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 
 def two_step_true_probs_policy(**kwargs):
   N_FUNCTION_APPROX_REPS = 30
+  N_REP = 5
 
   env, evaluation_budget, treatment_budget, argmaxer, gamma = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['gamma']
@@ -57,7 +58,7 @@ def two_step_true_probs_policy(**kwargs):
     y_next = np.random.binomial(n=1, p=infection_probs_at_a)
     s_next = env.update_state(s)
     backups.append(oracle_pseudo_outcome_exact(s_next, y_next))
-    x_ = env.binary_psi(np.column_stack((s_indicator, a_dummy, y)), 1)
+    x_ = env.binary_state_psi(s_next, y_next)
     x_list.append(x_)
 
   _, oracle_pseudo_outcome_distilled = learn_ggcn(x_list, backups, env.adjacency_list, n_epoch=70,
@@ -69,9 +70,14 @@ def two_step_true_probs_policy(**kwargs):
     infection_probs_at_a = sis_infection_probability_oracle_contaminated(a, y, env.ETA, env.L, env.adjacency_list,
                                                                          env.epsilon, env.contaminator,
                                                                          env.binary_psi, **{'s': s})
-    x_ = env.binary_psi(np.column_stack((s_indicator, a_dummy, y)), 1)
-    pseudo = oracle_pseudo_outcome_distilled(x_)[:, 0]
-    q_vals = infection_probs_at_a + gamma * pseudo
+    q_vals = np.zeros(env.L)
+    for rep in range(N_REP):
+      y_next = np.random.binomial(n=1, p=infection_probs_at_a)
+      s_next = env.update_state(s)
+      x_next = env.binary_state_psi(s_next, y_next)
+      backup = oracle_pseudo_outcome_distilled(x_next)[:, 0]
+      q_vals += (infection_probs_at_a + gamma * backup) / N_REP
+
     return q_vals
 
   a = argmaxer(two_step_qfn, evaluation_budget, treatment_budget, env)

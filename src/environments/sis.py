@@ -170,6 +170,17 @@ class SIS(SpatialDisease):
                                                     self.L)
     return np.concatenate((psi_l, psi_neighbors_l))
 
+  def state_psi_at_location(self, l, s, y):
+    psi_l, psi_neighbors_l = state_psi_at_location_nbfied(l, s, y, self.adjacency_matrix, self.L)
+    return np.concatenate((psi_l, psi_neighbors_l))
+
+  def binary_state_psi(self, s, y):
+    state_psi = np.zeros((0, 8))
+    for l in range(self.L):
+      psi_l = self.state_psi_at_location(l, s, y)
+      state_psi = np.vstack((state_psi, psi_l))
+    return state_psi
+
   def binary_psi(self, raw_data_block, neighbor_order):
     if neighbor_order == 1:
       psi = np.zeros((0, 16))
@@ -598,4 +609,20 @@ def psi_at_location_nbfied(s, a, y, l, raw_data_block, neighbor_order, adjacency
             psi_neighbors[second_order_encoding] += 1
       else:
         psi_neighbors[first_order_encoding] += 1
+  return psi_l, psi_neighbors
+
+
+@njit
+def state_psi_at_location_nbfied(l, s, y, adjacency_matrix, L):
+  psi_l = np.zeros(4)
+  encoding = int(1*s[l] + 2*y[l])
+  psi_l[encoding] = 1
+  psi_neighbors = np.zeros(4)
+
+  for lprime in range(L):
+    if l != lprime and adjacency_matrix[l, lprime] + adjacency_matrix[lprime, l] > 0:
+      s_lprime, y_lprime = s[lprime], y[lprime]
+      first_order_encoding = int(1*s_lprime + 2*y_lprime)
+      psi_neighbors[first_order_encoding] += 1
+
   return psi_l, psi_neighbors
