@@ -132,6 +132,9 @@ class Gravity(SpatialDisease):
     self.X_2.append(data_block_2)
     self.y.append(self.current_infected)
 
+  def binary_state_psi(self, s, y):
+    return np.column_stack((s, y))
+
   def update_state(self, s):
     return self.covariate_matrix
 

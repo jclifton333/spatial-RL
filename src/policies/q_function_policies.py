@@ -49,7 +49,6 @@ def two_step_true_probs_policy(**kwargs):
 
   # Estimate oracle pseudo outcome with function approximation
   s, y = env.current_state, env.current_infected
-  s_indicator = (s > 0)
   a_dummy = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
   backups = []
   x_list = []
@@ -77,7 +76,10 @@ def two_step_true_probs_policy(**kwargs):
     for rep in range(N_REP):
       y_next = np.random.binomial(n=1, p=infection_probs_at_a)
       s_next = env.update_state(s)
-      s_next_indicator = (s_next > 0)
+      if env.__class_.__name__ == 'Ebola':
+        s_next_indicator = s_next
+      else:
+        s_next_indicator = (s_next > 0)
       x_next = env.binary_state_psi(s_next_indicator, y_next)
       backup = oracle_pseudo_outcome_distilled(x_next)[:, 0]
       q_vals += (infection_probs_at_a + gamma * backup) / N_REP
