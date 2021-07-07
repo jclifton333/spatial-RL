@@ -563,7 +563,7 @@ def oracle_policy_search_policy(**kwargs):
   initial_alpha = initial_zeta = None
   # remaining_time_horizon = T - env.T
 
-  remaining_time_horizon = np.min((remaining_time_horizon, 3))
+  # remaining_time_horizon = np.min((remaining_time_horizon, 3))
 
   # ToDo: These were tuned using bayes optimization on 10 mc replicates from posterior obtained after 15 steps of random
   # ToDo: policy; may be improved...
@@ -587,11 +587,11 @@ def policy_search_policy(**kwargs):
     def gen_model_posterior():
       beta_tilde = np.random.multivariate_normal(mean=beta_mean, cov=beta_cov)
       return beta_tilde
-  elif env.__class__.__name__ == "Gravity":
+  elif env.__class__.__name__ == "Ebola":
     # beta_mean = fit_ebola_transition_model(env)
     # beta_cov = env.mb_covariance(beta_mean)
     def gen_model_posterior():
-      beta_tilde = fit_ebola_transition_model(env, bootstrap=True)
+      beta_tilde = fit_ebola_transition_model(env, bootstrap=True)[0]
       return beta_tilde
 
   # Settings

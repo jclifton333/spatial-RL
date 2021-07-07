@@ -9,6 +9,7 @@ import argparse
 # Hack bc python imports are stupid
 import sys
 import os
+import gc
 this_dir = os.path.dirname(os.path.abspath(__file__))
 pkg_dir = os.path.join(this_dir, '..', '..')
 sys.path.append(pkg_dir)
@@ -17,6 +18,7 @@ from src.environments import generate_network
 from src.policies.prefit_policies import generate_two_step_sis_data
 from src.run.Simulator import Simulator
 import torch
+import faulthandler
 
 VALID_ENVIRONMENT_NAMES = ['sis', 'Ebola', 'ContinuousGrav']
 VALID_POLICY_NAMES = ['random', 'no_action', 'true_probs', 'true_probs_myopic', 'fqi', 'one_step', 'two_step',
@@ -89,6 +91,7 @@ if __name__ == '__main__':
   if 'prefit' in args.policy_name:
     generate_two_step_sis_data(args.L, args.time_horizon, args.network, args.num_prefit_data)
 
+  faulthandler.enable()
   Sim = Simulator(args.rollout_depth, args.env_name, args.time_horizon, args.number_of_replicates, args.policy_name,
                   args.argmaxer_name, args.gamma, args.evaluation_budget, env_kwargs, network_name, ts, args.seed,
                   args.error_quantile, save_features=(args.save_features == 'True'), ignore_errors=ignore_errors,

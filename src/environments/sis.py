@@ -612,7 +612,7 @@ def psi_at_location_nbfied(s, a, y, l, raw_data_block, neighbor_order, adjacency
   return psi_l, psi_neighbors
 
 
-@njit
+# @njit
 def state_psi_at_location_nbfied(l, s, y, adjacency_matrix, L):
   psi_l = np.zeros(4)
   encoding = int(1*s[l] + 2*y[l])

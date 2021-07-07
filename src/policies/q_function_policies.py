@@ -25,11 +25,12 @@ import pickle as pkl
 from functools import partial
 import copy
 import matplotlib.pyplot as plt
+import torch
 
 
 def two_step_true_probs_policy(**kwargs):
-  N_FUNCTION_APPROX_REPS = 30
-  N_REP = 5
+  N_FUNCTION_APPROX_REPS = 100
+  N_REP = 10 
 
   env, evaluation_budget, treatment_budget, argmaxer, gamma = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['gamma']
@@ -52,29 +53,32 @@ def two_step_true_probs_policy(**kwargs):
   a_dummy = np.concatenate((np.zeros(env.L - treatment_budget), np.ones(treatment_budget)))
   backups = []
   x_list = []
-  for _ in range(N_FUNCTION_APPROX_REPS):
+  for ix in range(N_FUNCTION_APPROX_REPS):
+    print(ix)
     np.random.shuffle(a_dummy)
     infection_probs_at_a = env.infection_probability(a_dummy, y, s)
     y_next = np.random.binomial(n=1, p=infection_probs_at_a)
     s_next = env.update_state(s)
     backups.append(oracle_pseudo_outcome_exact(s_next, y_next))
-    x_ = env.binary_state_psi(s_next, y_next)
+    s_next_indicator = (s_next > 0)
+    x_ = env.binary_state_psi(s_next_indicator, y_next)
     x_list.append(x_)
 
   _, oracle_pseudo_outcome_distilled = learn_ggcn(x_list, backups, env.adjacency_list, n_epoch=70,
                                                   target_are_probs=True,
                                                   samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.01,
-                                                  batch_size=10, nhid=16, dropout=0.5, neighbor_order=1)
+                                                  batch_size=5, nhid=16, dropout=0.5, neighbor_order=1)
 
   def two_step_qfn(a):
     infection_probs_at_a = sis_infection_probability_oracle_contaminated(a, y, env.ETA, env.L, env.adjacency_list,
                                                                          env.epsilon, env.contaminator,
-                                                                         env.binary_psi, **{'s': s})
+                                                                         env.binary_psi, **{'s': s, 'omega': 0})
     q_vals = np.zeros(env.L)
     for rep in range(N_REP):
       y_next = np.random.binomial(n=1, p=infection_probs_at_a)
       s_next = env.update_state(s)
-      x_next = env.binary_state_psi(s_next, y_next)
+      s_next_indicator = (s_next > 0)
+      x_next = env.binary_state_psi(s_next_indicator, y_next)
       backup = oracle_pseudo_outcome_distilled(x_next)[:, 0]
       q_vals += (infection_probs_at_a + gamma * backup) / N_REP
 
