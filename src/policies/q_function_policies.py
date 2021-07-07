@@ -29,8 +29,9 @@ import torch
 
 
 def two_step_true_probs_policy(**kwargs):
-  N_FUNCTION_APPROX_REPS = 100
-  N_REP = 10 
+  N_FUNCTION_APPROX_REPS = 5
+  N_FUNCTION_APPROX_REPS = 10
+  # N_REP = 10
 
   env, evaluation_budget, treatment_budget, argmaxer, gamma = \
     kwargs['env'], kwargs['evaluation_budget'], kwargs['treatment_budget'], kwargs['argmaxer'], kwargs['gamma']
@@ -74,13 +75,15 @@ def two_step_true_probs_policy(**kwargs):
                                                                          env.epsilon, env.contaminator,
                                                                          env.binary_psi, **{'s': s, 'omega': 0})
     else:
-      infection_probs_at_a = ebola_infection_probs(a, y, env.ETA, env.L, env.adjacency_list)
+      infection_probs_kwargs = {'distance_matrix': env.DISTANCE_MATRIX, 'adjacency_matrix': env.ADJACENCY_MATRIX,
+                                'product_matrix': env.product_matrix, 'x': None}
+      infection_probs_at_a = ebola_infection_probs(a, y, env.ETA, env.L, env.adjacency_list, **infection_probs_kwargs)
 
     q_vals = np.zeros(env.L)
     for rep in range(N_REP):
       y_next = np.random.binomial(n=1, p=infection_probs_at_a)
       s_next = env.update_state(s)
-      if env.__class_.__name__ == 'Ebola':
+      if env.__class__.__name__ == 'Ebola':
         s_next_indicator = s_next
       else:
         s_next_indicator = (s_next > 0)
