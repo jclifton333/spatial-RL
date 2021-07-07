@@ -69,9 +69,13 @@ def two_step_true_probs_policy(**kwargs):
                                                   batch_size=5, nhid=16, dropout=0.5, neighbor_order=1)
 
   def two_step_qfn(a):
-    infection_probs_at_a = sis_infection_probability_oracle_contaminated(a, y, env.ETA, env.L, env.adjacency_list,
+    if env.__class__.__name__ == 'sis':
+      infection_probs_at_a = sis_infection_probability_oracle_contaminated(a, y, env.ETA, env.L, env.adjacency_list,
                                                                          env.epsilon, env.contaminator,
                                                                          env.binary_psi, **{'s': s, 'omega': 0})
+    else:
+      infection_probs_at_a = ebola_infection_probs(a, y, env.ETA, env.L, env.adjacency_list)
+
     q_vals = np.zeros(env.L)
     for rep in range(N_REP):
       y_next = np.random.binomial(n=1, p=infection_probs_at_a)
