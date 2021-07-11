@@ -80,13 +80,16 @@ def merge_may_data():
 
 def barplots(df, normalize=False, ebola=False):
   # full_env_names = ['lattice0.0', 'lattice0.5', 'lattice1.0']
-  full_env_names = df.full_env_name.unique()
-  # full_env_names = [name for name in df.full_env_name.unique()]
-  # L_list = [98, 100, 294, 300]
+  if ebola:
+    full_env_names = [name for name in df.full_env_name.unique()]
+    L_list = df.L.unique()
+  else:
+    full_env_names = [name for name in df.full_env_name.unique() if name != 'Ebola']
+    L_list = [98, 100, 294, 300]
   # L_list = [98, 294]
-  L_list = df.L.unique()
-  # epsilon_list = [0.0, 0.5, 1.0]
-  epsilon_list = df.epsilon.unique()
+  # L_list = df.L.unique()
+  epsilon_list = [0.0, 0.5, 1.0]
+  # epsilon_list = df.epsilon.unique()
   df_subset = df[(df['full_env_name'].isin(full_env_names)) & (df['L'].isin(L_list)) &
                  (df['epsilon'].isin(epsilon_list))]
 
@@ -149,7 +152,8 @@ def barplots(df, normalize=False, ebola=False):
     if ebola:
       sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset)
     else:
-      sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
+      sns.catplot(col='full_env_name', y='normalized_mean', x='full_policy_name', kind='bar', data=df_subset,
+                  col_wrap=3)
   else:
     sns.catplot(x='full_env_name', y='mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
   plt.show()
@@ -157,10 +161,10 @@ def barplots(df, normalize=False, ebola=False):
 
 
 if __name__ == "__main__":
-  merge_ebola_data()
-  df = pd.read_csv('07_11_ebola_merged.csv')
-  # df = pd.read_csv('0620_merged.csv')
-  barplots(df, normalize=True, ebola=True)
+  # merge_ebola_data()
+  # df = pd.read_csv('07_11_ebola_merged.csv')
+  df = pd.read_csv('0620_merged.csv')
+  barplots(df, normalize=True, ebola=False)
   # df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
 
   # # Add cols for raw features
