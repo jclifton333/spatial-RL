@@ -6,11 +6,28 @@ import pandas as pd
 pd.set_option('display.max_rows', None)
 
 
+def bootstrap(x):
+  N_REP = 10000
+  n = len(x)
+  x_mean = np.mean(x)
+  diffs = []
+  for rep in range(N_REP):
+    x_boot = np.random.choice(x, size=n, replace=True)
+    x_boot_mean = np.mean(x_boot)
+    diffs.append(x_boot_mean-x_mean)
+  lower_raw = np.percentile(diffs, 5)
+  upper_raw = np.percentile(diffs, 95)
+  lower = 2*x_mean - upper_raw
+  upper = 2*x_mean - lower_raw
+  se = np.sqrt(np.mean(np.array(diffs)**2))
+  return se, lower, upper
+
+
 def summarize_results_at_date(date_strs, save):
   epsilons = ['0.0', '0.5', '0.75', '1.0']
   networks = ['lattice', 'nearestneighbor']
   results = {'env_name': [], 'network': [], 'policy_name': [], 'L': [], 'epsilon': [],
-             'mean': [], 'se': []}
+             'mean': [], 'se': [], 'lower': [], 'upper': []}
   any_found = False 
   date_str_lst = date_strs.split(',')
   for fname in os.listdir():
@@ -24,7 +41,8 @@ def summarize_results_at_date(date_strs, save):
       f = yaml.load(open(fname, 'rb'))
       scores = [f['results'][ix]['score'] for ix in range(len(f['results'].keys()))]
       mean_ = np.mean(scores)
-      se_ = np.std(scores) / np.sqrt(len(scores))
+      # se_ = np.std(scores) / np.sqrt(len(scores))
+      se_, lower_, upper_ = bootstrap(scores)
       env_name, L, policy_name = f['settings']['env_name'], f['settings']['L'], f['settings']['policy_name']
 
       epsilon = None
@@ -44,6 +62,8 @@ def summarize_results_at_date(date_strs, save):
       results['epsilon'].append(epsilon)
       results['mean'].append(mean_)
       results['se'].append(se_)
+      results['lower'].append(lower_)
+      results['upper'].append(upper_)
 
       if 'learn_embedding' in f['settings'].keys():
         to_print += ' {}'.format(f['settings']['learn_embedding'])
