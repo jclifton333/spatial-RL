@@ -405,7 +405,9 @@ def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, 
 
   # 1-step q-function
   Xq = np.dot(X0.T, q1)
-  beta1_hat = np.dot(Xprime_X_inv, Xq)
+  X0prime_X0 = np.dot(X0.T, X0)
+  X0prime_X0_inv = np.linalg.inv(X0prime_X0)
+  beta1_hat = np.dot(X0prime_X0_inv, Xq)
 
   # Estimate covariance and construct CI
   X_times_q = np.multiply(X0, q1[:, np.newaxis])
@@ -415,7 +417,7 @@ def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, 
                                                                                       total_distances=total_distances)
   cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
   beta1_1_hat = beta1_hat[1]
-  beta1_1_var_hat = cov_hat[1, 1]
+  beta1_1_var_hat = np.maximum(cov_hat[1, 1], 0.)
   ci_upper = beta1_1_hat + 1.96 * np.sqrt(beta1_1_var_hat)
   ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
 
@@ -676,7 +678,7 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   kernel_name = 'block'
-  beta = 5
+  beta = 10
   heteroskedastic = True
   grid_size = args.grid_size
   bandwidths = np.linspace(1, 20, 5)
