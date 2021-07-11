@@ -510,7 +510,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
     kernel = partial(block, bandwidth=bandwidth)
 
   pairwise_distances = get_pairwise_distances(grid_size)
-  spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances)
+  spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances, kernel_name, bandwidth)
   temporal_kernel_weights = np.array([np.array([kernel(np.abs(t1 - t2)) for t1 in range(time_horizon)])
                                       for t2 in range(time_horizon)])
 
@@ -523,7 +523,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
   coverage = 0.
   chat_var_lst = []
   N = time_horizon * grid_size
-  spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, grid_size,
+  spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, pairwise_distances, grid_size,
                                                             N)
 
   # For assessing alpha-mixing coef of residuals at l, lprime, conditional on actions
@@ -672,6 +672,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--n_rep', type=int)
   parser.add_argument('--grid_size', type=int)
+  parser.add_argument('--backup', type=int)
   args = parser.parse_args()
 
   kernel_name = 'block'
@@ -680,12 +681,15 @@ if __name__ == "__main__":
   grid_size = args.grid_size
   bandwidths = np.linspace(1, 20, 5)
   # bandwidths = [5]
+  backup = args.backup
   for bandwidth in bandwidths:
-    beta1_hat_dbn, Xprime_X_lst, coverage = \
-      backup_sampling_dbn(grid_size, bandwidth, kernel_name='block', beta1=beta, beta2=beta, n_rep=args.n_rep, pct_treat=0.1,
-                          time_horizon=5)
-    #c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst = \
-    #  simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=args.n_rep,
-    #                             pct_treat=0.1,
-    #                             time_horizon=5)
+    if backup:
+      beta1_hat_dbn, Xprime_X_lst, coverage = \
+        backup_sampling_dbn(grid_size, bandwidth, kernel_name='block', beta1=beta, beta2=beta, n_rep=args.n_rep, pct_treat=0.1,
+                            time_horizon=5)
+    else:
+      c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst = \
+        simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=beta, beta2=beta, n_rep=args.n_rep,
+                                   pct_treat=0.1,
+                                   time_horizon=5)
     print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
