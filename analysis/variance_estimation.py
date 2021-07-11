@@ -523,8 +523,8 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
   coverage = 0.
   chat_var_lst = []
   N = time_horizon * grid_size
-  spatiotemporal_kernel_weights = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, pairwise_distances, grid_size,
-                                                            N)
+  spatiotemporal_kernel_weights, _  = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, pairwise_distances, grid_size,
+                                                                N)
 
   # For assessing alpha-mixing coef of residuals at l, lprime, conditional on actions
   e_l_lst = np.zeros(n_rep)
@@ -568,7 +568,7 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
     # Estimate covariance and construct CI
     X_times_y = np.multiply(X, y[:, np.newaxis])
     X_times_y = X_times_y - X_times_y.mean(axis=0)
-    inner_cov_hat = estimate_spatiotemporal_matrix_var(X_times_y, spatiotemporal_kernel_weights)
+    inner_cov_hat, _, _ = estimate_spatiotemporal_matrix_var(X_times_y, spatiotemporal_kernel_weights)
     cov_hat = grid_size*np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
     c2_hat = c_hat[1]
     c2_var_hat = cov_hat[1, 1]
