@@ -415,13 +415,15 @@ def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, 
   inner_cov_hat, correlogram, correlogram_counts = estimate_spatiotemporal_matrix_var(X_times_q,
                                                                                       spatiotemporal_kernel_weights,
                                                                                       total_distances=total_distances)
-  cov_hat = grid_size * np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
+  cov_hat = grid_size * np.dot(X0prime_X0_inv, np.dot(inner_cov_hat, X0prime_X0_inv))
   beta1_1_hat = beta1_hat[1]
   beta1_1_var_hat = np.maximum(cov_hat[1, 1], 0.)
   ci_upper = beta1_1_hat + 1.96 * np.sqrt(beta1_1_var_hat)
   ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
 
-  return {'ci_lower': ci_lower, 'ci_upper': ci_upper, 'Xq': Xq, 'beta1_hat': beta1_hat, 'Xprime_X': Xprime_X}
+  pdb.set_trace()
+
+  return {'ci_lower': ci_lower, 'ci_upper': ci_upper, 'Xq': Xq, 'beta1_hat': beta1_hat, 'Xprime_X': X0prime_X0}
 
 
 def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
@@ -691,7 +693,7 @@ if __name__ == "__main__":
                             time_horizon=5)
     else:
       c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst = \
-        simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=beta, beta2=beta, n_rep=args.n_rep,
+        simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='block', beta1=beta, beta2=beta, n_rep=args.n_rep,
                                    pct_treat=0.1,
                                    time_horizon=5)
     print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
