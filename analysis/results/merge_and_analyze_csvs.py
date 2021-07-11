@@ -16,10 +16,25 @@ def merge_ebola_data():
   df['full_policy_name'] = None
   df.loc[~df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'full_policy_name'] = \
     df.loc[~df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'policy_name']
-  df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'full_policy_name'] = \
-    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'policy_name'] + \
-    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'raw0'].astype(str) + \
-    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'raw1'].astype(str)
+
+  df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw0 == 1) & (df.raw1 == 1), 'full_policy_name'] = \
+    'one_step_linear_raw'
+  df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw0 == 1) & (df.raw1 == 0), 'full_policy_name'] = \
+    'one_step_linear'
+  df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw0 == 0) & (df.raw1 == 1), 'full_policy_name'] = \
+    'one_step_ggcn_raw'
+  df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw0 == 0) & (df.raw1 == 0), 'full_policy_name'] = \
+    'one_step_ggcn'
+
+  df.loc[(df.policy_name == 'two_step') & (df.raw1 == 1), 'full_policy_name'] = \
+    'two_step_linear_raw'
+  df.loc[(df.policy_name == 'two_step') & (df.raw1 == 0), 'full_policy_name'] = \
+    'two_step_linear'
+
+  df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 1), 'full_policy_name'] = \
+    'two_step_ggcn_raw'
+  df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 0), 'full_policy_name'] = \
+    'two_step_ggcn'
 
   df.to_csv('07_11_ebola_merged.csv')
 
@@ -151,12 +166,13 @@ def barplots(df, normalize=False, ebola=False):
 
     # Plot
     if ebola:
-      policies_to_report = ['one_step_ggcn00', 'one_step_ggcn10',
-                            'one_step_ggcn01', 'one_step_ggcn11',
-                            'policy_search', 'two_step10', 'two_step11',
-                            'two_step_ggcn00', 'two_step_ggcn01']
+      policies_to_report = ['one_step_linear_raw', 'one_step_linear', 'one_step_ggcn_raw', 'one_step_ggcn',
+                            'two_step_linear_raw', 'two_step_linear', 'two_step_ggcn_raw', 'two_step_ggcn',
+                            'policy_search']
       df_subset = df_subset[df_subset['full_policy_name'].isin(policies_to_report)]
-      sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset)
+      ci_width = (df_subset['upper'] - df_subset['lower']).max() / 2
+      sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset,
+                  ci=ci_width)
     else:
       sns.catplot(col='full_env_name', y='normalized_mean', x='full_policy_name', kind='bar', data=df_subset,
                   col_wrap=3)
