@@ -83,13 +83,13 @@ def barplots(df, normalize=False, ebola=False):
   if ebola:
     full_env_names = [name for name in df.full_env_name.unique()]
     L_list = df.L.unique()
+    epsilon_list = df.epsilon.unique()
   else:
     full_env_names = [name for name in df.full_env_name.unique() if name != 'Ebola']
     L_list = [98, 100, 294, 300]
+    epsilon_list = [0.0, 0.5, 1.0]
   # L_list = [98, 294]
   # L_list = df.L.unique()
-  epsilon_list = [0.0, 0.5, 1.0]
-  # epsilon_list = df.epsilon.unique()
   df_subset = df[(df['full_env_name'].isin(full_env_names)) & (df['L'].isin(L_list)) &
                  (df['epsilon'].isin(epsilon_list))]
 
@@ -101,6 +101,7 @@ def barplots(df, normalize=False, ebola=False):
     for full_env_name in df_subset.full_env_name.unique():
       df_subset_subset_policies = df_subset.loc[(df_subset['full_env_name'] == full_env_name),
                                        'policy_name'].to_list()
+
 
       # Take minimum of scores in case there are duplicates
       for policy_name_ in df_subset_subset_policies:
@@ -150,6 +151,11 @@ def barplots(df, normalize=False, ebola=False):
 
     # Plot
     if ebola:
+      policies_to_report = ['one_step_ggcn00', 'one_step_ggcn10',
+                            'one_step_ggcn01', 'one_step_ggcn11',
+                            'policy_search', 'two_step10', 'two_step11',
+                            'two_step_ggcn00', 'two_step_ggcn01']
+      df_subset = df_subset[df_subset['full_policy_name'].isin(policies_to_report)]
       sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset)
     else:
       sns.catplot(col='full_env_name', y='normalized_mean', x='full_policy_name', kind='bar', data=df_subset,
@@ -161,10 +167,10 @@ def barplots(df, normalize=False, ebola=False):
 
 
 if __name__ == "__main__":
-  # merge_ebola_data()
-  # df = pd.read_csv('07_11_ebola_merged.csv')
-  df = pd.read_csv('0620_merged.csv')
-  barplots(df, normalize=True, ebola=False)
+  merge_ebola_data()
+  df = pd.read_csv('07_11_ebola_merged.csv')
+  # df = pd.read_csv('0620_merged.csv')
+  barplots(df, normalize=True, ebola=True)
   # df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
 
   # # Add cols for raw features
