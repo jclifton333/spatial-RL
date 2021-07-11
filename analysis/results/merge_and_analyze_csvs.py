@@ -5,6 +5,25 @@ import matplotlib.pyplot as plt
 import pdb
 
 
+def merge_ebola_data():
+  df = pd.read_csv('210710,210711-ebola.csv')
+
+  # Full env names
+  df['full_env_name'] = None
+  df.loc[df.env_name == 'Ebola', 'full_env_name'] = 'Ebola'
+
+  # Full policy names
+  df['full_policy_name'] = None
+  df.loc[~df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'full_policy_name'] = \
+    df.loc[~df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'policy_name']
+  df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'full_policy_name'] = \
+    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'policy_name'] + \
+    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'raw0'].astype(str) + \
+    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'raw1'].astype(str)
+
+  df.to_csv('07_11_ebola_merged.csv')
+
+
 def merge_may_data():
   # Read csvs
   df1 = pd.read_csv('210514,210515,210516,210517,210518,210519,210520.csv')
@@ -59,14 +78,15 @@ def merge_may_data():
   return
 
 
-def barplots(df, normalize=False):
+def barplots(df, normalize=False, ebola=False):
   # full_env_names = ['lattice0.0', 'lattice0.5', 'lattice1.0']
-  # full_env_names = df.full_env_name.unique()
-  full_env_names = [name for name in df.full_env_name.unique()
-                    if (name != 'Ebola')]  # ToDo: don't have oracle for Ebola
-  L_list = [98, 100, 294, 300]
+  full_env_names = df.full_env_name.unique()
+  # full_env_names = [name for name in df.full_env_name.unique()]
+  # L_list = [98, 100, 294, 300]
   # L_list = [98, 294]
-  epsilon_list = [0.0, 0.5, 1.0]
+  L_list = df.L.unique()
+  # epsilon_list = [0.0, 0.5, 1.0]
+  epsilon_list = df.epsilon.unique()
   df_subset = df[(df['full_env_name'].isin(full_env_names)) & (df['L'].isin(L_list)) &
                  (df['epsilon'].isin(epsilon_list))]
 
@@ -126,7 +146,10 @@ def barplots(df, normalize=False):
     df_subset = df_subset[~df_subset['policy_name'].isin(['oracle_policy_search', 'random', 'two_step_true_probs'])]
 
     # Plot
-    sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
+    if ebola:
+      sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset)
+    else:
+      sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
   else:
     sns.catplot(x='full_env_name', y='mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
   plt.show()
@@ -134,9 +157,10 @@ def barplots(df, normalize=False):
 
 
 if __name__ == "__main__":
-  merge_may_data()
-  df = pd.read_csv('0620_merged.csv')
-  barplots(df, normalize=True)
+  merge_ebola_data()
+  df = pd.read_csv('07_11_ebola_merged.csv')
+  # df = pd.read_csv('0620_merged.csv')
+  barplots(df, normalize=True, ebola=True)
   # df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
 
   # # Add cols for raw features

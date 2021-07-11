@@ -27,7 +27,7 @@ def summarize_results_at_date(date_strs, save):
   epsilons = ['0.0', '0.5', '0.75', '1.0']
   networks = ['lattice', 'nearestneighbor']
   results = {'env_name': [], 'network': [], 'policy_name': [], 'L': [], 'epsilon': [],
-             'mean': [], 'se': [], 'lower': [], 'upper': []}
+             'mean': [], 'se': [], 'lower': [], 'upper': [], 'raw0': [], 'raw1': []}
   any_found = False 
   date_str_lst = date_strs.split(',')
   for fname in os.listdir():
@@ -71,8 +71,10 @@ def summarize_results_at_date(date_strs, save):
           learn_embedding = f['settings']['learn_embedding']
           if learn_embedding:
             policy_name += '_ggcn'
+        results['raw0'].append(~f['settings']['learn_embedding'])
       if 'raw_features' in f['settings'].keys():
         to_print += ' {}'.format(f['settings']['raw_features'])
+        results['raw1'].append(f['settings']['raw_features'])
       print(to_print)
 
       results['policy_name'].append(policy_name)
