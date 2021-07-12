@@ -384,14 +384,19 @@ def oracle_tune_ggcn(X_list, y_list, adjacency_list, env, eval_actions, true_pro
   """
   Tune GGCN hyperparameters, given sample of true probabilities evaluated at the current state.
   """
-  # LR_RANGE = np.logspace(-3, -1, 100)
-  # DROPOUT_RANGE = np.linspace(0, 1.0, 100)
-  # NHID_RANGE = np.linspace(5, 30, 3)
+  if env.__class__.__name__ == 'Ebola':
+    NHID_RANGE = [5]
+    DROPOUT_RANGE = [0.5]
+    LR_RANGE = [0.008]
+  else:
+    NHID_RANGE = np.linspace(5, 30, 3)
+    DROPOUT_RANGE = np.linspace(0, 1.0, 100)
+    LR_RANGE = np.logspace(-3, -1, 100)
   NEIGHBOR_SUBSET_LIMIT_RANGE = [2]
   
-  LR_RANGE = [0.01]
-  DROPOUT_RANGE = [0.0]
-  NHID_RANGE = [16]
+  # LR_RANGE = [0.01]
+  # DROPOUT_RANGE = [0.0]
+  # NHID_RANGE = [16]
   
 
   best_predictor = None
@@ -603,18 +608,18 @@ def fit_ggcn(X_list, y_list, adjacency_list, n_epoch=50, nhid=100, batch_size=5,
     #     break
 
     prev_avg_acc_train = avg_acc_train
-  if verbose:
-    final_acc_train = 0.
-    for X_, y_ in zip(X_list, y_list):
-      output = model(X_, adjacency_list)
-      if target_are_probs:
-        yhat = output[:, 0]
-        acc = ((yhat - y_)**2).float().mean().detach().numpy()
-      else:
-        yhat = F.softmax(output)[:, 1]
-        acc = ((yhat > 0.5) == y_).float().mean()
-      final_acc_train += acc / T
-    print('final_acc_train: {:.4f}'.format(final_acc_train))
+
+  final_acc_train = 0.
+  for X_, y_ in zip(X_list, y_list):
+    output = model(X_, adjacency_list)
+    if target_are_probs:
+      yhat = output[:, 0]
+      acc = ((yhat - y_)**2).float().mean().detach().numpy()
+    else:
+      yhat = F.softmax(output)[:, 1]
+      acc = ((yhat > 0.5) == y_).float().mean()
+    final_acc_train += acc / T
+  print('final_acc_train: {:.4f}'.format(final_acc_train))
 
 
   return model

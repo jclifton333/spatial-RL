@@ -56,8 +56,8 @@ class Ebola(Gravity):
   INITIAL_INFECTIONS[OUTBREAK_INDICES] = 1
 
   # Params for logit of transmission probability
-  # ALPHA = 3.0
-  ALPHA = 2.0
+  ALPHA = 3.0
+  # ALPHA = 2.0
   BETA = -5.0
   ETA_0 = SIS.ETA_2 * ALPHA
   ETA_1 = SIS.ETA_3 + np.log(ALPHA)
