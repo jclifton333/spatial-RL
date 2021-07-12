@@ -375,11 +375,13 @@ def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, 
 
   y = np.zeros(0)
   X = np.zeros((0, 2))
+  standard_devs = np.diag(root_cov)
 
   # Generate data
   x = generate_gaussian(identity_root_cov)
   for t in range(time_horizon):
-    x_cutoff = np.sort(x)[n_cutoff]
+    # x_cutoff = np.sort(x)[n_cutoff]
+    x_cutoff = 1.3*standard_devs
     x_indicator = (x > x_cutoff)
     errors = generate_gaussian(root_cov)
     x_new = c1 * x + c2 * x_indicator + errors
@@ -421,8 +423,6 @@ def backup_sampling_dbn_rep(seed, time_horizon, n_cutoff, kernel, beta1, beta2, 
   ci_upper = beta1_1_hat + 1.96 * np.sqrt(beta1_1_var_hat)
   ci_lower = beta1_1_hat - 1.96 * np.sqrt(beta1_1_var_hat)
 
-  pdb.set_trace()
-
   return {'ci_lower': ci_lower, 'ci_upper': ci_upper, 'Xq': Xq, 'beta1_hat': beta1_hat, 'Xprime_X': X0prime_X0}
 
 
@@ -434,6 +434,7 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
   X ~ N(0, Cov)
   Y_i = c1*X_i + c2*1[ X_i > X_{(1-pct_treat)*L}
   """
+  SEED=100
   c1, c2 = 0.5, 1.
 
   # Construct kernel weight matrix
@@ -463,9 +464,9 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
       batches = (n_rep // 24)
       results = []
       for batch in range(batches-1):
-        results_batch = pool.map(backup_sampling_dbn_partial, range(batch*24, (batch+1)*24))
+        results_batch = pool.map(backup_sampling_dbn_partial, range(batch*24 + SEED, (batch+1)*24 + SEED))
         results += results_batch
-      last_results_batch = pool.map(backup_sampling_dbn_partial, range((batches-1)*24, n_rep))
+      last_results_batch = pool.map(backup_sampling_dbn_partial, range((batches-1)*24 + SEED, n_rep + SEED))
       results += last_results_batch
     else:
       results = pool.map(backup_sampling_dbn_partial, range(n_rep))
@@ -672,7 +673,6 @@ def test_alpha_mixing():
 if __name__ == "__main__":
   # ToDo: write big matrices to file so that they don't have to be re-computed (and that they can work with
   # ToDo: multiprocessing?
-
   parser = argparse.ArgumentParser()
   parser.add_argument('--n_rep', type=int)
   parser.add_argument('--grid_size', type=int)
