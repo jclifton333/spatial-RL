@@ -340,8 +340,13 @@ def one_step_policy(**kwargs):
     # clf = LogisticRegression()
     # clf.fit(np.vstack(X_raw), np.hstack(env.y))
 
-    predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
-  		                    num_settings_to_try=1, n_epoch=300, neighbor_order=1)
+    if env.__class__.__name__ == 'sis':
+      predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
+    		                      num_settings_to_try=1, n_epoch=300, neighbor_order=1)
+    else:
+      predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
+    		                      num_settings_to_try=5, n_epoch=300, neighbor_order=1)
+
 
     def qfn(a_):
       # X_raw_ = env.data_block_at_action(-1, a_, raw=True)
