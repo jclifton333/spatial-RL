@@ -302,7 +302,7 @@ def constant(x):
 
 
 def block(x, bandwidth):
-  return np.abs(x) <= bandwidth 
+  return np.abs(x) <= bandwidth
 
 
 def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_cores=0.25):
@@ -494,8 +494,58 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
   return beta1_hat_dbn, Xprime_X_lst, coverage
 
 
-def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100, pct_treat=0.1,
-                               time_horizon=10, heteroskedastic=False):
+def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, beta2=1, n_rep=100,
+                               time_horizon=10):
+  c1, c2 = 0.5, 1.
+
+  # Construct kernel weight matrix
+  if kernel_name == 'bartlett':
+    kernel = partial(bartlett, bandwidth=bandwidth)
+  elif kernel_name == 'delta':
+    def kernel(x):
+      return 0
+  elif kernel_name == 'block':
+    kernel = partial(block, bandwidth=bandwidth)
+
+  # n_cutoff = int((1 - pct_treat) * grid_size)
+  c2_hat_dbn = np.zeros(0)
+  ci_lst = np.zeros((n_rep, 2))
+
+  # Distribute
+  q0_sampling_dbn_partial = partial(simple_action_sampling_dbn_rep, grid_size=grid_size, bandwidth=bandwidth,
+                                    kernel=kernel, beta1=beta1, beta2=beta2,
+                                    c1=c1, c2=c2, time_horizon=time_horizon, heteroskedastic=heteroskedastic)
+
+  if n_rep == 1:
+    results = [q0_sampling_dbn_partial(0)]
+  else:
+    pool = mp.Pool(processes=24)
+    if n_rep > 24:
+      batches = (n_rep // 24)
+      results = []
+      for batch in range(batches - 1):
+        results_batch = pool.map(q0_sampling_dbn_partial, range(batch * 24, (batch + 1) * 24))
+        results += results_batch
+      last_results_batch = pool.map(q0_sampling_dbn_partial, range((batches - 1) * 24, n_rep))
+      results += last_results_batch
+    else:
+      results = pool.map(q0_sampling_dbn_partial, range(n_rep))
+
+  for n, res in enumerate(results):
+    ci_lower = res['ci_lower']
+    ci_upper = res['ci_upper']
+    c2_hat = res['c2_hat']
+    c2_hat_dbn = np.hstack((c2_hat_dbn, c2_hat))
+    ci_lst[n, :] = [ci_lower, ci_upper]
+
+  contains_truth = np.multiply(c2 < ci_lst[:, 1], c2 > ci_lst[:, 0])
+  coverage = np.mean(contains_truth)
+
+  return c2_hat_dbn, coverage
+
+
+def simple_action_sampling_dbn_rep(seed, grid_size, bandwidth, kernel, beta1=1, beta2=1,
+                                   c1=0.5, c2=1.0, time_horizon=10, heteroskedastic=False):
   """
   Treat pct_treat largest observations.
 
@@ -504,108 +554,91 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
 
   Calculate sampling dbn of [c1_hat, c2_hat].
   """
-  c1, c2 = 0.5, 1.
+
+  np.random.seed(seed)
 
   # Construct kernel weight matrix
-  if kernel_name == 'bartlett':
-    kernel = partial(bartlett, bandwidth=bandwidth)
-  elif kernel_name == 'delta':
-    def kernel(x): return 0
-  elif kernel_name == 'block':
-    kernel = partial(block, bandwidth=bandwidth)
-
   pairwise_distances = get_pairwise_distances(grid_size)
   spatial_kernel_weights = construct_kernel_matrix_from_distances(kernel, pairwise_distances, kernel_name, bandwidth)
   temporal_kernel_weights = np.array([np.array([kernel(np.abs(t1 - t2)) for t1 in range(time_horizon)])
                                       for t2 in range(time_horizon)])
 
-  n_cutoff = int((1-pct_treat)*grid_size)
   _, root_cov = get_exponential_gaussian_covariance(grid_size=grid_size, beta1=beta1, beta2=beta2,
                                                     heteroskedastic=heteroskedastic)
   identity_root_cov = np.eye(grid_size)
-  c_dbn = np.zeros((0, 2))
-  Xprime_X_lst = np.zeros((n_rep, 2, 2))
-  coverage = 0.
-  chat_var_lst = []
   N = time_horizon * grid_size
   spatiotemporal_kernel_weights, _  = get_spatiotemporal_kernel(spatial_kernel_weights, temporal_kernel_weights, pairwise_distances, grid_size,
                                                                 N)
 
   # For assessing alpha-mixing coef of residuals at l, lprime, conditional on actions
-  e_l_lst = np.zeros(n_rep)
-  e_lprime_lst = np.zeros(n_rep)
+  # e_l_lst = np.zeros(n_rep)
+  # e_lprime_lst = np.zeros(n_rep)
   x_indicator_lst = np.zeros(0)
   X_lst = []
   y_lst = []
 
-  for n in range(n_rep):
-    y = np.zeros(0)
-    X = np.zeros((0, 2))
+  y = np.zeros(0)
+  X = np.zeros((0, 2))
 
-    # Generate data
-    x = generate_gaussian(identity_root_cov)
-    for t in range(time_horizon):
-      x_cutoff = np.sort(x)[n_cutoff]
-      x_indicator = (x > x_cutoff)
-      errors = generate_gaussian(root_cov)
-      x_new = c1*x + c2*x_indicator + errors
+  # Generate data
+  x = generate_gaussian(identity_root_cov)
+  for t in range(time_horizon):
+    # x_cutoff = np.sort(x)[n_cutoff]
+    x_cutoff = 1.3*np.diag(root_cov)
+    x_indicator = (x > x_cutoff)
+    errors = generate_gaussian(root_cov)
+    x_new = c1*x + c2*x_indicator + errors
 
-      # Append to dataset
-      y = np.hstack((y, x_new))
-      x_indicator_lst = np.hstack((x_indicator_lst, x_indicator))
-      X_t = np.column_stack((x, x_indicator))
-      X = np.vstack((X, X_t))
+    # Append to dataset
+    y = np.hstack((y, x_new))
+    x_indicator_lst = np.hstack((x_indicator_lst, x_indicator))
+    X_t = np.column_stack((x, x_indicator))
+    X = np.vstack((X, X_t))
 
-      x = x_new
+    x = x_new
 
-    X_lst.append(X)
-    y_lst.append(y)
+  X_lst.append(X)
+  y_lst.append(y)
 
-    # Regression
-    Xprime_X = np.dot(X.T, X)
-    Xprime_X_inv = np.linalg.inv(Xprime_X)
-    Xy = np.dot(X.T, y)
-    c_hat = np.dot(Xprime_X_inv, Xy)
+  # Regression
+  Xprime_X = np.dot(X.T, X)
+  Xprime_X_inv = np.linalg.inv(Xprime_X)
+  Xy = np.dot(X.T, y)
+  c_hat = np.dot(Xprime_X_inv, Xy)
 
-    c_dbn = np.vstack((c_dbn, c_hat))
-    Xprime_X_lst[n, :] = Xprime_X / grid_size
-
-    # Estimate covariance and construct CI
-    X_times_y = np.multiply(X, y[:, np.newaxis])
-    X_times_y = X_times_y - X_times_y.mean(axis=0)
-    inner_cov_hat, _, _ = estimate_spatiotemporal_matrix_var(X_times_y, spatiotemporal_kernel_weights)
-    cov_hat = grid_size*np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
-    c2_hat = c_hat[1]
-    c2_var_hat = cov_hat[1, 1]
-    ci_upper = c2_hat + 1.96*np.sqrt(c2_var_hat)
-    ci_lower = c2_hat - 1.96*np.sqrt(c2_var_hat)
-    contains_truth = (ci_lower < c2 < ci_upper)
-    coverage += contains_truth / n_rep
-    chat_var_lst.append(c2_var_hat)
+  # Estimate covariance and construct CI
+  X_times_y = np.multiply(X, y[:, np.newaxis])
+  X_times_y = X_times_y - X_times_y.mean(axis=0)
+  inner_cov_hat, _, _ = estimate_spatiotemporal_matrix_var(X_times_y, spatiotemporal_kernel_weights)
+  cov_hat = grid_size*np.dot(Xprime_X_inv, np.dot(inner_cov_hat, Xprime_X_inv))
+  c2_hat = c_hat[1]
+  c2_var_hat = cov_hat[1, 1]
+  ci_upper = c2_hat + 1.96*np.sqrt(c2_var_hat)
+  ci_lower = c2_hat - 1.96*np.sqrt(c2_var_hat)
+  # chat_var_lst.append(c2_var_hat)
 
   # Residual joint distribution (for assessing alpha-mixing)
-  c_true = np.array([c1, c2])
-  yHat_lst = [np.dot(X_, c_true) for X_ in X_lst]
-  for rep in range(n_rep):
-    # Condition on x_indicator_l_t, x_indicator_lprime_tp1
-    x_indicator_rep = X_lst[rep][:, 1]
-    x_indicator_t = x_indicator_rep[(1 * grid_size):(2 * grid_size)]
-    x_indicator_tp1 = x_indicator_rep[(2 * grid_size):(3 * grid_size)]
-    if x_indicator_t[0] == 0 and x_indicator_tp1[-1] == 0:
-      yHat_t = yHat_lst[rep][(1*grid_size):(2*grid_size)]
-      y_t = y_lst[rep][(1*grid_size):(2*grid_size)]
-      yHat_tp1 = yHat_lst[rep][(2 * grid_size):(3 * grid_size)]
-      y_tp1 = y_lst[rep][(2 * grid_size):(3 * grid_size)]
+  # c_true = np.array([c1, c2])
+  # yHat_lst = [np.dot(X_, c_true) for X_ in X_lst]
+  # for rep in range(n_rep):
+  #   # Condition on x_indicator_l_t, x_indicator_lprime_tp1
+  #   x_indicator_rep = X_lst[rep][:, 1]
+  #   x_indicator_t = x_indicator_rep[(1 * grid_size):(2 * grid_size)]
+  #   x_indicator_tp1 = x_indicator_rep[(2 * grid_size):(3 * grid_size)]
+  #   if x_indicator_t[0] == 0 and x_indicator_tp1[-1] == 0:
+  #     yHat_t = yHat_lst[rep][(1*grid_size):(2*grid_size)]
+  #     y_t = y_lst[rep][(1*grid_size):(2*grid_size)]
+  #     yHat_tp1 = yHat_lst[rep][(2 * grid_size):(3 * grid_size)]
+  #     y_tp1 = y_lst[rep][(2 * grid_size):(3 * grid_size)]
 
-      residual_t_l = yHat_t[0] - y_t[0]
-      residual_t_lprime = yHat_tp1[-1] - y_tp1[-1]
+  #     residual_t_l = yHat_t[0] - y_t[0]
+  #     residual_t_lprime = yHat_tp1[-1] - y_tp1[-1]
 
-      e_l_lst[rep] = residual_t_l
-      e_lprime_lst[rep] = residual_t_lprime
+  #     e_l_lst[rep] = residual_t_l
+  #     e_lprime_lst[rep] = residual_t_lprime
 
-  # c2_population_var_hat = np.var(c_dbn[:, 1])
-  pvals = normaltest(c_dbn, axis=0)[1]
-  return c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst
+  res = {'ci_upper': ci_upper, 'ci_lower': ci_lower, 'c2_hat': c2_hat}
+  return res
 
 
 def regress_on_summary_statistic():
@@ -671,16 +704,15 @@ def test_alpha_mixing():
 
 
 if __name__ == "__main__":
-  # ToDo: write big matrices to file so that they don't have to be re-computed (and that they can work with
-  # ToDo: multiprocessing?
   parser = argparse.ArgumentParser()
   parser.add_argument('--n_rep', type=int)
   parser.add_argument('--grid_size', type=int)
   parser.add_argument('--backup', type=int)
+  parser.add_argument('--beta', type=float, default=1.0)
   args = parser.parse_args()
 
   kernel_name = 'block'
-  beta = 1
+  beta = args.beta
   heteroskedastic = True
   grid_size = args.grid_size
   bandwidths = np.linspace(0, 5, 5)
@@ -692,8 +724,7 @@ if __name__ == "__main__":
         backup_sampling_dbn(grid_size, bandwidth, kernel_name='block', beta1=beta, beta2=beta, n_rep=args.n_rep, pct_treat=0.1,
                             time_horizon=5)
     else:
-      c_dbn, Xprime_X_lst, coverage, pvals, e_l_lst, e_lprime_lst = \
+      c2_hat_dbn, coverage = \
         simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='block', beta1=beta, beta2=beta, n_rep=args.n_rep,
-                                   pct_treat=0.1,
                                    time_horizon=5)
-    print('bandwidth: {} coverage: {}'.format(bandwidth, coverage))
+    print('beta: {} bandwidth: {} coverage: {}'.format(beta, bandwidth, coverage))
