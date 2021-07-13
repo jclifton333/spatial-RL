@@ -9,6 +9,7 @@ import yaml
 import datetime
 import matplotlib.pyplot as plt
 from numba import njit, jit
+import datetime
 np.set_printoptions(suppress=True)
 
 import os
@@ -709,6 +710,7 @@ if __name__ == "__main__":
   parser.add_argument('--grid_size', type=int)
   parser.add_argument('--backup', type=int)
   parser.add_argument('--beta', type=float, default=1.0)
+  parser.add_argument('--save', type=int, default=1)
   args = parser.parse_args()
 
   kernel_name = 'block'
@@ -718,6 +720,7 @@ if __name__ == "__main__":
   bandwidths = np.linspace(0, 5, 5)
   # bandwidths = [5]
   backup = args.backup
+  results = {}
   for bandwidth in bandwidths:
     if backup:
       beta1_hat_dbn, Xprime_X_lst, coverage = \
@@ -728,3 +731,14 @@ if __name__ == "__main__":
         simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='block', beta1=beta, beta2=beta, n_rep=args.n_rep,
                                    time_horizon=5)
     print('beta: {} bandwidth: {} coverage: {}'.format(beta, bandwidth, coverage))
+    results[float(bandwidth)] = {'beta': float(beta), 'backup': backup, 'coverage': float(coverage),
+                                 'grid_size': float(grid_size)}
+
+  save = args.save
+  if save:
+    basename = f'backup={backup}-beta={beta}-size={grid_size}'
+    prefix = os.path.join(this_dir, 'coverages', basename)
+    suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+    filename = f'{prefix}_{suffix}.yml'
+    with open(filename, 'w') as outfile:
+      yaml.dump(results, outfile)
