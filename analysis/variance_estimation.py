@@ -302,7 +302,7 @@ def constant(x):
 
 
 def block(x, bandwidth):
-  return (np.abs(x) / bandwidth) <= 1
+  return np.abs(x) <= bandwidth 
 
 
 def var_estimates(cov_name='exponential', n_bandwidths=10, betas=(0.1,), grid_size=100, n_rep=1000, pct_cores=0.25):
@@ -680,10 +680,10 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   kernel_name = 'block'
-  beta = 10
+  beta = 1
   heteroskedastic = True
   grid_size = args.grid_size
-  bandwidths = np.linspace(1, 20, 5)
+  bandwidths = np.linspace(0, 5, 5)
   # bandwidths = [5]
   backup = args.backup
   for bandwidth in bandwidths:
