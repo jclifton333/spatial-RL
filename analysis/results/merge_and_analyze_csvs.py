@@ -36,6 +36,12 @@ def merge_ebola_data():
   df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 0), 'full_policy_name'] = \
     'two_step_ggcn'
 
+  # Overwrite with oracle-tuned results (7-12 through 7-15)
+  df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 0), 'mean'] = 0.157
+  df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 1), 'mean'] = 0.158
+  df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw1 == 0), 'mean'] = 0.156
+  df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw1 == 1), 'mean'] = 0.151
+
   df.to_csv('07_11_ebola_merged.csv')
 
 
