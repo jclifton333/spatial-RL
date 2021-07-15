@@ -327,7 +327,6 @@ def one_step_policy(**kwargs):
 
     true_probs = np.hstack([oracle_qfn(a_) for a_ in eval_actions])
 
-
     # fname = os.path.join(data_dir, 'Ebola_data_t=8.p')
     # data_dict = {'X_raw_list': X_raw, 'y_list': env.y, 'adjacency_list': env.adjacency_list, 'eval_actions': eval_actions,
     #              'true_probs': true_probs, 'X_list': env.X, 'settings': {'env': env_name, 'L': env.L}}
@@ -344,6 +343,10 @@ def one_step_policy(**kwargs):
       predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
     		                      num_settings_to_try=1, n_epoch=300, neighbor_order=1)
     else:
+      def simple_oracle_qfn(a_):
+        return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
+      true_probs = np.hstack([simple_oracle_qfn(a_) for a_ in eval_actions])
+
       predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
     		                      num_settings_to_try=5, n_epoch=300, neighbor_order=1)
 
