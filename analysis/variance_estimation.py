@@ -717,7 +717,8 @@ if __name__ == "__main__":
   beta = args.beta
   heteroskedastic = True
   grid_size = args.grid_size
-  bandwidths = np.linspace(0, 5, 5)
+  # bandwidths = np.linspace(0, 5, 5)
+  bandwidths = np.linspace(0, 50, 5)
   # bandwidths = [5]
   backup = args.backup
   results = {}

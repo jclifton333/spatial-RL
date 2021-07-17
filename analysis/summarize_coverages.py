@@ -2,13 +2,16 @@ import yaml
 import numpy
 import pandas as pd
 import argparse
+import os
+import pdb
+pd.set_option('display.max_rows', None)
 
 
 def summarize_coverages_at_date(date_strs):
   results = {'L': [], 'beta': [], 'bandwidth': [], 'coverages': [], 'backup': []}
   any_found = False
   date_str_list = date_strs.split(',')
-  for fname in os.listdir():
+  for fname in os.listdir('coverages'):
     matches_date = False
     for date_str in date_str_list:
       if date_str in fname:
@@ -16,7 +19,8 @@ def summarize_coverages_at_date(date_strs):
         break
     if matches_date:
       any_found = True
-      f = yaml.load(open(fname, 'rb'))
+      full_fname = os.path.join('coverages', fname)
+      f = yaml.load(open(full_fname, 'rb'))
       for bandwidth, bandwidth_results in f.items():
         results['L'].append(bandwidth_results['grid_size'])
         results['beta'].append(bandwidth_results['beta'])
@@ -24,7 +28,8 @@ def summarize_coverages_at_date(date_strs):
         results['coverages'].append(bandwidth_results['coverage'])
         results['backup'].append(bandwidth_results['backup'])
     df = pd.DataFrame.from_dict(results)
-    df.sort_values(by=['backup', 'L', 'beta', 'bandwidth'])
+    df.sort_values(by=['backup', 'beta', 'L', 'bandwidth'], inplace=True)
+    print(df)
   if not any_found:
     print('no results for that date.')
 
