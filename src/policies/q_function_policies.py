@@ -118,9 +118,20 @@ def two_step_ggcn_policy_helper(**kwargs):
     features = env.X
 
   # Fit myopic q-function
-  _, predictor0 = learn_ggcn(features0, env.y, env.adjacency_list, n_epoch=70, target_are_probs=False,
-                             samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.005,
-                             batch_size=5, nhid=16, dropout=0.0, neighbor_order=1)
+  if env.__class__.__name__ == "Ebola":
+    N_REP = 50
+    dummy_act = np.concatenate((np.zeros(env.L - treatment_budget), np.zeros(treatment_budget)))
+    eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
+    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+    def simple_oracle_qfn(a_):
+      return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
+    true_probs = np.hstack([simple_oracle_qfn(a_) for a_ in eval_actions])
+    predictor0, _ = oracle_tune_ggcn(features0, env.y, env.adjacency_list, env, eval_actions, true_probs,
+                                     num_settings_to_try=5, n_epoch=300, neighbor_order=1)
+  else:
+    _, predictor0 = learn_ggcn(features0, env.y, env.adjacency_list, n_epoch=70, target_are_probs=False,
+                               samples_per_k=6, neighbor_subset_limit=2, verbose=False, lr=0.005,
+                               batch_size=5, nhid=16, dropout=0.0, neighbor_order=1)
 
   def qfn0(a, t):
       x_at_a = env.data_block_at_action(t, a)
@@ -335,14 +346,16 @@ def one_step_policy(**kwargs):
     # _, predictor = learn_ggcn(X_raw, env.y, env.adjacency_list)
 
     # For diagnosis
-    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+
     # clf = LogisticRegression()
     # clf.fit(np.vstack(X_raw), np.hstack(env.y))
 
     if env.__class__.__name__ == 'sis':
+      clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
       predictor, _ = oracle_tune_ggcn(env.X, env.y, env.adjacency_list, env, eval_actions, true_probs,
     		                      num_settings_to_try=1, n_epoch=300, neighbor_order=1)
     else:
+      clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
       def simple_oracle_qfn(a_):
         return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
       true_probs = np.hstack([simple_oracle_qfn(a_) for a_ in eval_actions])
