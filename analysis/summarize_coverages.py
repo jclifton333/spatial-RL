@@ -6,11 +6,11 @@ import os
 import pdb
 pd.set_option('display.max_rows', None)
 import seaborn as sns
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 
 def plot_coverages(df):
-  sns.relplot(data=df, x='bandwidth', y='coverage', hue='L', style='beta', col='backup', kind='line')
+  sns.relplot(data=df, x='bandwidth', y='coverages', hue='L', style='beta', col='backup', kind='line')
   plt.show()
   return
 
@@ -47,7 +47,9 @@ def summarize_coverages_at_date(date_strs, save=False):
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument('--date', type=str)
-  args = parser.parse_args()
-  summarize_coverages_at_date(args.date)
+  # parser = argparse.ArgumentParser()
+  # parser.add_argument('--date', type=str)
+  # args = parser.parse_args()
+  # summarize_coverages_at_date(args.date)
+  df = pd.read_csv('coverages/210713,210714,210715,210716,210717.csv')
+  plot_coverages(df)
