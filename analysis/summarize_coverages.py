@@ -5,9 +5,17 @@ import argparse
 import os
 import pdb
 pd.set_option('display.max_rows', None)
+import seaborn as sns
+import matplotlib as plt
 
 
-def summarize_coverages_at_date(date_strs):
+def plot_coverages(df):
+  sns.relplot(data=df, x='bandwidth', y='coverage', hue='L', style='beta', col='backup', kind='line')
+  plt.show()
+  return
+
+
+def summarize_coverages_at_date(date_strs, save=False):
   results = {'L': [], 'beta': [], 'bandwidth': [], 'coverages': [], 'backup': []}
   any_found = False
   date_str_list = date_strs.split(',')
@@ -30,6 +38,8 @@ def summarize_coverages_at_date(date_strs):
     df = pd.DataFrame.from_dict(results)
     df.sort_values(by=['backup', 'beta', 'L', 'bandwidth'], inplace=True)
     print(df)
+    if save:
+      df.to_csv(f'coverages/{date_strs}.csv')
   if not any_found:
     print('no results for that date.')
 
