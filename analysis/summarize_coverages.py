@@ -10,7 +10,9 @@ import matplotlib.pyplot as plt
 
 
 def plot_coverages(df):
-  sns.relplot(data=df, x='bandwidth', y='coverages', hue='L', style='beta', col='backup', kind='line')
+  df['L'] = df['L'].astype('category')
+  g = sns.relplot(data=df, x='bandwidth', y='coverages', hue='L', row='beta', col='backup', kind='line')
+  g.map(plt.axhline, y=0.95, c='black')
   plt.show()
   return
 
