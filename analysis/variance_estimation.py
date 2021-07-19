@@ -140,6 +140,7 @@ def draw_from_gaussian_and_estimate_var(ix, root_cov, kernel_weights, grid_size)
 
 
 # @jit
+@njit
 def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights, total_distances=None):
   N, p = Y_centered.shape
   CORRELOGRAM_ORDER = 25
@@ -162,11 +163,11 @@ def estimate_spatiotemporal_matrix_var(Y_centered, spatiotemporal_kernel_weights
           cov_hat[k_i, k_j] += product
 
           # Optionally update correlogram
-          if correlogram is not None and k_i == 1 and k_j == 1:
-            d_ij = np.int(total_distances[i, j])
-            if d_ij < CORRELOGRAM_ORDER:
-              correlogram[d_ij] += (product - correlogram[d_ij]) / correlogram_counts[d_ij]
-              correlogram_counts[d_ij] = correlogram_counts[d_ij] + 1.
+          # if correlogram is not None and k_i == 1 and k_j == 1:
+          #   d_ij = np.int(total_distances[i, j])
+          #   if d_ij < CORRELOGRAM_ORDER:
+          #     correlogram[d_ij] += (product - correlogram[d_ij]) / correlogram_counts[d_ij]
+          #     correlogram_counts[d_ij] = correlogram_counts[d_ij] + 1.
 
   cov_hat /= N
   return cov_hat, correlogram, correlogram_counts
@@ -233,16 +234,21 @@ def get_kernel_from_file(kernel_name, bandwidth, L):
   return saved_kernel_weights
 
 
+def construct_kernel_matrix_helper(kernel, grid_size, pairwise_distances):
+  kernel_weights = np.zeros((grid_size, grid_size))
+  for i in range(grid_size):
+    for j in range(grid_size):
+      kernel_weights[i, j] = kernel(pairwise_distances[i, j])
+  return kernel_weights
+
+
 def construct_kernel_matrix_from_distances(kernel, pairwise_distances, kernel_name, bandwidth):
   grid_size = pairwise_distances.shape[0]
 
   # Try to get saved kernel
   saved_kernel_weights = get_kernel_from_file(kernel_name, bandwidth, grid_size)
   if saved_kernel_weights is None:
-    kernel_weights = np.zeros((grid_size, grid_size))
-    for i in range(grid_size):
-      for j in range(grid_size):
-        kernel_weights[i, j] = kernel(pairwise_distances[i, j])
+    kernel_weights = construct_kernel_matrix_helper(kernel, grid_size, pairwise_distances)
     suffix = f'{kernel_name}_{bandwidth}_{grid_size}.npy'
     fname = os.path.join(kernel_dir, suffix )
     with open(fname, 'wb') as f:
@@ -302,6 +308,7 @@ def constant(x):
   return 1
 
 
+@njit
 def block(x, bandwidth):
   return np.abs(x) <= bandwidth
 
@@ -718,8 +725,8 @@ if __name__ == "__main__":
   heteroskedastic = True
   grid_size = args.grid_size
   # bandwidths = np.linspace(0, 5, 5)
-  bandwidths = np.linspace(0, 50, 5)
-  # bandwidths = [5]
+  # bandwidths = np.linspace(0, 50, 5)
+  bandwidths = [2.0]
   backup = args.backup
   results = {}
   for bandwidth in bandwidths:
