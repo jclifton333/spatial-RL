@@ -49,9 +49,10 @@ def summarize_coverages_at_date(date_strs, save=False):
 
 
 if __name__ == "__main__":
-  # parser = argparse.ArgumentParser()
-  # parser.add_argument('--date', type=str)
-  # args = parser.parse_args()
-  # summarize_coverages_at_date(args.date)
-  df = pd.read_csv('coverages/210713,210714,210715,210716,210717.csv')
-  plot_coverages(df)
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--date', type=str)
+  args = parser.parse_args()
+  summarize_coverages_at_date(args.date)
+  # df = pd.read_csv('coverages/210713,210714,210715,210716,210717.csv')
+  # plot_coverages(df)
+

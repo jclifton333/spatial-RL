@@ -472,6 +472,7 @@ def backup_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', beta1=1, b
       batches = (n_rep // 24)
       results = []
       for batch in range(batches-1):
+        print(f'batch {batch}')
         results_batch = pool.map(backup_sampling_dbn_partial, range(batch*24 + SEED, (batch+1)*24 + SEED))
         results += results_batch
       last_results_batch = pool.map(backup_sampling_dbn_partial, range((batches-1)*24 + SEED, n_rep + SEED))
@@ -524,17 +525,19 @@ def simple_action_sampling_dbn(grid_size, bandwidth, kernel_name='bartlett', bet
                                     kernel=kernel, beta1=beta1, beta2=beta2,
                                     c1=c1, c2=c2, time_horizon=time_horizon, heteroskedastic=heteroskedastic)
 
+  BATCH_SIZE = 12
   if n_rep == 1:
     results = [q0_sampling_dbn_partial(0)]
   else:
     pool = mp.Pool(processes=24)
-    if n_rep > 24:
-      batches = (n_rep // 24)
+    if n_rep > BATCH_SIZE:
+      batches = (n_rep // BATCH_SIZE)
       results = []
       for batch in range(batches - 1):
-        results_batch = pool.map(q0_sampling_dbn_partial, range(batch * 24, (batch + 1) * 24))
+        print(f'batch {batch}')
+        results_batch = pool.map(q0_sampling_dbn_partial, range(batch * BATCH_SIZE, (batch + 1) * BATCH_SIZE))
         results += results_batch
-      last_results_batch = pool.map(q0_sampling_dbn_partial, range((batches - 1) * 24, n_rep))
+      last_results_batch = pool.map(q0_sampling_dbn_partial, range((batches - 1) * BATCH_SIZE, n_rep))
       results += last_results_batch
     else:
       results = pool.map(q0_sampling_dbn_partial, range(n_rep))
