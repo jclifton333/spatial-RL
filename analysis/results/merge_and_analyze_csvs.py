@@ -36,7 +36,7 @@ def merge_ebola_data():
   df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 0), 'full_policy_name'] = \
     'two_step_ggcn'
 
-  # Overwrite with oracle-tuned results (7-12 through 7-15)
+  # Overwrite with new tuned results
   df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 0), 'mean'] = 0.160
   df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 1), 'mean'] = 0.156
   df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw1 == 0), 'mean'] = 0.150
@@ -173,21 +173,32 @@ def barplots(df, normalize=False, ebola=False):
 
     # Plot
     if ebola:
-      policies_to_report = ['one_step_linear_raw', 'one_step_linear', 'one_step_ggcn_raw', 'one_step_ggcn',
-                            'two_step_linear_raw', 'two_step_linear', 'two_step_ggcn_raw', 'two_step_ggcn',
+      policies_to_report = ['one_step_linear_raw', 'one_step_linear', 'one_step_ggcn',
+                            'two_step_linear_raw', 'two_step_linear', 'two_step_ggcn',
                             'policy_search']
+      remap_dict = {'one_step_ggcn': 'myopic_ggcn',
+                    'two_step_ggcn': 'fqi_ggcn',
+                    'one_step_linear': 'myopic_linear',
+                    'two_step_linear': 'fqi_linear',
+                    'two_step_linear_raw': 'fqi_linear_raw',
+                    'one_step_linear_raw': 'myopic_linear_raw'}
       df_subset = df_subset[df_subset['full_policy_name'].isin(policies_to_report)]
+      df_subset['full_policy_name'].replace(remap_dict, inplace=True)
       ci_width = (df_subset['upper'] - df_subset['lower']).max() / 2
       sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset,
                   ci=ci_width)
     else:
       df_subset.loc[(df_subset.env_name == 'sis') & (df_subset.network.isnull()), 'network'] = 'contrived'
+      remap_dict = {'two_step_ggcn00': 'fqi_ggcn',
+                    'one_step_ggcn00': 'myopic_linear',
+                    'two_step01': 'fqi_linear',
+                    'two_step11': 'fqi_linear_raw'}
+      df_subset['full_policy_name'].replace(remap_dict, inplace=True)
       for env_name_ in ['lattice', 'nearestneighbor', 'contrived']:
         df_subset_subset = df_subset[df_subset['network'] == env_name_]
-        # plot = sns.catplot(col='full_env_name', y='normalized_mean', x='full_policy_name', kind='bar', data=df_subset_subset,
-        #             col_wrap=3)
-        plot = sns.catplot(col='epsilon', row='L',
-                           y='normalized_mean', x='full_policy_name', kind='bar', data=df_subset_subset)
+        plot = sns.catplot(x='epsilon', row='L',
+                           y='normalized_mean', hue='full_policy_name', kind='bar',
+                           legend=True, data=df_subset_subset)
         plot.fig.subplots_adjust(top=0.9)
         plot.fig.suptitle(env_name_)
         plot.savefig(f'sis-{env_name_}-results.png')
