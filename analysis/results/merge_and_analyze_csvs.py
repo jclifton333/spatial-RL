@@ -37,8 +37,8 @@ def merge_ebola_data():
     'two_step_ggcn'
 
   # Overwrite with oracle-tuned results (7-12 through 7-15)
-  df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 0), 'mean'] = 0.157
-  df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 1), 'mean'] = 0.158
+  df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 0), 'mean'] = 0.160
+  df.loc[(df.policy_name == 'two_step_ggcn') & (df.raw1 == 1), 'mean'] = 0.156
   df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw1 == 0), 'mean'] = 0.150
   df.loc[(df.policy_name == 'one_step_ggcn') & (df.raw1 == 1), 'mean'] = 0.151
 
@@ -80,6 +80,7 @@ def merge_may_data():
   df.loc[(df.env_name == 'sis') & (df.network.isnull()), 'full_env_name'] = \
     'contrived' + df.loc[(df.env_name == 'sis') & (df.network.isnull()), 'epsilon'].astype(str) + \
     df.loc[(df.env_name == 'sis') & (df.network.isnull()), 'L'].astype(str)
+  df.loc[(df.env_name == 'sis') & (df.network.isnull()), 'network'] = 'contrived'
   df.loc[(df.env_name == 'sis') & (~df.network.isnull()), 'full_env_name'] = \
     df.loc[(df.env_name == 'sis') & (~df.network.isnull()), 'network'] + \
     df.loc[(df.env_name == 'sis') & (~df.network.isnull()), 'epsilon'].astype(str) + \
@@ -180,19 +181,28 @@ def barplots(df, normalize=False, ebola=False):
       sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset,
                   ci=ci_width)
     else:
-      sns.catplot(col='full_env_name', y='normalized_mean', x='full_policy_name', kind='bar', data=df_subset,
-                  col_wrap=3)
+      df_subset.loc[(df_subset.env_name == 'sis') & (df_subset.network.isnull()), 'network'] = 'contrived'
+      for env_name_ in ['lattice', 'nearestneighbor', 'contrived']:
+        df_subset_subset = df_subset[df_subset['network'] == env_name_]
+        # plot = sns.catplot(col='full_env_name', y='normalized_mean', x='full_policy_name', kind='bar', data=df_subset_subset,
+        #             col_wrap=3)
+        plot = sns.catplot(col='epsilon', row='L',
+                           y='normalized_mean', x='full_policy_name', kind='bar', data=df_subset_subset)
+        plot.fig.subplots_adjust(top=0.9)
+        plot.fig.suptitle(env_name_)
+        plot.savefig(f'sis-{env_name_}-results.png')
   else:
     sns.catplot(x='full_env_name', y='mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
-  plt.show()
+  # plt.show()
   return
 
 
 if __name__ == "__main__":
-  merge_ebola_data()
-  df = pd.read_csv('07_11_ebola_merged.csv')
-  # df = pd.read_csv('0620_merged.csv')
-  barplots(df, normalize=True, ebola=True)
+  # merge_ebola_data()
+  # df = pd.read_csv('07_11_ebola_merged.csv')
+  # merge_may_data()
+  df = pd.read_csv('0620_merged.csv')
+  barplots(df, normalize=True, ebola=False)
   # df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
 
   # # Add cols for raw features
