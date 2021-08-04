@@ -122,7 +122,7 @@ def two_step_ggcn_policy_helper(**kwargs):
     N_REP = 50
     dummy_act = np.concatenate((np.zeros(env.L - treatment_budget), np.zeros(treatment_budget)))
     eval_actions = [np.random.permutation(dummy_act) for _ in range(N_REP)]
-    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, weights)
+    clf, predict_proba_kwargs, loss_dict = fit_one_step_predictor(classifier, env, None)
     def simple_oracle_qfn(a_):
       return clf.predict_proba(env.data_block_at_action(-1, a_), **predict_proba_kwargs)
     true_probs = np.hstack([simple_oracle_qfn(a_) for a_ in eval_actions])
