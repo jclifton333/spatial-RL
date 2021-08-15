@@ -47,14 +47,19 @@ def merge_ebola_data():
 
 def merge_may_data():
   # Read csvs
-  df1 = pd.read_csv('210514,210515,210516,210517,210518,210519,210520.csv')
+  df8 = pd.read_csv('210514,210515.csv')
+  df0 = pd.read_csv('210516,210517.csv')
+  df1 = pd.read_csv('210518,210519,210520.csv')
   df2 = pd.read_csv('210531.csv')
   df3 = pd.read_csv('210601,210602.csv')
   df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
   df5 = pd.read_csv('210613,210614,210615,210616,210617.csv')
   df6 = pd.read_csv('210621,210622.csv')
+  df7 = pd.read_csv('2108.csv')
 
   # Add cols for raw features
+  df0.loc[df0['policy_name'] == 'one_step_ggcn', 'raw0'] = 0
+  df0.loc[df0['policy_name'] == 'one_step_ggcn', 'raw1'] = 1
   df1['raw0'] = 0
   df1['raw1'] = 0
   df2['raw0'] = 0
@@ -68,11 +73,15 @@ def merge_may_data():
   df6['raw0'] = 0
   df6['raw1'] = 0
 
+  # ToDo: not sure about this
+  df8['raw0'] = 0
+  df8['raw1'] = 0
+
   df4 = df4[~(df4['epsilon'].isin([0.5, 1.0]))]
   df5 = df5[df5['policy_name'] == 'two_step_true_probs']
 
   # Merge csvs
-  df = pd.concat([df1, df2, df3, df4, df5])
+  df = pd.concat([df0, df1, df2, df3, df4, df5, df6, df7, df8])
 
   # Full env names
   df['full_env_name'] = None
@@ -88,12 +97,12 @@ def merge_may_data():
 
     # Full policy names
   df['full_policy_name'] = None
-  df.loc[~df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'full_policy_name'] = \
-    df.loc[~df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'policy_name']
-  df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'full_policy_name'] = \
-    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'policy_name'] + \
-    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'raw0'].astype(str) + \
-    df.loc[df.policy_name.isin(['one_step_ggcn', 'two_step_ggcn', 'two_step']), 'raw1'].astype(str)
+  df.loc[~df.policy_name.isin(['one_step', 'one_step_ggcn', 'two_step_ggcn', 'two_step']), 'full_policy_name'] = \
+    df.loc[~df.policy_name.isin(['one_step', 'one_step_ggcn', 'two_step_ggcn', 'two_step']), 'policy_name']
+  df.loc[df.policy_name.isin(['one_step', 'one_step_ggcn', 'two_step_ggcn', 'two_step']), 'full_policy_name'] = \
+    df.loc[df.policy_name.isin(['one_step', 'one_step_ggcn', 'two_step_ggcn', 'two_step']), 'policy_name'] + \
+    df.loc[df.policy_name.isin(['one_step', 'one_step_ggcn', 'two_step_ggcn', 'two_step']), 'raw0'].astype(str) + \
+    df.loc[df.policy_name.isin(['one_step', 'one_step_ggcn', 'two_step_ggcn', 'two_step']), 'raw1'].astype(str)
 
   df.to_csv('0620_merged.csv')
 
@@ -185,14 +194,16 @@ def barplots(df, normalize=False, ebola=False):
       df_subset = df_subset[df_subset['full_policy_name'].isin(policies_to_report)]
       df_subset['full_policy_name'].replace(remap_dict, inplace=True)
       ci_width = (df_subset['upper'] - df_subset['lower']).max() / 2
-      sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset,
-                  ci=ci_width)
+      plot = sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset,
+                  ci=ci_width, legend=True)
+      plot.savefig(f'ebola-results.png')
     else:
       df_subset.loc[(df_subset.env_name == 'sis') & (df_subset.network.isnull()), 'network'] = 'contrived'
       remap_dict = {'two_step_ggcn00': 'fqi_ggcn',
                     'one_step_ggcn00': 'myopic_linear',
                     'two_step01': 'fqi_linear',
-                    'two_step11': 'fqi_linear_raw'}
+                    'two_step11': 'fqi_linear_raw',
+                    'one_step_ggcn01': 'myopic_linear_raw'}
       df_subset['full_policy_name'].replace(remap_dict, inplace=True)
       for env_name_ in ['lattice', 'nearestneighbor', 'contrived']:
         df_subset_subset = df_subset[df_subset['network'] == env_name_]
@@ -211,7 +222,7 @@ def barplots(df, normalize=False, ebola=False):
 if __name__ == "__main__":
   # merge_ebola_data()
   # df = pd.read_csv('07_11_ebola_merged.csv')
-  # merge_may_data()
+  merge_may_data()
   df = pd.read_csv('0620_merged.csv')
   barplots(df, normalize=True, ebola=False)
   # df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
