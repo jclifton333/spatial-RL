@@ -203,10 +203,15 @@ def barplots(df, normalize=False, ebola=False):
                     'one_step_ggcn00': 'myopic_linear',
                     'two_step01': 'fqi_linear',
                     'two_step11': 'fqi_linear_raw',
-                    'one_step_ggcn01': 'myopic_linear_raw'}
+                    'one_step_ggcn01': 'myopic_linear_raw',
+                    'one_step00': 'myopic_ggcn'}
       df_subset['full_policy_name'].replace(remap_dict, inplace=True)
       for env_name_ in ['lattice', 'nearestneighbor', 'contrived']:
-        df_subset_subset = df_subset[df_subset['network'] == env_name_]
+        policies_to_report = ['fqi_linear', 'fqi_linear_raw', 'fqi_ggcn', 'myopic_linear', 'myopic_linear_raw',
+                              'myopic_ggcn', 'policy_search']
+        # policies_to_report = df_subset['full_policy_name'].unique()
+        df_subset_subset = df_subset[(df_subset['network'] == env_name_) &
+                                     (df_subset['full_policy_name'].isin(policies_to_report))]
         plot = sns.catplot(x='epsilon', row='L',
                            y='normalized_mean', hue='full_policy_name', kind='bar',
                            legend=True, data=df_subset_subset)
@@ -220,11 +225,12 @@ def barplots(df, normalize=False, ebola=False):
 
 
 if __name__ == "__main__":
-  # merge_ebola_data()
-  # df = pd.read_csv('07_11_ebola_merged.csv')
-  merge_may_data()
-  df = pd.read_csv('0620_merged.csv')
-  barplots(df, normalize=True, ebola=False)
+  merge_ebola_data()
+  df = pd.read_csv('07_11_ebola_merged.csv')
+  barplots(df, normalize=True, ebola=True)
+  # merge_may_data()
+  # df = pd.read_csv('0620_merged.csv')
+  # barplots(df, normalize=True, ebola=False)
   # df4 = pd.read_csv('oracle-incorrect-contaminated.csv')
 
   # # Add cols for raw features
