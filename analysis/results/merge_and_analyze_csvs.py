@@ -3,6 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pdb
+import numpy.random as npr
 
 
 def merge_ebola_data():
@@ -110,6 +111,40 @@ def merge_may_data():
   return
 
 
+def make_ci_df_plot(df_, env_name_, policies_to_report_):
+  n_rep = 100
+  ci_dict = {'network': [], 'full_policy_name': [], 'normalized_mean': [], 'L': [], 'epsilon': []}
+
+  networks = df_.network.unique()
+  Ls = df_.L.unique()
+  epsilons = df_.epsilon.unique()
+  policy_names = df_.full_policy_name.unique()
+
+  for network in networks:
+    for L in Ls:
+      for epsilon in epsilons:
+        for policy_name in policy_names:
+          mean = df_.loc[(df_['epsilon'] == epsilon) & (df_['L'] == L) & (df_['full_policy_name' == policy_name])
+                         & (df['network'] == network), 'normalized_mean'].iloc[0]
+          se = df_.loc[(df_['epsilon'] == epsilon) & (df_['L'] == L) & (df_['full_policy_name' == policy_name])
+                         & (df['network'] == network), 'se'].iloc[0]
+          x = np.random.normal(loc=mean, scale=se, size=n_rep)
+          ci_dict['network'] += [network] * n_rep
+          ci_dict['L'] += [L] * n_rep
+          ci_dict['full_policy_name'] += [policy_name] * n_rep
+          ci_dict['epsilon'] += [epsilon] + n_rep
+          ci_dict['normalized_mean'] = np.hstack((ci_dict['normalized_mean'], x))
+
+  plot = sns.catplot(x='epsilon', row='L',
+                     y='normalized_mean', hue='full_policy_name', kind='bar',
+                     legend=True, data=df_, hue_order=policies_to_report_)
+  plot.fig.subplots_adjust(top=0.9)
+  plot.fig.suptitle(env_name_)
+  plt.show()
+
+  return
+
+
 def barplots(df, normalize=False, ebola=False):
   # full_env_names = ['lattice0.0', 'lattice0.5', 'lattice1.0']
   if ebola:
@@ -173,8 +208,8 @@ def barplots(df, normalize=False, ebola=False):
 
       best_policy_name = df_subset.full_policy_name[df_subset.loc[
         (df_subset['full_env_name'] == full_env_name), 'mean'].idxmin()]
-      if best_policy_name not in ['oracle_policy_search', 'two_step_true_probs']:
-        df_subset.loc[df_subset['full_env_name'] == full_env_name, 'full_env_name'] += '*'
+      # if best_policy_name not in ['oracle_policy_search', 'two_step_true_probs']:
+      #   df_subset.loc[df_subset['full_env_name'] == full_env_name, 'full_env_name'] += '*'
 
     # Normalize
     df_subset['normalized_mean'] = \
@@ -209,15 +244,16 @@ def barplots(df, normalize=False, ebola=False):
       for env_name_ in ['lattice', 'nearestneighbor', 'contrived']:
         policies_to_report = ['fqi_linear', 'fqi_linear_raw', 'fqi_ggcn', 'myopic_linear', 'myopic_linear_raw',
                               'myopic_ggcn', 'policy_search']
-        # policies_to_report = df_subset['full_policy_name'].unique()
+        policies_to_report = df_subset['full_policy_name'].unique()
         df_subset_subset = df_subset[(df_subset['network'] == env_name_) &
                                      (df_subset['full_policy_name'].isin(policies_to_report))]
-        plot = sns.catplot(x='epsilon', row='L',
-                           y='normalized_mean', hue='full_policy_name', kind='bar',
-                           legend=True, data=df_subset_subset, hue_order=policies_to_report)
-        plot.fig.subplots_adjust(top=0.9)
-        plot.fig.suptitle(env_name_)
-        plot.savefig(f'sis-{env_name_}-results.png')
+        # plot = sns.catplot(x='epsilon', row='L',
+        #                    y='normalized_mean', hue='full_policy_name', kind='bar',
+        #                    legend=True, data=df_subset_subset, hue_order=policies_to_report, ci=None)
+        # plot.fig.subplots_adjust(top=0.9)
+        # plot.fig.suptitle(env_name_)
+        # plot.savefig(f'sis-{env_name_}-results.png')
+        make_ci_df_plot(df_subset_subset, env_name_, policies_to_report)
   else:
     sns.catplot(x='full_env_name', y='mean', hue='full_policy_name', kind='bar', data=df_subset, col_wrap=3)
   # plt.show()
