@@ -113,26 +113,26 @@ def merge_may_data():
 
 def make_ci_df_plot(df_, env_name_, policies_to_report_):
   n_rep = 100
-  ci_dict = {'network': [], 'full_policy_name': [], 'normalized_mean': [], 'L': [], 'epsilon': []}
+  ci_dict = {'full_policy_name': [], 'normalized_mean': [], 'L': [], 'epsilon': []}
 
-  networks = df_.network.unique()
   Ls = df_.L.unique()
   epsilons = df_.epsilon.unique()
   policy_names = df_.full_policy_name.unique()
 
-  for network in networks:
-    for L in Ls:
-      for epsilon in epsilons:
-        for policy_name in policy_names:
-          mean = df_.loc[(df_['epsilon'] == epsilon) & (df_['L'] == L) & (df_['full_policy_name' == policy_name])
-                         & (df['network'] == network), 'normalized_mean'].iloc[0]
-          se = df_.loc[(df_['epsilon'] == epsilon) & (df_['L'] == L) & (df_['full_policy_name' == policy_name])
-                         & (df['network'] == network), 'se'].iloc[0]
+  for L in Ls:
+    for epsilon in epsilons:
+      for policy_name in policy_names:
+        means = df_.loc[(df_['epsilon'] == epsilon) & (df_['L'] == L) & (df_['full_policy_name'] == policy_name),
+                          'normalized_mean']
+        ses = df_.loc[(df_['epsilon'] == epsilon) & (df_['L'] == L) & (df_['full_policy_name'] == policy_name),
+                          'se']
+        if len(means) > 0:  # ToDo: add results that are missing!
+          mean = means.iloc[0]
+          se = ses.iloc[0]
           x = np.random.normal(loc=mean, scale=se, size=n_rep)
-          ci_dict['network'] += [network] * n_rep
           ci_dict['L'] += [L] * n_rep
           ci_dict['full_policy_name'] += [policy_name] * n_rep
-          ci_dict['epsilon'] += [epsilon] + n_rep
+          ci_dict['epsilon'] += [epsilon] * n_rep
           ci_dict['normalized_mean'] = np.hstack((ci_dict['normalized_mean'], x))
 
   plot = sns.catplot(x='epsilon', row='L',
