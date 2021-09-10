@@ -111,7 +111,36 @@ def merge_may_data():
   return
 
 
-def make_ci_df_plot(df_, env_name_, policies_to_report_):
+def make_ci_df_plot(df_, env_name_, policies_to_report, ebola=False):
+  if ebola:
+    make_ci_df_plot_ebola(df_, policies_to_report)
+  else:
+    make_ci_df_plot_sis(df_, env_name_, policies_to_report)
+
+
+def make_ci_df_plot_ebola(df_, policies_to_report):
+  n_rep = 100
+  ci_dict = {'full_policy_name': [], 'normalized_mean': []}
+
+  policy_names = df_.full_policy_name.unique()
+
+  for policy_name in policy_names:
+    means = df_.loc[df_['full_policy_name'] == policy_name, 'normalized_mean']
+    ses = df_.loc[df_['full_policy_name'] == policy_name, 'se']
+
+    if len(means) > 0:  # ToDo: add results that are missing!
+      mean = means.iloc[0]
+      se = ses.iloc[0]
+      x = np.random.normal(loc=mean, scale=se, size=n_rep)
+      ci_dict['full_policy_name'] += [policy_name] * n_rep
+      ci_dict['normalized_mean'] = np.hstack((ci_dict['normalized_mean'], x))
+
+  plot = sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=ci_dict,
+                     legend=True, hue_order=policies_to_report)
+  plot.savefig(f'ebola-results.png')
+
+
+def make_ci_df_plot_sis(df_, env_name_, policies_to_report):
   n_rep = 100
   ci_dict = {'full_policy_name': [], 'normalized_mean': [], 'L': [], 'epsilon': []}
 
@@ -134,13 +163,15 @@ def make_ci_df_plot(df_, env_name_, policies_to_report_):
           ci_dict['full_policy_name'] += [policy_name] * n_rep
           ci_dict['epsilon'] += [epsilon] * n_rep
           ci_dict['normalized_mean'] = np.hstack((ci_dict['normalized_mean'], x))
+        else:
+          print(env_name_, L, epsilon, policy_name)
 
   plot = sns.catplot(x='epsilon', row='L',
                      y='normalized_mean', hue='full_policy_name', kind='bar',
                      legend=True, data=df_, hue_order=policies_to_report_)
   plot.fig.subplots_adjust(top=0.9)
   plot.fig.suptitle(env_name_)
-  plt.show()
+  plot.savefig(f'sis-{env_name_}-results.png')
 
   return
 
@@ -239,7 +270,9 @@ def barplots(df, normalize=False, ebola=False):
                     'two_step01': 'fqi_linear',
                     'two_step11': 'fqi_linear_raw',
                     'one_step_ggcn01': 'myopic_linear_raw',
-                    'one_step00': 'myopic_ggcn'}
+                    'one_step00': 'myopic_ggcn',
+                    'one_step_ggcnFalseFalse': 'myopic_linear',
+                    'two_step_ggcnFalseFalse': 'fqi_ggcn'}
       df_subset['full_policy_name'].replace(remap_dict, inplace=True)
       for env_name_ in ['lattice', 'nearestneighbor', 'contrived']:
         policies_to_report = ['fqi_linear', 'fqi_linear_raw', 'fqi_ggcn', 'myopic_linear', 'myopic_linear_raw',
