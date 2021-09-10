@@ -58,6 +58,7 @@ def merge_may_data():
   df6 = pd.read_csv('210621,210622.csv')
   df7 = pd.read_csv('2108.csv')
   df9 = pd.read_csv('210815.csv')
+  df10 = pd.read_csv('210910.csv')
 
   # Add cols for raw features
   df0.loc[df0['policy_name'] == 'one_step_ggcn', 'raw0'] = 0
@@ -83,7 +84,7 @@ def merge_may_data():
   df5 = df5[df5['policy_name'] == 'two_step_true_probs']
 
   # Merge csvs
-  df = pd.concat([df0, df1, df2, df3, df4, df5, df6, df7, df8, df9])
+  df = pd.concat([df0, df1, df2, df3, df4, df5, df6, df7, df8, df9, df10])
 
   # Full env names
   df['full_env_name'] = None
@@ -120,7 +121,7 @@ def make_ci_df_plot(df_, env_name_, policies_to_report, ebola=False):
 
 def make_ci_df_plot_ebola(df_, policies_to_report):
   n_rep = 100
-  ci_dict = {'full_policy_name': [], 'normalized_mean': []}
+  ci_dict = {'full_policy_name': [], 'normalized_mean': [], 'full_env_name': []}
 
   policy_names = df_.full_policy_name.unique()
 
@@ -134,8 +135,10 @@ def make_ci_df_plot_ebola(df_, policies_to_report):
       x = np.random.normal(loc=mean, scale=se, size=n_rep)
       ci_dict['full_policy_name'] += [policy_name] * n_rep
       ci_dict['normalized_mean'] = np.hstack((ci_dict['normalized_mean'], x))
+      ci_dict['full_env_name'] += ['Ebola'] * n_rep
 
-  plot = sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=ci_dict,
+  ci_df = pd.DataFrame.from_dict(ci_dict)
+  plot = sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=ci_df,
                      legend=True, hue_order=policies_to_report)
   plot.savefig(f'ebola-results.png')
 
@@ -166,11 +169,13 @@ def make_ci_df_plot_sis(df_, env_name_, policies_to_report):
         else:
           print(env_name_, L, epsilon, policy_name)
 
+  ci_df = pd.DataFrame.from_dict(ci_dict)
   plot = sns.catplot(x='epsilon', row='L',
                      y='normalized_mean', hue='full_policy_name', kind='bar',
-                     legend=True, data=df_, hue_order=policies_to_report_)
+                     legend=False, data=ci_df, hue_order=policies_to_report)
   plot.fig.subplots_adjust(top=0.9)
-  plot.fig.suptitle(env_name_)
+  plot.set_axis_labels(r'Contamination parameter $\epsilon$', 'Normalized mean infections $\overline{V}$')
+  plt.legend(title='Learning algorithm')
   plot.savefig(f'sis-{env_name_}-results.png')
 
   return
@@ -249,35 +254,38 @@ def barplots(df, normalize=False, ebola=False):
 
     # Plot
     if ebola:
-      remap_dict = {'one_step_ggcn': 'myopic_ggcn',
-                    'two_step_ggcn': 'fqi_ggcn',
-                    'one_step_linear': 'myopic_linear',
-                    'two_step_linear': 'fqi_linear',
-                    'two_step_linear_raw': 'fqi_linear_raw',
-                    'one_step_linear_raw': 'myopic_linear_raw'}
+      remap_dict = {'one_step_ggcn': 'Myopic GCN',
+                    'two_step_ggcn': 'FQI GCN',
+                    'one_step_linear': 'Myopic linear',
+                    'two_step_linear': 'FQI linear',
+                    'two_step_linear_raw': 'FQI linear raw',
+                    'one_step_linear_raw': 'Myopic linear raw',
+                    'policy_search': 'Policy search'}
       df_subset['full_policy_name'].replace(remap_dict, inplace=True)
-      policies_to_report = ['fqi_linear', 'fqi_linear_raw', 'fqi_ggcn', 'myopic_linear', 'myopic_linear_raw',
-                            'myopic_ggcn', 'policy_search']
+      policies_to_report = ['FQI linear', 'FQI linear raw', 'FQI GCN', 'Myopic linear', 'Myopic linear raw',
+                            'Myopic GCN', 'Policy search']
       df_subset = df_subset[df_subset['full_policy_name'].isin(policies_to_report)]
-      ci_width = (df_subset['upper'] - df_subset['lower']).max() / 2
-      plot = sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset,
-                  ci=ci_width, legend=True, hue_order=policies_to_report)
-      plot.savefig(f'ebola-results.png')
+      # ci_width = (df_subset['upper'] - df_subset['lower']).max() / 2
+      # plot = sns.catplot(x='full_env_name', y='normalized_mean', hue='full_policy_name', kind='bar', data=df_subset,
+      #             ci=ci_width, legend=True, hue_order=policies_to_report)
+      # plot.savefig(f'ebola-results.png')
+      make_ci_df_plot(df_subset, 'Ebola', policies_to_report, ebola=True)
     else:
       df_subset.loc[(df_subset.env_name == 'sis') & (df_subset.network.isnull()), 'network'] = 'contrived'
-      remap_dict = {'two_step_ggcn00': 'fqi_ggcn',
-                    'one_step_ggcn00': 'myopic_linear',
-                    'two_step01': 'fqi_linear',
-                    'two_step11': 'fqi_linear_raw',
-                    'one_step_ggcn01': 'myopic_linear_raw',
-                    'one_step00': 'myopic_ggcn',
-                    'one_step_ggcnFalseFalse': 'myopic_linear',
-                    'two_step_ggcnFalseFalse': 'fqi_ggcn'}
+      remap_dict = {'two_step_ggcn00': 'FQI GCN',
+                    'one_step_ggcn00': 'Myopic linear',
+                    'two_step01': 'FQI linear',
+                    'two_step11': 'FQI linear raw',
+                    'one_step_ggcn01': 'Myopic linear raw',
+                    'one_step00': 'Myopic GCN',
+                    'one_step_ggcnFalseFalse': 'Myopic linear',
+                    'two_step_ggcnFalseFalse': 'FQI GCN',
+                    'one_step_ggcnTrueFalse': 'Myopic linear',
+                    'one_step_ggcnTrueTrue': 'Myopic linear raw'}
       df_subset['full_policy_name'].replace(remap_dict, inplace=True)
+      policies_to_report = ['FQI linear', 'FQI linear raw', 'FQI GCN', 'Myopic linear', 'Myopic linear raw',
+                            'Myopic GCN', 'Policy search']
       for env_name_ in ['lattice', 'nearestneighbor', 'contrived']:
-        policies_to_report = ['fqi_linear', 'fqi_linear_raw', 'fqi_ggcn', 'myopic_linear', 'myopic_linear_raw',
-                              'myopic_ggcn', 'policy_search']
-        policies_to_report = df_subset['full_policy_name'].unique()
         df_subset_subset = df_subset[(df_subset['network'] == env_name_) &
                                      (df_subset['full_policy_name'].isin(policies_to_report))]
         # plot = sns.catplot(x='epsilon', row='L',
